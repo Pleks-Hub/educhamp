@@ -1,16 +1,15 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { useLocation, useSearch } from "wouter";
+import { useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Streamdown } from "streamdown";
 import {
   BookOpen,
   Brain,
+  ChevronDown,
   ClipboardList,
   FileText,
   Loader2,
@@ -21,27 +20,47 @@ import {
   Target,
   Users,
   Wrench,
+  X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 
 type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary";
 
-const MODES: { id: TutorMode; label: string; icon: React.ElementType; description: string; color: string }[] = [
+const MODES: {
+  id: TutorMode;
+  label: string;
+  icon: React.ElementType;
+  description: string;
+  color: string;
+  starters: string[];
+}[] = [
   {
     id: "teach",
     label: "Teach",
     icon: BookOpen,
     description: "Explain concepts clearly with examples",
     color: "bg-blue-100 text-blue-700 border-blue-200",
+    starters: [
+      "Explain slope-intercept form with an example",
+      "What is a linear equation and how do I solve one?",
+      "Walk me through the distributive property",
+      "How do I graph a line from an equation?",
+    ],
   },
   {
     id: "practice",
     label: "Practice",
     icon: Target,
-    description: "Guided problem-solving with hints",
+    description: "Guided problem-solving matched to your level",
     color: "bg-green-100 text-green-700 border-green-200",
+    starters: [
+      "Give me a practice problem based on my weakest skills",
+      "I want to practice solving two-step equations",
+      "Help me practice graphing linear equations",
+      "Give me a word problem to solve",
+    ],
   },
   {
     id: "quiz",
@@ -49,6 +68,12 @@ const MODES: { id: TutorMode; label: string; icon: React.ElementType; descriptio
     icon: ClipboardList,
     description: "Test your knowledge interactively",
     color: "bg-purple-100 text-purple-700 border-purple-200",
+    starters: [
+      "Quiz me on my weakest unit",
+      "Give me 5 questions on solving equations",
+      "Quiz me on slope and linear equations",
+      "Test me on everything I've learned so far",
+    ],
   },
   {
     id: "exam_review",
@@ -56,20 +81,38 @@ const MODES: { id: TutorMode; label: string; icon: React.ElementType; descriptio
     icon: FileText,
     description: "Prepare for upcoming assessments",
     color: "bg-amber-100 text-amber-700 border-amber-200",
+    starters: [
+      "Create a personalized review plan for my exam",
+      "What are the most important topics I should review?",
+      "Give me a practice exam based on my progress",
+      "Review the key formulas I need to know",
+    ],
   },
   {
     id: "remediation",
     label: "Remediation",
     icon: Wrench,
-    description: "Targeted support for weak areas",
+    description: "Targeted support for skills below 60%",
     color: "bg-red-100 text-red-700 border-red-200",
+    starters: [
+      "Help me with my weakest skills",
+      "I'm struggling with solving equations — start from the beginning",
+      "Reteach me the concepts I'm failing",
+      "Break down the hardest topic for me step by step",
+    ],
   },
   {
     id: "parent_summary",
     label: "Parent Summary",
     icon: Users,
-    description: "Progress updates for guardians",
+    description: "Full progress report for parents & guardians",
     color: "bg-teal-100 text-teal-700 border-teal-200",
+    starters: [
+      "Generate a full progress report for my parent",
+      "Summarize my learning progress this week",
+      "What should my parent know about my Algebra I progress?",
+      "Create a summary of my strengths and areas to improve",
+    ],
   },
 ];
 
@@ -90,16 +133,18 @@ export default function Tutor() {
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // The key fix: use a plain div ref, not ScrollArea, so we control scrolling directly
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const streamingAbortRef = useRef<AbortController | null>(null);
 
   const { data: units } = trpc.curriculum.getUnits.useQuery();
   const [selectedUnit, setSelectedUnit] = useState<number | undefined>(unitParam);
-
   const currentUnit = units?.find((u) => u.unitNumber === selectedUnit);
-
-  // Real SSE streaming — no tRPC mutation needed for chat
-  const streamingAbortRef = useRef<AbortController | null>(null);
 
   const clearMutation = trpc.tutor.clearSession.useMutation({
     onSuccess: () => {
@@ -109,98 +154,121 @@ export default function Tutor() {
     },
   });
 
+  // ── Scroll helpers ────────────────────────────────────────────────────────────
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    messagesEndRef.current?.scrollIntoView({ behavior, block: "end" });
+  }, []);
+
+  // Auto-scroll on every new token during streaming
+  useLayoutEffect(() => {
+    if (isStreaming) {
+      scrollToBottom("instant");
+    }
+  }, [messages, isStreaming, scrollToBottom]);
+
+  // Scroll to bottom when messages first appear (non-streaming)
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (!isStreaming && messages.length > 0) {
+      scrollToBottom("smooth");
     }
-  }, [messages]);
+  }, [messages.length, isStreaming, scrollToBottom]);
 
-  const sendMessage = () => {
-    if (!input.trim() || isStreaming) return;
-    if (!user) {
-      toast.error("Please sign in to use the AI Tutor");
-      return;
-    }
+  // Show/hide scroll-to-bottom button
+  const handleScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    setShowScrollButton(distanceFromBottom > 120);
+  }, []);
 
-    const userMessage: Message = { role: "user", content: input.trim(), timestamp: Date.now() };
-    setMessages((prev) => [...prev, userMessage]);
-    setIsStreaming(true);
-    setInput("");
+  // ── Send message ──────────────────────────────────────────────────────────────
+  const sendMessage = useCallback(
+    (overrideText?: string) => {
+      const text = (overrideText ?? input).trim();
+      if (!text || isStreaming) return;
+      if (!user) {
+        toast.error("Please sign in to use the AI Tutor");
+        return;
+      }
 
-    // Abort any in-flight stream
-    if (streamingAbortRef.current) streamingAbortRef.current.abort();
-    const controller = new AbortController();
-    streamingAbortRef.current = controller;
+      const userMessage: Message = { role: "user", content: text, timestamp: Date.now() };
+      setMessages((prev) => [...prev, userMessage]);
+      setIsStreaming(true);
+      setInput("");
 
-    // Add a placeholder assistant message that we'll stream into
-    const assistantPlaceholder: Message = { role: "assistant", content: "", timestamp: Date.now() };
-    setMessages((prev) => [...prev, assistantPlaceholder]);
-    const assistantIndex = messages.length + 1; // user msg is at messages.length
+      if (streamingAbortRef.current) streamingAbortRef.current.abort();
+      const controller = new AbortController();
+      streamingAbortRef.current = controller;
 
-    (async () => {
-      try {
-        const res = await fetch("/api/tutor/stream", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: userMessage.content,
-            mode,
-            unitId: currentUnit?.id,
-            unitNumber: selectedUnit,
-            sessionId: sessionId ?? undefined,
-          }),
-          signal: controller.signal,
-        });
+      // Add placeholder assistant message
+      setMessages((prev) => [...prev, { role: "assistant", content: "", timestamp: Date.now() }]);
 
-        if (!res.ok || !res.body) {
-          throw new Error(`Server error: ${res.status}`);
-        }
+      (async () => {
+        try {
+          const res = await fetch("/api/tutor/stream", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: text,
+              mode,
+              unitId: currentUnit?.id,
+              unitNumber: selectedUnit,
+              sessionId: sessionId ?? undefined,
+            }),
+            signal: controller.signal,
+          });
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
+          if (!res.ok || !res.body) {
+            throw new Error(`Server error: ${res.status}`);
+          }
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
 
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith("data:")) continue;
-            const dataStr = trimmed.slice(5).trim();
-            try {
-              const event = JSON.parse(dataStr);
-              if (event.type === "token") {
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  const last = updated[updated.length - 1];
-                  if (last && last.role === "assistant") {
-                    updated[updated.length - 1] = { ...last, content: last.content + event.content };
-                  }
-                  return updated;
-                });
-              } else if (event.type === "done") {
-                if (event.sessionId && !sessionId) setSessionId(event.sessionId);
-              } else if (event.type === "error") {
-                toast.error("Tutor error: " + event.message);
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() ?? "";
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed.startsWith("data:")) continue;
+              const dataStr = trimmed.slice(5).trim();
+              try {
+                const event = JSON.parse(dataStr);
+                if (event.type === "token") {
+                  setMessages((prev) => {
+                    const updated = [...prev];
+                    const last = updated[updated.length - 1];
+                    if (last?.role === "assistant") {
+                      updated[updated.length - 1] = { ...last, content: last.content + event.content };
+                    }
+                    return updated;
+                  });
+                } else if (event.type === "done") {
+                  if (event.sessionId && !sessionId) setSessionId(event.sessionId);
+                } else if (event.type === "error") {
+                  toast.error("Tutor error: " + event.message);
+                }
+              } catch {
+                // skip malformed
               }
-            } catch {
-              // skip malformed
             }
           }
+        } catch (err: unknown) {
+          if ((err as Error).name !== "AbortError") {
+            toast.error("Connection error. Please try again.");
+          }
+        } finally {
+          setIsStreaming(false);
         }
-      } catch (err: unknown) {
-        if ((err as Error).name !== "AbortError") {
-          toast.error("Connection error. Please try again.");
-        }
-      } finally {
-        setIsStreaming(false);
-      }
-    })();
-  };
+      })();
+    },
+    [input, isStreaming, user, mode, currentUnit, selectedUnit, sessionId]
+  );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -213,6 +281,7 @@ export default function Tutor() {
     setMode(newMode);
     setMessages([]);
     setSessionId(null);
+    setTimeout(() => textareaRef.current?.focus(), 100);
   };
 
   const currentModeConfig = MODES.find((m) => m.id === mode)!;
@@ -227,59 +296,68 @@ export default function Tutor() {
           <p className="text-sm text-muted-foreground">
             Get personalized Algebra I tutoring powered by AI.
           </p>
-          <Button onClick={() => { window.location.href = getLoginUrl(); }}>
-            Sign in
-          </Button>
+          <Button onClick={() => { window.location.href = getLoginUrl(); }}>Sign in</Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-0px)] overflow-hidden page-enter">
-      {/* Left Panel — Mode & Unit Selection */}
-      <div className="w-72 border-r bg-muted/20 flex flex-col shrink-0">
-        <div className="p-4 border-b">
-          <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            AI Tutor
-          </h2>
+    <div className="flex h-[calc(100vh-56px)] overflow-hidden page-enter">
+      {/* ── Left Sidebar ─────────────────────────────────────────────────────── */}
+      <aside
+        className={`${
+          sidebarOpen ? "w-64" : "w-0"
+        } shrink-0 border-r bg-muted/20 flex flex-col overflow-hidden transition-all duration-200`}
+      >
+        <div className="p-4 border-b shrink-0">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-sm font-bold text-foreground">AI Tutor</span>
+          </div>
           <p className="text-xs text-muted-foreground mt-0.5">Algebra I · EduChamp</p>
         </div>
 
         {/* Mode Selection */}
-        <div className="p-3 space-y-1.5 border-b">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-2">Mode</p>
-          {MODES.map((m) => {
-            const Icon = m.icon;
-            const isActive = mode === m.id;
-            return (
-              <button
-                key={m.id}
-                onClick={() => handleModeChange(m.id)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all text-sm ${
-                  isActive
-                    ? "bg-primary text-primary-foreground font-medium"
-                    : "hover:bg-muted text-foreground"
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5 shrink-0" />
-                <span>{m.label}</span>
-              </button>
-            );
-          })}
+        <div className="p-3 border-b shrink-0">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1 mb-2">
+            Mode
+          </p>
+          <div className="space-y-0.5">
+            {MODES.map((m) => {
+              const Icon = m.icon;
+              const isActive = mode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => handleModeChange(m.id)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all text-sm ${
+                    isActive
+                      ? "bg-primary text-primary-foreground font-medium shadow-sm"
+                      : "hover:bg-muted text-foreground"
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{m.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Unit Selection */}
-        <div className="p-3 flex-1 overflow-y-auto">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-2">Unit Context</p>
+        {/* Unit Context */}
+        <div className="p-3 flex-1 overflow-y-auto min-h-0">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-1 mb-2">
+            Unit Context
+          </p>
           <button
             onClick={() => setSelectedUnit(undefined)}
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-all mb-1 ${
-              !selectedUnit ? "bg-muted font-medium" : "hover:bg-muted/60 text-muted-foreground"
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-xs transition-all mb-1 ${
+              !selectedUnit ? "bg-muted font-semibold text-foreground" : "hover:bg-muted/60 text-muted-foreground"
             }`}
           >
-            General Algebra I
+            <MessageSquare className="h-3 w-3 shrink-0" />
+            <span>General Algebra I</span>
           </button>
           {(units ?? []).map((unit) => (
             <button
@@ -291,15 +369,15 @@ export default function Tutor() {
                   : "hover:bg-muted/60 text-muted-foreground"
               }`}
             >
-              <span className="font-mono text-[10px] shrink-0 w-12">U{unit.unitNumber}</span>
+              <span className="font-mono text-[10px] shrink-0 w-8 text-primary">U{unit.unitNumber}</span>
               <span className="truncate">{unit.title}</span>
             </button>
           ))}
         </div>
 
-        {/* Clear Button */}
+        {/* Clear */}
         {messages.length > 0 && (
-          <div className="p-3 border-t">
+          <div className="p-3 border-t shrink-0">
             <Button
               variant="ghost"
               size="sm"
@@ -314,62 +392,62 @@ export default function Tutor() {
             </Button>
           </div>
         )}
-      </div>
+      </aside>
 
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Chat Header */}
-        <div className="h-14 border-b flex items-center px-5 gap-3 bg-background shrink-0">
-          <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${currentModeConfig.color}`}>
+      {/* ── Main Chat Area ────────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header */}
+        <div className="h-14 border-b flex items-center px-4 gap-3 bg-background shrink-0">
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors shrink-0"
+            title="Toggle sidebar"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+          <div
+            className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${currentModeConfig.color}`}
+          >
             <ModeIcon className="h-3.5 w-3.5" />
           </div>
-          <div>
-            <p className="text-sm font-semibold">{currentModeConfig.label} Mode</p>
-            <p className="text-xs text-muted-foreground">{currentModeConfig.description}</p>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold leading-tight">{currentModeConfig.label} Mode</p>
+            <p className="text-xs text-muted-foreground truncate">{currentModeConfig.description}</p>
           </div>
           {currentUnit && (
-            <Badge variant="secondary" className="ml-auto text-xs">
-              Unit {currentUnit.unitNumber}: {currentUnit.title}
+            <Badge variant="secondary" className="ml-auto text-xs shrink-0">
+              U{currentUnit.unitNumber}: {currentUnit.title}
             </Badge>
           )}
         </div>
 
-        {/* Messages */}
-        <ScrollArea className="flex-1 px-5 py-4" ref={scrollRef as any}>
+        {/* ── Messages — the key fix: plain overflow-y-auto div, not ScrollArea ── */}
+        <div
+          ref={messagesContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 overflow-y-auto min-h-0 px-4 py-5"
+        >
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center space-y-4">
+            /* Empty state with starter prompts */
+            <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center space-y-5 max-w-xl mx-auto">
               <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center">
                 <Brain className="h-7 w-7 text-primary" />
               </div>
               <div>
-                <h3 className="font-semibold text-foreground">Ready to help, {user.name?.split(" ")[0]}!</h3>
-                <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                  {currentModeConfig.description}. Ask me anything about Algebra I.
+                <h3 className="font-semibold text-foreground text-base">
+                  Ready to help, {user.name?.split(" ")[0]}!
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {currentModeConfig.description}
+                  {currentUnit ? ` — Unit ${currentUnit.unitNumber}: ${currentUnit.title}` : ""}
                 </p>
               </div>
-              <div className="grid grid-cols-1 gap-2 w-full max-w-sm">
-                {mode === "teach" && [
-                  "Explain slope-intercept form",
-                  "What is a linear equation?",
-                  "How do I solve for x?",
-                ].map((q) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+                {currentModeConfig.starters.map((q) => (
                   <button
                     key={q}
-                    onClick={() => { setInput(q); textareaRef.current?.focus(); }}
-                    className="text-xs text-left px-3 py-2 rounded-lg border hover:bg-muted transition-colors text-muted-foreground"
-                  >
-                    {q}
-                  </button>
-                ))}
-                {mode === "practice" && [
-                  "Give me a practice problem on linear equations",
-                  "I want to practice graphing",
-                  "Quiz me on solving inequalities",
-                ].map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => { setInput(q); textareaRef.current?.focus(); }}
-                    className="text-xs text-left px-3 py-2 rounded-lg border hover:bg-muted transition-colors text-muted-foreground"
+                    onClick={() => sendMessage(q)}
+                    className="text-xs text-left px-3.5 py-2.5 rounded-xl border border-border hover:border-primary/40 hover:bg-muted/60 transition-all text-muted-foreground hover:text-foreground leading-snug"
                   >
                     {q}
                   </button>
@@ -377,81 +455,116 @@ export default function Tutor() {
               </div>
             </div>
           ) : (
-            <div className="space-y-4 max-w-3xl mx-auto">
+            <div className="space-y-5 max-w-3xl mx-auto pb-2">
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   {msg.role === "assistant" && (
-                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center mr-2.5 mt-0.5 shrink-0">
-                      <Brain className="h-3.5 w-3.5 text-primary" />
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5 ring-1 ring-primary/20">
+                      <Brain className="h-4 w-4 text-primary" />
                     </div>
                   )}
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
+                    className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === "user"
-                        ? "bg-primary text-primary-foreground rounded-br-sm"
-                        : "bg-card border border-border rounded-bl-sm"
+                        ? "max-w-[75%] bg-primary text-primary-foreground rounded-br-sm"
+                        : "max-w-[85%] bg-card border border-border rounded-bl-sm shadow-sm"
                     }`}
                   >
                     {msg.role === "assistant" ? (
-                      <Streamdown className="prose prose-sm max-w-none dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                        {msg.content}
-                      </Streamdown>
+                      msg.content ? (
+                        <Streamdown className="prose prose-sm max-w-none dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:leading-relaxed [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-3 [&_strong]:font-semibold [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs">
+                          {msg.content}
+                        </Streamdown>
+                      ) : (
+                        /* Typing indicator while streaming starts */
+                        <div className="flex items-center gap-1.5 py-1">
+                          <div className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:0ms]" />
+                          <div className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:150ms]" />
+                          <div className="h-2 w-2 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:300ms]" />
+                        </div>
+                      )
                     ) : (
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                     )}
                   </div>
+                  {msg.role === "user" && (
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold text-muted-foreground">
+                      {user.name?.charAt(0).toUpperCase() ?? "S"}
+                    </div>
+                  )}
                 </div>
               ))}
-              {isStreaming && (
-                <div className="flex justify-start">
-                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center mr-2.5 mt-0.5 shrink-0">
-                    <Brain className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                  <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0ms]" />
-                      <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:150ms]" />
-                      <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:300ms]" />
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Invisible anchor for scroll-to-bottom */}
+              <div ref={messagesEndRef} />
             </div>
           )}
-        </ScrollArea>
+        </div>
 
-        {/* Input Area */}
-        <div className="border-t p-4 bg-background shrink-0">
-          <div className="max-w-3xl mx-auto flex gap-3 items-end">
-            <Textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={`Ask your ${currentModeConfig.label.toLowerCase()} question...`}
-              className="resize-none min-h-[44px] max-h-32 text-sm"
-              rows={1}
-              disabled={isStreaming}
-            />
+        {/* Scroll-to-bottom button */}
+        {showScrollButton && (
+          <div className="absolute bottom-24 right-6 z-10">
             <Button
-              onClick={sendMessage}
-              disabled={!input.trim() || isStreaming}
               size="sm"
-              className="h-11 w-11 p-0 shrink-0"
+              variant="secondary"
+              className="rounded-full h-9 w-9 p-0 shadow-md"
+              onClick={() => scrollToBottom("smooth")}
             >
-              {isStreaming ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
+              <ChevronDown className="h-4 w-4" />
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-2">
-            Press Enter to send · Shift+Enter for new line
-          </p>
+        )}
+
+        {/* ── Input Area ─────────────────────────────────────────────────────── */}
+        <div className="border-t bg-background px-4 py-3 shrink-0">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex gap-2 items-end bg-muted/40 border border-border rounded-2xl px-3 py-2 focus-within:border-primary/50 focus-within:bg-background transition-all">
+              <Textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => {
+                  setInput(e.target.value);
+                  // Auto-resize
+                  e.target.style.height = "auto";
+                  e.target.style.height = Math.min(e.target.scrollHeight, 128) + "px";
+                }}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  mode === "parent_summary"
+                    ? "Ask for a progress report or learning summary…"
+                    : mode === "practice"
+                    ? "Ask for a practice problem or say what you want to work on…"
+                    : mode === "quiz"
+                    ? "Ask to be quizzed on a topic or unit…"
+                    : mode === "exam_review"
+                    ? "Ask for an exam review plan or practice questions…"
+                    : mode === "remediation"
+                    ? "Tell me what you're struggling with…"
+                    : "Ask anything about Algebra I…"
+                }
+                className="flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 text-sm min-h-[36px] max-h-32 py-1 px-0 placeholder:text-muted-foreground/60"
+                rows={1}
+                disabled={isStreaming}
+              />
+              <Button
+                onClick={() => sendMessage()}
+                disabled={!input.trim() || isStreaming}
+                size="sm"
+                className="h-9 w-9 p-0 shrink-0 rounded-xl"
+              >
+                {isStreaming ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+              Enter to send · Shift+Enter for new line
+            </p>
+          </div>
         </div>
       </div>
     </div>

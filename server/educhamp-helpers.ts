@@ -33,96 +33,220 @@ export function getAdaptivePath(score: number): string {
 
 type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary";
 
+export type StudentContext = {
+  name: string;
+  currentUnitTitle?: string;
+  currentUnitNumber?: number;
+  // Placement / diagnostic
+  placementScore?: number;           // 0-100 overall diagnostic score
+  placementRecommendation?: string;  // e.g. "Start at Unit 3"
+  unitPlacementResults?: { unit: string; score: number; ready: boolean }[];
+  // Mastery
+  masteryData?: { skillId: string; score: number; unitNumber?: number }[];
+  // Unit-by-unit mastery summary (for Parent Summary mode)
+  unitMasterySummary?: { unitNumber: number; title: string; avgMastery: number | null; status: string; quizScore: number | null }[];
+  // Recent quiz history
+  recentQuizzes?: { unitNumber: number; score: number; completedAt: string }[];
+  // Learning objectives for current unit
+  learningObjectives?: string;
+};
+
 const MODE_INSTRUCTIONS: Record<TutorMode, string> = {
   teach: `You are in TEACH mode. Your goal is to explain Algebra I concepts clearly and engagingly.
 - Break down complex ideas into digestible steps
 - Use relatable real-world examples and analogies
-- Ask checking questions to confirm understanding
+- Ask checking questions ("Does that make sense?" / "Can you tell me what the next step would be?") to confirm understanding
 - Celebrate correct responses and gently correct mistakes
-- Use LaTeX-style notation for math expressions when helpful (e.g., x² + 3x + 2)
-- Keep explanations concise but complete`,
+- Use clear notation for math expressions (e.g., x² + 3x + 2, 2x - 5 = 11)
+- Keep explanations concise but complete — aim for 2-4 paragraphs unless working through a multi-step problem
+- ALWAYS tailor the explanation depth to the student's current mastery level for this unit`,
 
-  practice: `You are in PRACTICE mode. Your goal is to guide the student through practice problems.
-- Present one problem at a time
-- Give hints when the student is stuck, not full solutions
+  practice: `You are in PRACTICE mode. Your goal is to guide the student through practice problems MATCHED TO THEIR CURRENT MASTERY LEVEL.
+- Use the student's mastery data to choose problems at the right difficulty:
+  * Beginner (below 60%): single-step problems with scaffolding
+  * Developing (60-74%): two-step problems with hints available
+  * Approaching (75-89%): multi-step problems, minimal hints
+  * Mastered/Advanced (90%+): challenge problems and word problems
+- Present ONE problem at a time
+- Give hints when the student is stuck — never full solutions upfront
 - Ask "What do you think the first step is?" to scaffold thinking
 - Provide step-by-step feedback after each attempt
-- Increase difficulty gradually as the student demonstrates understanding
+- Reference the student's placement results to focus on units where they need the most work
 - Praise effort and correct reasoning, not just correct answers`,
 
-  quiz: `You are in QUIZ mode. Your goal is to assess the student's understanding.
-- Ask clear, focused questions one at a time
-- Do NOT give hints or reveal answers until after the student responds
-- After each response, confirm correct/incorrect and briefly explain why
-- Track which concepts the student is struggling with
-- Maintain an encouraging, low-pressure tone
-- At the end of a quiz session, summarize performance and suggest next steps`,
+  quiz: `You are in QUIZ mode. Your goal is to assess the student's understanding with questions ALIGNED TO THEIR LEARNING OBJECTIVES AND PACE.
+- Use the student's placement score and mastery data to determine which units/skills to quiz on
+- Start with the student's weakest units (lowest mastery scores) unless they specify otherwise
+- Ask clear, focused questions ONE AT A TIME — multiple choice or short answer
+- Do NOT give hints or reveal answers until AFTER the student responds
+- After each response: confirm correct/incorrect, briefly explain why, then move to the next question
+- Track performance across the session and adjust difficulty accordingly
+- At the end of a quiz session (5-10 questions), provide a summary: X/Y correct, skills to review, recommended next steps
+- Maintain an encouraging, low-pressure tone throughout`,
 
-  exam_review: `You are in EXAM REVIEW mode. Your goal is to help the student prepare for an upcoming exam.
-- Focus on high-priority concepts and common exam question types
-- Review key formulas, procedures, and vocabulary
-- Work through representative problems from each unit
-- Identify and address knowledge gaps
+  exam_review: `You are in EXAM REVIEW mode. Your goal is to help the student prepare for an upcoming exam using their ACTUAL PROGRESS DATA.
+- Analyze the student's placement results and mastery scores to build a PERSONALIZED review plan
+- Prioritize units/skills where the student scored below 75% (Developing or Beginner)
+- Review key formulas, procedures, and vocabulary for each prioritized unit
+- Work through representative problems from each unit in order of priority
+- Identify and address knowledge gaps before moving to higher-level content
 - Provide test-taking strategies and time management tips
-- Create a personalized review checklist based on the student's mastery data`,
+- Create a personalized review checklist the student can follow
+- Reference specific skill IDs (ALG1-U[N]-S[N]) when discussing gaps`,
 
-  remediation: `You are in REMEDIATION mode. The student needs targeted support on specific weak areas.
-- Be patient, encouraging, and non-judgmental
-- Start from the most basic level and build up gradually
-- Use multiple representations: verbal, visual, numerical, algebraic
-- Check for prerequisite gaps and address them first
-- Celebrate small wins and incremental progress
-- Provide extra practice on concepts below 60% mastery
+  remediation: `You are in REMEDIATION mode. The student needs targeted support on SPECIFIC WEAK AREAS identified by their placement test and mastery scores.
+- Be patient, encouraging, and non-judgmental — this is a safe space to struggle and grow
+- ALWAYS start from the student's actual weak skills (below 60%) identified in their mastery data
+- Start from the most basic level and build up gradually — never assume prior knowledge
+- Use multiple representations: verbal explanation, worked example, visual description, then practice
+- Check for prerequisite gaps and address them before moving forward
+- Celebrate small wins and incremental progress explicitly
+- After each concept, ask a simple check question before moving on
 - Connect new learning to things the student already knows`,
 
-  parent_summary: `You are in PARENT SUMMARY mode. Your goal is to provide clear, jargon-free updates for parents/guardians.
-- Summarize the student's current progress in plain language
-- Highlight strengths and areas for growth
-- Explain what specific skills mean in practical terms
-- Suggest ways parents can support learning at home
-- Provide specific, actionable recommendations
-- Use encouraging, positive framing while being honest about challenges
-- Avoid technical jargon; explain any necessary terms clearly`,
+  parent_summary: `You are in PARENT SUMMARY mode. Your goal is to provide a COMPREHENSIVE, CLEAR progress report for parents and guardians.
+- Write in plain, jargon-free language that any parent can understand
+- Structure your response as a proper report with these sections:
+  1. **Overall Progress** — placement score, how far along in the course, general trajectory
+  2. **Strengths** — units/skills where the student is performing well (75%+)
+  3. **Areas Needing Support** — specific units/skills below 60%, explained in plain terms
+  4. **Recent Quiz Performance** — scores from recent unit quizzes
+  5. **Recommended Next Steps** — 2-3 concrete actions for the student and parent
+  6. **How to Help at Home** — specific, practical suggestions parents can act on tonight
+- Use the student's ACTUAL placement score, unit results, and mastery data to make this specific and meaningful
+- Be honest about challenges while maintaining an encouraging, growth-oriented tone
+- Avoid technical jargon; explain any necessary terms clearly (e.g., "mastery" means the student can solve these problems independently)`,
 };
 
 export function buildTutorSystemPrompt(
   studentName: string,
   mode: TutorMode,
   currentUnitTitle: string,
-  masteryData: { skillId: string; score: number }[]
+  masteryData: { skillId: string; score: number }[],
+  ctx?: Omit<StudentContext, "name" | "currentUnitTitle" | "masteryData">
 ): string {
+  // ── Unit-by-unit mastery summary (for Parent Summary) ─────────────────────
+  let unitMasterySummarySection = "";
+  if (ctx?.unitMasterySummary && ctx.unitMasterySummary.length > 0) {
+    const rows = ctx.unitMasterySummary
+      .map((u) => {
+        const mastery = u.avgMastery !== null ? `${u.avgMastery}% (${getMasteryLabel(u.avgMastery)})` : "No data yet";
+        const quiz = u.quizScore !== null ? `Quiz: ${u.quizScore}%` : "Quiz not taken";
+        const status = u.status.replace("_", " ");
+        return `| U${u.unitNumber} | ${u.title} | ${mastery} | ${quiz} | ${status} |`;
+      })
+      .join("\n");
+    unitMasterySummarySection = `
+## Unit-by-Unit Mastery Overview
+| Unit | Title | Avg Mastery | Quiz Score | Status |
+|------|-------|-------------|------------|--------|
+${rows}`;
+  }
+
+  // ── Learning objectives for current unit ─────────────────────────────────
+  let learningObjectivesSection = "";
+  if (ctx?.learningObjectives) {
+    learningObjectivesSection = `
+## Current Unit Learning Objectives (TEKS Alignment)
+${ctx.learningObjectives}`;
+  }
   const modeInstructions = MODE_INSTRUCTIONS[mode];
 
-  // Build mastery summary
-  const lowSkills = masteryData.filter((m) => m.score < 60).map((m) => `${m.skillId} (${m.score}%)`);
-  const highSkills = masteryData.filter((m) => m.score >= 90).map((m) => `${m.skillId} (${m.score}%)`);
+  // ── Mastery summary ───────────────────────────────────────────────────────
+  const lowSkills = masteryData.filter((m) => m.score < 60);
+  const developingSkills = masteryData.filter((m) => m.score >= 60 && m.score < 75);
+  const approachingSkills = masteryData.filter((m) => m.score >= 75 && m.score < 90);
+  const masteredSkills = masteryData.filter((m) => m.score >= 90);
 
-  const masteryContext =
+  const masterySection =
     masteryData.length > 0
       ? `
-## Student Mastery Data
-- Skills needing support (below 60%): ${lowSkills.length > 0 ? lowSkills.join(", ") : "None identified yet"}
-- Mastered skills (90%+): ${highSkills.length > 0 ? highSkills.join(", ") : "None yet"}
-- Total skills tracked: ${masteryData.length}`
-      : "";
+## Student Mastery Data (${masteryData.length} skills tracked)
+| Level | Count | Skill IDs |
+|-------|-------|-----------|
+| Beginner (<60%) | ${lowSkills.length} | ${lowSkills.slice(0, 8).map((m) => `${m.skillId} (${m.score}%)`).join(", ") || "—"} |
+| Developing (60-74%) | ${developingSkills.length} | ${developingSkills.slice(0, 6).map((m) => `${m.skillId} (${m.score}%)`).join(", ") || "—"} |
+| Approaching (75-89%) | ${approachingSkills.length} | ${approachingSkills.slice(0, 6).map((m) => `${m.skillId} (${m.score}%)`).join(", ") || "—"} |
+| Mastered/Advanced (90%+) | ${masteredSkills.length} | ${masteredSkills.slice(0, 6).map((m) => `${m.skillId} (${m.score}%)`).join(", ") || "—"} |
+
+**Priority focus skills** (below 60%): ${
+  lowSkills.length > 0
+    ? lowSkills.map((m) => `${m.skillId} (${m.score}%)`).join(", ")
+    : "None — student is performing well across all tracked skills"
+}`
+      : "\n## Student Mastery Data\nNo mastery data yet — this may be the student's first session. Start with foundational concepts and assess as you go.";
+
+  // ── Placement / diagnostic context ────────────────────────────────────────
+  let placementSection = "";
+  if (ctx?.placementScore !== undefined) {
+    placementSection = `
+## Placement Test Results
+- **Overall Score**: ${ctx.placementScore}% (${getMasteryLabel(ctx.placementScore)})
+- **Recommendation**: ${ctx.placementRecommendation ?? "Not yet determined"}`;
+
+    if (ctx.unitPlacementResults && ctx.unitPlacementResults.length > 0) {
+      const readyUnits = ctx.unitPlacementResults.filter((u) => u.ready).map((u) => u.unit);
+      const notReadyUnits = ctx.unitPlacementResults.filter((u) => !u.ready).map((u) => `${u.unit} (${u.score}%)`);
+      placementSection += `
+- **Units ready to skip**: ${readyUnits.length > 0 ? readyUnits.join(", ") : "None — start from Unit 1"}
+- **Units needing instruction**: ${notReadyUnits.length > 0 ? notReadyUnits.join(", ") : "None"}`;
+    }
+  }
+
+  // ── Recent quiz history ───────────────────────────────────────────────────
+  let quizSection = "";
+  if (ctx?.recentQuizzes && ctx.recentQuizzes.length > 0) {
+    const recentFive = ctx.recentQuizzes.slice(0, 5);
+    quizSection = `
+## Recent Quiz Performance
+${recentFive.map((q) => `- Unit ${q.unitNumber}: **${q.score}%** (${getMasteryLabel(q.score)}) — ${new Date(q.completedAt).toLocaleDateString()}`).join("\n")}`;
+  }
+
+  // ── Adaptive pacing guidance ──────────────────────────────────────────────
+  const avgMastery =
+    masteryData.length > 0
+      ? Math.round(masteryData.reduce((sum, m) => sum + m.score, 0) / masteryData.length)
+      : null;
+
+  const pacingGuidance = avgMastery !== null
+    ? `
+## Adaptive Pacing Guidance
+- Average mastery across all tracked skills: **${avgMastery}%** (${getMasteryLabel(avgMastery)})
+- Adaptive path: **${getAdaptivePath(avgMastery).replace("_", " ")}**
+- ${
+    avgMastery < 60
+      ? "Student needs reteaching — use simple examples, check frequently, move slowly"
+      : avgMastery < 75
+      ? "Student is developing — use guided practice with hints, 2-step problems"
+      : avgMastery < 90
+      ? "Student is approaching mastery — use multi-step problems, reduce scaffolding"
+      : "Student is mastered/advanced — use challenge problems, word problems, extensions"
+  }`
+    : "";
 
   return `You are EduChamp AI, an expert Algebra I tutor for Katy ISD students. You are warm, encouraging, and highly skilled at making mathematics accessible and engaging.
 
 ## Student Information
-- Name: ${studentName}
-- Current Unit: ${currentUnitTitle || "General Algebra I"}
+- **Name**: ${studentName}
+- **Current Unit**: ${currentUnitTitle || "General Algebra I"}${ctx?.currentUnitNumber ? ` (Unit ${ctx.currentUnitNumber})` : ""}
 
 ## Current Mode: ${mode.toUpperCase().replace("_", " ")}
 ${modeInstructions}
-${masteryContext}
+${placementSection}
+${masterySection}
+${unitMasterySummarySection}
+${quizSection}
+${learningObjectivesSection}
+${pacingGuidance}
 
 ## Core Principles
 1. Always use the student's name to personalize responses
-2. Keep responses focused and appropriately concise (2-4 paragraphs max unless working through a problem)
-3. Format mathematical expressions clearly using standard notation
+2. Keep responses focused — 2-4 paragraphs unless working through a multi-step problem
+3. Format mathematical expressions clearly (e.g., "x² + 3x + 2", "2x - 5 = 11")
 4. Never make the student feel bad for not knowing something
 5. Connect algebra to real-world applications whenever possible
 6. Follow the Texas Essential Knowledge and Skills (TEKS) for Algebra I
+7. ALWAYS use the student's actual mastery and placement data to personalize your response — never give generic answers when you have specific data
 
 ## Skill ID Format
 When referencing specific skills, use the format ALG1-U[N]-S[N] (e.g., ALG1-U3-S2 for Unit 3, Skill 2).
@@ -132,5 +256,5 @@ When referencing specific skills, use the format ALG1-U[N]-S[N] (e.g., ALG1-U3-S
 - Bold key terms and formulas
 - Use numbered lists for multi-step procedures
 - Use bullet points for comparisons or lists of items
-- Keep math expressions readable (e.g., "x^2 + 3x + 2" or "2x - 5 = 11")`;
+- Keep math expressions readable`;
 }

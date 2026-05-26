@@ -21,6 +21,10 @@ import {
   updateTutorSessionMessages,
   getUserMastery,
   getAllUnits,
+  getLatestDiagnosticAttempt,
+  getQuizAttemptsForUser,
+  getUserUnitProgress,
+  getLessonsByUnit,
 } from "./db";
 
 type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary";
@@ -77,7 +81,6 @@ export function registerTutorStreamRoute(app: Express) {
 
     const send = (data: object) => {
       res.write(`data: ${JSON.stringify(data)}\n\n`);
-      // flush if available (compression middleware)
       if (typeof (res as any).flush === "function") (res as any).flush();
     };
 
@@ -97,16 +100,109 @@ export function registerTutorStreamRoute(app: Express) {
       }[];
       const recentHistory = history.slice(-20);
 
-      // ── Build system prompt ───────────────────────────────────────────────
-      const masteryData = await getUserMastery(user.id);
-      const allUnits = unitNumber ? await getAllUnits() : [];
+      // ── Gather full student context ───────────────────────────────────────
+      const [masteryData, allUnits, diagnosticAttempt, allQuizAttempts, unitProgressData] = await Promise.all([
+        getUserMastery(user.id),
+        getAllUnits(),
+        getLatestDiagnosticAttempt(user.id),
+        getQuizAttemptsForUser(user.id),
+        getUserUnitProgress(user.id),
+      ]);
+
       const currentUnit = allUnits.find((u) => u.unitNumber === unitNumber);
+
+      // Fetch lessons for current unit to inject learning objectives
+      let currentUnitLessons: { title: string; learningObjectives: string }[] = [];
+      if (currentUnit) {
+        try {
+          const lessons = await getLessonsByUnit(currentUnit.id);
+          currentUnitLessons = lessons.map((l) => ({
+            title: l.title,
+            // Use teksAlignment as the learning objective (TEKS standard alignment)
+            learningObjectives: l.teksAlignment ?? "",
+          }));
+        } catch {
+          // non-fatal
+        }
+      }
+
+      // ── Parse placement data ──────────────────────────────────────────────
+      let placementScore: number | undefined;
+      let placementRecommendation: string | undefined;
+      let unitPlacementResults: { unit: string; score: number; ready: boolean }[] | undefined;
+
+      if (diagnosticAttempt) {
+        placementScore = diagnosticAttempt.overallScore ?? undefined;
+        placementRecommendation = diagnosticAttempt.placementRecommendation ?? undefined;
+
+        // unitResults is stored as JSON — parse it
+        const rawUnitResults = diagnosticAttempt.unitResults;
+        if (Array.isArray(rawUnitResults)) {
+          unitPlacementResults = (rawUnitResults as any[]).map((r) => ({
+            unit: `Unit ${r.unit ?? r.unitNumber ?? "?"}`,
+            score: typeof r.score === "number" ? r.score : 0,
+            ready: r.ready === true || (typeof r.score === "number" && r.score >= 75),
+          }));
+        }
+      }
+
+      // ── Recent quiz history (last 8 attempts) ─────────────────────────────
+      const recentQuizzes = allQuizAttempts.slice(0, 8).map((q: { unitNumber: number; score: number; completedAt: Date | null }) => ({
+        unitNumber: q.unitNumber,
+        score: q.score,
+        completedAt: q.completedAt ? q.completedAt.toISOString() : new Date().toISOString(),
+      }));
+
+      // ── Build system prompt with full context ─────────────────────────────
+      // Build unit-by-unit mastery summary for Parent Summary mode
+      const unitMasterySummary = allUnits.map((u) => {
+        const unitSkills = masteryData.filter((m: { skillId: string; score: number }) =>
+          m.skillId.startsWith(`ALG1-U${u.unitNumber}-`)
+        );
+        const avgScore =
+          unitSkills.length > 0
+            ? Math.round(unitSkills.reduce((s: number, m: { score: number }) => s + m.score, 0) / unitSkills.length)
+            : null;
+        const progress = unitProgressData.find((p) => p.unitNumber === u.unitNumber);
+        return {
+          unitNumber: u.unitNumber,
+          title: u.title,
+          avgMastery: avgScore,
+          status: progress?.status ?? "locked",
+          quizScore: progress?.quizScore ?? null,
+        };
+      });
+
+      // Build learning objectives string for current unit
+      const learningObjectivesText =
+        currentUnitLessons.length > 0
+          ? currentUnitLessons
+              .map((l) => {
+                const objs = Array.isArray(l.learningObjectives)
+                  ? (l.learningObjectives as string[]).join("; ")
+                  : typeof l.learningObjectives === "string"
+                  ? l.learningObjectives
+                  : "";
+                return `${l.title}: ${objs}`;
+              })
+              .filter(Boolean)
+              .join(" | ")
+          : "";
 
       const systemPrompt = buildTutorSystemPrompt(
         user.name ?? "Student",
         mode,
         currentUnit?.title ?? "",
-        masteryData.map((m) => ({ skillId: m.skillId, score: m.score }))
+        masteryData.map((m: { skillId: string; score: number }) => ({ skillId: m.skillId, score: m.score })),
+        {
+          currentUnitNumber: unitNumber,
+          placementScore,
+          placementRecommendation,
+          unitPlacementResults,
+          recentQuizzes,
+          unitMasterySummary,
+          learningObjectives: learningObjectivesText,
+        }
       );
 
       const messages = [
@@ -180,20 +276,17 @@ export function registerTutorStreamRoute(app: Express) {
         const newMessages = [
           ...history,
           { role: "user" as const, content: message, timestamp: Date.now() },
-          {
-            role: "assistant" as const,
-            content: fullContent,
-            timestamp: Date.now(),
-          },
+          { role: "assistant" as const, content: fullContent, timestamp: Date.now() },
         ];
         await updateTutorSessionMessages(session.id, newMessages);
       }
 
       // ── Notify owner for Parent Summary mode ──────────────────────────────
       if (mode === "parent_summary" && fullContent.length > 50) {
+        const scoreNote = placementScore !== undefined ? ` (Placement: ${placementScore}%)` : "";
         notifyOwner({
-          title: `Parent Summary — ${user.name ?? "Student"}`,
-          content: `A parent summary was generated for ${user.name ?? "a student"}. Preview: ${fullContent.slice(0, 200)}…`,
+          title: `Parent Summary — ${user.name ?? "Student"}${scoreNote}`,
+          content: `A parent summary was generated for ${user.name ?? "a student"}. Preview: ${fullContent.slice(0, 300)}…`,
         }).catch(() => {});
       }
 

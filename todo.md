@@ -65,3 +65,10 @@
 - [x] Micro-interactions and smooth transitions (page-enter animations)
 - [x] SSE streaming AI tutor endpoint (/api/tutor/stream)
 - [x] Final checkpoint and delivery
+
+## Tutor UX & Context Improvements (Round 2)
+- [x] Fix AI Tutor chat scroll — auto-scroll to bottom on new messages, scrollable message area with fixed input bar
+- [x] Improve conversational UX — cleaner message bubbles, typing indicator, better mode selector layout
+- [x] Make Practice/Quiz/Exam Review prompts context-aware — inject student's placement score, unit mastery, and current learning objective into system prompt
+- [x] Parent Summary mode — show full learning context: placement score, unit-by-unit mastery, skills below threshold, recommended next steps, recent quiz scores
+- [x] Mastery-aware question generation — AI generates questions at the right difficulty based on student's current mastery level per skill
