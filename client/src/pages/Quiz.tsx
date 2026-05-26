@@ -24,14 +24,25 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 
+type ChoiceItem = { label: string; text: string };
+
 type QuizQuestion = {
   id: number;
   questionText: string;
   questionType: "multiple_choice" | "short_answer" | "open_response";
-  choices: unknown;
+  choices: ChoiceItem[] | null;
   difficulty: "easy" | "medium" | "hard" | "challenge";
   skillTag?: string;
 };
+
+function parseChoices(raw: unknown): ChoiceItem[] {
+  if (!raw) return [];
+  if (typeof raw === "string") {
+    try { return JSON.parse(raw) as ChoiceItem[]; } catch { return []; }
+  }
+  if (Array.isArray(raw)) return raw as ChoiceItem[];
+  return [];
+}
 
 type QuizResult = {
   score: number;
@@ -346,25 +357,26 @@ export default function Quiz() {
             </div>
           </div>
 
-          {currentQ.questionType === "multiple_choice" && Boolean(currentQ.choices) && (
+          {currentQ.questionType === "multiple_choice" && (
             <RadioGroup
               value={currentAnswer}
               onValueChange={(val) => setAnswers((prev) => ({ ...prev, [String(currentQ.id)]: val }))}
               className="space-y-2"
             >
-              {(currentQ.choices as string[]).map((choice: string, idx: number) => (
+              {parseChoices(currentQ.choices).map((choice, idx) => (
                 <div
                   key={idx}
                   className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                    currentAnswer === choice
+                    currentAnswer === choice.label
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/40 hover:bg-muted/30"
                   }`}
-                  onClick={() => setAnswers((prev) => ({ ...prev, [String(currentQ.id)]: choice }))}
+                  onClick={() => setAnswers((prev) => ({ ...prev, [String(currentQ.id)]: choice.label }))}
                 >
-                  <RadioGroupItem value={choice} id={`choice-${idx}`} />
+                  <RadioGroupItem value={choice.label} id={`choice-${idx}`} />
                   <Label htmlFor={`choice-${idx}`} className="cursor-pointer text-sm flex-1">
-                    {choice}
+                    <span className="font-semibold text-muted-foreground mr-2">{choice.label}.</span>
+                    {choice.text}
                   </Label>
                 </div>
               ))}
