@@ -46,12 +46,14 @@ export default function Curriculum() {
   }
 
   const units = dashboard?.units ?? [];
+  const courseTitle = dashboard?.courseTitle ?? "Curriculum";
+  const totalUnits = dashboard?.totalUnits ?? units.length;
 
   return (
     <div className="p-6 space-y-6 page-enter max-w-6xl">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Algebra I Curriculum</h1>
-        <p className="text-muted-foreground text-sm mt-1">12 units · Katy ISD · TEKS-aligned</p>
+        <h1 className="text-2xl font-bold text-foreground">{courseTitle}</h1>
+        <p className="text-muted-foreground text-sm mt-1">{totalUnits} units · Katy ISD · TEKS-aligned</p>
       </div>
 
       {/* Progress Summary */}
@@ -59,18 +61,18 @@ export default function Curriculum() {
         <div className="flex items-center gap-2">
           <Trophy className="h-5 w-5 text-amber-500" />
           <div>
-            <p className="text-sm font-semibold">{dashboard?.completedUnits ?? 0} / {dashboard?.totalUnits ?? 12}</p>
+            <p className="text-sm font-semibold">{dashboard?.completedUnits ?? 0} / {totalUnits}</p>
             <p className="text-xs text-muted-foreground">Units Complete</p>
           </div>
         </div>
         <div className="flex-1">
           <Progress
-            value={((dashboard?.completedUnits ?? 0) / (dashboard?.totalUnits ?? 12)) * 100}
+            value={totalUnits > 0 ? ((dashboard?.completedUnits ?? 0) / totalUnits) * 100 : 0}
             className="h-2"
           />
         </div>
         <div className="text-sm font-semibold text-foreground">
-          {Math.round(((dashboard?.completedUnits ?? 0) / (dashboard?.totalUnits ?? 12)) * 100)}%
+          {totalUnits > 0 ? Math.round(((dashboard?.completedUnits ?? 0) / totalUnits) * 100) : 0}%
         </div>
       </div>
 
@@ -113,12 +115,12 @@ export default function Curriculum() {
                 {unit.status !== "locked" && (
                   <div className="space-y-2 mb-3">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{unit.lessonsCompleted}/{unit.totalLessons || "—"} lessons</span>
+                      <span>{Math.min(unit.lessonsCompleted, unit.totalLessons)}/{unit.totalLessons || "—"} lessons</span>
                       <span className={`font-medium ${config.color}`}>{config.label}</span>
                     </div>
                     {unit.totalLessons > 0 && (
                       <Progress
-                        value={(unit.lessonsCompleted / unit.totalLessons) * 100}
+                        value={(Math.min(unit.lessonsCompleted, unit.totalLessons) / unit.totalLessons) * 100}
                         className="h-1"
                       />
                     )}

@@ -1149,3 +1149,21 @@ export async function getUnitsForCourse(courseId: number) {
   if (!db) return [];
   return db.select().from(units).where(eq(units.courseId, courseId)).orderBy(units.sortOrder);
 }
+
+export async function setUserActiveCourse(userId: number, courseId: number) {
+  const db = await getDb();
+  if (!db) return;
+  // First ensure the user is enrolled in this course
+  await enrollUserInCourse(userId, courseId);
+  // Clear isCurrent on all enrollments for this user
+  await db.update(userCourseEnrollments)
+    .set({ isCurrent: false })
+    .where(eq(userCourseEnrollments.userId, userId));
+  // Set isCurrent on the target course
+  await db.update(userCourseEnrollments)
+    .set({ isCurrent: true })
+    .where(and(
+      eq(userCourseEnrollments.userId, userId),
+      eq(userCourseEnrollments.courseId, courseId)
+    ));
+}

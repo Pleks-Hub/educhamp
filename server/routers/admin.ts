@@ -23,6 +23,7 @@ import {
   enrollUserInCourse,
   getUserCourseEnrollments,
   getUnitsForCourse,
+  setUserActiveCourse,
 } from "../db";
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
@@ -167,6 +168,14 @@ export const adminRouter = router({
     .input(z.object({ courseId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await enrollUserInCourse(ctx.user.id, input.courseId);
+      return { success: true };
+    }),
+
+  // ── Set active course (persists isCurrent flag) ────────────────────────────
+  setActiveCourse: protectedProcedure
+    .input(z.object({ courseId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await setUserActiveCourse(ctx.user.id, input.courseId);
       return { success: true };
     }),
 });

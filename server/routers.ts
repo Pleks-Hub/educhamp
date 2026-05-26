@@ -28,6 +28,7 @@ import {
   getUnitByNumber,
   getUserMastery,
   getUserUnitProgress,
+  getUserUnitProgressForUnit,
   markLessonComplete,
   saveDiagnosticAttempt,
   saveQuizAttempt,
@@ -35,6 +36,8 @@ import {
   upsertUnitProgress,
   upsertUserMastery,
   getParentsByChildId,
+  getUnitsForCourse,
+  getUserCourseEnrollments,
 } from "./db";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -98,8 +101,15 @@ export const appRouter = router({
   progress: router({
     getDashboard: protectedProcedure.query(async ({ ctx }) => {
       const userId = ctx.user.id;
-      const [allUnits, unitProgressData, masteryData, quizAttemptsData] = await Promise.all([
-        getAllUnits(),
+
+      // Determine which course to show: use the student's current active enrollment,
+      // falling back to courseId=1 (Algebra I) for backward compatibility.
+      const enrollments = await getUserCourseEnrollments(userId);
+      const currentEnrollment = enrollments.find((e) => e.enrollment.isCurrent) ?? enrollments[0];
+      const activeCourseId = currentEnrollment?.enrollment.courseId ?? 1;
+
+      const [courseUnits, unitProgressData, masteryData, quizAttemptsData] = await Promise.all([
+        getUnitsForCourse(activeCourseId),
         getUserUnitProgress(userId),
         getUserMastery(userId),
         getQuizAttemptsForUser(userId),
@@ -107,6 +117,9 @@ export const appRouter = router({
 
       const progressMap = new Map(unitProgressData.map((p) => [p.unitId, p]));
       const masteryMap = new Map(masteryData.map((m) => [m.skillId, m]));
+
+      // Sort units by sortOrder
+      const allUnits = courseUnits.sort((a, b) => a.sortOrder - b.sortOrder);
 
       const unitsWithProgress = allUnits.map((unit) => {
         const progress = progressMap.get(unit.id);
@@ -126,8 +139,10 @@ export const appRouter = router({
           ? Math.round(masteryData.reduce((sum, m) => sum + m.score, 0) / masteryData.length)
           : 0;
 
-      const completedUnits = unitProgressData.filter((p) => p.status === "completed").length;
-      const inProgressUnits = unitProgressData.filter((p) => p.status === "in_progress" || p.status === "quiz_unlocked").length;
+      // Count only units in the active course for completedUnits/inProgressUnits
+      const activeUnitIds = new Set(allUnits.map((u) => u.id));
+      const completedUnits = unitProgressData.filter((p) => activeUnitIds.has(p.unitId) && p.status === "completed").length;
+      const inProgressUnits = unitProgressData.filter((p) => activeUnitIds.has(p.unitId) && (p.status === "in_progress" || p.status === "quiz_unlocked")).length;
 
       return {
         units: unitsWithProgress,
@@ -137,6 +152,8 @@ export const appRouter = router({
         inProgressUnits,
         totalUnits: allUnits.length,
         recentQuizAttempts: quizAttemptsData.slice(0, 5),
+        courseTitle: currentEnrollment?.course?.title ?? "Algebra I",
+        activeCourseId,
       };
     }),
 
@@ -169,16 +186,22 @@ export const appRouter = router({
       .input(z.object({ lessonId: z.number(), unitId: z.number(), unitNumber: z.number() }))
       .mutation(async ({ ctx, input }) => {
         await markLessonComplete(ctx.user.id, input.lessonId, input.unitId);
-        // Update unit progress
-        const lessonProgress = await getLessonProgressForUser(ctx.user.id, input.unitId);
-        const completedCount = lessonProgress.filter((l) => l.completed).length + 1;
-        const allLessons = await getLessonsByUnit(input.unitId);
+        // Re-fetch AFTER the mark so the count is accurate (no +1 double-count)
+        const [lessonProgress, allLessons] = await Promise.all([
+          getLessonProgressForUser(ctx.user.id, input.unitId),
+          getLessonsByUnit(input.unitId),
+        ]);
+        const completedCount = Math.min(
+          lessonProgress.filter((l) => l.completed).length,
+          allLessons.length
+        );
+        const allDone = completedCount >= allLessons.length && allLessons.length > 0;
         await upsertUnitProgress(ctx.user.id, input.unitId, input.unitNumber, {
-          status: "in_progress",
+          status: allDone ? "quiz_unlocked" : "in_progress",
           lessonsCompleted: completedCount,
           totalLessons: allLessons.length,
         });
-        return { success: true };
+        return { success: true, allLessonsComplete: allDone };
       }),
   }),
 
@@ -212,10 +235,28 @@ export const appRouter = router({
         const questions = await getQuizQuestionsByUnit(input.unitId);
         const questionMap = new Map(questions.map((q) => [q.id, q]));
 
+        // Normalise quiz answers: strip spaces, lowercase, strip trailing .0, accept comma-sorted sets
+        function normaliseQuizAnswer(raw: string): string {
+          return raw.trim().toLowerCase().replace(/\s+/g, "");
+        }
+        function quizAnswersMatch(student: string, correct: string): boolean {
+          const s = normaliseQuizAnswer(student);
+          const c = normaliseQuizAnswer(correct);
+          if (s === c) return true;
+          const stripDot0 = (v: string) => v.replace(/\.0+$/, "");
+          if (stripDot0(s) === stripDot0(c)) return true;
+          const sParts = s.split(",").map((p) => p.trim()).sort();
+          const cParts = c.split(",").map((p) => p.trim()).sort();
+          if (sParts.join(",") === cParts.join(",")) return true;
+          const numericMatch = s.replace(/^[a-z]=/i, "");
+          if (numericMatch === c || stripDot0(numericMatch) === stripDot0(c)) return true;
+          return false;
+        }
+
         const gradedAnswers = input.answers.map((a) => {
           const q = questionMap.get(a.questionId);
           if (!q) return { questionId: a.questionId, answer: a.answer, correct: false };
-          const correct = a.answer.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase();
+          const correct = quizAnswersMatch(a.answer, q.correctAnswer);
           return { questionId: a.questionId, answer: a.answer, correct };
         });
 
@@ -242,6 +283,29 @@ export const appRouter = router({
           quizScore: score,
           quizAttempts: 1,
         });
+
+        // If this unit is now completed, unlock the next unit in the same course
+        if (newStatus === "completed") {
+          const unit = await getUnitByNumber(input.unitNumber);
+          if (unit?.courseId) {
+            const courseUnits = await getUnitsForCourse(unit.courseId);
+            const sortedUnits = courseUnits.sort((a, b) => a.sortOrder - b.sortOrder);
+            const currentIdx = sortedUnits.findIndex((u) => u.id === input.unitId);
+            const nextUnit = sortedUnits[currentIdx + 1];
+            if (nextUnit) {
+              const nextProgress = await getUserUnitProgressForUnit(ctx.user.id, nextUnit.id);
+              // Only unlock if the next unit is still locked (don't downgrade in_progress/completed)
+              if (!nextProgress || nextProgress.status === "locked") {
+                const nextLessons = await getLessonsByUnit(nextUnit.id);
+                await upsertUnitProgress(ctx.user.id, nextUnit.id, nextUnit.unitNumber, {
+                  status: "in_progress",
+                  lessonsCompleted: 0,
+                  totalLessons: nextLessons.length,
+                });
+              }
+            }
+          }
+        }
 
         // Update mastery for each skill tag
         const skillScores = new Map<string, { correct: number; total: number }>();

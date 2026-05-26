@@ -132,11 +132,11 @@ export default function UnitDetail() {
         {unitProgress && unitProgress.totalLessons > 0 && (
           <div className="flex items-center gap-3">
             <Progress
-              value={(unitProgress.lessonsCompleted / unitProgress.totalLessons) * 100}
+              value={(Math.min(unitProgress.lessonsCompleted, unitProgress.totalLessons) / unitProgress.totalLessons) * 100}
               className="h-2 flex-1"
             />
             <span className="text-xs text-muted-foreground shrink-0">
-              {unitProgress.lessonsCompleted}/{unitProgress.totalLessons} lessons
+              {Math.min(unitProgress.lessonsCompleted, unitProgress.totalLessons)}/{unitProgress.totalLessons} lessons
             </span>
           </div>
         )}

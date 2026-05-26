@@ -157,11 +157,38 @@ export default function LessonDetail() {
     }));
   };
 
+  /**
+   * Normalise an answer string for comparison:
+   * - trim whitespace, lowercase
+   * - remove all internal spaces ("x = 3" → "x=3")
+   * - strip trailing .0 from decimals ("3.0" → "3")
+   * - accept comma-separated values in any order ("2,3" == "3,2")
+   */
+  function normaliseAnswer(raw: string): string {
+    return raw.trim().toLowerCase().replace(/\s+/g, "");
+  }
+
+  function answersMatch(student: string, correct: string): boolean {
+    const s = normaliseAnswer(student);
+    const c = normaliseAnswer(correct);
+    if (s === c) return true;
+    // Strip trailing .0 from both sides
+    const stripDot0 = (v: string) => v.replace(/\.0+$/, "");
+    if (stripDot0(s) === stripDot0(c)) return true;
+    // Accept comma-separated values in any order (e.g. "2,3" vs "3,2")
+    const sParts = s.split(",").map((p) => p.trim()).sort();
+    const cParts = c.split(",").map((p) => p.trim()).sort();
+    if (sParts.join(",") === cParts.join(",")) return true;
+    // Accept "x=3" matching "3" when the correct answer is just a number
+    const numericMatch = s.replace(/^[a-z]=/i, "");
+    if (numericMatch === c || stripDot0(numericMatch) === stripDot0(c)) return true;
+    return false;
+  }
+
   const checkAnswer = (idx: number, solution: string) => {
-    const student = (studentAnswers[idx] ?? "").trim().toLowerCase();
-    const correct = solution.trim().toLowerCase();
-    if (!student) { toast.error("Please type your answer first."); return; }
-    const isCorrect = student === correct || student === correct.replace(/[^a-z0-9.]/g, "");
+    const student = studentAnswers[idx] ?? "";
+    if (!student.trim()) { toast.error("Please type your answer first."); return; }
+    const isCorrect = answersMatch(student, solution);
     setCheckedAnswers((prev) => ({ ...prev, [idx]: isCorrect ? "correct" : "wrong" }));
     if (isCorrect) {
       toast.success("Correct! Well done.");
@@ -464,6 +491,21 @@ export default function LessonDetail() {
           <p className="text-sm text-muted-foreground">
             Solve each problem independently. Type your answer, then check it — or reveal the full worked solution.
           </p>
+
+          {/* Answer format guidance banner */}
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800 space-y-1.5">
+            <p className="font-semibold flex items-center gap-1.5">
+              <Lightbulb className="h-3.5 w-3.5 text-blue-600" />
+              Answer Format Tips
+            </p>
+            <ul className="space-y-1 pl-5 list-disc text-blue-700">
+              <li>Spaces don’t matter — <span className="font-mono bg-blue-100 px-1 rounded">x = 3</span> and <span className="font-mono bg-blue-100 px-1 rounded">x=3</span> are both accepted.</li>
+              <li>For equations, write the variable side first: <span className="font-mono bg-blue-100 px-1 rounded">x=5</span> or just the number <span className="font-mono bg-blue-100 px-1 rounded">5</span></li>
+              <li>For multiple answers, separate with a comma: <span className="font-mono bg-blue-100 px-1 rounded">2,3</span> (order doesn’t matter)</li>
+              <li>Fractions: use a slash — <span className="font-mono bg-blue-100 px-1 rounded">3/4</span>. Decimals: <span className="font-mono bg-blue-100 px-1 rounded">0.75</span></li>
+            </ul>
+          </div>
+
           {independentProblems.length === 0 ? (
             <Card className="border">
               <CardContent className="p-6 text-center text-muted-foreground text-sm">

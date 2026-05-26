@@ -103,6 +103,8 @@ export default function Quiz() {
     { unitId: unit?.id ?? 0 },
     { enabled: started && !!unit?.id }
   );
+  // Fetch dashboard to determine next unit after quiz completion
+  const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!result });
 
   const submitMutation = trpc.quiz.submitQuiz.useMutation({
     onSuccess: (data) => {
@@ -220,11 +222,21 @@ export default function Quiz() {
               Get Tutoring
             </Button>
           )}
-          {result.score >= 75 && (
-            <Button variant="outline" onClick={() => setLocation("/curriculum")}>
-              Next Unit
-            </Button>
-          )}
+          {result.score >= 75 && (() => {
+            // Find the next unit in the course (by sortOrder/unitNumber)
+            const allUnits = dashboard?.units ?? [];
+            const currentIdx = allUnits.findIndex((u) => u.unitNumber === unitNumber);
+            const nextUnit = currentIdx >= 0 ? allUnits[currentIdx + 1] : undefined;
+            return nextUnit ? (
+              <Button variant="outline" onClick={() => setLocation(`/curriculum/unit/${nextUnit.unitNumber}`)}>
+                Next Unit: {nextUnit.title}
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => setLocation("/curriculum")}>
+                View Curriculum
+              </Button>
+            );
+          })()}
         </div>
       </div>
     );

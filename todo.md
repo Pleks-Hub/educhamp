@@ -213,3 +213,35 @@
 - [x] UI: DashboardLayout — "Admin Console" link in user dropdown (admin-only, Shield icon)
 - [x] UI: CourseSwitcher dialog — browse all active courses by grade, enrol, switch active course
 - [x] UI: DashboardLayout sidebar header — "Switch course ↗" link opens CourseSwitcher
+
+## Grade-Filtered Courses, Progression Locks & UX Fixes
+
+- [ ] DB/Server: grade-filtered course query — only return courses matching student's gradeLevel from userProfiles
+- [ ] DB/Server: fix lesson count query — count distinct lessons per unit (no duplicates, match actual DB rows)
+- [ ] DB/Server: unit completion gate — unit is "completable" only when all lessons viewed + quiz score ≥ 60%
+- [ ] DB/Server: next-unit unlock logic — unit N+1 locked until unit N completion gate is met
+- [ ] Server: answer normalisation — strip whitespace, lowercase, accept equivalent forms (e.g. "x=3" = "x = 3")
+- [ ] Server: practice question sanity check — audit all Algebra I practice questions for broken codes/rendering
+- [ ] UI: Course Catalogue — grade-grouped layout (Khan/IXL style), subject colour cards, hide off-grade courses
+- [ ] UI: Curriculum page — show lock icon on locked units, tooltip "Complete Unit N first"
+- [ ] UI: Unit detail — show completion checklist (lessons done, quiz passed) before next unit CTA
+- [ ] UI: Practice section — show answer format hint below each input (e.g. "Enter as: x=3 or 3")
+- [ ] UI: Fix (4/3) lesson count display bug — cap displayed count at actual lesson total
+- [ ] UI: Fix next-unit navigation crash — guard against undefined unit before rendering
+- [ ] UI: CourseSwitcher — filter by student's grade level, show grade badge on each course card
+
+## Grade-Filtered Courses, Answer Normalisation & Bug Fixes (Sprint 5)
+
+- [x] Server: getDashboard now returns courseTitle and activeCourseId for course-aware UI
+- [x] Server: getDashboard completedUnits/inProgressUnits now scoped to active enrolled course
+- [x] Server: setUserActiveCourse helper added to db.ts and wired to admin.setActiveCourse mutation
+- [x] Server: quiz answer normalisation — strip spaces, case-insensitive, strip trailing .0, comma-sorted sets, x=N vs N equivalence
+- [x] Server: markLessonComplete caps lessonsCompleted at totalLessons (prevents 4/3 display)
+- [x] Server: submitQuiz unlocks next unit in same course after passing score (75%+)
+- [x] UI: CourseSwitcher redesigned — grade-level filter pills, active course star indicator, persistent setActiveCourse call
+- [x] UI: Curriculum page now shows correct course title from dashboard response
+- [x] UI: Curriculum page lesson count display capped at totalLessons
+- [x] UI: UnitDetail lesson count display capped at totalLessons (Math.min guard)
+- [x] UI: Quiz page next-unit button now navigates to specific next unit by unitNumber (not generic /curriculum)
+- [x] UI: LessonDetail independent practice tab now shows Answer Format Tips banner (spaces, equations, commas, fractions)
+- [x] UI: CourseSwitcher grade filter shows all available grade levels dynamically
