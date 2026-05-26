@@ -10,15 +10,27 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
   ClipboardList,
+  Clock,
   Loader2,
   RotateCcw,
+  Timer,
   XCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 
@@ -47,6 +59,10 @@ type GradedAnswer = {
   questionId: string;
   answer: string;
   correct: boolean;
+  questionText: string;
+  questionType: string;
+  choices: ChoiceItem[] | null;
+  mapsToUnit: string;
   correctAnswer: string;
   explanation: string;
 };
@@ -68,14 +84,159 @@ type DiagnosticResult = {
   gradedAnswers: GradedAnswer[];
 };
 
+const TIMER_DURATION = 60 * 60; // 60 minutes in seconds
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+// ─── Question Review Card ─────────────────────────────────────────────────────
+
+function QuestionReviewCard({ answer, index }: { answer: GradedAnswer; index: number }) {
+  const [expanded, setExpanded] = useState(!answer.correct);
+  const choices = parseChoices(answer.choices);
+
+  // Find the text for a choice label
+  const choiceText = (label: string) =>
+    choices.find((c) => c.label === label)?.text ?? label;
+
+  return (
+    <Card
+      className={`border transition-all ${
+        answer.correct
+          ? "border-green-200 bg-green-50/40"
+          : "border-red-200 bg-red-50/40"
+      }`}
+    >
+      <CardContent className="p-0">
+        {/* Header row */}
+        <button
+          className="w-full flex items-start gap-3 p-4 text-left"
+          onClick={() => setExpanded((v) => !v)}
+        >
+          <div className="shrink-0 mt-0.5">
+            {answer.correct ? (
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+            ) : (
+              <XCircle className="h-5 w-5 text-red-600" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-mono text-muted-foreground">{answer.questionId}</span>
+              <Badge
+                variant="outline"
+                className={`text-[10px] h-4 px-1.5 ${
+                  answer.mapsToUnit === "prerequisite"
+                    ? "border-purple-200 text-purple-700"
+                    : "border-blue-200 text-blue-700"
+                }`}
+              >
+                {answer.mapsToUnit === "prerequisite" ? "Pre-Algebra" : `Unit ${answer.mapsToUnit}`}
+              </Badge>
+            </div>
+            <p className="text-sm font-medium text-foreground leading-snug line-clamp-2">
+              {answer.questionText}
+            </p>
+          </div>
+          <div className="shrink-0 ml-2 mt-0.5 text-muted-foreground">
+            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </div>
+        </button>
+
+        {/* Expanded detail */}
+        {expanded && (
+          <div className="px-4 pb-4 space-y-3 border-t border-border/50 pt-3">
+            {/* Choices (if MC) */}
+            {choices.length > 0 && (
+              <div className="space-y-1.5">
+                {choices.map((c) => {
+                  const isCorrect = c.label === answer.correctAnswer;
+                  const isSelected = c.label === answer.answer;
+                  return (
+                    <div
+                      key={c.label}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm ${
+                        isCorrect
+                          ? "bg-green-100 border border-green-300 text-green-900"
+                          : isSelected && !isCorrect
+                          ? "bg-red-100 border border-red-300 text-red-900"
+                          : "bg-muted/30 border border-transparent text-muted-foreground"
+                      }`}
+                    >
+                      <span className="font-bold w-5 shrink-0">{c.label}.</span>
+                      <span className="flex-1">{c.text}</span>
+                      {isCorrect && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 shrink-0" />}
+                      {isSelected && !isCorrect && <XCircle className="h-3.5 w-3.5 text-red-600 shrink-0" />}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Short answer */}
+            {choices.length === 0 && (
+              <div className="space-y-2">
+                <div className={`px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${
+                  answer.correct ? "bg-green-100 border border-green-300 text-green-900" : "bg-red-100 border border-red-300 text-red-900"
+                }`}>
+                  {answer.correct ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  ) : (
+                    <XCircle className="h-3.5 w-3.5 shrink-0" />
+                  )}
+                  <span className="font-medium">Your answer:</span>
+                  <span>{answer.answer || <em className="opacity-60">No answer given</em>}</span>
+                </div>
+                {!answer.correct && (
+                  <div className="px-3 py-2 rounded-lg text-sm flex items-center gap-2 bg-green-100 border border-green-300 text-green-900">
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                    <span className="font-medium">Correct answer:</span>
+                    <span className="font-semibold">{answer.correctAnswer}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Explanation / worked solution */}
+            {answer.explanation && (
+              <div className="px-3 py-2.5 rounded-lg bg-blue-50 border border-blue-200">
+                <p className="text-xs font-semibold text-blue-800 mb-1">Worked Solution</p>
+                <p className="text-xs text-blue-900 leading-relaxed whitespace-pre-wrap">{answer.explanation}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export default function Diagnostic() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+
+  // Test state
   const [started, setStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<DiagnosticResult | null>(null);
-  const [showAnswers, setShowAnswers] = useState(false);
+
+  // Timer state
+  const [timeLeft, setTimeLeft] = useState(TIMER_DURATION);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [showTimeUpDialog, setShowTimeUpDialog] = useState(false);
+  const [showExtendDialog, setShowExtendDialog] = useState(false);
+  const [extraMinutes, setExtraMinutes] = useState(15);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Review state
+  const [reviewFilter, setReviewFilter] = useState<"all" | "correct" | "wrong">("all");
+  const [reviewUnit, setReviewUnit] = useState<string>("all");
 
   const { data: questions, isLoading } = trpc.diagnostic.getQuestions.useQuery(undefined, {
     enabled: started,
@@ -86,12 +247,62 @@ export default function Diagnostic() {
 
   const submitMutation = trpc.diagnostic.submitDiagnostic.useMutation({
     onSuccess: (data) => {
+      setTimerRunning(false);
       setResult(data as DiagnosticResult);
     },
     onError: (err) => {
       toast.error("Submission error: " + err.message);
     },
   });
+
+  // Timer tick
+  useEffect(() => {
+    if (timerRunning) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft((t) => {
+          if (t <= 1) {
+            clearInterval(timerRef.current!);
+            setTimerRunning(false);
+            setShowTimeUpDialog(true);
+            return 0;
+          }
+          return t - 1;
+        });
+      }, 1000);
+    } else {
+      if (timerRef.current) clearInterval(timerRef.current);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [timerRunning]);
+
+  // Start timer when questions load
+  useEffect(() => {
+    if (started && questions && questions.length > 0 && !timerRunning && timeLeft === TIMER_DURATION) {
+      setTimerRunning(true);
+    }
+  }, [started, questions]);
+
+  const handleSubmit = useCallback(() => {
+    if (!questions) return;
+    const answerArray = (questions as DiagnosticQuestion[]).map((q) => ({
+      questionId: q.questionId,
+      answer: answers[q.questionId] ?? "",
+    }));
+    submitMutation.mutate({ answers: answerArray });
+  }, [questions, answers, submitMutation]);
+
+  const handleExtendTime = () => {
+    setTimeLeft((t) => t + extraMinutes * 60);
+    setTimerRunning(true);
+    setShowTimeUpDialog(false);
+    setShowExtendDialog(false);
+    toast.success(`${extraMinutes} minutes added. Keep going!`);
+  };
+
+  const handleSubmitAnyway = () => {
+    setShowTimeUpDialog(false);
+    handleSubmit();
+  };
 
   if (!user) {
     return (
@@ -105,7 +316,7 @@ export default function Diagnostic() {
     );
   }
 
-  // Show existing result
+  // ── Show existing result ──────────────────────────────────────────────────
   if (existingAttempt && !started && !result) {
     const attempt = existingAttempt as any;
     return (
@@ -143,7 +354,7 @@ export default function Diagnostic() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => { setStarted(true); setAnswers({}); setCurrentIndex(0); }}
+                onClick={() => { setStarted(true); setAnswers({}); setCurrentIndex(0); setTimeLeft(TIMER_DURATION); }}
                 className="gap-2"
               >
                 <RotateCcw className="h-4 w-4" />
@@ -156,8 +367,19 @@ export default function Diagnostic() {
     );
   }
 
-  // Show result after submission
+  // ── Results page ──────────────────────────────────────────────────────────
   if (result) {
+    const filteredAnswers = result.gradedAnswers.filter((a) => {
+      if (reviewFilter === "correct" && !a.correct) return false;
+      if (reviewFilter === "wrong" && a.correct) return false;
+      if (reviewUnit !== "all" && a.mapsToUnit !== reviewUnit) return false;
+      return true;
+    });
+
+    const correctCount = result.gradedAnswers.filter((a) => a.correct).length;
+    const wrongCount = result.gradedAnswers.length - correctCount;
+    const unitOptions = Array.from(new Set(result.gradedAnswers.map((a) => a.mapsToUnit))).sort();
+
     return (
       <div className="p-6 space-y-6 page-enter max-w-3xl">
         <div>
@@ -166,17 +388,23 @@ export default function Diagnostic() {
         </div>
 
         {/* Score Summary */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           <Card className="border shadow-sm">
             <CardContent className="p-4 text-center">
               <p className="text-3xl font-bold text-foreground">{result.overallScore}%</p>
-              <p className="text-sm text-muted-foreground mt-1">Overall Score</p>
+              <p className="text-xs text-muted-foreground mt-1">Overall Score</p>
             </CardContent>
           </Card>
           <Card className="border shadow-sm">
             <CardContent className="p-4 text-center">
-              <p className="text-3xl font-bold text-foreground">{result.prerequisiteScore}/6</p>
-              <p className="text-sm text-muted-foreground mt-1">Prerequisite Skills</p>
+              <p className="text-3xl font-bold text-green-600">{correctCount}</p>
+              <p className="text-xs text-muted-foreground mt-1">Correct</p>
+            </CardContent>
+          </Card>
+          <Card className="border shadow-sm">
+            <CardContent className="p-4 text-center">
+              <p className="text-3xl font-bold text-red-500">{wrongCount}</p>
+              <p className="text-xs text-muted-foreground mt-1">Incorrect</p>
             </CardContent>
           </Card>
         </div>
@@ -192,7 +420,7 @@ export default function Diagnostic() {
           </CardContent>
         </Card>
 
-        {/* Unit Results */}
+        {/* Unit Breakdown */}
         <div className="space-y-3">
           <h2 className="text-base font-semibold">Unit Breakdown</h2>
           <div className="space-y-2">
@@ -207,15 +435,13 @@ export default function Diagnostic() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{ur.unitTitle}</p>
-                  <p className="text-xs text-muted-foreground">{ur.correct}/{ur.total} correct</p>
+                  <p className="text-xs text-muted-foreground">{ur.correct}/{ur.total} correct · {ur.recommendation}</p>
                 </div>
-                <Badge
-                  className={`text-xs shrink-0 ${
-                    ur.status === "likely_mastered" ? "bg-green-100 text-green-700 border-green-200" :
-                    ur.status === "partial_understanding" ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
-                    "bg-red-100 text-red-700 border-red-200"
-                  }`}
-                >
+                <Badge className={`text-xs shrink-0 ${
+                  ur.status === "likely_mastered" ? "bg-green-100 text-green-700 border-green-200" :
+                  ur.status === "partial_understanding" ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
+                  "bg-red-100 text-red-700 border-red-200"
+                }`}>
                   {ur.status === "likely_mastered" ? "Likely Mastered" :
                    ur.status === "partial_understanding" ? "Partial" : "Needs Work"}
                 </Badge>
@@ -224,38 +450,51 @@ export default function Diagnostic() {
           </div>
         </div>
 
-        {/* Answer Review */}
-        <div className="space-y-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowAnswers(!showAnswers)}
-            className="gap-2"
-          >
-            {showAnswers ? "Hide" : "Review"} Answers
-          </Button>
-          {showAnswers && (
-            <div className="space-y-2">
-              {result.gradedAnswers.map((a, idx) => (
-                <div key={idx} className={`p-3 rounded-lg border ${a.correct ? "border-green-200 bg-green-50/50" : "border-red-200 bg-red-50/50"}`}>
-                  <div className="flex items-start gap-2">
-                    {a.correct ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-xs font-mono text-muted-foreground">{a.questionId}</p>
-                      {!a.correct && (
-                        <div className="mt-1 space-y-0.5">
-                          <p className="text-xs text-muted-foreground">Your answer: <span className="font-medium text-red-700">{a.answer}</span></p>
-                          <p className="text-xs text-muted-foreground">Correct: <span className="font-medium text-green-700">{a.correctAnswer}</span></p>
-                          {a.explanation && <p className="text-xs text-muted-foreground mt-1">{a.explanation}</p>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+        {/* Question Review */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <h2 className="text-base font-semibold">Question Review ({result.gradedAnswers.length} questions)</h2>
+            <div className="flex gap-2 flex-wrap">
+              {/* Filter by result */}
+              <div className="flex rounded-lg border overflow-hidden text-xs">
+                {(["all", "correct", "wrong"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setReviewFilter(f)}
+                    className={`px-3 py-1.5 capitalize transition-colors ${
+                      reviewFilter === f
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    {f === "all" ? `All (${result.gradedAnswers.length})` :
+                     f === "correct" ? `✓ Correct (${correctCount})` :
+                     `✗ Wrong (${wrongCount})`}
+                  </button>
+                ))}
+              </div>
+              {/* Filter by unit */}
+              <select
+                value={reviewUnit}
+                onChange={(e) => setReviewUnit(e.target.value)}
+                className="text-xs px-2 py-1.5 rounded-lg border bg-background text-foreground"
+              >
+                <option value="all">All Units</option>
+                {unitOptions.map((u) => (
+                  <option key={u} value={u}>
+                    {u === "prerequisite" ? "Pre-Algebra" : `Unit ${u}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {filteredAnswers.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No questions match this filter.</p>
+          ) : (
+            <div className="space-y-3">
+              {filteredAnswers.map((a, idx) => (
+                <QuestionReviewCard key={a.questionId} answer={a} index={idx} />
               ))}
             </div>
           )}
@@ -273,7 +512,7 @@ export default function Diagnostic() {
     );
   }
 
-  // Start screen
+  // ── Start screen ──────────────────────────────────────────────────────────
   if (!started) {
     return (
       <div className="p-6 space-y-6 page-enter max-w-2xl">
@@ -290,7 +529,10 @@ export default function Diagnostic() {
               </div>
               <div>
                 <h2 className="font-semibold text-foreground">30-Question Diagnostic Assessment</h2>
-                <p className="text-sm text-muted-foreground">~20–30 minutes</p>
+                <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  60 minutes · You may request extra time if needed
+                </p>
               </div>
             </div>
 
@@ -316,6 +558,11 @@ export default function Diagnostic() {
               </ul>
             </div>
 
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2">
+              <Timer className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span>You have <strong>60 minutes</strong>. If you need more time when the timer expires, you can request an extension before submitting.</span>
+            </div>
+
             <Button onClick={() => setStarted(true)} className="w-full gap-2" size="lg">
               <ArrowRight className="h-4 w-4" />
               Begin Diagnostic
@@ -326,7 +573,7 @@ export default function Diagnostic() {
     );
   }
 
-  // Loading questions
+  // ── Loading questions ─────────────────────────────────────────────────────
   if (isLoading || !questions) {
     return (
       <div className="p-6 space-y-4">
@@ -338,19 +585,15 @@ export default function Diagnostic() {
 
   const currentQ = questions[currentIndex] as DiagnosticQuestion;
   const totalQ = questions.length;
-  const progressPct = ((currentIndex) / totalQ) * 100;
+  const progressPct = (currentIndex / totalQ) * 100;
   const currentAnswer = answers[currentQ.questionId] ?? "";
+  const answeredCount = Object.keys(answers).length;
 
   const handleNext = () => {
     if (currentIndex < totalQ - 1) {
       setCurrentIndex((i) => i + 1);
     } else {
-      // Submit
-      const answerArray = questions.map((q: DiagnosticQuestion) => ({
-        questionId: q.questionId,
-        answer: answers[q.questionId] ?? "",
-      }));
-      submitMutation.mutate({ answers: answerArray });
+      handleSubmit();
     }
   };
 
@@ -358,140 +601,213 @@ export default function Diagnostic() {
     if (currentIndex > 0) setCurrentIndex((i) => i - 1);
   };
 
+  const timerColor =
+    timeLeft <= 300 ? "text-red-600" : timeLeft <= 600 ? "text-amber-600" : "text-foreground";
+
+  // ── Test in progress ──────────────────────────────────────────────────────
   return (
-    <div className="p-6 space-y-6 page-enter max-w-2xl">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-foreground">Placement Diagnostic</h1>
-          <p className="text-xs text-muted-foreground">
-            Question {currentIndex + 1} of {totalQ}
-          </p>
-        </div>
-        <Badge variant="secondary" className="text-xs">
-          {currentQ.mapsToUnit === "prerequisite" ? "Prerequisites" : `Unit ${currentQ.mapsToUnit}`}
-        </Badge>
-      </div>
+    <>
+      {/* Time Up Dialog */}
+      <Dialog open={showTimeUpDialog} onOpenChange={setShowTimeUpDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Timer className="h-5 w-5 text-amber-500" />
+              Time is up!
+            </DialogTitle>
+            <DialogDescription>
+              Your 60 minutes have elapsed. You can submit now with {answeredCount}/{totalQ} questions answered,
+              or request additional time to finish.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 space-y-3">
+            <p className="text-sm text-muted-foreground">How much extra time do you need?</p>
+            <div className="flex gap-2">
+              {[10, 15, 20, 30].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setExtraMinutes(m)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-all ${
+                    extraMinutes === m
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border text-muted-foreground hover:border-primary/40"
+                  }`}
+                >
+                  +{m} min
+                </button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2 sm:flex-row flex-col">
+            <Button variant="outline" onClick={handleSubmitAnyway} disabled={submitMutation.isPending} className="flex-1">
+              {submitMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit Now"}
+            </Button>
+            <Button onClick={handleExtendTime} className="flex-1 gap-2">
+              <Clock className="h-4 w-4" />
+              Add {extraMinutes} Minutes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {/* Progress */}
-      <Progress value={progressPct} className="h-1.5" />
-
-      {/* Question Card */}
-      <Card className="border shadow-sm">
-        <CardContent className="p-6 space-y-5">
-          <div className="flex items-start gap-3">
-            <span className="h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold shrink-0">
-              {currentIndex + 1}
-            </span>
-            <p className="text-base font-medium text-foreground leading-relaxed math-expr">
-              {currentQ.questionText}
+      <div className="p-6 space-y-5 page-enter max-w-2xl">
+        {/* Header with timer */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-foreground">Placement Diagnostic</h1>
+            <p className="text-xs text-muted-foreground">
+              Question {currentIndex + 1} of {totalQ} · {answeredCount} answered
             </p>
           </div>
-
-          {currentQ.questionType === "multiple_choice" && (
-            <RadioGroup
-              value={currentAnswer}
-              onValueChange={(val) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: val }))}
-              className="space-y-2"
+          <div className="flex items-center gap-3">
+            <Badge variant="secondary" className="text-xs">
+              {currentQ.mapsToUnit === "prerequisite" ? "Pre-Algebra" : `Unit ${currentQ.mapsToUnit}`}
+            </Badge>
+            {/* Timer */}
+            <div
+              className={`flex items-center gap-1.5 font-mono text-sm font-semibold px-3 py-1.5 rounded-lg border ${
+                timeLeft <= 300
+                  ? "bg-red-50 border-red-200 text-red-700"
+                  : timeLeft <= 600
+                  ? "bg-amber-50 border-amber-200 text-amber-700"
+                  : "bg-muted/40 border-border text-foreground"
+              }`}
             >
-              {parseChoices(currentQ.choices).map((choice, idx) => (
-                <div
-                  key={idx}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                    currentAnswer === choice.label
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/40 hover:bg-muted/30"
-                  }`}
-                  onClick={() => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: choice.label }))}
-                >
-                  <RadioGroupItem value={choice.label} id={`choice-${idx}`} />
-                  <Label htmlFor={`choice-${idx}`} className="cursor-pointer text-sm flex-1">
-                    <span className="font-semibold text-muted-foreground mr-2">{choice.label}.</span>
-                    {choice.text}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          )}
-
-          {currentQ.questionType === "short_answer" && (
-            <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">Your answer:</Label>
-              <Input
-                value={currentAnswer}
-                onChange={(e) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: e.target.value }))}
-                placeholder="Type your answer..."
-                className="text-sm"
-                onKeyDown={(e) => e.key === "Enter" && handleNext()}
-              />
+              <Clock className="h-3.5 w-3.5" />
+              {formatTime(timeLeft)}
             </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Navigation */}
-      <div className="flex items-center justify-between">
-        <Button
-          variant="outline"
-          onClick={handlePrev}
-          disabled={currentIndex === 0}
-          className="gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Previous
-        </Button>
-
-        <div className="flex gap-1">
-          {questions.slice(Math.max(0, currentIndex - 2), Math.min(totalQ, currentIndex + 3)).map((_, relIdx) => {
-            const absIdx = Math.max(0, currentIndex - 2) + relIdx;
-            const q = questions[absIdx] as DiagnosticQuestion;
-            const hasAnswer = !!answers[q.questionId];
-            return (
-              <button
-                key={absIdx}
-                onClick={() => setCurrentIndex(absIdx)}
-                className={`h-6 w-6 rounded text-xs font-medium transition-all ${
-                  absIdx === currentIndex
-                    ? "bg-primary text-primary-foreground"
-                    : hasAnswer
-                    ? "bg-green-100 text-green-700"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
-                {absIdx + 1}
-              </button>
-            );
-          })}
+            <button
+              onClick={() => setShowTimeUpDialog(true)}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+            >
+              Need more time?
+            </button>
+          </div>
         </div>
 
-        <Button
-          onClick={handleNext}
-          disabled={!currentAnswer || submitMutation.isPending}
-          className="gap-2"
-        >
-          {submitMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : currentIndex === totalQ - 1 ? (
-            <>Submit<CheckCircle2 className="h-4 w-4" /></>
-          ) : (
-            <>Next<ArrowRight className="h-4 w-4" /></>
-          )}
-        </Button>
-      </div>
+        {/* Progress */}
+        <Progress value={progressPct} className="h-1.5" />
 
-      {/* Answer progress dots */}
-      <div className="flex flex-wrap gap-1 justify-center">
-        {questions.map((q: DiagnosticQuestion, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrentIndex(idx)}
-            className={`h-2 w-2 rounded-full transition-all ${
-              idx === currentIndex ? "bg-primary scale-125" :
-              answers[q.questionId] ? "bg-green-400" : "bg-muted"
-            }`}
-          />
-        ))}
+        {/* Question Card */}
+        <Card className="border shadow-sm">
+          <CardContent className="p-6 space-y-5">
+            <div className="flex items-start gap-3">
+              <span className="h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold shrink-0 mt-0.5">
+                {currentIndex + 1}
+              </span>
+              <p className="text-base font-medium text-foreground leading-relaxed">
+                {currentQ.questionText}
+              </p>
+            </div>
+
+            {currentQ.questionType === "multiple_choice" && (
+              <RadioGroup
+                value={currentAnswer}
+                onValueChange={(val) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: val }))}
+                className="space-y-2"
+              >
+                {parseChoices(currentQ.choices).map((choice, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                      currentAnswer === choice.label
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/40 hover:bg-muted/30"
+                    }`}
+                    onClick={() => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: choice.label }))}
+                  >
+                    <RadioGroupItem value={choice.label} id={`choice-${idx}`} />
+                    <Label htmlFor={`choice-${idx}`} className="cursor-pointer text-sm flex-1">
+                      <span className="font-semibold text-muted-foreground mr-2">{choice.label}.</span>
+                      {choice.text}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            )}
+
+            {currentQ.questionType === "short_answer" && (
+              <div className="space-y-2">
+                <Label className="text-sm text-muted-foreground">Your answer:</Label>
+                <Input
+                  value={currentAnswer}
+                  onChange={(e) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: e.target.value }))}
+                  placeholder="Type your answer here..."
+                  className="text-sm"
+                  onKeyDown={(e) => e.key === "Enter" && handleNext()}
+                  autoFocus
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Navigation */}
+        <div className="flex items-center justify-between">
+          <Button
+            variant="outline"
+            onClick={handlePrev}
+            disabled={currentIndex === 0}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Previous
+          </Button>
+
+          {/* Question dots */}
+          <div className="flex gap-1 flex-wrap justify-center max-w-xs">
+            {questions.slice(Math.max(0, currentIndex - 3), Math.min(totalQ, currentIndex + 4)).map((_, relIdx) => {
+              const absIdx = Math.max(0, currentIndex - 3) + relIdx;
+              const q = questions[absIdx] as DiagnosticQuestion;
+              const hasAnswer = !!answers[q.questionId];
+              return (
+                <button
+                  key={absIdx}
+                  onClick={() => setCurrentIndex(absIdx)}
+                  className={`h-6 w-6 rounded text-xs font-medium transition-all ${
+                    absIdx === currentIndex
+                      ? "bg-primary text-primary-foreground"
+                      : hasAnswer
+                      ? "bg-green-100 text-green-700"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {absIdx + 1}
+                </button>
+              );
+            })}
+          </div>
+
+          <Button
+            onClick={handleNext}
+            disabled={!currentAnswer || submitMutation.isPending}
+            className="gap-2"
+          >
+            {submitMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : currentIndex === totalQ - 1 ? (
+              <>Submit <CheckCircle2 className="h-4 w-4" /></>
+            ) : (
+              <>Next <ArrowRight className="h-4 w-4" /></>
+            )}
+          </Button>
+        </div>
+
+        {/* Answer progress dots */}
+        <div className="flex flex-wrap gap-1 justify-center">
+          {questions.map((q: DiagnosticQuestion, idx) => (
+            <button
+              key={idx}
+              onClick={() => setCurrentIndex(idx)}
+              title={`Q${idx + 1}${answers[q.questionId] ? " ✓" : ""}`}
+              className={`h-2 w-2 rounded-full transition-all ${
+                idx === currentIndex ? "bg-primary scale-125" :
+                answers[q.questionId] ? "bg-green-400" : "bg-muted"
+              }`}
+            />
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

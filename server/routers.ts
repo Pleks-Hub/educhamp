@@ -444,11 +444,18 @@ export const appRouter = router({
           prerequisiteScore,
           unitResults,
           placementRecommendation,
-          gradedAnswers: gradedAnswers.map((a) => ({
-            ...a,
-            correctAnswer: questionMap.get(a.questionId)?.correctAnswer ?? "",
-            explanation: questionMap.get(a.questionId)?.explanation ?? "",
-          })),
+          gradedAnswers: gradedAnswers.map((a) => {
+            const q = questionMap.get(a.questionId);
+            return {
+              ...a,
+              questionText: q?.questionText ?? "",
+              questionType: q?.questionType ?? "short_answer",
+              choices: q?.choices ?? null,
+              mapsToUnit: q?.mapsToUnit ?? "",
+              correctAnswer: q?.correctAnswer ?? "",
+              explanation: q?.explanation ?? "",
+            };
+          }),
         };
       }),
 

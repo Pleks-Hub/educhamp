@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   ArrowLeft,
   ArrowRight,
@@ -16,12 +18,65 @@ import {
   Lightbulb,
   Target,
   XCircle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-type WorkedExample = { problem: string; steps: string[]; answer: string };
-type Problem = { problem: string; answer: string; hint?: string };
+// ─── Exact types from schema.ts ───────────────────────────────────────────────
+
+type WorkedExample = {
+  title: string;
+  problem: string;
+  steps: { step: string; explanation: string }[];
+  answer: string;
+};
+
+type GuidedProblem = {
+  problem: string;
+  hint1: string;
+  hint2: string;
+  solution: string;
+  explanation: string;
+};
+
+type IndependentProblem = {
+  problem: string;
+  solution: string;
+  explanation: string;
+};
+
+// ─── Safe JSON parsers ────────────────────────────────────────────────────────
+
+function parseWorkedExamples(raw: unknown): WorkedExample[] {
+  if (!raw) return [];
+  if (typeof raw === "string") {
+    try { return JSON.parse(raw) as WorkedExample[]; } catch { return []; }
+  }
+  if (Array.isArray(raw)) return raw as WorkedExample[];
+  return [];
+}
+
+function parseGuidedProblems(raw: unknown): GuidedProblem[] {
+  if (!raw) return [];
+  if (typeof raw === "string") {
+    try { return JSON.parse(raw) as GuidedProblem[]; } catch { return []; }
+  }
+  if (Array.isArray(raw)) return raw as GuidedProblem[];
+  return [];
+}
+
+function parseIndependentProblems(raw: unknown): IndependentProblem[] {
+  if (!raw) return [];
+  if (typeof raw === "string") {
+    try { return JSON.parse(raw) as IndependentProblem[]; } catch { return []; }
+  }
+  if (Array.isArray(raw)) return raw as IndependentProblem[];
+  return [];
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function LessonDetail() {
   const { user } = useAuth();
@@ -30,8 +85,19 @@ export default function LessonDetail() {
   const lessonId = parseInt(params.lessonId ?? "0", 10);
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState("explanation");
-  const [revealedAnswers, setRevealedAnswers] = useState<Set<number>>(new Set());
-  const [revealedHints, setRevealedHints] = useState<Set<number>>(new Set());
+
+  // Worked examples: track expanded state
+  const [expandedExamples, setExpandedExamples] = useState<Set<number>>(new Set([0]));
+
+  // Guided practice: reveal hint1, hint2, solution per index
+  const [guidedState, setGuidedState] = useState<
+    Record<number, { hint1: boolean; hint2: boolean; solution: boolean }>
+  >({});
+
+  // Independent practice: student typed answer + revealed state per index
+  const [studentAnswers, setStudentAnswers] = useState<Record<number, string>>({});
+  const [revealedSolutions, setRevealedSolutions] = useState<Set<number>>(new Set());
+  const [checkedAnswers, setCheckedAnswers] = useState<Record<number, "correct" | "wrong" | null>>({});
 
   const { data: lesson, isLoading } = trpc.curriculum.getLesson.useQuery(
     { lessonId },
@@ -50,6 +116,7 @@ export default function LessonDetail() {
       <div className="p-6 space-y-4 page-enter">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 rounded-xl" />
+        <Skeleton className="h-48 rounded-xl" />
       </div>
     );
   }
@@ -65,28 +132,53 @@ export default function LessonDetail() {
     );
   }
 
-  const workedExamples = (lesson.workedExamples as unknown as WorkedExample[]) ?? [];
-  const guidedProblems = (lesson.guidedProblems as unknown as Problem[]) ?? [];
-  const independentProblems = (lesson.independentProblems as unknown as Problem[]) ?? [];
-  const misconceptions = (lesson.misconceptions as string[]) ?? [];
+  const workedExamples = parseWorkedExamples(lesson.workedExamples);
+  const guidedProblems = parseGuidedProblems(lesson.guidedProblems);
+  const independentProblems = parseIndependentProblems(lesson.independentProblems);
+  const misconceptions = (lesson.misconceptions as unknown as string[]) ?? [];
 
-  const toggleAnswer = (idx: number) => {
-    setRevealedAnswers((prev) => {
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  const toggleExample = (idx: number) => {
+    setExpandedExamples((prev) => {
       const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
+      if (next.has(idx)) next.delete(idx); else next.add(idx);
       return next;
     });
   };
 
-  const toggleHint = (idx: number) => {
-    setRevealedHints((prev) => {
+  const getGuidedState = (idx: number) =>
+    guidedState[idx] ?? { hint1: false, hint2: false, solution: false };
+
+  const setGuidedField = (idx: number, field: "hint1" | "hint2" | "solution", val: boolean) => {
+    setGuidedState((prev) => ({
+      ...prev,
+      [idx]: { ...getGuidedState(idx), [field]: val },
+    }));
+  };
+
+  const checkAnswer = (idx: number, solution: string) => {
+    const student = (studentAnswers[idx] ?? "").trim().toLowerCase();
+    const correct = solution.trim().toLowerCase();
+    if (!student) { toast.error("Please type your answer first."); return; }
+    const isCorrect = student === correct || student === correct.replace(/[^a-z0-9.]/g, "");
+    setCheckedAnswers((prev) => ({ ...prev, [idx]: isCorrect ? "correct" : "wrong" }));
+    if (isCorrect) {
+      toast.success("Correct! Well done.");
+    } else {
+      toast.error("Not quite — review the solution to see the working.");
+    }
+  };
+
+  const revealSolution = (idx: number) => {
+    setRevealedSolutions((prev) => {
       const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
+      if (next.has(idx)) next.delete(idx); else next.add(idx);
       return next;
     });
   };
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="p-6 space-y-6 page-enter max-w-4xl">
@@ -156,7 +248,7 @@ export default function LessonDetail() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Explanation */}
+        {/* ── Explanation ─────────────────────────────────────────────────── */}
         <TabsContent value="explanation" className="mt-4 space-y-4">
           <Card className="border">
             <CardContent className="p-6">
@@ -195,7 +287,7 @@ export default function LessonDetail() {
           </div>
         </TabsContent>
 
-        {/* Worked Examples */}
+        {/* ── Worked Examples ──────────────────────────────────────────────── */}
         <TabsContent value="examples" className="mt-4 space-y-4">
           {workedExamples.length === 0 ? (
             <Card className="border">
@@ -205,31 +297,57 @@ export default function LessonDetail() {
             </Card>
           ) : (
             workedExamples.map((ex, idx) => (
-              <Card key={idx} className="border">
-                <CardHeader className="pb-2 pt-4 px-5">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <span className="h-6 w-6 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold shrink-0">
-                      {idx + 1}
-                    </span>
-                    <span className="math-expr">{ex.problem}</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-5 pb-4">
-                  <div className="space-y-2">
-                    {ex.steps.map((step, sIdx) => (
-                      <div key={sIdx} className="flex items-start gap-3">
-                        <span className="text-xs text-muted-foreground font-medium mt-0.5 w-12 shrink-0">
-                          Step {sIdx + 1}
-                        </span>
-                        <p className="text-sm text-foreground">{step}</p>
-                      </div>
-                    ))}
-                    <div className="mt-3 pt-3 border-t flex items-center gap-2">
-                      <span className="text-xs font-semibold text-muted-foreground">Answer:</span>
-                      <span className="text-sm font-bold text-primary math-expr">{ex.answer}</span>
-                    </div>
+              <Card key={idx} className="border overflow-hidden">
+                {/* Clickable header */}
+                <button
+                  className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-muted/20 transition-colors"
+                  onClick={() => toggleExample(idx)}
+                >
+                  <span className="h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold shrink-0">
+                    {idx + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    {ex.title && (
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
+                        {ex.title}
+                      </p>
+                    )}
+                    <p className="text-sm font-medium text-foreground">{ex.problem}</p>
                   </div>
-                </CardContent>
+                  <Badge variant="outline" className="text-xs shrink-0">
+                    {expandedExamples.has(idx) ? "Hide" : "Show"} Solution
+                  </Badge>
+                </button>
+
+                {/* Expanded steps */}
+                {expandedExamples.has(idx) && (
+                  <CardContent className="px-5 pb-5 pt-0 border-t">
+                    <div className="space-y-3 mt-3">
+                      {ex.steps.map((s, sIdx) => (
+                        <div key={sIdx} className="flex gap-3">
+                          <div className="shrink-0 mt-0.5">
+                            <span className="h-5 w-5 rounded-full bg-muted text-muted-foreground text-[10px] flex items-center justify-center font-bold">
+                              {sIdx + 1}
+                            </span>
+                          </div>
+                          <div className="flex-1 space-y-0.5">
+                            <p className="text-sm font-semibold text-foreground">{s.step}</p>
+                            {s.explanation && (
+                              <p className="text-xs text-muted-foreground leading-relaxed">{s.explanation}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Final answer */}
+                      <div className="mt-4 pt-3 border-t flex items-center gap-3 bg-green-50/60 -mx-5 px-5 py-3 rounded-b-lg">
+                        <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                        <span className="text-xs font-semibold text-muted-foreground">Answer:</span>
+                        <span className="text-sm font-bold text-green-700">{ex.answer}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                )}
               </Card>
             ))
           )}
@@ -241,10 +359,10 @@ export default function LessonDetail() {
           </div>
         </TabsContent>
 
-        {/* Guided Practice */}
+        {/* ── Guided Practice ──────────────────────────────────────────────── */}
         <TabsContent value="guided" className="mt-4 space-y-4">
           <p className="text-sm text-muted-foreground">
-            Work through these problems. Use hints if you get stuck, then check your answer.
+            Work through each problem step by step. Use hints when stuck, then check the full solution with workings.
           </p>
           {guidedProblems.length === 0 ? (
             <Card className="border">
@@ -253,55 +371,85 @@ export default function LessonDetail() {
               </CardContent>
             </Card>
           ) : (
-            guidedProblems.map((prob, idx) => (
-              <Card key={idx} className="border">
-                <CardContent className="p-5">
-                  <div className="flex items-start gap-3 mb-4">
-                    <span className="h-6 w-6 rounded-full bg-muted text-muted-foreground text-xs flex items-center justify-center font-bold shrink-0 mt-0.5">
-                      {idx + 1}
-                    </span>
-                    <p className="text-sm font-medium text-foreground math-expr">{prob.problem}</p>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {prob.hint && (
+            guidedProblems.map((prob, idx) => {
+              const gs = getGuidedState(idx);
+              return (
+                <Card key={idx} className="border">
+                  <CardContent className="p-5 space-y-4">
+                    {/* Problem */}
+                    <div className="flex items-start gap-3">
+                      <span className="h-6 w-6 rounded-full bg-muted text-muted-foreground text-xs flex items-center justify-center font-bold shrink-0 mt-0.5">
+                        {idx + 1}
+                      </span>
+                      <p className="text-sm font-medium text-foreground leading-relaxed">{prob.problem}</p>
+                    </div>
+
+                    {/* Hint buttons */}
+                    <div className="flex gap-2 flex-wrap">
                       <Button
                         variant="outline"
                         size="sm"
                         className="text-xs h-7 gap-1.5"
-                        onClick={() => toggleHint(idx)}
+                        onClick={() => setGuidedField(idx, "hint1", !gs.hint1)}
                       >
                         <Lightbulb className="h-3 w-3" />
-                        {revealedHints.has(idx) ? "Hide Hint" : "Show Hint"}
+                        {gs.hint1 ? "Hide Hint 1" : "Hint 1"}
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 gap-1.5"
+                        onClick={() => setGuidedField(idx, "hint2", !gs.hint2)}
+                      >
+                        <Lightbulb className="h-3 w-3 text-amber-500" />
+                        {gs.hint2 ? "Hide Hint 2" : "Hint 2"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 gap-1.5"
+                        onClick={() => setGuidedField(idx, "solution", !gs.solution)}
+                      >
+                        <Eye className="h-3 w-3 text-green-600" />
+                        {gs.solution ? "Hide Solution" : "Show Full Solution"}
+                      </Button>
+                    </div>
+
+                    {/* Hint 1 */}
+                    {gs.hint1 && prob.hint1 && (
+                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <p className="text-xs font-semibold text-blue-800 mb-1">Hint 1</p>
+                        <p className="text-xs text-blue-900 leading-relaxed">{prob.hint1}</p>
+                      </div>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs h-7 gap-1.5"
-                      onClick={() => toggleAnswer(idx)}
-                    >
-                      <CheckCircle2 className="h-3 w-3" />
-                      {revealedAnswers.has(idx) ? "Hide Answer" : "Check Answer"}
-                    </Button>
-                  </div>
-                  {revealedHints.has(idx) && prob.hint && (
-                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-xs text-blue-800">
-                        <span className="font-semibold">Hint: </span>{prob.hint}
-                      </p>
-                    </div>
-                  )}
-                  {revealedAnswers.has(idx) && (
-                    <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                      <p className="text-xs text-green-800">
-                        <span className="font-semibold">Answer: </span>
-                        <span className="math-expr">{prob.answer}</span>
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
+
+                    {/* Hint 2 */}
+                    {gs.hint2 && prob.hint2 && (
+                      <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                        <p className="text-xs font-semibold text-indigo-800 mb-1">Hint 2</p>
+                        <p className="text-xs text-indigo-900 leading-relaxed">{prob.hint2}</p>
+                      </div>
+                    )}
+
+                    {/* Full solution with workings */}
+                    {gs.solution && (
+                      <div className="space-y-2">
+                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                          <p className="text-xs font-semibold text-green-800 mb-1">Answer</p>
+                          <p className="text-sm font-bold text-green-900">{prob.solution}</p>
+                        </div>
+                        {prob.explanation && (
+                          <div className="p-3 bg-muted/40 rounded-lg border border-border">
+                            <p className="text-xs font-semibold text-foreground mb-1">Worked Solution</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{prob.explanation}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
           <div className="flex justify-end">
             <Button onClick={() => setActiveTab("independent")} className="gap-2">
@@ -311,10 +459,10 @@ export default function LessonDetail() {
           </div>
         </TabsContent>
 
-        {/* Independent Practice */}
+        {/* ── Independent Practice ─────────────────────────────────────────── */}
         <TabsContent value="independent" className="mt-4 space-y-4">
           <p className="text-sm text-muted-foreground">
-            Try these on your own first. Reveal the answer only after you've attempted each problem.
+            Solve each problem independently. Type your answer, then check it — or reveal the full worked solution.
           </p>
           {independentProblems.length === 0 ? (
             <Card className="border">
@@ -323,35 +471,116 @@ export default function LessonDetail() {
               </CardContent>
             </Card>
           ) : (
-            independentProblems.map((prob, idx) => (
-              <Card key={idx} className="border">
-                <CardContent className="p-5">
-                  <div className="flex items-start gap-3 mb-4">
-                    <span className="h-6 w-6 rounded-full bg-muted text-muted-foreground text-xs flex items-center justify-center font-bold shrink-0 mt-0.5">
-                      {idx + 1}
-                    </span>
-                    <p className="text-sm font-medium text-foreground math-expr">{prob.problem}</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs h-7 gap-1.5"
-                    onClick={() => toggleAnswer(idx + 100)}
-                  >
-                    <CheckCircle2 className="h-3 w-3" />
-                    {revealedAnswers.has(idx + 100) ? "Hide Answer" : "Reveal Answer"}
-                  </Button>
-                  {revealedAnswers.has(idx + 100) && (
-                    <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                      <p className="text-xs text-green-800">
-                        <span className="font-semibold">Answer: </span>
-                        <span className="math-expr">{prob.answer}</span>
-                      </p>
+            independentProblems.map((prob, idx) => {
+              const checked = checkedAnswers[idx];
+              const revealed = revealedSolutions.has(idx);
+              return (
+                <Card
+                  key={idx}
+                  className={`border transition-all ${
+                    checked === "correct"
+                      ? "border-green-200 bg-green-50/30"
+                      : checked === "wrong"
+                      ? "border-red-200 bg-red-50/20"
+                      : "border-border"
+                  }`}
+                >
+                  <CardContent className="p-5 space-y-4">
+                    {/* Problem */}
+                    <div className="flex items-start gap-3">
+                      <span className={`h-6 w-6 rounded-full text-xs flex items-center justify-center font-bold shrink-0 mt-0.5 ${
+                        checked === "correct"
+                          ? "bg-green-100 text-green-700"
+                          : checked === "wrong"
+                          ? "bg-red-100 text-red-700"
+                          : "bg-muted text-muted-foreground"
+                      }`}>
+                        {checked === "correct" ? "✓" : checked === "wrong" ? "✗" : idx + 1}
+                      </span>
+                      <p className="text-sm font-medium text-foreground leading-relaxed">{prob.problem}</p>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))
+
+                    {/* Answer input */}
+                    <div className="space-y-2">
+                      <Label className="text-xs text-muted-foreground">Your answer:</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={studentAnswers[idx] ?? ""}
+                          onChange={(e) => {
+                            setStudentAnswers((prev) => ({ ...prev, [idx]: e.target.value }));
+                            // Clear check state when editing
+                            if (checkedAnswers[idx]) {
+                              setCheckedAnswers((prev) => ({ ...prev, [idx]: null }));
+                            }
+                          }}
+                          placeholder="Type your answer here..."
+                          className={`text-sm flex-1 ${
+                            checked === "correct"
+                              ? "border-green-400 focus-visible:ring-green-400"
+                              : checked === "wrong"
+                              ? "border-red-400 focus-visible:ring-red-400"
+                              : ""
+                          }`}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") checkAnswer(idx, prob.solution);
+                          }}
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => checkAnswer(idx, prob.solution)}
+                          disabled={!studentAnswers[idx]?.trim()}
+                          className="gap-1.5 shrink-0"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Check
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Feedback */}
+                    {checked === "correct" && (
+                      <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
+                        <CheckCircle2 className="h-4 w-4" />
+                        Correct! Great work.
+                      </div>
+                    )}
+                    {checked === "wrong" && (
+                      <div className="flex items-center gap-2 text-red-700 text-sm">
+                        <XCircle className="h-4 w-4 shrink-0" />
+                        Not quite. Review the solution below to see the working.
+                      </div>
+                    )}
+
+                    {/* Reveal solution button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs h-7 gap-1.5"
+                      onClick={() => revealSolution(idx)}
+                    >
+                      {revealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      {revealed ? "Hide Solution" : "Reveal Full Solution"}
+                    </Button>
+
+                    {/* Full solution */}
+                    {revealed && (
+                      <div className="space-y-2">
+                        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                          <p className="text-xs font-semibold text-green-800 mb-1">Answer</p>
+                          <p className="text-sm font-bold text-green-900">{prob.solution}</p>
+                        </div>
+                        {prob.explanation && (
+                          <div className="p-3 bg-muted/40 rounded-lg border border-border">
+                            <p className="text-xs font-semibold text-foreground mb-1">Worked Solution</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{prob.explanation}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
 
           {user && (
@@ -362,7 +591,7 @@ export default function LessonDetail() {
                 className="gap-2"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                Complete Lesson
+                Mark Lesson Complete
               </Button>
             </div>
           )}
