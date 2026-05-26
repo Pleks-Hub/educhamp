@@ -148,6 +148,31 @@
   --font-serif: 'Lora', Georgia, serif;
 }
 
+/* ─── Print Styles (for report export) ─────────────────────────────────── */
+@media print {
+  /* Hide everything except the report area */
+  body > * { display: none !important; }
+  #report-print-area,
+  #report-print-area * { display: revert !important; }
+  #report-print-area {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 2rem;
+    font-family: system-ui, sans-serif;
+    font-size: 12pt;
+    color: #000;
+    background: #fff;
+  }
+  /* Ensure cards and borders print cleanly */
+  .border { border: 1px solid #ccc !important; }
+  .rounded-lg { border-radius: 4px !important; }
+  /* Page breaks */
+  h3 { page-break-before: auto; }
+  .space-y-2 > * { page-break-inside: avoid; }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -104,3 +104,34 @@
 - [x] UI: Co-parent view — same progress dashboard as parent but read-only (no enrol/manage actions)
 - [x] Enforce: parent-typed accounts blocked from quiz, diagnostic, and mastery routes
 - [x] Enforce: student-typed accounts cannot access Parent Dashboard or co-parent features
+
+## Auth Enhancements, Parent Tools & Report Export
+
+- [x] DB: passwordResetTokens table (userId, token, expiresAt, usedAt)
+- [x] DB: twoFactorAuth table (userId, secret, isEnabled, backupCodes JSON)
+- [x] DB: parentGoals table (parentId, childId, goalText, targetDate, isCompleted, createdAt)
+- [x] DB: parentNotes table (parentId, childId, noteText, createdAt)
+- [x] Server: welcome email notification on new user OAuth signup
+- [x] Server: auth.requestPasswordReset — generate token, send reset link via notification
+- [x] Server: auth.validateResetToken — validate token validity
+- [x] Server: auth.consumeResetToken — mark token used (OAuth-based, no password change)
+- [x] Server: auth.setup2FA — generate TOTP secret + QR code URI
+- [x] Server: auth.verify2FA — verify TOTP code and enable 2FA
+- [x] Server: auth.disable2FA — disable with TOTP confirmation
+- [x] Server: auth.generateBackupCodes — generate 8 one-time backup codes
+- [x] Server: parentTools.createGoal, listGoals, completeGoal, deleteGoal
+- [x] Server: parentTools.createNote, listNotes, deleteNote
+- [x] Server: parentTools.skillGapAnalysis — skills below 75% with priority ranking
+- [x] Server: parentTools.getReportData — full JSON report for a child (PDF/CSV export)
+- [x] UI: /forgot-password — email entry form with success confirmation
+- [x] UI: /reset-password?token=xxx — token validation + OAuth redirect
+- [x] UI: /profile — user profile page with 2FA setup (QR code, backup codes, disable)
+- [x] UI: Parent Dashboard — Skill Gap Analysis tab (skills below 75% highlighted)
+- [x] UI: Parent Dashboard — Study Goals panel (set/track goals per child)
+- [x] UI: Parent Dashboard — Parent Notes panel (private notes per child)
+- [x] UI: Parent Dashboard — Export Report tab (CSV download + print-to-PDF)
+- [x] Hard block: parent accountType cannot access quiz/diagnostic/mastery routes (server-side studentProcedure)
+- [x] Hard block: student accounts see hard block on Parent Dashboard
+- [x] Export: CSV performance metrics (all skills, mastery scores, quiz dates)
+- [x] Export: PDF via browser print (window.print() with print-specific CSS)
+- [ ] UI: Parent Dashboard — Learning Insights panel (time trends, improvement rate) — deferred

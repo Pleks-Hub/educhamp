@@ -1,6 +1,8 @@
 import { COOKIE_NAME } from "@shared/const";
 import { parentRouter } from "./routers/parent";
 import { coParentRouter } from "./routers/coParent";
+import { authEnhancementsRouter } from "./routers/authEnhancements";
+import { parentToolsRouter } from "./routers/parentTools";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
@@ -38,6 +40,8 @@ export const appRouter = router({
   system: systemRouter,
   parent: parentRouter,
   coParent: coParentRouter,
+  authEnhancements: authEnhancementsRouter,
+  parentTools: parentToolsRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

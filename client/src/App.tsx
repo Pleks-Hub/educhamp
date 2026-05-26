@@ -16,26 +16,39 @@ import Skills from "./pages/Skills";
 import Quiz from "./pages/Quiz";
 import ParentDashboard from "./pages/ParentDashboard";
 import AcceptInvite from "./pages/AcceptInvite";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import Profile from "./pages/Profile";
 
 function Router() {
   return (
-    <DashboardLayout>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/curriculum" component={Curriculum} />
-        <Route path="/curriculum/unit/:unitNumber" component={UnitDetail} />
-        <Route path="/curriculum/unit/:unitNumber/lesson/:lessonId" component={LessonDetail} />
-        <Route path="/curriculum/unit/:unitNumber/quiz" component={Quiz} />
-        <Route path="/tutor" component={Tutor} />
-        <Route path="/diagnostic" component={Diagnostic} />
-        <Route path="/progress" component={Progress} />
-        <Route path="/skills" component={Skills} />
-        <Route path="/parent" component={ParentDashboard} />
-        <Route path="/accept-invite" component={AcceptInvite} />
-        <Route path="/404" component={NotFound} />
-        <Route component={NotFound} />
-      </Switch>
-    </DashboardLayout>
+    <Switch>
+      {/* Public routes — no auth required, no sidebar */}
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/accept-invite" component={AcceptInvite} />
+
+      {/* App routes — wrapped in DashboardLayout */}
+      <Route>
+        <DashboardLayout>
+          <Switch>
+            <Route path="/" component={Home} />
+            <Route path="/curriculum" component={Curriculum} />
+            <Route path="/curriculum/unit/:unitNumber" component={UnitDetail} />
+            <Route path="/curriculum/unit/:unitNumber/lesson/:lessonId" component={LessonDetail} />
+            <Route path="/curriculum/unit/:unitNumber/quiz" component={Quiz} />
+            <Route path="/tutor" component={Tutor} />
+            <Route path="/diagnostic" component={Diagnostic} />
+            <Route path="/progress" component={Progress} />
+            <Route path="/skills" component={Skills} />
+            <Route path="/parent" component={ParentDashboard} />
+            <Route path="/profile" component={Profile} />
+            <Route path="/404" component={NotFound} />
+            <Route component={NotFound} />
+          </Switch>
+        </DashboardLayout>
+      </Route>
+    </Switch>
   );
 }
 

@@ -15,7 +15,8 @@ import { toast } from "sonner";
 import {
   Users, UserPlus, BookOpen, Trophy, TrendingUp, AlertTriangle,
   ChevronRight, GraduationCap, BarChart3, CheckCircle2, Clock,
-  Pencil, Trash2, Mail, Plus, X, Star, Target, Brain, ShieldAlert
+  Pencil, Trash2, Mail, Plus, X, Star, Target, Brain, ShieldAlert,
+  FileText, Download, StickyNote, Flag, TrendingDown, Zap
 } from "lucide-react";
 import { Link } from "wouter";
 import { Streamdown } from "streamdown";
@@ -268,6 +269,336 @@ function EditNicknameModal({
   );
 }
 
+// ─── Goals & Notes Panel ─────────────────────────────────────────────────────
+
+function GoalsNotesPanel({ childId }: { childId: number }) {
+  const utils = trpc.useUtils();
+  const [goalText, setGoalText] = useState("");
+  const [noteText, setNoteText] = useState("");
+
+  const { data: goals } = trpc.parentTools.listGoals.useQuery({ childId });
+  const { data: notes } = trpc.parentTools.listNotes.useQuery({ childId });
+
+  const createGoal = trpc.parentTools.createGoal.useMutation({
+    onSuccess: () => { toast.success("Goal added!"); setGoalText(""); utils.parentTools.listGoals.invalidate({ childId }); },
+    onError: (err) => toast.error(err.message),
+  });
+  const completeGoal = trpc.parentTools.completeGoal.useMutation({
+    onSuccess: () => utils.parentTools.listGoals.invalidate({ childId }),
+  });
+  const deleteGoal = trpc.parentTools.deleteGoal.useMutation({
+    onSuccess: () => utils.parentTools.listGoals.invalidate({ childId }),
+  });
+  const createNote = trpc.parentTools.createNote.useMutation({
+    onSuccess: () => { toast.success("Note saved!"); setNoteText(""); utils.parentTools.listNotes.invalidate({ childId }); },
+    onError: (err) => toast.error(err.message),
+  });
+  const deleteNote = trpc.parentTools.deleteNote.useMutation({
+    onSuccess: () => utils.parentTools.listNotes.invalidate({ childId }),
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Goals */}
+      <div>
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <Flag className="h-4 w-4 text-primary" /> Learning Goals
+        </h3>
+        <div className="flex gap-2 mb-3">
+          <Input
+            placeholder="Add a learning goal…"
+            value={goalText}
+            onChange={(e) => setGoalText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && goalText && createGoal.mutate({ childId, goalText })}
+            className="flex-1"
+          />
+          <Button
+            size="sm"
+            onClick={() => createGoal.mutate({ childId, goalText })}
+            disabled={!goalText || createGoal.isPending}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        {goals && goals.length > 0 ? (
+          <div className="space-y-2">
+            {goals.map((g: any) => (
+              <div key={g.id} className={`flex items-start gap-2 rounded-lg border p-3 ${g.completedAt ? "opacity-60" : ""}`}>
+                <button
+                  onClick={() => !g.completedAt && completeGoal.mutate({ goalId: g.id })}
+                  className={`mt-0.5 h-4 w-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${
+                    g.completedAt ? "bg-emerald-500 border-emerald-500" : "border-muted-foreground hover:border-primary"
+                  }`}
+                >
+                  {g.completedAt && <CheckCircle2 className="h-3 w-3 text-white" />}
+                </button>
+                <span className={`flex-1 text-sm ${g.completedAt ? "line-through text-muted-foreground" : ""}`}>{g.goalText}</span>
+                <button
+                  onClick={() => deleteGoal.mutate({ goalId: g.id })}
+                  className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-3">No goals yet. Add one above.</p>
+        )}
+      </div>
+
+      <Separator />
+
+      {/* Notes */}
+      <div>
+        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+          <StickyNote className="h-4 w-4 text-amber-500" /> Parent Notes
+        </h3>
+        <div className="space-y-2 mb-3">
+          <textarea
+            placeholder="Add a note about this student's progress, behavior, or needs…"
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            rows={3}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <Button
+            size="sm"
+            onClick={() => createNote.mutate({ childId, noteText })}
+            disabled={!noteText || createNote.isPending}
+          >
+            Save Note
+          </Button>
+        </div>
+        {notes && notes.length > 0 ? (
+          <div className="space-y-2">
+            {notes.map((n: any) => (
+              <div key={n.id} className="rounded-lg border bg-amber-50/50 p-3 space-y-1">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm flex-1">{n.noteText}</p>
+                  <button
+                    onClick={() => deleteNote.mutate({ noteId: n.id })}
+                    className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">{new Date(n.createdAt).toLocaleDateString()}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-3">No notes yet.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Skill Gap Analysis Panel ─────────────────────────────────────────────────
+
+function SkillGapPanel({ childId }: { childId: number }) {
+  const { data, isLoading } = trpc.parentTools.skillGapAnalysis.useQuery({ childId });
+
+  if (isLoading) return <div className="text-sm text-muted-foreground py-4 text-center">Analyzing skill gaps…</div>;
+  if (!data) return <div className="text-sm text-muted-foreground py-4 text-center">No mastery data available yet.</div>;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Mastered", count: data.masteredCount, color: "text-emerald-600" },
+          { label: "Approaching", count: data.approachingCount, color: "text-blue-600" },
+          { label: "Developing", count: data.developingCount, color: "text-amber-600" },
+          { label: "Beginner", count: data.beginnerCount, color: "text-red-600" },
+        ].map((s) => (
+          <Card key={s.label} className="text-center p-3">
+            <div className={`text-2xl font-bold ${s.color}`}>{s.count}</div>
+            <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Skill gaps */}
+      {data.gaps.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <TrendingDown className="h-4 w-4 text-red-500" /> Skills Needing Attention
+          </h3>
+          <div className="space-y-2">
+            {data.gaps.map((g) => (
+              <div key={g.skillId} className="flex items-center gap-3 rounded-lg border p-3">
+                <div className={`h-2 w-2 rounded-full shrink-0 ${g.priority === "high" ? "bg-red-500" : "bg-amber-400"}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-mono text-muted-foreground">{g.skillId}</div>
+                  <Progress value={g.score} className="h-1.5 mt-1" />
+                </div>
+                <div className="shrink-0 text-right">
+                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${
+                    g.score < 60 ? "bg-red-100 text-red-700 border-red-200" : "bg-amber-100 text-amber-700 border-amber-200"
+                  }`}>{g.score}%</span>
+                  <div className="text-xs text-muted-foreground mt-0.5 capitalize">{g.masteryLabel}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Strengths */}
+      {data.strengths.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Zap className="h-4 w-4 text-emerald-500" /> Strengths
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {data.strengths.map((s) => (
+              <span key={s.skillId} className="text-xs font-mono px-2 py-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                {s.skillId} · {s.score}%
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.gaps.length === 0 && data.strengths.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-4">No skill data recorded yet. Complete some quizzes first.</p>
+      )}
+    </div>
+  );
+}
+
+// ─── Report Export Panel ──────────────────────────────────────────────────────
+
+function ReportExportPanel({ childId, childName }: { childId: number; childName: string }) {
+  const { data, isLoading } = trpc.parentTools.getReportData.useQuery({ childId });
+
+  const downloadCSV = () => {
+    if (!data) return;
+    const rows = [
+      ["Skill ID", "Unit", "Score", "Mastery Level"],
+      ...data.unitSummaries.flatMap((u) =>
+        u.skills.map((s) => [s.skillId, u.unitName, s.score.toString(), s.masteryLabel])
+      ),
+    ];
+    const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${childName.replace(/\s+/g, "_")}_EduChamp_Report.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV downloaded!");
+  };
+
+  const printReport = () => {
+    window.print();
+  };
+
+  if (isLoading) return <div className="text-sm text-muted-foreground py-4 text-center">Loading report data…</div>;
+  if (!data) return <div className="text-sm text-muted-foreground py-4 text-center">No data available.</div>;
+
+  return (
+    <div className="space-y-6">
+      {/* Export buttons */}
+      <div className="flex gap-3 flex-wrap">
+        <Button variant="outline" className="gap-2" onClick={downloadCSV}>
+          <Download className="h-4 w-4" />
+          Download CSV
+        </Button>
+        <Button variant="outline" className="gap-2" onClick={printReport}>
+          <FileText className="h-4 w-4" />
+          Print / Save PDF
+        </Button>
+      </div>
+
+      {/* Report preview */}
+      <div id="report-print-area" className="space-y-4">
+        <div className="border rounded-lg p-4 space-y-1">
+          <h3 className="font-bold text-lg">{data.student.name}</h3>
+          <p className="text-sm text-muted-foreground">
+            Grade {data.student.grade ?? "—"}{data.student.school ? ` · ${data.student.school}` : ""}
+          </p>
+          <div className="flex items-center gap-3 mt-2">
+            <Badge variant="outline" className={`text-xs ${masteryColor(data.overallAverage)}`}>
+              {data.overallMasteryLabel} · {data.overallAverage}%
+            </Badge>
+            {data.placementScore !== null && (
+              <span className="text-xs text-muted-foreground">Placement: {data.placementScore}%</span>
+            )}
+            <span className="text-xs text-muted-foreground ml-auto">Generated {new Date(data.generatedAt).toLocaleDateString()}</span>
+          </div>
+        </div>
+
+        {/* Summary stats */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="text-center p-3">
+            <div className="text-xl font-bold text-primary">{data.totalSkills}</div>
+            <div className="text-xs text-muted-foreground mt-1">Total Skills</div>
+          </Card>
+          <Card className="text-center p-3">
+            <div className="text-xl font-bold text-emerald-600">{data.masteredSkills}</div>
+            <div className="text-xs text-muted-foreground mt-1">Mastered</div>
+          </Card>
+          <Card className="text-center p-3">
+            <div className="text-xl font-bold text-amber-600">{data.skillsNeedingWork}</div>
+            <div className="text-xs text-muted-foreground mt-1">Need Work</div>
+          </Card>
+        </div>
+
+        {/* Unit summaries */}
+        {data.unitSummaries.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" /> Unit Performance
+            </h3>
+            <div className="space-y-2">
+              {data.unitSummaries.map((u) => (
+                <div key={u.unitNumber} className="flex items-center gap-3">
+                  <div className="w-6 text-xs text-muted-foreground text-right shrink-0">U{u.unitNumber}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs truncate">{u.unitName}</span>
+                      <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ml-2 shrink-0 ${masteryColor(u.averageScore)}`}>
+                        {u.averageScore}%
+                      </span>
+                    </div>
+                    <Progress value={u.averageScore} className="h-1.5" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Quiz history */}
+        {data.quizHistory.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-amber-500" /> Quiz History
+            </h3>
+            <div className="space-y-1">
+              {data.quizHistory.map((q, i) => (
+                <div key={i} className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{q.unitName} Quiz</span>
+                  <div className="flex items-center gap-3">
+                    <span className={`font-semibold ${
+                      q.percentage >= 75 ? "text-emerald-600" : q.percentage >= 60 ? "text-amber-600" : "text-red-600"
+                    }`}>{q.percentage}%</span>
+                    <span className="text-xs text-muted-foreground">{new Date(q.completedAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Child Detail Panel ───────────────────────────────────────────────────────
 
 function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: () => void }) {
@@ -338,91 +669,119 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
         </Card>
       </div>
 
-      {/* Placement result */}
-      {child.placement && (
-        <Card className="border-l-4 border-l-primary bg-primary/5">
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Target className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold">Placement Assessment</span>
-              <span className="text-xs text-muted-foreground ml-auto">
-                {new Date(child.placement.completedAt).toLocaleDateString()}
-              </span>
-            </div>
-            <div className="text-2xl font-bold text-primary mb-1">{child.placement.score}%</div>
-            {child.placement.recommendation && (
-              <p className="text-sm text-muted-foreground">{child.placement.recommendation}</p>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {/* Tabbed detail sections */}
+      <Tabs defaultValue="progress">
+        <TabsList className="w-full grid grid-cols-4">
+          <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
+          <TabsTrigger value="goals" className="text-xs">Goals &amp; Notes</TabsTrigger>
+          <TabsTrigger value="gaps" className="text-xs">Skill Gaps</TabsTrigger>
+          <TabsTrigger value="report" className="text-xs">Export</TabsTrigger>
+        </TabsList>
 
-      {/* Unit-by-unit mastery */}
-      <div>
-        <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-primary" /> Unit Mastery Overview
-        </h3>
-        <div className="space-y-2">
-          {child.unitMastery.map((u) => (
-            <div key={u.unitNumber} className="flex items-center gap-3">
-              <div className="w-6 text-xs text-muted-foreground text-right shrink-0">U{u.unitNumber}</div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-xs truncate">{u.title}</span>
-                  <div className="flex items-center gap-1.5 ml-2 shrink-0">
-                    {statusIcon(u.status)}
-                    {u.avgMastery !== null && (
-                      <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${masteryColor(u.avgMastery)}`}>
-                        {u.avgMastery}%
-                      </span>
-                    )}
-                    {u.quizScore !== null && (
-                      <span className="text-xs text-muted-foreground">Quiz: {u.quizScore}%</span>
-                    )}
+        {/* Progress tab */}
+        <TabsContent value="progress" className="space-y-4 mt-4">
+          {/* Placement result */}
+          {child.placement && (
+            <Card className="border-l-4 border-l-primary bg-primary/5">
+              <CardContent className="pt-4 pb-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Target className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold">Placement Assessment</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {new Date(child.placement.completedAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="text-2xl font-bold text-primary mb-1">{child.placement.score}%</div>
+                {child.placement.recommendation && (
+                  <p className="text-sm text-muted-foreground">{child.placement.recommendation}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Unit-by-unit mastery */}
+          <div>
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" /> Unit Mastery Overview
+            </h3>
+            <div className="space-y-2">
+              {child.unitMastery.map((u) => (
+                <div key={u.unitNumber} className="flex items-center gap-3">
+                  <div className="w-6 text-xs text-muted-foreground text-right shrink-0">U{u.unitNumber}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="text-xs truncate">{u.title}</span>
+                      <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                        {statusIcon(u.status)}
+                        {u.avgMastery !== null && (
+                          <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${masteryColor(u.avgMastery)}`}>
+                            {u.avgMastery}%
+                          </span>
+                        )}
+                        {u.quizScore !== null && (
+                          <span className="text-xs text-muted-foreground">Quiz: {u.quizScore}%</span>
+                        )}
+                      </div>
+                    </div>
+                    <Progress value={u.avgMastery ?? 0} className="h-1.5" />
                   </div>
                 </div>
-                <Progress value={u.avgMastery ?? 0} className="h-1.5" />
+              ))}
+            </div>
+          </div>
+
+          {/* Recent quizzes */}
+          {child.recentQuizzes.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-amber-500" /> Recent Quiz Scores
+              </h3>
+              <div className="space-y-2">
+                {child.recentQuizzes.map((q, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Unit {q.unitNumber} Quiz</span>
+                    <div className="flex items-center gap-3">
+                      <span className={`font-semibold ${q.score >= 75 ? "text-emerald-600" : q.score >= 60 ? "text-amber-600" : "text-red-600"}`}>
+                        {q.score}%
+                      </span>
+                      <span className="text-xs text-muted-foreground">{new Date(q.completedAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+          )}
 
-      {/* Recent quizzes */}
-      {child.recentQuizzes.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-amber-500" /> Recent Quiz Scores
-          </h3>
-          <div className="space-y-2">
-            {child.recentQuizzes.map((q, i) => (
-              <div key={i} className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Unit {q.unitNumber} Quiz</span>
-                <div className="flex items-center gap-3">
-                  <span className={`font-semibold ${q.score >= 75 ? "text-emerald-600" : q.score >= 60 ? "text-amber-600" : "text-red-600"}`}>
-                    {q.score}%
-                  </span>
-                  <span className="text-xs text-muted-foreground">{new Date(q.completedAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-            ))}
+          {/* AI Tutor Parent Summary link */}
+          <div className="pt-2">
+            <Link href={`/tutor?childId=${child.childId}&mode=parent_summary`}>
+              <Button className="w-full" variant="outline">
+                <Brain className="h-4 w-4 mr-2" />
+                Open AI Parent Summary for {child.name}
+              </Button>
+            </Link>
           </div>
-        </div>
-      )}
 
-      {/* AI Tutor Parent Summary link */}
-      <div className="pt-2">
-        <Link href={`/tutor?childId=${child.childId}&mode=parent_summary`}>
-          <Button className="w-full" variant="outline">
-            <Brain className="h-4 w-4 mr-2" />
-            Open AI Parent Summary for {child.name}
-          </Button>
-        </Link>
-      </div>
+          {/* Co-Parent Management */}
+          <Separator className="my-2" />
+          <CoParentPanel studentId={child.childId} studentName={child.name ?? "this student"} />
+        </TabsContent>
 
-      {/* Co-Parent Management */}
-      <Separator className="my-2" />
-      <CoParentPanel studentId={child.childId} studentName={child.name ?? "this student"} />
+        {/* Goals & Notes tab */}
+        <TabsContent value="goals" className="mt-4">
+          <GoalsNotesPanel childId={child.childId} />
+        </TabsContent>
+
+        {/* Skill Gap tab */}
+        <TabsContent value="gaps" className="mt-4">
+          <SkillGapPanel childId={child.childId} />
+        </TabsContent>
+
+        {/* Export tab */}
+        <TabsContent value="report" className="mt-4">
+          <ReportExportPanel childId={child.childId} childName={child.name ?? "Student"} />
+        </TabsContent>
+      </Tabs>
 
       {editOpen && (
         <EditNicknameModal

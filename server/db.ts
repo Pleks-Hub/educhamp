@@ -11,9 +11,13 @@ import {
   lessonProgress,
   lessons,
   parentChildren,
+  parentGoals,
+  parentNotes,
+  passwordResetTokens,
   quizAttempts,
   quizQuestions,
   skills,
+  twoFactorAuth,
   tutorSessions,
   unitProgress,
   units,
@@ -475,13 +479,27 @@ export async function updateUserAccountType(userId: number, accountType: "studen
 export async function getChildProgressSummary(childId: number) {
   const db = await getDb();
   if (!db) return null;
-  const [mastery, progress, quizHistory, diagnostic] = await Promise.all([
+  const [childRows, mastery, progress, quizHistory, diagnostic] = await Promise.all([
+    db.select().from(users).where(eq(users.id, childId)).limit(1),
     db.select().from(userMastery).where(eq(userMastery.userId, childId)),
     db.select().from(unitProgress).where(eq(unitProgress.userId, childId)).orderBy(unitProgress.unitNumber),
     db.select().from(quizAttempts).where(eq(quizAttempts.userId, childId)).orderBy(desc(quizAttempts.completedAt)).limit(10),
     db.select().from(diagnosticAttempts).where(eq(diagnosticAttempts.userId, childId)).orderBy(desc(diagnosticAttempts.completedAt)).limit(1),
   ]);
-  return { mastery, progress, quizHistory, diagnostic: diagnostic[0] ?? null };
+  const child = childRows[0];
+  const diag = diagnostic[0] ?? null;
+  return {
+    name: child?.name ?? null,
+    email: child?.email ?? null,
+    grade: (child as any)?.grade ?? null,
+    school: (child as any)?.school ?? null,
+    placementScore: diag ? Math.round(((diag.overallScore ?? 0))) : null,
+    placementRecommendation: (diag as any)?.placementRecommendation ?? null,
+    mastery,
+    progress,
+    quizHistory,
+    diagnostic: diag,
+  };
 }
 
 // ─── Enrolment Invitations ────────────────────────────────────────────────────
@@ -729,4 +747,123 @@ export async function verifyCoParentAccess(coParentUserId: number, studentId: nu
     )
     .limit(1);
   return rows.length > 0;
+}
+
+// ─── Password Reset ───────────────────────────────────────────────────────────
+
+export async function createPasswordResetToken(userId: number, token: string, expiresAt: Date) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(passwordResetTokens).values({ userId, token, expiresAt });
+}
+
+export async function getPasswordResetToken(token: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(passwordResetTokens).where(eq(passwordResetTokens.token, token)).limit(1);
+  return rows[0];
+}
+
+export async function markPasswordResetTokenUsed(token: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.token, token));
+}
+
+// ─── 2FA ─────────────────────────────────────────────────────────────────────
+
+export async function upsertTwoFactor(userId: number, secret: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(twoFactorAuth).values({ userId, secret, isEnabled: false })
+    .onDuplicateKeyUpdate({ set: { secret, isEnabled: false, enabledAt: null } });
+}
+
+export async function getTwoFactor(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(twoFactorAuth).where(eq(twoFactorAuth.userId, userId)).limit(1);
+  return rows[0];
+}
+
+export async function enableTwoFactor(userId: number, backupCodes: string[]) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(twoFactorAuth)
+    .set({ isEnabled: true, backupCodes, enabledAt: new Date() })
+    .where(eq(twoFactorAuth.userId, userId));
+}
+
+export async function disableTwoFactor(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(twoFactorAuth)
+    .set({ isEnabled: false, enabledAt: null, backupCodes: null })
+    .where(eq(twoFactorAuth.userId, userId));
+}
+
+export async function consumeBackupCode(userId: number, code: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const rows = await db.select().from(twoFactorAuth).where(eq(twoFactorAuth.userId, userId)).limit(1);
+  const record = rows[0];
+  if (!record?.backupCodes) return false;
+  const idx = record.backupCodes.indexOf(code);
+  if (idx === -1) return false;
+  const updated = [...record.backupCodes];
+  updated.splice(idx, 1);
+  await db.update(twoFactorAuth).set({ backupCodes: updated }).where(eq(twoFactorAuth.userId, userId));
+  return true;
+}
+
+// ─── Parent Goals ─────────────────────────────────────────────────────────────
+
+export async function createParentGoal(parentId: number, childId: number, goalText: string, targetDate?: Date) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(parentGoals).values({ parentId, childId, goalText, targetDate: targetDate ?? null });
+}
+
+export async function listParentGoals(parentId: number, childId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(parentGoals)
+    .where(and(eq(parentGoals.parentId, parentId), eq(parentGoals.childId, childId)))
+    .orderBy(desc(parentGoals.createdAt));
+}
+
+export async function completeParentGoal(goalId: number, parentId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(parentGoals)
+    .set({ isCompleted: true, completedAt: new Date() })
+    .where(and(eq(parentGoals.id, goalId), eq(parentGoals.parentId, parentId)));
+}
+
+export async function deleteParentGoal(goalId: number, parentId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(parentGoals).where(and(eq(parentGoals.id, goalId), eq(parentGoals.parentId, parentId)));
+}
+
+// ─── Parent Notes ─────────────────────────────────────────────────────────────
+
+export async function createParentNote(parentId: number, childId: number, noteText: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(parentNotes).values({ parentId, childId, noteText });
+}
+
+export async function listParentNotes(parentId: number, childId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(parentNotes)
+    .where(and(eq(parentNotes.parentId, parentId), eq(parentNotes.childId, childId)))
+    .orderBy(desc(parentNotes.createdAt));
+}
+
+export async function deleteParentNote(noteId: number, parentId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(parentNotes).where(and(eq(parentNotes.id, noteId), eq(parentNotes.parentId, parentId)));
 }

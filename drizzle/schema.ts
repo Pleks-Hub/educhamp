@@ -320,3 +320,59 @@ export type TutorMessage = {
   content: string;
   timestamp: number;
 };
+
+// ─── Password Reset Tokens ────────────────────────────────────────────────────
+
+export const passwordResetTokens = mysqlTable("passwordResetTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
+
+// ─── Two-Factor Authentication ────────────────────────────────────────────────
+
+export const twoFactorAuth = mysqlTable("twoFactorAuth", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  secret: varchar("secret", { length: 256 }).notNull(),
+  isEnabled: boolean("isEnabled").notNull().default(false),
+  backupCodes: json("backupCodes").$type<string[]>(),
+  enabledAt: timestamp("enabledAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TwoFactorAuth = typeof twoFactorAuth.$inferSelect;
+
+// ─── Parent Goals ─────────────────────────────────────────────────────────────
+
+export const parentGoals = mysqlTable("parentGoals", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),
+  childId: int("childId").notNull(),
+  goalText: text("goalText").notNull(),
+  targetDate: timestamp("targetDate"),
+  isCompleted: boolean("isCompleted").notNull().default(false),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ParentGoal = typeof parentGoals.$inferSelect;
+
+// ─── Parent Notes ─────────────────────────────────────────────────────────────
+
+export const parentNotes = mysqlTable("parentNotes", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),
+  childId: int("childId").notNull(),
+  noteText: text("noteText").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ParentNote = typeof parentNotes.$inferSelect;
