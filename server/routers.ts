@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { parentRouter } from "./routers/parent";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
@@ -26,6 +27,7 @@ import {
   updateTutorSessionMessages,
   upsertUnitProgress,
   upsertUserMastery,
+  getParentsByChildId,
 } from "./db";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -33,6 +35,7 @@ import { getMasteryLevel, getMasteryLabel, buildTutorSystemPrompt } from "./educ
 
 export const appRouter = router({
   system: systemRouter,
+  parent: parentRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
@@ -248,21 +251,28 @@ export const appRouter = router({
           }
         }
 
+        // Fetch parent links to include child name in notifications
+        const parents = await getParentsByChildId(ctx.user.id).catch(() => []);
+        const parentNames = parents.map((p) => p.parentName ?? "a parent").join(", ");
+        const studentLabel = parents.length > 0
+          ? `${ctx.user.name} (monitored by ${parentNames})`
+          : ctx.user.name ?? "Student";
+
         // Notify owner of skill mastery achievements
         if (skillMasteryAchievements.length > 0) {
           await notifyOwner({
             title: `Skill Mastery Achieved — ${ctx.user.name}`,
-            content: `${ctx.user.name} has achieved mastery on: ${skillMasteryAchievements.join(", ")}.`,
+            content: `${studentLabel} has achieved mastery on: ${skillMasteryAchievements.join(", ")}.`,
           }).catch(() => {});
         }
 
         // Notify owner
         const masteryLabel = getMasteryLabel(score);
         const notifyMsg = score >= 75
-          ? `${ctx.user.name} completed Unit ${input.unitNumber} quiz with ${score}% (${masteryLabel}). Unit unlocked.`
+          ? `${studentLabel} completed Unit ${input.unitNumber} quiz with ${score}% (${masteryLabel}). Unit unlocked.`
           : score < 60
-          ? `${ctx.user.name} scored ${score}% on Unit ${input.unitNumber} quiz — below remediation threshold. Intervention recommended.`
-          : `${ctx.user.name} scored ${score}% on Unit ${input.unitNumber} quiz. Continuing guided practice.`;
+          ? `${studentLabel} scored ${score}% on Unit ${input.unitNumber} quiz — below remediation threshold. Intervention recommended.`
+          : `${studentLabel} scored ${score}% on Unit ${input.unitNumber} quiz. Continuing guided practice.`;
 
         await notifyOwner({
           title: `Quiz Complete: Unit ${input.unitNumber} — ${input.unitTitle}`,

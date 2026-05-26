@@ -72,3 +72,19 @@
 - [x] Make Practice/Quiz/Exam Review prompts context-aware — inject student's placement score, unit mastery, and current learning objective into system prompt
 - [x] Parent Summary mode — show full learning context: placement score, unit-by-unit mastery, skills below threshold, recommended next steps, recent quiz scores
 - [x] Mastery-aware question generation — AI generates questions at the right difficulty based on student's current mastery level per skill
+
+## Parent Module — Multi-Child Management
+- [x] DB: parentChildren table (parentId → childId FK, enrolledAt, nickname, gradeLevel, relationship)
+- [x] DB: extend users table with accountType enum (student | parent | teacher)
+- [x] tRPC: parent.enrollChild — create/link a child account by email or new registration
+- [x] tRPC: parent.listChildren — list all children with their mastery + progress summaries
+- [x] tRPC: parent.removeChild — unlink a child from the parent account
+- [x] tRPC: parent.getChildProgress — full progress report for a specific child
+- [x] tRPC: parent.updateChildNickname — rename/label a child in the parent's view
+- [x] UI: /parent route — Parent Dashboard with child switcher tabs
+- [x] UI: Enrol Child form — email lookup or new child registration (name, grade, school)
+- [x] UI: Per-child progress card — mastery by unit, quiz scores, placement result, adaptive path
+- [x] UI: Child management actions — remove, rename, view full report
+- [x] UI: Parent Summary AI mode — pre-load selected child's context automatically
+- [x] Notifications: include child name in all guardian notifications
+- [x] Navigation: add "Parent Dashboard" link in sidebar for users with children enrolled

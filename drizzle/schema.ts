@@ -19,6 +19,7 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  accountType: mysqlEnum("accountType", ["student", "parent", "teacher"]).default("student").notNull(),
   grade: varchar("grade", { length: 16 }).default("9"),
   school: varchar("school", { length: 256 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -218,6 +219,43 @@ export type DiagnosticUnitResult = {
   status: "likely_mastered" | "partial_understanding" | "needs_instruction";
   recommendation: string;
 };
+
+// ─── Parent-Child Relationships ─────────────────────────────────────────────
+
+/**
+ * Links a parent user account to one or more child student accounts.
+ * A child can have multiple parents (e.g. two guardians).
+ * A parent can have multiple children.
+ */
+export const parentChildren = mysqlTable("parentChildren", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),           // FK → users.id (parent)
+  childId: int("childId").notNull(),             // FK → users.id (child/student)
+  nickname: varchar("nickname", { length: 128 }), // optional display name override
+  relationship: varchar("relationship", { length: 64 }).default("parent"), // parent, guardian, teacher
+  enrolledAt: timestamp("enrolledAt").defaultNow().notNull(),
+  isActive: boolean("isActive").notNull().default(true),
+});
+
+export type ParentChild = typeof parentChildren.$inferSelect;
+export type InsertParentChild = typeof parentChildren.$inferInsert;
+
+/**
+ * Pending enrolment invitations — parent enters a child's email;
+ * child gets a token to accept and link accounts.
+ */
+export const enrolmentInvitations = mysqlTable("enrolmentInvitations", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),
+  childEmail: varchar("childEmail", { length: 320 }).notNull(),
+  childName: varchar("childName", { length: 256 }),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  status: mysqlEnum("status", ["pending", "accepted", "expired"]).notNull().default("pending"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type EnrolmentInvitation = typeof enrolmentInvitations.$inferSelect;
 
 // ─── Tutor Sessions ───────────────────────────────────────────────────────────
 

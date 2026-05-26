@@ -2,10 +2,13 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
+  InsertParentChild,
   diagnosticAttempts,
   diagnosticQuestions,
+  enrolmentInvitations,
   lessonProgress,
   lessons,
+  parentChildren,
   quizAttempts,
   quizQuestions,
   skills,
@@ -356,4 +359,197 @@ export async function updateTutorSessionMessages(sessionId: number, messages: un
   const db = await getDb();
   if (!db) return;
   await db.update(tutorSessions).set({ messages: messages as any }).where(eq(tutorSessions.id, sessionId));
+}
+
+// ─── Parent Module ────────────────────────────────────────────────────────────
+
+export async function getChildrenForParent(parentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Get all active parent-child links
+  const links = await db
+    .select()
+    .from(parentChildren)
+    .where(and(eq(parentChildren.parentId, parentId), eq(parentChildren.isActive, true)));
+  if (links.length === 0) return [];
+  const childIds = links.map((l) => l.childId);
+  // Get child user records
+  const childUsers = await db.select().from(users).where(inArray(users.id, childIds));
+  // Merge link metadata with user data
+  return links.map((link) => {
+    const child = childUsers.find((u) => u.id === link.childId);
+    return { link, child: child ?? null };
+  });
+}
+
+export async function getParentChildLink(parentId: number, childId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(parentChildren)
+    .where(and(eq(parentChildren.parentId, parentId), eq(parentChildren.childId, childId)))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function enrollChild(parentId: number, childId: number, nickname?: string, relationship?: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // Check if link already exists
+  const existing = await getParentChildLink(parentId, childId);
+  if (existing) {
+    // Re-activate if previously removed
+    if (!existing.isActive) {
+      await db
+        .update(parentChildren)
+        .set({ isActive: true, nickname: nickname ?? existing.nickname, relationship: relationship ?? existing.relationship })
+        .where(eq(parentChildren.id, existing.id));
+    }
+    return existing;
+  }
+  const result = await db.insert(parentChildren).values({
+    parentId,
+    childId,
+    nickname: nickname ?? null,
+    relationship: relationship ?? "parent",
+    isActive: true,
+  });
+  return result;
+}
+
+export async function removeChildFromParent(parentId: number, childId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(parentChildren)
+    .set({ isActive: false })
+    .where(and(eq(parentChildren.parentId, parentId), eq(parentChildren.childId, childId)));
+}
+
+export async function updateChildNickname(parentId: number, childId: number, nickname: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(parentChildren)
+    .set({ nickname })
+    .where(and(eq(parentChildren.parentId, parentId), eq(parentChildren.childId, childId)));
+}
+
+export async function getUserByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function createChildAccount(name: string, email: string, grade: string, school?: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // Create a synthetic openId for manually-created child accounts
+  const { nanoid } = await import("nanoid");
+  const openId = `child_${nanoid(24)}`;
+  await db.insert(users).values({
+    openId,
+    name,
+    email,
+    loginMethod: "parent_enrolled",
+    role: "user",
+    accountType: "student",
+    grade,
+    school: school ?? null,
+    lastSignedIn: new Date(),
+  });
+  const created = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  return created[0] ?? null;
+}
+
+export async function updateUserAccountType(userId: number, accountType: "student" | "parent" | "teacher") {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ accountType }).where(eq(users.id, userId));
+}
+
+export async function getChildProgressSummary(childId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [mastery, progress, quizHistory, diagnostic] = await Promise.all([
+    db.select().from(userMastery).where(eq(userMastery.userId, childId)),
+    db.select().from(unitProgress).where(eq(unitProgress.userId, childId)).orderBy(unitProgress.unitNumber),
+    db.select().from(quizAttempts).where(eq(quizAttempts.userId, childId)).orderBy(desc(quizAttempts.completedAt)).limit(10),
+    db.select().from(diagnosticAttempts).where(eq(diagnosticAttempts.userId, childId)).orderBy(desc(diagnosticAttempts.completedAt)).limit(1),
+  ]);
+  return { mastery, progress, quizHistory, diagnostic: diagnostic[0] ?? null };
+}
+
+// ─── Enrolment Invitations ────────────────────────────────────────────────────
+
+export async function createEnrolmentInvitation(parentId: number, childEmail: string, childName?: string, token?: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const { nanoid } = await import("nanoid");
+  const inviteToken = token ?? nanoid(32);
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  await db.insert(enrolmentInvitations).values({
+    parentId,
+    childEmail,
+    childName: childName ?? null,
+    token: inviteToken,
+    status: "pending",
+    expiresAt,
+  });
+  return inviteToken;
+}
+
+export async function getPendingInvitationsForParent(parentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(enrolmentInvitations)
+    .where(and(eq(enrolmentInvitations.parentId, parentId), eq(enrolmentInvitations.status, "pending")))
+    .orderBy(desc(enrolmentInvitations.createdAt));
+}
+
+export async function getInvitationByToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(enrolmentInvitations)
+    .where(eq(enrolmentInvitations.token, token))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function acceptInvitation(token: string, childId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const inv = await getInvitationByToken(token);
+  if (!inv || inv.status !== "pending" || inv.expiresAt < new Date()) return false;
+  await db.update(enrolmentInvitations).set({ status: "accepted" }).where(eq(enrolmentInvitations.token, token));
+  await enrollChild(inv.parentId, childId);
+  return true;
+}
+
+export async function getUserById(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getParentsByChildId(childId: number): Promise<{ parentId: number; parentName: string | null; nickname: string | null }[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      parentId: parentChildren.parentId,
+      parentName: users.name,
+      nickname: parentChildren.nickname,
+    })
+    .from(parentChildren)
+    .innerJoin(users, eq(users.id, parentChildren.parentId))
+    .where(eq(parentChildren.childId, childId));
+  return rows;
 }

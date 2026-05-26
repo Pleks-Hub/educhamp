@@ -15,6 +15,13 @@
       "when": 1779819631638,
       "tag": "0001_cold_kang",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1779827628242,
+      "tag": "0002_easy_marvel_boy",
+      "breakpoints": true
     }
   ]
 }

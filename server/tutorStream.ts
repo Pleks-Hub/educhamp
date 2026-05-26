@@ -57,6 +57,7 @@ export function registerTutorStreamRoute(app: Express) {
       unitNumber,
       lessonId,
       sessionId: inputSessionId,
+      childId,
     } = req.body as {
       message: string;
       mode: string;
@@ -64,7 +65,24 @@ export function registerTutorStreamRoute(app: Express) {
       unitNumber?: number;
       lessonId?: number;
       sessionId?: number;
+      childId?: number;
     };
+
+    // When a parent opens the tutor with a childId, load the child's data instead
+    // Verify the parent has access to this child before proceeding
+    let contextUserId = user.id;
+    let contextUserName = user.name ?? "Student";
+    if (childId && childId !== user.id) {
+      const { getParentChildLink, getUserById } = await import("./db");
+      const link = await getParentChildLink(user.id, childId).catch(() => null);
+      if (link && link.isActive) {
+        const childUser = await getUserById(childId).catch(() => null);
+        if (childUser) {
+          contextUserId = childId;
+          contextUserName = link.nickname ?? childUser.name ?? "Student";
+        }
+      }
+    }
 
     if (!message || !rawMode) {
       res.status(400).json({ error: "message and mode are required" });
@@ -102,11 +120,11 @@ export function registerTutorStreamRoute(app: Express) {
 
       // ── Gather full student context ───────────────────────────────────────
       const [masteryData, allUnits, diagnosticAttempt, allQuizAttempts, unitProgressData] = await Promise.all([
-        getUserMastery(user.id),
+        getUserMastery(contextUserId),
         getAllUnits(),
-        getLatestDiagnosticAttempt(user.id),
-        getQuizAttemptsForUser(user.id),
-        getUserUnitProgress(user.id),
+        getLatestDiagnosticAttempt(contextUserId),
+        getQuizAttemptsForUser(contextUserId),
+        getUserUnitProgress(contextUserId),
       ]);
 
       const currentUnit = allUnits.find((u) => u.unitNumber === unitNumber);
@@ -190,7 +208,7 @@ export function registerTutorStreamRoute(app: Express) {
           : "";
 
       const systemPrompt = buildTutorSystemPrompt(
-        user.name ?? "Student",
+        contextUserName,
         mode,
         currentUnit?.title ?? "",
         masteryData.map((m: { skillId: string; score: number }) => ({ skillId: m.skillId, score: m.score })),

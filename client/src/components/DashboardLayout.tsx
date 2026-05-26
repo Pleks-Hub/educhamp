@@ -36,6 +36,7 @@ import {
   Sigma,
   Sparkles,
   User,
+  Users,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -50,6 +51,9 @@ const menuItems = [
   { icon: BarChart3, label: "Progress", path: "/progress" },
   { icon: Sigma, label: "Skill Index", path: "/skills" },
 ];
+
+// Parent Dashboard is shown to all authenticated users — any user can enrol children
+const parentMenuItem = { icon: Users, label: "Parent Dashboard", path: "/parent" };
 
 const SIDEBAR_WIDTH_KEY = "educhamp-sidebar-width";
 const DEFAULT_WIDTH = 256;
@@ -214,6 +218,37 @@ function DashboardLayoutContent({
                   </SidebarMenuItem>
                 );
               })}
+
+              {/* Parent Dashboard — always visible; any user can enrol children */}
+              {!isCollapsed && (
+                <div className="px-2 pt-2 pb-1">
+                  <div className="h-px bg-sidebar-border" />
+                </div>
+              )}
+              {(() => {
+                const item = parentMenuItem;
+                const isActive = location.startsWith(item.path);
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setLocation(item.path)}
+                      tooltip={item.label}
+                      className={`h-9 rounded-lg transition-all duration-150 ${
+                        isActive
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
+                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="text-sm">{item.label}</span>
+                      {isActive && !isCollapsed && (
+                        <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })()}
             </SidebarMenu>
           </SidebarContent>
 

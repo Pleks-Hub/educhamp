@@ -127,8 +127,10 @@ export default function Tutor() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const unitParam = params.get("unit") ? parseInt(params.get("unit")!, 10) : undefined;
+  const childIdParam = params.get("childId") ? parseInt(params.get("childId")!, 10) : undefined;
+  const modeParam = params.get("mode") as TutorMode | null;
 
-  const [mode, setMode] = useState<TutorMode>("teach");
+  const [mode, setMode] = useState<TutorMode>(modeParam ?? "teach");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -214,6 +216,7 @@ export default function Tutor() {
               unitId: currentUnit?.id,
               unitNumber: selectedUnit,
               sessionId: sessionId ?? undefined,
+              childId: childIdParam,
             }),
             signal: controller.signal,
           });
