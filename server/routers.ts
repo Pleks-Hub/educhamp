@@ -1,9 +1,10 @@
 import { COOKIE_NAME } from "@shared/const";
 import { parentRouter } from "./routers/parent";
+import { coParentRouter } from "./routers/coParent";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
-import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { protectedProcedure, studentProcedure, publicProcedure, router } from "./_core/trpc";
 import { systemRouter } from "./_core/systemRouter";
 import {
   getAllDiagnosticQuestions,
@@ -36,6 +37,7 @@ import { getMasteryLevel, getMasteryLabel, buildTutorSystemPrompt } from "./educ
 export const appRouter = router({
   system: systemRouter,
   parent: parentRouter,
+  coParent: coParentRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
@@ -152,7 +154,7 @@ export const appRouter = router({
         return getLessonProgressForUser(ctx.user.id, input.unitId);
       }),
 
-    markLessonComplete: protectedProcedure
+    markLessonComplete: studentProcedure
       .input(z.object({ lessonId: z.number(), unitId: z.number(), unitNumber: z.number() }))
       .mutation(async ({ ctx, input }) => {
         await markLessonComplete(ctx.user.id, input.lessonId, input.unitId);
@@ -186,7 +188,7 @@ export const appRouter = router({
         }));
       }),
 
-    submitQuiz: protectedProcedure
+    submitQuiz: studentProcedure
       .input(
         z.object({
           unitId: z.number(),
@@ -332,7 +334,7 @@ export const appRouter = router({
       }));
     }),
 
-    submitDiagnostic: protectedProcedure
+    submitDiagnostic: studentProcedure
       .input(
         z.object({
           answers: z.array(z.object({ questionId: z.string(), answer: z.string() })),

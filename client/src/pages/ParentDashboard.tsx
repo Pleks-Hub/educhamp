@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import {
   Users, UserPlus, BookOpen, Trophy, TrendingUp, AlertTriangle,
   ChevronRight, GraduationCap, BarChart3, CheckCircle2, Clock,
-  Pencil, Trash2, Mail, Plus, X, Star, Target, Brain
+  Pencil, Trash2, Mail, Plus, X, Star, Target, Brain, ShieldAlert
 } from "lucide-react";
 import { Link } from "wouter";
 import { Streamdown } from "streamdown";
@@ -420,6 +420,10 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
         </Link>
       </div>
 
+      {/* Co-Parent Management */}
+      <Separator className="my-2" />
+      <CoParentPanel studentId={child.childId} studentName={child.name ?? "this student"} />
+
       {editOpen && (
         <EditNicknameModal
           open={editOpen}
@@ -428,6 +432,203 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
           onSuccess={() => utils.parent.listChildren.invalidate()}
         />
       )}
+    </div>
+  );
+}
+
+// ─── Invite Co-Parent Modal ──────────────────────────────────────────────────
+
+function InviteCoParentModal({
+  open, onClose, studentId, studentName, onSuccess,
+}: { open: boolean; onClose: () => void; studentId: number; studentName: string; onSuccess: () => void }) {
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [relationship, setRelationship] = useState<"co-parent" | "guardian" | "grandparent" | "aunt/uncle" | "other">("guardian");
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+
+  const inviteMutation = trpc.coParent.inviteCoParent.useMutation({
+    onSuccess: (data) => {
+      setInviteUrl(data.inviteUrl);
+      onSuccess();
+      toast.success("Invitation created! Share the link with the co-parent.");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const handleClose = () => { setEmail(""); setName(""); setInviteUrl(null); onClose(); };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5 text-primary" />
+            Invite a Co-Parent or Guardian
+          </DialogTitle>
+          <DialogDescription>
+            Give another adult view-only access to {studentName}'s progress dashboard.
+          </DialogDescription>
+        </DialogHeader>
+
+        {inviteUrl ? (
+          <div className="space-y-4">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-2">
+              <p className="text-sm font-semibold text-emerald-800">Invitation created!</p>
+              <p className="text-xs text-emerald-700">Share this link with the co-parent. It expires in 7 days.</p>
+            </div>
+            <div className="bg-muted rounded-lg p-3">
+              <p className="text-xs font-mono break-all text-foreground select-all">{inviteUrl}</p>
+            </div>
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={() => { navigator.clipboard.writeText(inviteUrl); toast.success("Link copied!"); }}
+            >
+              Copy Invite Link
+            </Button>
+            <Button className="w-full" onClick={handleClose}>Done</Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="cp-email">Email Address *</Label>
+              <Input id="cp-email" type="email" placeholder="guardian@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cp-name">Their Name (optional)</Label>
+              <Input id="cp-name" placeholder="e.g. Jane Smith" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Relationship to Student</Label>
+              <Select value={relationship} onValueChange={(v) => setRelationship(v as typeof relationship)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="co-parent">Co-Parent</SelectItem>
+                  <SelectItem value="guardian">Guardian</SelectItem>
+                  <SelectItem value="grandparent">Grandparent</SelectItem>
+                  <SelectItem value="aunt/uncle">Aunt / Uncle</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+              The co-parent will receive a link to accept the invitation. They must sign in with a <strong>non-student</strong> account.
+            </div>
+            <Button
+              className="w-full gap-2"
+              onClick={() => inviteMutation.mutate({ studentId, inviteeEmail: email, inviteeName: name || undefined, relationship, origin: window.location.origin })}
+              disabled={!email || inviteMutation.isPending}
+            >
+              {inviteMutation.isPending ? "Sending…" : "Generate Invite Link"}
+            </Button>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Co-Parent Panel (per child) ─────────────────────────────────────────────
+
+function CoParentPanel({ studentId, studentName }: { studentId: number; studentName: string }) {
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const utils = trpc.useUtils();
+
+  const { data, isLoading, refetch } = trpc.coParent.listCoParents.useQuery({ studentId });
+
+  const revokeAccess = trpc.coParent.revokeAccess.useMutation({
+    onSuccess: () => { toast.success("Access revoked."); refetch(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const cancelInvitation = trpc.coParent.cancelInvitation.useMutation({
+    onSuccess: () => { toast.success("Invitation cancelled."); refetch(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (isLoading) return <div className="text-sm text-muted-foreground py-4">Loading co-parents…</div>;
+
+  const active = data?.active ?? [];
+  const pending = data?.pending ?? [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Users className="h-4 w-4 text-primary" /> Co-Parents & Guardians
+        </h3>
+        <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setInviteOpen(true)}>
+          <Plus className="h-3.5 w-3.5" /> Invite
+        </Button>
+      </div>
+
+      {active.length === 0 && pending.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-3">
+          No co-parents added yet. Invite another adult to share view access.
+        </p>
+      )}
+
+      {active.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Active Access</p>
+          {active.map((cp) => (
+            <div key={cp.accessId} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold">
+                  {(cp.coParentName ?? cp.coParentEmail ?? "?")[0].toUpperCase()}
+                </div>
+                <div>
+                  <div className="text-sm font-medium">{cp.coParentName ?? cp.coParentEmail}</div>
+                  <div className="text-xs text-muted-foreground capitalize">{cp.relationship} · Since {new Date(cp.grantedAt).toLocaleDateString()}</div>
+                </div>
+              </div>
+              <Button
+                size="sm" variant="ghost"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs"
+                onClick={() => { if (confirm(`Revoke ${cp.coParentName ?? cp.coParentEmail}'s access?`)) revokeAccess.mutate({ accessId: cp.accessId }); }}
+              >
+                <X className="h-3.5 w-3.5 mr-1" /> Revoke
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {pending.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Pending Invitations</p>
+          {pending.map((inv) => (
+            <div key={inv.id} className="flex items-center justify-between gap-3 rounded-lg border border-dashed p-3">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center">
+                  <Mail className="h-4 w-4 text-amber-600" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium">{inv.inviteeEmail}</div>
+                  <div className="text-xs text-muted-foreground capitalize">
+                    {inv.relationship} · Expires {new Date(inv.expiresAt).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+              <Button
+                size="sm" variant="ghost"
+                className="text-muted-foreground hover:text-destructive text-xs"
+                onClick={() => cancelInvitation.mutate({ invitationId: inv.id })}
+              >
+                <X className="h-3.5 w-3.5 mr-1" /> Cancel
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <InviteCoParentModal
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        studentId={studentId}
+        studentName={studentName}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 }
@@ -485,24 +686,21 @@ export default function ParentDashboard() {
         </Button>
       </div>
 
-      {/* Upgrade to parent prompt */}
+      {/* Student account hard block */}
       {user?.accountType === "student" && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="pt-5 pb-4 flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <GraduationCap className="h-6 w-6 text-amber-600 shrink-0" />
-              <div>
-                <p className="font-semibold text-amber-900">Switch to Parent Mode</p>
-                <p className="text-sm text-amber-700">Upgrade your account to manage and monitor your children's learning.</p>
-              </div>
+        <Card className="border-red-200 bg-red-50 text-center py-12">
+          <CardContent className="space-y-4">
+            <ShieldAlert className="h-12 w-12 text-red-500 mx-auto" />
+            <div>
+              <h3 className="text-lg font-bold text-red-900">Student Account Detected</h3>
+              <p className="text-sm text-red-700 mt-1 max-w-sm mx-auto">
+                Your account is registered as a <strong>student</strong>. A student account cannot also be a parent account on EduChamp.
+                Please sign in with a separate parent or guardian account to access this dashboard.
+              </p>
             </div>
-            <Button
-              onClick={() => becomeParent.mutate()}
-              disabled={becomeParent.isPending}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              {becomeParent.isPending ? "Upgrading…" : "Become a Parent Account"}
-            </Button>
+            <Link href="/">
+              <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-100">Back to Student Dashboard</Button>
+            </Link>
           </CardContent>
         </Card>
       )}
@@ -624,6 +822,9 @@ export default function ParentDashboard() {
         </div>
       )}
 
+      {/* Co-Parent View: students I have view access to (not enrolled by me) */}
+      <CoParentStudentsSection />
+
       {/* Enrol modal */}
       <EnrolChildModal
         open={enrolOpen}
@@ -631,5 +832,196 @@ export default function ParentDashboard() {
         onSuccess={() => utils.parent.listChildren.invalidate()}
       />
     </div>
+  );
+}
+
+// ─── Co-Parent Students Section ────────────────────────────────────────────────
+
+function CoParentStudentsSection() {
+  const { isAuthenticated } = useAuth();
+  const { data: coParentStudents, isLoading } = trpc.coParent.myStudents.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
+
+  if (isLoading || !coParentStudents || coParentStudents.length === 0) return null;
+
+  const selectedStudent = coParentStudents.find((s) => s.studentId === selectedStudentId) ?? null;
+
+  return (
+    <div className="space-y-4">
+      <Separator />
+      <div>
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <Users className="h-5 w-5 text-primary" />
+          Students I Monitor
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Students whose progress you have view access to as a co-parent or guardian.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-3">
+          {coParentStudents.map((s) => {
+            const isSelected = selectedStudentId === s.studentId;
+            return (
+              <button
+                key={s.studentId}
+                onClick={() => setSelectedStudentId(isSelected ? null : s.studentId)}
+                className={`w-full text-left rounded-xl border p-4 transition-all duration-200 ${
+                  isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-primary/40 hover:bg-muted/30"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-base shrink-0 ${
+                    isSelected ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
+                  }`}>
+                    {(s.studentName ?? "S")[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold truncate">{s.studentName ?? "Student"}</div>
+                    <div className="text-xs text-muted-foreground capitalize">{s.relationship} · Grade {s.studentGrade ?? "—"}</div>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="lg:col-span-2">
+          {selectedStudent ? (
+            <CoParentStudentDetail studentId={selectedStudent.studentId} studentName={selectedStudent.studentName ?? "Student"} />
+          ) : (
+            <Card className="flex items-center justify-center min-h-[300px] text-center">
+              <CardContent className="space-y-3">
+                <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center mx-auto">
+                  <ChevronRight className="h-7 w-7 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Select a student</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Click a student to view their progress.</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CoParentStudentDetail({ studentId, studentName }: { studentId: number; studentName: string }) {
+  const { data, isLoading } = trpc.coParent.getStudentProgress.useQuery({ studentId });
+
+  if (isLoading) return (
+    <Card className="p-6 flex items-center justify-center min-h-[300px]">
+      <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    </Card>
+  );
+
+  if (!data) return (
+    <Card className="p-6 text-center text-muted-foreground">
+      No progress data available yet.
+    </Card>
+  );
+
+  // Compute aggregated stats from raw DB rows
+  const rawData = data as unknown as {
+    mastery: { skillId: string; score: number }[];
+    progress: { unitNumber: number; status: string; quizScore: number | null; completedAt: Date | null }[];
+    quizHistory: { unitNumber: number; score: number; completedAt: Date }[];
+    diagnostic: { score: number; recommendation: string | null; completedAt: Date } | null;
+  };
+
+  const scores = rawData.mastery.map((m) => m.score);
+  const overallMastery = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+  const masteryLabel = overallMastery === null ? null
+    : overallMastery >= 100 ? "Advanced"
+    : overallMastery >= 90 ? "Mastered"
+    : overallMastery >= 75 ? "Approaching"
+    : overallMastery >= 60 ? "Developing"
+    : "Beginner";
+  const completedUnits = rawData.progress.filter((p) => p.status === "completed").length;
+
+  return (
+    <Card className="p-6 space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+          {studentName[0].toUpperCase()}
+        </div>
+        <div>
+          <h2 className="text-xl font-bold">{studentName}</h2>
+          {overallMastery !== null && (
+            <Badge variant="outline" className={`text-xs ${masteryColor(overallMastery)}`}>
+              {masteryLabel} · {overallMastery}%
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="text-center p-4">
+          <div className="text-2xl font-bold text-primary">{completedUnits}</div>
+          <div className="text-xs text-muted-foreground mt-1">Units Completed</div>
+        </Card>
+        <Card className="text-center p-4">
+          <div className="text-2xl font-bold text-emerald-600">{overallMastery ?? "—"}{overallMastery !== null ? "%" : ""}</div>
+          <div className="text-xs text-muted-foreground mt-1">Overall Mastery</div>
+        </Card>
+      </div>
+
+      {rawData.diagnostic && (
+        <Card className="border-l-4 border-l-primary bg-primary/5">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2 mb-1">
+              <Star className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Placement Assessment</span>
+              <span className="text-xs text-muted-foreground ml-auto">{new Date(rawData.diagnostic.completedAt).toLocaleDateString()}</span>
+            </div>
+            <div className="text-2xl font-bold text-primary mb-1">{rawData.diagnostic.score}%</div>
+            {rawData.diagnostic.recommendation && (
+              <p className="text-sm text-muted-foreground">{rawData.diagnostic.recommendation}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {rawData.progress.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" /> Unit Progress
+          </h3>
+          <div className="space-y-2">
+            {rawData.progress.map((u) => (
+              <div key={u.unitNumber} className="flex items-center gap-3">
+                <div className="w-6 text-xs text-muted-foreground text-right shrink-0">U{u.unitNumber}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-xs capitalize text-muted-foreground">{u.status}</span>
+                    <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                      {statusIcon(u.status)}
+                      {u.quizScore !== null && (
+                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ${masteryColor(u.quizScore)}`}>{u.quizScore}%</span>
+                      )}
+                    </div>
+                  </div>
+                  <Progress value={u.quizScore ?? 0} className="h-1.5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="pt-2">
+        <Link href={`/tutor?childId=${studentId}&mode=parent_summary`}>
+          <Button className="w-full" variant="outline">
+            <Brain className="h-4 w-4 mr-2" />
+            Open AI Parent Summary for {studentName}
+          </Button>
+        </Link>
+      </div>
+    </Card>
   );
 }

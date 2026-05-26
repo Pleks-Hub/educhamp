@@ -88,3 +88,19 @@
 - [x] UI: Parent Summary AI mode — pre-load selected child's context automatically
 - [x] Notifications: include child name in all guardian notifications
 - [x] Navigation: add "Parent Dashboard" link in sidebar for users with children enrolled
+
+## Co-Parent / Guardian Invitation System
+
+- [x] DB: coParentInvitations table (id, studentId, invitedByParentId, inviteeEmail, token, status, acceptedByUserId, expiresAt, createdAt)
+- [x] DB: coParentAccess table (id, studentId, coParentUserId, invitedByParentId, grantedAt, isActive)
+- [x] DB: enforce role separation — accountType "parent" cannot take quizzes, diagnostic, or accumulate mastery
+- [x] tRPC: coParent.inviteCoParent — primary parent sends invite token for a specific student
+- [x] tRPC: coParent.acceptInvitation — invitee logs in and claims token to gain access
+- [x] tRPC: coParent.listCoParents — list all co-parents for a given student
+- [x] tRPC: coParent.revokeAccess — primary parent removes a co-parent's access
+- [x] tRPC: coParent.listMyStudents — co-parent sees all students they have view access to
+- [x] UI: Co-parent management panel in Parent Dashboard — invite form, co-parent list per child, revoke button
+- [x] UI: /accept-invite?token=xxx — invitation acceptance page with student preview and login CTA
+- [x] UI: Co-parent view — same progress dashboard as parent but read-only (no enrol/manage actions)
+- [x] Enforce: parent-typed accounts blocked from quiz, diagnostic, and mastery routes
+- [x] Enforce: student-typed accounts cannot access Parent Dashboard or co-parent features

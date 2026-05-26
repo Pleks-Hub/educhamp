@@ -15,6 +15,7 @@ import Progress from "./pages/Progress";
 import Skills from "./pages/Skills";
 import Quiz from "./pages/Quiz";
 import ParentDashboard from "./pages/ParentDashboard";
+import AcceptInvite from "./pages/AcceptInvite";
 
 function Router() {
   return (
@@ -30,6 +31,7 @@ function Router() {
         <Route path="/progress" component={Progress} />
         <Route path="/skills" component={Skills} />
         <Route path="/parent" component={ParentDashboard} />
+        <Route path="/accept-invite" component={AcceptInvite} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
       </Switch>

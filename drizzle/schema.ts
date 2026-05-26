@@ -257,6 +257,49 @@ export const enrolmentInvitations = mysqlTable("enrolmentInvitations", {
 
 export type EnrolmentInvitation = typeof enrolmentInvitations.$inferSelect;
 
+// ─── Co-Parent / Guardian Access ────────────────────────────────────────────
+
+/**
+ * An existing parent invites another adult (co-parent / guardian) to view
+ * a specific student's progress. The invitee receives a unique token link.
+ * Once accepted, a coParentAccess row is created.
+ */
+export const coParentInvitations = mysqlTable("coParentInvitations", {
+  id: int("id").autoincrement().primaryKey(),
+  studentId: int("studentId").notNull(),           // FK → users.id (student)
+  invitedByParentId: int("invitedByParentId").notNull(), // FK → users.id (primary parent)
+  inviteeEmail: varchar("inviteeEmail", { length: 320 }).notNull(),
+  inviteeName: varchar("inviteeName", { length: 256 }),  // optional display name
+  relationship: varchar("relationship", { length: 64 }).default("guardian"), // co-parent, guardian, grandparent, etc.
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  status: mysqlEnum("status", ["pending", "accepted", "revoked", "expired"]).notNull().default("pending"),
+  acceptedByUserId: int("acceptedByUserId"),       // FK → users.id (the co-parent who accepted)
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CoParentInvitation = typeof coParentInvitations.$inferSelect;
+export type InsertCoParentInvitation = typeof coParentInvitations.$inferInsert;
+
+/**
+ * Active co-parent access records — one row per (student, co-parent) pair.
+ * Created when an invitation is accepted. Soft-deleted via isActive.
+ */
+export const coParentAccess = mysqlTable("coParentAccess", {
+  id: int("id").autoincrement().primaryKey(),
+  studentId: int("studentId").notNull(),
+  coParentUserId: int("coParentUserId").notNull(),
+  invitedByParentId: int("invitedByParentId").notNull(),
+  invitationId: int("invitationId").notNull(),
+  relationship: varchar("relationship", { length: 64 }).default("guardian"),
+  isActive: boolean("isActive").notNull().default(true),
+  grantedAt: timestamp("grantedAt").defaultNow().notNull(),
+  revokedAt: timestamp("revokedAt"),
+});
+
+export type CoParentAccess = typeof coParentAccess.$inferSelect;
+export type InsertCoParentAccess = typeof coParentAccess.$inferInsert;
+
 // ─── Tutor Sessions ───────────────────────────────────────────────────────────
 
 export const tutorSessions = mysqlTable("tutorSessions", {

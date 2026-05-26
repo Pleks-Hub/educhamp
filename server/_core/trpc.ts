@@ -27,6 +27,31 @@ const requireUser = t.middleware(async opts => {
 
 export const protectedProcedure = t.procedure.use(requireUser);
 
+// studentProcedure: blocks parent/guardian accounts from taking quizzes, diagnostics, or accumulating mastery
+export const studentProcedure = t.procedure.use(
+  t.middleware(async opts => {
+    const { ctx, next } = opts;
+
+    if (!ctx.user) {
+      throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+    }
+
+    if (ctx.user.accountType === "parent") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Parent accounts cannot take quizzes, assessments, or accumulate mastery scores. Please use a student account.",
+      });
+    }
+
+    return next({
+      ctx: {
+        ...ctx,
+        user: ctx.user,
+      },
+    });
+  }),
+);
+
 export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;

@@ -3,6 +3,8 @@ import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
   InsertParentChild,
+  coParentAccess,
+  coParentInvitations,
   diagnosticAttempts,
   diagnosticQuestions,
   enrolmentInvitations,
@@ -552,4 +554,179 @@ export async function getParentsByChildId(childId: number): Promise<{ parentId: 
     .innerJoin(users, eq(users.id, parentChildren.parentId))
     .where(eq(parentChildren.childId, childId));
   return rows;
+}
+
+// ─── Co-Parent / Guardian Access ─────────────────────────────────────────────
+
+export async function createCoParentInvitation(data: {
+  studentId: number;
+  invitedByParentId: number;
+  inviteeEmail: string;
+  inviteeName?: string;
+  relationship?: string;
+  token: string;
+  expiresAt: Date;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(coParentInvitations).values({
+    studentId: data.studentId,
+    invitedByParentId: data.invitedByParentId,
+    inviteeEmail: data.inviteeEmail.toLowerCase(),
+    inviteeName: data.inviteeName ?? null,
+    relationship: data.relationship ?? "guardian",
+    token: data.token,
+    status: "pending",
+    expiresAt: data.expiresAt,
+  });
+}
+
+export async function getCoParentInvitationByToken(token: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db
+    .select()
+    .from(coParentInvitations)
+    .where(eq(coParentInvitations.token, token))
+    .limit(1);
+  return rows[0] ?? undefined;
+}
+
+export async function acceptCoParentInvitation(token: string, acceptedByUserId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const inv = await getCoParentInvitationByToken(token);
+  if (!inv) throw new Error("Invitation not found");
+  if (inv.status !== "pending") throw new Error("Invitation is no longer valid");
+  if (new Date() > inv.expiresAt) {
+    await db
+      .update(coParentInvitations)
+      .set({ status: "expired" })
+      .where(eq(coParentInvitations.token, token));
+    throw new Error("Invitation has expired");
+  }
+  // Mark invitation accepted
+  await db
+    .update(coParentInvitations)
+    .set({ status: "accepted", acceptedByUserId })
+    .where(eq(coParentInvitations.token, token));
+  // Create access record (upsert-style: deactivate old, create new)
+  await db
+    .update(coParentAccess)
+    .set({ isActive: false, revokedAt: new Date() })
+    .where(
+      and(
+        eq(coParentAccess.studentId, inv.studentId),
+        eq(coParentAccess.coParentUserId, acceptedByUserId)
+      )
+    );
+  await db.insert(coParentAccess).values({
+    studentId: inv.studentId,
+    coParentUserId: acceptedByUserId,
+    invitedByParentId: inv.invitedByParentId,
+    invitationId: inv.id,
+    relationship: inv.relationship ?? "guardian",
+    isActive: true,
+  });
+  return inv;
+}
+
+export async function listCoParentsForStudent(studentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      accessId: coParentAccess.id,
+      coParentUserId: coParentAccess.coParentUserId,
+      relationship: coParentAccess.relationship,
+      grantedAt: coParentAccess.grantedAt,
+      invitedByParentId: coParentAccess.invitedByParentId,
+      coParentName: users.name,
+      coParentEmail: users.email,
+    })
+    .from(coParentAccess)
+    .innerJoin(users, eq(users.id, coParentAccess.coParentUserId))
+    .where(and(eq(coParentAccess.studentId, studentId), eq(coParentAccess.isActive, true)));
+  return rows;
+}
+
+export async function listPendingInvitationsForStudent(studentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(coParentInvitations)
+    .where(
+      and(
+        eq(coParentInvitations.studentId, studentId),
+        eq(coParentInvitations.status, "pending")
+      )
+    );
+}
+
+export async function revokeCoParentAccess(accessId: number, requestingParentId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .update(coParentAccess)
+    .set({ isActive: false, revokedAt: new Date() })
+    .where(
+      and(
+        eq(coParentAccess.id, accessId),
+        eq(coParentAccess.invitedByParentId, requestingParentId)
+      )
+    );
+}
+
+export async function cancelCoParentInvitation(invitationId: number, requestingParentId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db
+    .update(coParentInvitations)
+    .set({ status: "revoked" })
+    .where(
+      and(
+        eq(coParentInvitations.id, invitationId),
+        eq(coParentInvitations.invitedByParentId, requestingParentId)
+      )
+    );
+}
+
+/** Returns all students a co-parent has active view access to */
+export async function listStudentsForCoParent(coParentUserId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      accessId: coParentAccess.id,
+      studentId: coParentAccess.studentId,
+      relationship: coParentAccess.relationship,
+      grantedAt: coParentAccess.grantedAt,
+      studentName: users.name,
+      studentEmail: users.email,
+      studentGrade: users.grade,
+      studentSchool: users.school,
+    })
+    .from(coParentAccess)
+    .innerJoin(users, eq(users.id, coParentAccess.studentId))
+    .where(and(eq(coParentAccess.coParentUserId, coParentUserId), eq(coParentAccess.isActive, true)));
+  return rows;
+}
+
+/** Verify a co-parent has active access to a specific student */
+export async function verifyCoParentAccess(coParentUserId: number, studentId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const rows = await db
+    .select({ id: coParentAccess.id })
+    .from(coParentAccess)
+    .where(
+      and(
+        eq(coParentAccess.coParentUserId, coParentUserId),
+        eq(coParentAccess.studentId, studentId),
+        eq(coParentAccess.isActive, true)
+      )
+    )
+    .limit(1);
+  return rows.length > 0;
 }
