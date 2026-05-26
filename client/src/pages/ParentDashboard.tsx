@@ -16,7 +16,8 @@ import {
   Users, UserPlus, BookOpen, Trophy, TrendingUp, AlertTriangle,
   ChevronRight, GraduationCap, BarChart3, CheckCircle2, Clock,
   Pencil, Trash2, Mail, Plus, X, Star, Target, Brain, ShieldAlert,
-  FileText, Download, StickyNote, Flag, TrendingDown, Zap
+  FileText, Download, StickyNote, Flag, TrendingDown, Zap,
+  Loader2, Link2, Copy
 } from "lucide-react";
 import { Link } from "wouter";
 import { Streamdown } from "streamdown";
@@ -86,7 +87,7 @@ function adaptivePathBadge(path: string | null) {
 // ─── Enrol Child Modal ────────────────────────────────────────────────────────
 
 function EnrolChildModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: () => void }) {
-  const [tab, setTab] = useState<"email" | "new">("email");
+  const [tab, setTab] = useState<"invite" | "email" | "new">("invite");
   const [email, setEmail] = useState("");
   const [nickname, setNickname] = useState("");
   const [relationship, setRelationship] = useState("parent");
@@ -94,6 +95,27 @@ function EnrolChildModal({ open, onClose, onSuccess }: { open: boolean; onClose:
   const [newEmail, setNewEmail] = useState("");
   const [newGrade, setNewGrade] = useState("9");
   const [newSchool, setNewSchool] = useState("");
+  // Invite tab state
+  const [inviteChildName, setInviteChildName] = useState("");
+  const [inviteChildEmail, setInviteChildEmail] = useState("");
+  const [generatedInviteUrl, setGeneratedInviteUrl] = useState<string | null>(null);
+  const [copiedInvite, setCopiedInvite] = useState(false);
+
+  const createStudentInvite = trpc.onboarding.createStudentInvite.useMutation({
+    onSuccess: (data) => {
+      const url = `${window.location.origin}/join?invite=${data.token}`;
+      setGeneratedInviteUrl(url);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  async function copyInviteLink() {
+    if (!generatedInviteUrl) return;
+    await navigator.clipboard.writeText(generatedInviteUrl);
+    setCopiedInvite(true);
+    setTimeout(() => setCopiedInvite(false), 2000);
+    toast.success("Invite link copied!");
+  }
 
   const enrollByEmail = trpc.parent.enrollByEmail.useMutation({
     onSuccess: (data) => {
@@ -128,11 +150,61 @@ function EnrolChildModal({ open, onClose, onSuccess }: { open: boolean; onClose:
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "email" | "new")}>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as "invite" | "email" | "new")}>
           <TabsList className="w-full">
-            <TabsTrigger value="email" className="flex-1">Existing Account</TabsTrigger>
-            <TabsTrigger value="new" className="flex-1">New Student</TabsTrigger>
+            <TabsTrigger value="invite" className="flex-1">Send Invite</TabsTrigger>
+            <TabsTrigger value="email" className="flex-1">By Email</TabsTrigger>
+            <TabsTrigger value="new" className="flex-1">Create New</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="invite" className="space-y-4 mt-4">
+            {!generatedInviteUrl ? (
+              <>
+                <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-800">
+                  <span className="font-medium">How it works:</span> Generate a secure invite link and share it with your child. They sign in with their own account and get automatically linked to yours.
+                </div>
+                <div className="space-y-2">
+                  <Label>Child's Name <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Input placeholder="e.g. Emma" value={inviteChildName} onChange={e => setInviteChildName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Child's Email <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Input type="email" placeholder="student@example.com" value={inviteChildEmail} onChange={e => setInviteChildEmail(e.target.value)} />
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={() => createStudentInvite.mutate({ childName: inviteChildName || undefined, childEmail: inviteChildEmail || undefined })}
+                  disabled={createStudentInvite.isPending}
+                >
+                  {createStudentInvite.isPending
+                    ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Generating…</>
+                    : <><Link2 className="h-4 w-4 mr-2" /> Generate Invite Link</>}
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  Invite link created! Share it with your child. It expires in 7 days.
+                </div>
+                <div className="space-y-2">
+                  <Label>Invite Link</Label>
+                  <div className="flex gap-2">
+                    <Input readOnly value={generatedInviteUrl} className="font-mono text-xs" />
+                    <Button variant="outline" size="sm" onClick={copyInviteLink}>
+                      {copiedInvite ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <Button variant="outline" className="w-full" onClick={() => { setGeneratedInviteUrl(null); setInviteChildName(""); setInviteChildEmail(""); }}>
+                  Generate Another
+                </Button>
+                <Button className="w-full" onClick={() => { onSuccess(); onClose(); }}>
+                  Done
+                </Button>
+              </>
+            )}
+          </TabsContent>
 
           <TabsContent value="email" className="space-y-4 mt-4">
             <div className="space-y-2">

@@ -72,8 +72,11 @@ export function registerTutorStreamRoute(app: Express) {
     // Verify the parent has access to this child before proceeding
     let contextUserId = user.id;
     let contextUserName = user.name ?? "Student";
+    let parentGoalContext: { goalCategory?: string; goalDetail?: string; signupReason?: string } | undefined;
+    let studentDemographics: { schoolType?: string; gradeLevel?: string; schoolDistrict?: string } | undefined;
+
     if (childId && childId !== user.id) {
-      const { getParentChildLink, getUserById } = await import("./db");
+      const { getParentChildLink, getUserById, getUserProfile } = await import("./db");
       const link = await getParentChildLink(user.id, childId).catch(() => null);
       if (link && link.isActive) {
         const childUser = await getUserById(childId).catch(() => null);
@@ -81,6 +84,35 @@ export function registerTutorStreamRoute(app: Express) {
           contextUserId = childId;
           contextUserName = link.nickname ?? childUser.name ?? "Student";
         }
+        // Load parent's goal context
+        const parentProfile = await getUserProfile(user.id).catch(() => null);
+        if (parentProfile?.parentGoalCategory || parentProfile?.parentGoalDetail) {
+          parentGoalContext = {
+            goalCategory: parentProfile.parentGoalCategory ?? undefined,
+            goalDetail: parentProfile.parentGoalDetail ?? undefined,
+            signupReason: parentProfile.parentSignupReason ?? undefined,
+          };
+        }
+        // Load student demographics
+        const childProfile = await getUserProfile(contextUserId).catch(() => null);
+        if (childProfile) {
+          studentDemographics = {
+            schoolType: childProfile.schoolType ?? undefined,
+            gradeLevel: childProfile.gradeLevel ?? undefined,
+            schoolDistrict: childProfile.schoolDistrict ?? undefined,
+          };
+        }
+      }
+    } else {
+      // Student accessing their own tutor — load their demographics
+      const { getUserProfile } = await import("./db");
+      const profile = await getUserProfile(user.id).catch(() => null);
+      if (profile) {
+        studentDemographics = {
+          schoolType: profile.schoolType ?? undefined,
+          gradeLevel: profile.gradeLevel ?? undefined,
+          schoolDistrict: profile.schoolDistrict ?? undefined,
+        };
       }
     }
 
@@ -220,6 +252,8 @@ export function registerTutorStreamRoute(app: Express) {
           recentQuizzes,
           unitMasterySummary,
           learningObjectives: learningObjectivesText,
+          parentGoalContext,
+          studentDemographics,
         }
       );
 

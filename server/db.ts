@@ -16,12 +16,16 @@ import {
   passwordResetTokens,
   quizAttempts,
   quizQuestions,
+  referrals,
+  referralSignups,
   skills,
+  studentInviteTokens,
   twoFactorAuth,
   tutorSessions,
   unitProgress,
   units,
   userMastery,
+  userProfiles,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -866,4 +870,146 @@ export async function deleteParentNote(noteId: number, parentId: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(parentNotes).where(and(eq(parentNotes.id, noteId), eq(parentNotes.parentId, parentId)));
+}
+
+// ─── User Profiles ────────────────────────────────────────────────────────────
+
+export async function getUserProfile(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function upsertUserProfile(
+  userId: number,
+  data: Partial<{
+    dateOfBirth: string;
+    gender: string;
+    city: string;
+    state: string;
+    country: string;
+    schoolDistrict: string;
+    schoolType: "public" | "private" | "homeschool" | "charter" | "other";
+    schoolName: string;
+    gradeLevel: string;
+    parentSignupReason: string;
+    parentGoalCategory: string;
+    parentGoalDetail: string;
+    onboardingCompleted: boolean;
+    onboardingStep: number;
+  }>
+) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await getUserProfile(userId);
+  if (existing) {
+    await db.update(userProfiles).set(data).where(eq(userProfiles.userId, userId));
+  } else {
+    await db.insert(userProfiles).values({ userId, ...data });
+  }
+}
+
+export async function markOnboardingComplete(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await upsertUserProfile(userId, { onboardingCompleted: true, onboardingStep: 99 });
+}
+
+// ─── Referrals ────────────────────────────────────────────────────────────────
+
+export async function createReferralCode(referrerId: number, targetRole: "parent" | "student" | "teacher" = "parent", note?: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // Generate a short unique code: 8 chars alphanumeric
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  await db.insert(referrals).values({ referrerId, code, targetRole, note: note ?? null });
+  const result = await db.select().from(referrals).where(eq(referrals.code, code)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getReferralByCode(code: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(referrals).where(eq(referrals.code, code)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getReferralsForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(referrals).where(eq(referrals.referrerId, userId)).orderBy(desc(referrals.createdAt));
+}
+
+export async function incrementReferralClick(referralId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const current = await db.select().from(referrals).where(eq(referrals.id, referralId)).limit(1);
+  if (!current[0]) return;
+  await db.update(referrals).set({ clickCount: current[0].clickCount + 1 }).where(eq(referrals.id, referralId));
+}
+
+export async function recordReferralSignup(referralId: number, referrerId: number, newUserId: number, newUserEmail?: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(referralSignups).values({ referralId, referrerId, newUserId, newUserEmail: newUserEmail ?? null });
+  const current = await db.select().from(referrals).where(eq(referrals.id, referralId)).limit(1);
+  if (current[0]) {
+    await db.update(referrals).set({ signupCount: current[0].signupCount + 1 }).where(eq(referrals.id, referralId));
+  }
+}
+
+export async function getReferralSignups(referrerId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(referralSignups).where(eq(referralSignups.referrerId, referrerId)).orderBy(desc(referralSignups.signedUpAt));
+}
+
+// ─── Student Invite Tokens ────────────────────────────────────────────────────
+
+export async function createStudentInviteToken(
+  parentId: number,
+  childName?: string,
+  childEmail?: string
+) {
+  const db = await getDb();
+  if (!db) return null;
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let token = "";
+  for (let i = 0; i < 48; i++) token += chars[Math.floor(Math.random() * chars.length)];
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  await db.insert(studentInviteTokens).values({
+    parentId,
+    token,
+    childName: childName ?? null,
+    childEmail: childEmail ?? null,
+    expiresAt,
+  });
+  const result = await db.select().from(studentInviteTokens).where(eq(studentInviteTokens.token, token)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getStudentInviteToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(studentInviteTokens).where(eq(studentInviteTokens.token, token)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function acceptStudentInviteToken(token: string, childId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(studentInviteTokens)
+    .set({ status: "accepted", childId, acceptedAt: new Date() })
+    .where(eq(studentInviteTokens.token, token));
+}
+
+export async function getPendingStudentInvitesForParent(parentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(studentInviteTokens)
+    .where(and(eq(studentInviteTokens.parentId, parentId), eq(studentInviteTokens.status, "pending")))
+    .orderBy(desc(studentInviteTokens.createdAt));
 }

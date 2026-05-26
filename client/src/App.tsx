@@ -19,6 +19,10 @@ import AcceptInvite from "./pages/AcceptInvite";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
+import JoinPage from "./pages/JoinPage";
+import ParentOnboarding from "./pages/ParentOnboarding";
+import StudentOnboarding from "./pages/StudentOnboarding";
+import Referrals from "./pages/Referrals";
 
 function Router() {
   return (
@@ -27,6 +31,9 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/accept-invite" component={AcceptInvite} />
+      <Route path="/join" component={JoinPage} />
+      <Route path="/onboarding/parent" component={ParentOnboarding} />
+      <Route path="/onboarding/student" component={StudentOnboarding} />
 
       {/* App routes — wrapped in DashboardLayout */}
       <Route>
@@ -43,6 +50,7 @@ function Router() {
             <Route path="/skills" component={Skills} />
             <Route path="/parent" component={ParentDashboard} />
             <Route path="/profile" component={Profile} />
+            <Route path="/referrals" component={Referrals} />
             <Route path="/404" component={NotFound} />
             <Route component={NotFound} />
           </Switch>

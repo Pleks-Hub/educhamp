@@ -135,3 +135,36 @@
 - [x] Export: CSV performance metrics (all skills, mastery scores, quiz dates)
 - [x] Export: PDF via browser print (window.print() with print-specific CSS)
 - [x] UI: Parent Dashboard — Learning Insights panel (time trends, improvement rate, quiz score history, mastery by unit, improvement rate indicator)
+
+## Referral System, Onboarding & Parent-Only Registration
+
+- [x] DB: referrals table (referrerId, code, clickCount, signupCount, targetRole, isActive, expiresAt)
+- [x] DB: referralSignups table (referralId, referrerId, newUserId, newUserEmail, signedUpAt)
+- [x] DB: studentInviteTokens table (parentId, childId, token, childName, childEmail, status, expiresAt)
+- [x] DB: userProfiles table (demographics: DOB, gender, city, state, schoolType, schoolDistrict, gradeLevel, parentSignupReason, parentGoalCategory, parentGoalDetail, onboardingCompleted)
+- [x] Server: referral.createCode — generate unique 8-char referral code per user
+- [x] Server: referral.listMyCodes — list all codes with click/signup counts
+- [x] Server: referral.lookupCode — public lookup + click increment
+- [x] Server: referral.redeemCode — link new user to referrer after sign-up
+- [x] Server: onboarding.getProfile — fetch user profile + onboarding state
+- [x] Server: onboarding.saveStudentProfile — save student demographics (DOB, gender, city, state, schoolType, schoolDistrict, gradeLevel)
+- [x] Server: onboarding.saveParentProfile — save parent demographics + goal category + reason
+- [x] Server: onboarding.generateGoalAlignment — AI generates personalised goal statement from parent's reason
+- [x] Server: onboarding.completeOnboarding — mark onboarding done
+- [x] Server: onboarding.createStudentInvite — parent generates secure 7-day invite token
+- [x] Server: onboarding.lookupStudentInvite — public lookup of invite token validity
+- [x] Server: onboarding.acceptStudentInvite — student accepts invite, gets linked to parent
+- [x] Server: onboarding.listStudentInvites — parent lists pending invites
+- [x] AI: buildTutorSystemPrompt extended with parentGoalContext + studentDemographics sections
+- [x] AI: tutorStream.ts injects parent goal + child demographics into every tutor session
+- [x] OAuth: new users redirected to /onboarding/parent (or /onboarding/student for student accounts)
+- [x] OAuth: returning users without completed onboarding redirected to appropriate wizard
+- [x] UI: /join — public landing page for referral links and student invite tokens
+- [x] UI: /onboarding/parent — 3-step parent wizard (location + demographics → goal category + reason → AI goal alignment result)
+- [x] UI: /onboarding/student — 2-step student wizard (school type + demographics → confirm + accept invite)
+- [x] UI: /referrals — referral dashboard with code generation, stats, copy/share links
+- [x] UI: Parent Dashboard — "Send Invite" tab in Enrol Child modal (generates secure invite link)
+- [x] UI: Sidebar — "Refer & Invite" nav item added
+- [x] Enforcement: students cannot self-register; must use parent-issued invite token
+- [x] Enforcement: invite tokens expire after 7 days and can only be used once
+- [x] Demographic coverage: public school, private school, charter school, home school, other

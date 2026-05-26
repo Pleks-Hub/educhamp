@@ -33,6 +33,7 @@ import {
   LogOut,
   PanelLeft,
   Settings,
+  Share2,
   Sigma,
   Sparkles,
   User,
@@ -54,6 +55,7 @@ const menuItems = [
 
 // Parent Dashboard is shown to all authenticated users — any user can enrol children
 const parentMenuItem = { icon: Users, label: "Parent Dashboard", path: "/parent" };
+const referralMenuItem = { icon: Share2, label: "Refer & Invite", path: "/referrals" };
 
 const SIDEBAR_WIDTH_KEY = "educhamp-sidebar-width";
 const DEFAULT_WIDTH = 256;
@@ -219,14 +221,13 @@ function DashboardLayoutContent({
                 );
               })}
 
-              {/* Parent Dashboard — always visible; any user can enrol children */}
+              {/* Parent Dashboard + Referrals — always visible */}
               {!isCollapsed && (
                 <div className="px-2 pt-2 pb-1">
                   <div className="h-px bg-sidebar-border" />
                 </div>
               )}
-              {(() => {
-                const item = parentMenuItem;
+              {[parentMenuItem, referralMenuItem].map((item) => {
                 const isActive = location.startsWith(item.path);
                 return (
                   <SidebarMenuItem key={item.path}>
@@ -248,7 +249,7 @@ function DashboardLayoutContent({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
-              })()}
+              })}
             </SidebarMenu>
           </SidebarContent>
 

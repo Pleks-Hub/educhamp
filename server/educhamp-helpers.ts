@@ -49,6 +49,18 @@ export type StudentContext = {
   recentQuizzes?: { unitNumber: number; score: number; completedAt: string }[];
   // Learning objectives for current unit
   learningObjectives?: string;
+  // Parent goal alignment context (injected when parent is viewing child's session)
+  parentGoalContext?: {
+    goalCategory?: string;     // e.g. "grade_improvement"
+    goalDetail?: string;       // AI-generated personalised goal statement
+    signupReason?: string;     // raw parent reason
+  };
+  // Student demographics (for personalisation)
+  studentDemographics?: {
+    schoolType?: string;       // "public" | "private" | "homeschool" | "charter"
+    gradeLevel?: string;
+    schoolDistrict?: string;
+  };
 };
 
 const MODE_INSTRUCTIONS: Record<TutorMode, string> = {
@@ -224,11 +236,46 @@ ${recentFive.map((q) => `- Unit ${q.unitNumber}: **${q.score}%** (${getMasteryLa
   }`
     : "";
 
+  // ── Parent goal alignment context ───────────────────────────────────────
+  let parentGoalSection = "";
+  if (ctx?.parentGoalContext?.goalDetail || ctx?.parentGoalContext?.signupReason) {
+    const categoryMap: Record<string, string> = {
+      grade_improvement: "Grade Improvement",
+      test_prep: "Test Preparation (STAAR/SAT/ACT)",
+      enrichment: "Enrichment & Extension",
+      remediation: "Remediation & Gap Filling",
+      homeschool_supplement: "Homeschool Supplement",
+      other: "General Support",
+    };
+    const catLabel = ctx.parentGoalContext.goalCategory
+      ? (categoryMap[ctx.parentGoalContext.goalCategory] ?? ctx.parentGoalContext.goalCategory)
+      : "Not specified";
+    parentGoalSection = `
+## Parent / Guardian Goal Alignment
+- **Goal Category**: ${catLabel}
+${ctx.parentGoalContext.signupReason ? `- **Parent's Reason**: "${ctx.parentGoalContext.signupReason}"` : ""}
+${ctx.parentGoalContext.goalDetail ? `- **Personalised Goal**: ${ctx.parentGoalContext.goalDetail}` : ""}
+
+> Use this context to align your tutoring focus with the parent's objective. For example, if the goal is test prep, emphasise STAAR-aligned problem types. If remediation, slow down and build foundations.`;
+  }
+
+  // ── Student demographics ──────────────────────────────────────────────────
+  let demographicsSection = "";
+  if (ctx?.studentDemographics) {
+    const { schoolType, gradeLevel, schoolDistrict } = ctx.studentDemographics;
+    const parts: string[] = [];
+    if (gradeLevel) parts.push(`Grade ${gradeLevel}`);
+    if (schoolType === "homeschool") parts.push("homeschooled");
+    else if (schoolType && schoolType !== "public") parts.push(`${schoolType} school`);
+    if (schoolDistrict) parts.push(`${schoolDistrict} district`);
+    if (parts.length > 0) demographicsSection = `\n- **Student Context**: ${parts.join(", ")}`;
+  }
+
   return `You are EduChamp AI, an expert Algebra I tutor for Katy ISD students. You are warm, encouraging, and highly skilled at making mathematics accessible and engaging.
 
 ## Student Information
 - **Name**: ${studentName}
-- **Current Unit**: ${currentUnitTitle || "General Algebra I"}${ctx?.currentUnitNumber ? ` (Unit ${ctx.currentUnitNumber})` : ""}
+- **Current Unit**: ${currentUnitTitle || "General Algebra I"}${ctx?.currentUnitNumber ? ` (Unit ${ctx.currentUnitNumber})` : ""}${demographicsSection}
 
 ## Current Mode: ${mode.toUpperCase().replace("_", " ")}
 ${modeInstructions}
@@ -238,6 +285,7 @@ ${unitMasterySummarySection}
 ${quizSection}
 ${learningObjectivesSection}
 ${pacingGuidance}
+${parentGoalSection}
 
 ## Core Principles
 1. Always use the student's name to personalize responses

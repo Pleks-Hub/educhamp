@@ -3,6 +3,8 @@ import { parentRouter } from "./routers/parent";
 import { coParentRouter } from "./routers/coParent";
 import { authEnhancementsRouter } from "./routers/authEnhancements";
 import { parentToolsRouter } from "./routers/parentTools";
+import { referralRouter } from "./routers/referral";
+import { onboardingRouter } from "./routers/onboarding";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
@@ -42,6 +44,8 @@ export const appRouter = router({
   coParent: coParentRouter,
   authEnhancements: authEnhancementsRouter,
   parentTools: parentToolsRouter,
+  referral: referralRouter,
+  onboarding: onboardingRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

@@ -59,7 +59,28 @@ export function registerOAuthRoutes(app: Express) {
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
-      res.redirect(302, "/");
+      // For new users: redirect to onboarding wizard.
+      // The frontend may have stored a post-login redirect in sessionStorage;
+      // we pass a flag so the client-side router can pick it up.
+      // For existing users who have completed onboarding, redirect normally.
+      if (isNewUser) {
+        // New user — send to parent onboarding by default.
+        // If they arrived via a student invite link, the frontend sessionStorage
+        // key "educhamp_post_login_redirect" will override this on the client side.
+        res.redirect(302, "/onboarding/parent");
+      } else {
+        // Check if onboarding is complete
+        const freshUser = await db.getUserByOpenId(userInfo.openId);
+        if (freshUser) {
+          const profile = await db.getUserProfile(freshUser.id);
+          if (!profile?.onboardingCompleted) {
+            const isStudent = freshUser.accountType === "student";
+            res.redirect(302, isStudent ? "/onboarding/student" : "/onboarding/parent");
+            return;
+          }
+        }
+        res.redirect(302, "/");
+      }
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
       res.status(500).json({ error: "OAuth callback failed" });

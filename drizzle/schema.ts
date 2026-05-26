@@ -376,3 +376,96 @@ export const parentNotes = mysqlTable("parentNotes", {
 });
 
 export type ParentNote = typeof parentNotes.$inferSelect;
+
+// ─── User Profiles (extended demographics) ───────────────────────────────────
+
+/**
+ * Extended demographic profile for all users (students and parents).
+ * Collected during onboarding wizard after first OAuth sign-in.
+ */
+export const userProfiles = mysqlTable("userProfiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  // Common
+  dateOfBirth: varchar("dateOfBirth", { length: 16 }),   // YYYY-MM-DD
+  gender: varchar("gender", { length: 64 }),              // "male" | "female" | "non_binary" | "prefer_not_to_say" | custom
+  city: varchar("city", { length: 128 }),
+  state: varchar("state", { length: 64 }),
+  country: varchar("country", { length: 64 }).default("US"),
+  // School info (students)
+  schoolDistrict: varchar("schoolDistrict", { length: 256 }),
+  schoolType: mysqlEnum("schoolType", ["public", "private", "homeschool", "charter", "other"]),
+  schoolName: varchar("schoolName", { length: 256 }),
+  gradeLevel: varchar("gradeLevel", { length: 16 }),      // "8" | "9" | "10" | "11" | "12" | "other"
+  // Parent-specific
+  parentSignupReason: text("parentSignupReason"),         // free-text "why are you signing up?"
+  parentGoalCategory: varchar("parentGoalCategory", { length: 64 }), // "grade_improvement" | "test_prep" | "enrichment" | "remediation" | "homeschool_supplement" | "other"
+  parentGoalDetail: text("parentGoalDetail"),             // AI-generated personalised goal statement
+  // Onboarding state
+  onboardingCompleted: boolean("onboardingCompleted").notNull().default(false),
+  onboardingStep: int("onboardingStep").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type InsertUserProfile = typeof userProfiles.$inferInsert;
+
+// ─── Referrals ────────────────────────────────────────────────────────────────
+
+/**
+ * Platform referral links. Any user can generate a referral code.
+ * When a new user signs up via a referral link, the referrer is credited.
+ */
+export const referrals = mysqlTable("referrals", {
+  id: int("id").autoincrement().primaryKey(),
+  referrerId: int("referrerId").notNull(),               // FK → users.id (who created the link)
+  code: varchar("code", { length: 32 }).notNull().unique(), // short alphanumeric code
+  // Tracking
+  clickCount: int("clickCount").notNull().default(0),
+  signupCount: int("signupCount").notNull().default(0),
+  // Optional target audience hint (for personalised landing page copy)
+  targetRole: mysqlEnum("targetRole", ["parent", "student", "teacher"]).default("parent"),
+  note: varchar("note", { length: 256 }),                // e.g. "Shared on Facebook"
+  isActive: boolean("isActive").notNull().default(true),
+  expiresAt: timestamp("expiresAt"),                     // null = never expires
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Referral = typeof referrals.$inferSelect;
+
+/**
+ * Records each time a referral code resulted in a new user sign-up.
+ */
+export const referralSignups = mysqlTable("referralSignups", {
+  id: int("id").autoincrement().primaryKey(),
+  referralId: int("referralId").notNull(),               // FK → referrals.id
+  referrerId: int("referrerId").notNull(),               // FK → users.id
+  newUserId: int("newUserId").notNull(),                  // FK → users.id (the person who signed up)
+  newUserEmail: varchar("newUserEmail", { length: 320 }),
+  signedUpAt: timestamp("signedUpAt").defaultNow().notNull(),
+});
+
+export type ReferralSignup = typeof referralSignups.$inferSelect;
+
+// ─── Student Invite Tokens (parent → child) ───────────────────────────────────
+
+/**
+ * When a parent adds a child, a unique invite token is generated.
+ * The child uses this token to complete their account setup.
+ * Students CANNOT self-register — they must use a parent-issued invite token.
+ */
+export const studentInviteTokens = mysqlTable("studentInviteTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),                   // FK → users.id (parent who invited)
+  childId: int("childId"),                               // FK → users.id — set once child signs up
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  childName: varchar("childName", { length: 256 }),
+  childEmail: varchar("childEmail", { length: 320 }),
+  status: mysqlEnum("status", ["pending", "accepted", "expired", "revoked"]).notNull().default("pending"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  acceptedAt: timestamp("acceptedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type StudentInviteToken = typeof studentInviteTokens.$inferSelect;
