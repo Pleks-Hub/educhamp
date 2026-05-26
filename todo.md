@@ -134,4 +134,4 @@
 - [x] Hard block: student accounts see hard block on Parent Dashboard
 - [x] Export: CSV performance metrics (all skills, mastery scores, quiz dates)
 - [x] Export: PDF via browser print (window.print() with print-specific CSS)
-- [ ] UI: Parent Dashboard — Learning Insights panel (time trends, improvement rate) — deferred
+- [x] UI: Parent Dashboard — Learning Insights panel (time trends, improvement rate, quiz score history, mastery by unit, improvement rate indicator)

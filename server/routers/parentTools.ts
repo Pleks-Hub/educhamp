@@ -146,6 +146,72 @@ export const parentToolsRouter = router({
       };
     }),
 
+  // Learning Insights: time-based trends and improvement rate
+  learningInsights: protectedProcedure
+    .input(z.object({ childId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const children = await getChildrenForParent(ctx.user.id);
+      const isMyChild = children.some((c: any) => c.link?.childId === input.childId);
+      if (!isMyChild) throw new TRPCError({ code: "FORBIDDEN", message: "Not your child" });
+
+      const progress = await getChildProgressSummary(input.childId);
+      if (!progress) throw new TRPCError({ code: "NOT_FOUND", message: "Child not found" });
+
+      // Build quiz score trend (chronological)
+      const quizTrend = progress.quizHistory
+        .filter((q) => q.completedAt && q.totalQuestions)
+        .map((q) => ({
+          date: q.completedAt!.toISOString(),
+          unitNumber: q.unitId ?? 0,
+          percentage: Math.round(((q.score ?? 0) / (q.totalQuestions ?? 15)) * 100),
+        }))
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      // Calculate improvement rate: compare first half vs second half of quiz scores
+      let improvementRate: number | null = null;
+      if (quizTrend.length >= 2) {
+        const mid = Math.floor(quizTrend.length / 2);
+        const firstHalf = quizTrend.slice(0, mid);
+        const secondHalf = quizTrend.slice(mid);
+        const firstAvg = firstHalf.reduce((s, q) => s + q.percentage, 0) / firstHalf.length;
+        const secondAvg = secondHalf.reduce((s, q) => s + q.percentage, 0) / secondHalf.length;
+        improvementRate = Math.round(secondAvg - firstAvg);
+      }
+
+      // Mastery trend: group mastery scores by unit number
+      const masteryByUnit = progress.mastery.reduce((acc, m) => {
+        const match = m.skillId.match(/ALG1-U(\d+)-S(\d+)/);
+        const unitNum = match ? parseInt(match[1]) : 0;
+        if (!acc[unitNum]) acc[unitNum] = [];
+        acc[unitNum].push(m.score);
+        return acc;
+      }, {} as Record<number, number[]>);
+
+      const masteryTrend = Object.entries(masteryByUnit)
+        .map(([unitNum, scores]) => ({
+          unitNumber: parseInt(unitNum),
+          averageScore: Math.round(scores.reduce((s, v) => s + v, 0) / scores.length),
+          skillCount: scores.length,
+        }))
+        .sort((a, b) => a.unitNumber - b.unitNumber);
+
+      // Overall stats
+      const totalMastery = progress.mastery;
+      const currentAvg = totalMastery.length > 0
+        ? Math.round(totalMastery.reduce((s, m) => s + m.score, 0) / totalMastery.length)
+        : 0;
+
+      return {
+        quizTrend,
+        masteryTrend,
+        improvementRate,
+        currentAverageMastery: currentAvg,
+        totalQuizzesTaken: quizTrend.length,
+        totalSkillsTracked: totalMastery.length,
+        masteredSkills: totalMastery.filter((m) => m.score >= 90).length,
+      };
+    }),
+
   // Report data for export (returns structured JSON that the frontend renders as PDF/CSV)
   getReportData: protectedProcedure
     .input(z.object({ childId: z.number().int().positive() }))

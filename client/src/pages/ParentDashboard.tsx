@@ -599,6 +599,141 @@ function ReportExportPanel({ childId, childName }: { childId: number; childName:
   );
 }
 
+// ─── Learning Insights Panel ──────────────────────────────────────────────────
+
+function LearningInsightsPanel({ childId }: { childId: number }) {
+  const { data, isLoading } = trpc.parentTools.learningInsights.useQuery({ childId });
+
+  if (isLoading) return <div className="text-sm text-muted-foreground py-4 text-center">Loading insights…</div>;
+  if (!data) return <div className="text-sm text-muted-foreground py-4 text-center">No data available yet.</div>;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card className="text-center p-3">
+          <div className="text-2xl font-bold text-primary">{data.currentAverageMastery}%</div>
+          <div className="text-xs text-muted-foreground mt-1">Avg Mastery</div>
+        </Card>
+        <Card className="text-center p-3">
+          <div className={`text-2xl font-bold ${
+            data.improvementRate === null ? "text-muted-foreground" :
+            data.improvementRate >= 0 ? "text-emerald-600" : "text-red-600"
+          }`}>
+            {data.improvementRate === null ? "—" : `${data.improvementRate >= 0 ? "+" : ""}${data.improvementRate}%`}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">Improvement</div>
+        </Card>
+        <Card className="text-center p-3">
+          <div className="text-2xl font-bold text-amber-600">{data.totalQuizzesTaken}</div>
+          <div className="text-xs text-muted-foreground mt-1">Quizzes Taken</div>
+        </Card>
+        <Card className="text-center p-3">
+          <div className="text-2xl font-bold text-emerald-600">{data.masteredSkills}</div>
+          <div className="text-xs text-muted-foreground mt-1">Skills Mastered</div>
+        </Card>
+      </div>
+
+      {/* Improvement context */}
+      {data.improvementRate !== null && (
+        <div className={`rounded-lg border p-4 ${
+          data.improvementRate >= 5 ? "bg-emerald-50 border-emerald-200" :
+          data.improvementRate >= 0 ? "bg-blue-50 border-blue-200" :
+          "bg-amber-50 border-amber-200"
+        }`}>
+          <div className="flex items-center gap-2 mb-1">
+            {data.improvementRate >= 5 ? (
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+            ) : data.improvementRate >= 0 ? (
+              <TrendingUp className="h-4 w-4 text-blue-600" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-amber-600" />
+            )}
+            <span className={`text-sm font-semibold ${
+              data.improvementRate >= 5 ? "text-emerald-800" :
+              data.improvementRate >= 0 ? "text-blue-800" : "text-amber-800"
+            }`}>
+              {data.improvementRate >= 5 ? "Strong improvement trend" :
+               data.improvementRate >= 0 ? "Steady progress" :
+               "Scores have declined recently"}
+            </span>
+          </div>
+          <p className={`text-xs ${
+            data.improvementRate >= 5 ? "text-emerald-700" :
+            data.improvementRate >= 0 ? "text-blue-700" : "text-amber-700"
+          }`}>
+            Comparing recent quiz scores to earlier attempts: {data.improvementRate >= 0 ? "+" : ""}{data.improvementRate} percentage points.
+          </p>
+        </div>
+      )}
+
+      {/* Mastery by unit */}
+      {data.masteryTrend.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" /> Mastery by Unit
+          </h3>
+          <div className="space-y-2">
+            {data.masteryTrend.map((u) => (
+              <div key={u.unitNumber} className="flex items-center gap-3">
+                <div className="w-6 text-xs text-muted-foreground text-right shrink-0">U{u.unitNumber}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-xs text-muted-foreground">{u.skillCount} skill{u.skillCount !== 1 ? "s" : ""}</span>
+                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ml-2 shrink-0 ${masteryColor(u.averageScore)}`}>
+                      {u.averageScore}%
+                    </span>
+                  </div>
+                  <Progress value={u.averageScore} className="h-1.5" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quiz score trend */}
+      {data.quizTrend.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-amber-500" /> Quiz Score History
+          </h3>
+          <div className="space-y-1">
+            {data.quizTrend.map((q, i) => (
+              <div key={i} className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Unit {q.unitNumber} Quiz</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-28 h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${
+                        q.percentage >= 75 ? "bg-emerald-500" : q.percentage >= 60 ? "bg-amber-400" : "bg-red-400"
+                      }`}
+                      style={{ width: `${q.percentage}%` }}
+                    />
+                  </div>
+                  <span className={`font-semibold w-10 text-right ${
+                    q.percentage >= 75 ? "text-emerald-600" : q.percentage >= 60 ? "text-amber-600" : "text-red-600"
+                  }`}>{q.percentage}%</span>
+                  <span className="text-xs text-muted-foreground w-20 text-right">
+                    {new Date(q.date).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.quizTrend.length === 0 && data.masteryTrend.length === 0 && (
+        <div className="text-center py-8">
+          <TrendingUp className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">No quiz or mastery data yet. Insights will appear as the student completes quizzes.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Child Detail Panel ───────────────────────────────────────────────────────
 
 function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: () => void }) {
@@ -671,10 +806,11 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
 
       {/* Tabbed detail sections */}
       <Tabs defaultValue="progress">
-        <TabsList className="w-full grid grid-cols-4">
+        <TabsList className="w-full grid grid-cols-5">
           <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
           <TabsTrigger value="goals" className="text-xs">Goals &amp; Notes</TabsTrigger>
           <TabsTrigger value="gaps" className="text-xs">Skill Gaps</TabsTrigger>
+          <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
           <TabsTrigger value="report" className="text-xs">Export</TabsTrigger>
         </TabsList>
 
@@ -775,6 +911,11 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
         {/* Skill Gap tab */}
         <TabsContent value="gaps" className="mt-4">
           <SkillGapPanel childId={child.childId} />
+        </TabsContent>
+
+        {/* Learning Insights tab */}
+        <TabsContent value="insights" className="mt-4">
+          <LearningInsightsPanel childId={child.childId} />
         </TabsContent>
 
         {/* Export tab */}
