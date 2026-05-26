@@ -329,6 +329,16 @@ export async function getLatestDiagnosticAttempt(userId: number) {
   return result[0] ?? null;
 }
 
+export async function getAllDiagnosticAttempts(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(diagnosticAttempts)
+    .where(eq(diagnosticAttempts.userId, userId))
+    .orderBy(desc(diagnosticAttempts.completedAt));
+}
+
 // ─── Tutor Sessions ───────────────────────────────────────────────────────────
 
 export async function getOrCreateTutorSession(

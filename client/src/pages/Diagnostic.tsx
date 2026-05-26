@@ -29,6 +29,8 @@ import {
   XCircle,
   ChevronDown,
   ChevronUp,
+  History,
+  TrendingUp,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
@@ -238,10 +240,17 @@ export default function Diagnostic() {
   const [reviewFilter, setReviewFilter] = useState<"all" | "correct" | "wrong">("all");
   const [reviewUnit, setReviewUnit] = useState<string>("all");
 
-  const { data: questions, isLoading } = trpc.diagnostic.getQuestions.useQuery(undefined, {
-    enabled: started,
-  });
+  // Retest: generate a unique seed per session so each attempt gets different questions
+  const [sessionSeed] = useState(() => Date.now().toString() + Math.random().toString(36).slice(2));
+
+  const { data: questions, isLoading } = trpc.diagnostic.getQuestions.useQuery(
+    { seed: sessionSeed },
+    { enabled: started }
+  );
   const { data: existingAttempt } = trpc.diagnostic.getLatestAttempt.useQuery(undefined, {
+    enabled: !!user,
+  });
+  const { data: allAttempts } = trpc.diagnostic.getAllAttempts.useQuery(undefined, {
     enabled: !!user,
   });
 
@@ -319,18 +328,30 @@ export default function Diagnostic() {
   // ── Show existing result ──────────────────────────────────────────────────
   if (existingAttempt && !started && !result) {
     const attempt = existingAttempt as any;
+    const attempts = (allAttempts ?? []) as any[];
+    const attemptCount = attempts.length;
+
     return (
       <div className="p-6 space-y-6 page-enter max-w-3xl">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Placement Diagnostic</h1>
-          <p className="text-muted-foreground text-sm mt-1">Algebra I · 30 Questions</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Placement Diagnostic</h1>
+            <p className="text-muted-foreground text-sm mt-1">Algebra I · 30 Questions</p>
+          </div>
+          {attemptCount > 1 && (
+            <Badge variant="outline" className="gap-1.5 text-xs shrink-0">
+              <History className="h-3 w-3" />
+              {attemptCount} attempts
+            </Badge>
+          )}
         </div>
 
+        {/* Latest attempt summary */}
         <Card className="border shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5 text-green-500" />
-              Diagnostic Completed
+              {attemptCount > 1 ? `Attempt ${attemptCount} — Latest Result` : "Diagnostic Completed"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -358,11 +379,49 @@ export default function Diagnostic() {
                 className="gap-2"
               >
                 <RotateCcw className="h-4 w-4" />
-                Retake
+                {attemptCount > 0 ? "Retest (New Questions)" : "Retake"}
               </Button>
             </div>
           </CardContent>
         </Card>
+
+        {/* Attempt history (only shown when >1 attempt) */}
+        {attemptCount > 1 && (
+          <div className="space-y-3">
+            <h2 className="text-base font-semibold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              Score History
+            </h2>
+            <div className="space-y-2">
+              {attempts.map((a: any, idx: number) => {
+                const isLatest = idx === 0;
+                const scoreColor = a.overallScore >= 70 ? "text-green-600" : a.overallScore >= 50 ? "text-amber-600" : "text-red-500";
+                return (
+                  <div key={a.id} className={`flex items-center gap-3 p-3 rounded-lg border bg-card ${isLatest ? "border-primary/30 bg-primary/5" : ""}`}>
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                      isLatest ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                    }`}>
+                      {attemptCount - idx}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground">
+                        Attempt {attemptCount - idx}
+                        {isLatest && <span className="ml-2 text-xs text-primary font-normal">(latest)</span>}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(a.completedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={`text-lg font-bold ${scoreColor}`}>{a.overallScore}%</p>
+                      <p className="text-xs text-muted-foreground">prereq {a.prerequisiteScore}/6</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

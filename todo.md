@@ -168,3 +168,13 @@
 - [x] Enforcement: students cannot self-register; must use parent-issued invite token
 - [x] Enforcement: invite tokens expire after 7 days and can only be used once
 - [x] Demographic coverage: public school, private school, charter school, home school, other
+
+## Variable Diagnostic Retest
+
+- [x] Server: diagnostic.getQuestions — seeded Fisher-Yates shuffle per call; picks 1 easy + 1 medium per unit from expanded bank (57 questions total)
+- [x] Server: diagnostic question bank expanded from 30 → 57 questions (Bank B: 2 new questions per unit + 3 new prerequisite questions)
+- [x] Server: diagnostic.getAllAttempts — returns full attempt history ordered by date
+- [x] UI: Diagnostic page — unique session seed generated per visit so each retest draws a different question set
+- [x] UI: Diagnostic page — "Retest (New Questions)" CTA shown when prior attempt exists
+- [x] UI: Diagnostic page — attempt count badge shown when >1 attempt
+- [x] UI: Diagnostic page — Score History panel shows all past attempts (score, prereq score, date) with attempt numbering
