@@ -34,6 +34,7 @@ import {
   PanelLeft,
   Settings,
   Share2,
+  Shield,
   Sigma,
   Sparkles,
   User,
@@ -43,6 +44,7 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
+import CourseSwitcher from "./CourseSwitcher";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -165,6 +167,7 @@ function DashboardLayoutContent({
     .join("")
     .toUpperCase()
     .slice(0, 2) ?? "?";
+  const [courseSwitcherOpen, setCourseSwitcherOpen] = useState(false);
 
   return (
     <>
@@ -187,7 +190,13 @@ function DashboardLayoutContent({
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-sidebar-foreground truncate leading-none">EduChamp</p>
-                    <p className="text-[10px] text-sidebar-foreground/50 truncate mt-0.5">Algebra I</p>
+                    <button
+                      onClick={() => setCourseSwitcherOpen(true)}
+                      className="text-[10px] text-sidebar-foreground/50 truncate mt-0.5 hover:text-sidebar-foreground/80 transition-colors text-left"
+                      title="Switch course"
+                    >
+                      Switch course ↗
+                    </button>
                   </div>
                 </div>
               )}
@@ -280,6 +289,15 @@ function DashboardLayoutContent({
                   <User className="mr-2 h-4 w-4" />
                   Profile &amp; Settings
                 </DropdownMenuItem>
+                {user?.role === "admin" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setLocation("/admin")} className="cursor-pointer">
+                      <Shield className="mr-2 h-4 w-4" />
+                      Admin Console
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
@@ -311,6 +329,11 @@ function DashboardLayoutContent({
         )}
         <main className="flex-1 min-h-screen">{children}</main>
       </SidebarInset>
+
+      <CourseSwitcher
+        open={courseSwitcherOpen}
+        onClose={() => setCourseSwitcherOpen(false)}
+      />
     </>
   );
 }

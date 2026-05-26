@@ -178,3 +178,38 @@
 - [x] UI: Diagnostic page — "Retest (New Questions)" CTA shown when prior attempt exists
 - [x] UI: Diagnostic page — attempt count badge shown when >1 attempt
 - [x] UI: Diagnostic page — Score History panel shows all past attempts (score, prereq score, date) with attempt numbering
+
+## Admin Module & Multi-Course Expansion (Katy ISD)
+
+- [x] DB: courses table (courseCode, title, subject, gradeLevel, description, teksCode, isActive, isDefault, sortOrder)
+- [x] DB: userCourseEnrollments table (userId, courseId, isActive, enrolledAt)
+- [x] DB: platformSettings table (key, value, label, description, category, updatedBy)
+- [x] DB: adminAuditLog table (adminId, action, targetType, targetId, details, ipAddress)
+- [x] DB: units.courseId column + composite unique index (courseId, unitNumber)
+- [x] Seed: 9th Grade English I — 12 units (Literary Analysis, Composition, Grammar, Research, etc.) aligned to TEKS
+- [x] Seed: 9th Grade Biology I — 12 units (Cell Biology, Genetics, Evolution, Ecology, etc.) aligned to TEKS
+- [x] Seed: AP Human Geography — 12 units (Thinking Geographically, Population, Culture, Political, etc.)
+- [x] Seed: Spanish 2 — 12 units (Conversation, Grammar, Culture, Reading, Writing, etc.)
+- [x] Seed: 3rd Grade Math — 12 units (Place Value, Addition/Subtraction, Multiplication, Fractions, etc.)
+- [x] Seed: 3rd Grade ELA — 12 units (Reading Comprehension, Writing, Phonics, Vocabulary, etc.)
+- [x] Seed: 3rd Grade Science — 12 units (Matter, Life Science, Earth Science, Forces, etc.)
+- [x] Seed: 3rd Grade Social Studies — 12 units (Community, Geography, History, Economics, etc.)
+- [x] Server: adminRouter with adminProcedure guard (role === "admin" required)
+- [x] Server: admin.getStats — platform-wide stats (users, sessions, diagnostics, quiz attempts, courses)
+- [x] Server: admin.listUsers — paginated user list
+- [x] Server: admin.updateUserRole / updateUserAccountType — with audit log
+- [x] Server: admin.enrollUserInCourse / getUserEnrollments
+- [x] Server: admin.listCourses / getCourse / getCourseUnits / updateCourse
+- [x] Server: admin.getSettings / upsertSetting — platform settings CRUD
+- [x] Server: admin.getAuditLog — last N admin actions
+- [x] Server: admin.getPublicCourses — active courses for course switcher
+- [x] Server: admin.myEnrollments / enrollSelf — student self-enrolment
+- [x] UI: /admin — standalone Admin Console (no sidebar) with 5 tabs
+- [x] UI: Admin Overview tab — 6 stat cards + active course grid with subject colour badges
+- [x] UI: Admin Users tab — searchable table with inline role/account-type selectors
+- [x] UI: Admin Courses tab — course list with detail panel (units list, active/default toggles)
+- [x] UI: Admin Settings tab — categorised toggle/text settings (general, enrollment, ai, notifications)
+- [x] UI: Admin Audit Log tab — action history table with colour-coded action types
+- [x] UI: DashboardLayout — "Admin Console" link in user dropdown (admin-only, Shield icon)
+- [x] UI: CourseSwitcher dialog — browse all active courses by grade, enrol, switch active course
+- [x] UI: DashboardLayout sidebar header — "Switch course ↗" link opens CourseSwitcher

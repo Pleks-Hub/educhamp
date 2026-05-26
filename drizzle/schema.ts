@@ -8,6 +8,7 @@ import {
   timestamp,
   varchar,
   float,
+  uniqueIndex,
 } from "drizzle-orm/mysql-core";
 
 // ─── Users ───────────────────────────────────────────────────────────────────
@@ -34,12 +35,15 @@ export type InsertUser = typeof users.$inferInsert;
 
 export const units = mysqlTable("units", {
   id: int("id").autoincrement().primaryKey(),
-  unitNumber: int("unitNumber").notNull().unique(),
+  courseId: int("courseId").notNull().default(1),
+  unitNumber: int("unitNumber").notNull(),
   title: varchar("title", { length: 256 }).notNull(),
   overview: text("overview").notNull(),
   teksAlignment: text("teksAlignment"),
   sortOrder: int("sortOrder").notNull().default(0),
-});
+}, (t) => ({
+  courseUnitUnique: uniqueIndex("course_unit_unique").on(t.courseId, t.unitNumber),
+}));
 
 export type Unit = typeof units.$inferSelect;
 
@@ -469,3 +473,82 @@ export const studentInviteTokens = mysqlTable("studentInviteTokens", {
 });
 
 export type StudentInviteToken = typeof studentInviteTokens.$inferSelect;
+
+// ─── Courses ──────────────────────────────────────────────────────────────────
+
+/**
+ * A course is a subject offering (e.g. "Algebra I", "English I", "Biology I").
+ * All units, skills, quiz questions, and diagnostic questions belong to a course.
+ * The original Algebra I content maps to courseId = 1.
+ */
+export const courses = mysqlTable("courses", {
+  id: int("id").autoincrement().primaryKey(),
+  courseCode: varchar("courseCode", { length: 32 }).notNull().unique(), // e.g. "ALG1", "ENG1", "BIO1"
+  title: varchar("title", { length: 256 }).notNull(),
+  subject: varchar("subject", { length: 64 }).notNull(),   // "math" | "english" | "science" | "social_studies" | "language" | "other"
+  gradeLevel: varchar("gradeLevel", { length: 16 }).notNull(), // "3" | "9" | "AP" etc.
+  description: text("description"),
+  teksCode: varchar("teksCode", { length: 128 }),           // e.g. "TEKS 111.39"
+  isActive: boolean("isActive").notNull().default(true),
+  isDefault: boolean("isDefault").notNull().default(false), // the course shown to new students by default
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Course = typeof courses.$inferSelect;
+
+// ─── User Course Enrollments ──────────────────────────────────────────────────
+
+/**
+ * Tracks which courses a student is enrolled in and which one is currently active.
+ */
+export const userCourseEnrollments = mysqlTable("userCourseEnrollments", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  courseId: int("courseId").notNull(),
+  isActive: boolean("isActive").notNull().default(true),
+  isCurrent: boolean("isCurrent").notNull().default(false), // the course currently shown in the UI
+  enrolledAt: timestamp("enrolledAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserCourseEnrollment = typeof userCourseEnrollments.$inferSelect;
+
+// ─── Platform Settings ────────────────────────────────────────────────────────
+
+/**
+ * Key-value store for platform-wide configuration managed by admins.
+ * Values are stored as JSON strings for flexibility.
+ */
+export const platformSettings = mysqlTable("platformSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 128 }).notNull().unique(),
+  value: text("value").notNull(),                           // JSON-encoded value
+  label: varchar("label", { length: 256 }),                 // human-readable label
+  description: text("description"),
+  category: varchar("category", { length: 64 }).notNull().default("general"), // "general" | "features" | "notifications" | "ai" | "enrollment"
+  updatedBy: int("updatedBy"),                              // FK → users.id (last admin who changed it)
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PlatformSetting = typeof platformSettings.$inferSelect;
+
+// ─── Admin Audit Log ──────────────────────────────────────────────────────────
+
+/**
+ * Records all admin actions for accountability and debugging.
+ */
+export const adminAuditLog = mysqlTable("adminAuditLog", {
+  id: int("id").autoincrement().primaryKey(),
+  adminId: int("adminId").notNull(),                        // FK → users.id
+  action: varchar("action", { length: 128 }).notNull(),     // e.g. "user.role_change", "course.create"
+  targetType: varchar("targetType", { length: 64 }),        // "user" | "course" | "setting" | "content"
+  targetId: int("targetId"),                                // ID of the affected record
+  details: json("details").$type<Record<string, unknown>>(),
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AdminAuditLogEntry = typeof adminAuditLog.$inferSelect;

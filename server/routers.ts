@@ -5,6 +5,7 @@ import { authEnhancementsRouter } from "./routers/authEnhancements";
 import { parentToolsRouter } from "./routers/parentTools";
 import { referralRouter } from "./routers/referral";
 import { onboardingRouter } from "./routers/onboarding";
+import { adminRouter } from "./routers/admin";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
@@ -41,6 +42,7 @@ import { getMasteryLevel, getMasteryLabel, buildTutorSystemPrompt } from "./educ
 
 export const appRouter = router({
   system: systemRouter,
+  admin: adminRouter,
   parent: parentRouter,
   coParent: coParentRouter,
   authEnhancements: authEnhancementsRouter,

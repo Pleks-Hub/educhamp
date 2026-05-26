@@ -23,6 +23,7 @@ import JoinPage from "./pages/JoinPage";
 import ParentOnboarding from "./pages/ParentOnboarding";
 import StudentOnboarding from "./pages/StudentOnboarding";
 import Referrals from "./pages/Referrals";
+import AdminDashboard from "./pages/AdminDashboard";
 
 function Router() {
   return (
@@ -34,6 +35,8 @@ function Router() {
       <Route path="/join" component={JoinPage} />
       <Route path="/onboarding/parent" component={ParentOnboarding} />
       <Route path="/onboarding/student" component={StudentOnboarding} />
+      {/* Admin console — standalone, no sidebar */}
+      <Route path="/admin" component={AdminDashboard} />
 
       {/* App routes — wrapped in DashboardLayout */}
       <Route>

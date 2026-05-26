@@ -1,10 +1,12 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, count as sqlCount, desc, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
   InsertParentChild,
+  adminAuditLog,
   coParentAccess,
   coParentInvitations,
+  courses,
   diagnosticAttempts,
   diagnosticQuestions,
   enrolmentInvitations,
@@ -14,6 +16,7 @@ import {
   parentGoals,
   parentNotes,
   passwordResetTokens,
+  platformSettings,
   quizAttempts,
   quizQuestions,
   referrals,
@@ -24,6 +27,7 @@ import {
   tutorSessions,
   unitProgress,
   units,
+  userCourseEnrollments,
   userMastery,
   userProfiles,
   users,
@@ -1022,4 +1026,126 @@ export async function getPendingStudentInvitesForParent(parentId: number) {
   return db.select().from(studentInviteTokens)
     .where(and(eq(studentInviteTokens.parentId, parentId), eq(studentInviteTokens.status, "pending")))
     .orderBy(desc(studentInviteTokens.createdAt));
+}
+
+// ─── Admin Helpers ────────────────────────────────────────────────────────────
+
+export async function getAdminStats() {
+  const db = await getDb();
+  if (!db) return null;
+  const [{ total: totalUsers }] = await db.select({ total: sqlCount() }).from(users);
+  const [{ total: totalParents }] = await db.select({ total: sqlCount() }).from(users).where(eq(users.accountType, "parent"));
+  const [{ total: totalStudents }] = await db.select({ total: sqlCount() }).from(users).where(eq(users.accountType, "student"));
+  const [{ total: totalSessions }] = await db.select({ total: sqlCount() }).from(tutorSessions);
+  const [{ total: totalDiagnostics }] = await db.select({ total: sqlCount() }).from(diagnosticAttempts);
+  const [{ total: totalQuizAttempts }] = await db.select({ total: sqlCount() }).from(quizAttempts);
+  const allCourses = await db.select().from(courses).orderBy(courses.sortOrder);
+  return {
+    totalUsers,
+    totalParents,
+    totalStudents,
+    totalSessions,
+    totalDiagnostics,
+    totalQuizAttempts,
+    courses: allCourses,
+  };
+}
+
+export async function getAllUsers(limit = 100, offset = 0) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users).limit(limit).offset(offset).orderBy(desc(users.createdAt));
+}
+
+export async function updateUserRole(userId: number, role: "admin" | "user") {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ role }).where(eq(users.id, userId));
+}
+
+// Note: users table does not have an isActive column; admin can change role to restrict access
+export async function setUserRole(userId: number, role: "user" | "admin") {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ role }).where(eq(users.id, userId));
+}
+
+export async function getAllCourses() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(courses).orderBy(courses.sortOrder);
+}
+
+export async function getCourseById(courseId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select().from(courses).where(eq(courses.id, courseId)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function updateCourse(courseId: number, data: {
+  title?: string;
+  description?: string;
+  isActive?: boolean;
+  isDefault?: boolean;
+  sortOrder?: number;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(courses).set(data).where(eq(courses.id, courseId));
+}
+
+export async function getPlatformSettings() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(platformSettings).orderBy(platformSettings.key);
+}
+
+export async function upsertPlatformSetting(settingKey: string, settingValue: string, description?: string, updatedBy?: number) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(platformSettings).where(eq(platformSettings.key, settingKey)).limit(1);
+  if (existing.length > 0) {
+    await db.update(platformSettings).set({ value: settingValue, updatedAt: new Date(), updatedBy: updatedBy ?? null }).where(eq(platformSettings.key, settingKey));
+  } else {
+    await db.insert(platformSettings).values({ key: settingKey, value: settingValue, description: description ?? null, updatedBy: updatedBy ?? null });
+  }
+}
+
+export async function logAdminAction(adminId: number, action: string, targetType: string, targetId: number | null, details: Record<string, unknown>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(adminAuditLog).values({ adminId, action, targetType: targetType ?? null, targetId: targetId ?? null, details });
+}
+
+export async function getAdminAuditLog(limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(adminAuditLog).orderBy(desc(adminAuditLog.createdAt)).limit(limit);
+}
+
+export async function enrollUserInCourse(userId: number, courseId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(userCourseEnrollments)
+    .where(and(eq(userCourseEnrollments.userId, userId), eq(userCourseEnrollments.courseId, courseId)))
+    .limit(1);
+  if (existing.length === 0) {
+    await db.insert(userCourseEnrollments).values({ userId, courseId, isActive: true });
+  }
+}
+
+export async function getUserCourseEnrollments(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ enrollment: userCourseEnrollments, course: courses })
+    .from(userCourseEnrollments)
+    .innerJoin(courses, eq(userCourseEnrollments.courseId, courses.id))
+    .where(and(eq(userCourseEnrollments.userId, userId), eq(userCourseEnrollments.isActive, true)));
+}
+
+export async function getUnitsForCourse(courseId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(units).where(eq(units.courseId, courseId)).orderBy(units.sortOrder);
 }
