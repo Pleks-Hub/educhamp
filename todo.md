@@ -694,3 +694,33 @@
 - [x] QA: test status banner state transitions (pending → accepted, pending → declined, expired)
 - [x] QA: test resend rate limiting (>10 resends in 24h)
 - [x] QA: TypeScript 0 errors, all tests passing
+
+## Sprint 21 — Resend Domain, Email Logs Admin Tab, Invite Expiry Heartbeat
+
+### Custom Resend Sender Domain
+- [x] Update emailService.ts: use RESEND_FROM_EMAIL env var (default: invites@educhamp.app) as the from address
+- [x] Add RESEND_FROM_EMAIL to env.ts
+- [x] Add RESEND_FROM_EMAIL secret via webdev_request_secrets
+
+### Email Logs Admin Tab
+- [x] Server: admin.getEmailLogs procedure — paginated list with filters (status, dateRange, search by email)
+- [x] Server: admin.getEmailLogStats — counts by status (sent, failed, bounced)
+- [x] Frontend: Admin Console — new "Email Logs" tab (9th tab) with stats cards + filterable table
+- [x] Frontend: Email Logs table columns: recipient, subject, status badge, Resend ID, sent timestamp, error message
+- [x] Frontend: Email Logs — status filter (all / sent / failed / bounced) and date range picker
+- [x] Frontend: Email Logs — retry button for failed emails (calls resendParentInvite or re-queues)
+
+### Invite Expiry Heartbeat Job
+- [x] Read references/periodic-updates.md to understand heartbeat pattern
+- [x] Server: heartbeat handler for invite-expiry scan (mark expired tokens, notify students)
+- [x] DB: query all pending parentInviteTokens where expiresAt < now()
+- [x] Server: update status to 'expired' for all found tokens
+- [x] Server: create in-app notification for each affected student (invite expired, prompt to resend)
+- [x] Register heartbeat job to run daily (every 24h)
+- [x] Write vitest test for expiry logic
+
+### QA & Bug Fixes
+- [x] QA: verify custom from address appears correctly in sent emails
+- [x] QA: verify Email Logs tab loads and filters correctly
+- [x] QA: verify heartbeat marks expired tokens and creates notifications
+- [x] QA: TypeScript 0 errors, all tests passing

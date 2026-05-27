@@ -493,6 +493,73 @@ export const adminRouter = router({
       return { success: true, studentsAffected: count };
     }),
 
+  // ── Email Logs ──────────────────────────────────────────────────────────────
+  getEmailLogs: adminProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(500).default(100),
+      offset: z.number().min(0).default(0),
+      status: z.enum(["all", "sent", "failed", "skipped"]).default("all"),
+      search: z.string().optional(),
+      dateFrom: z.string().optional(), // ISO date string
+      dateTo: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const db = await (await import("../db")).getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { emailLogs } = await import("../../drizzle/schema");
+      const { desc, eq, like, and, gte, lte, sql } = await import("drizzle-orm");
+
+      const conditions: Parameters<typeof and>[0][] = [];
+      if (input.status !== "all") {
+        conditions.push(eq(emailLogs.status, input.status));
+      }
+      if (input.search) {
+        conditions.push(like(emailLogs.toEmail, `%${input.search}%`));
+      }
+      if (input.dateFrom) {
+        conditions.push(gte(emailLogs.createdAt, new Date(input.dateFrom)));
+      }
+      if (input.dateTo) {
+        conditions.push(lte(emailLogs.createdAt, new Date(input.dateTo)));
+      }
+
+      const where = conditions.length > 0 ? and(...(conditions as [Parameters<typeof and>[0], ...Parameters<typeof and>[0][]])) : undefined;
+
+      const rows = await db
+        .select()
+        .from(emailLogs)
+        .where(where)
+        .orderBy(desc(emailLogs.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+
+      const [countRow] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(emailLogs)
+        .where(where);
+
+      return { logs: rows, total: Number(countRow?.count ?? 0) };
+    }),
+
+  getEmailLogStats: adminProcedure.query(async () => {
+    const db = await (await import("../db")).getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const { emailLogs } = await import("../../drizzle/schema");
+    const { sql, eq } = await import("drizzle-orm");
+
+    const [total] = await db.select({ count: sql<number>`count(*)` }).from(emailLogs);
+    const [sent] = await db.select({ count: sql<number>`count(*)` }).from(emailLogs).where(eq(emailLogs.status, "sent"));
+    const [failed] = await db.select({ count: sql<number>`count(*)` }).from(emailLogs).where(eq(emailLogs.status, "failed"));
+    const [skipped] = await db.select({ count: sql<number>`count(*)` }).from(emailLogs).where(eq(emailLogs.status, "skipped"));
+
+    return {
+      total: Number(total?.count ?? 0),
+      sent: Number(sent?.count ?? 0),
+      failed: Number(failed?.count ?? 0),
+      skipped: Number(skipped?.count ?? 0),
+    };
+  }),
+
   scheduleGradePromotion: adminProcedure
     .input(z.object({
       cron: z.string().default("0 0 2 15 6 *"),

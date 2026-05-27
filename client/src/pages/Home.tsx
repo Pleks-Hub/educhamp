@@ -30,6 +30,7 @@ import {
   Target,
   TrendingUp,
   Trophy,
+  Bell,
   BookMarked,
   UserCheck,
   XCircle,
@@ -309,6 +310,48 @@ function ParentInviteBanner() {
   );
 }
 
+// ─── Notification Bell ──────────────────────────────────────────────────────
+
+function NotificationBell() {
+  const { data } = trpc.notifications.getMyNotifications.useQuery(
+    { limit: 20, onlyUnread: false },
+    { refetchInterval: 60_000 }
+  );
+  const utils = trpc.useUtils();
+  const markAllRead = trpc.notifications.markAllRead.useMutation({
+    onSuccess: () => utils.notifications.getMyNotifications.invalidate(),
+  });
+  const unread = data?.unreadCount ?? 0;
+  if (!data || data.notifications.length === 0) return null;
+  return (
+    <div className="relative group">
+      <Button variant="ghost" size="icon" className="relative h-9 w-9" onClick={() => markAllRead.mutate()}>
+        <Bell className="h-4 w-4" />
+        {unread > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </Button>
+      <div className="absolute right-0 top-10 w-80 bg-popover border border-border rounded-xl shadow-lg z-50 hidden group-focus-within:block">
+        <div className="p-3 border-b border-border flex items-center justify-between">
+          <p className="text-sm font-semibold">Notifications</p>
+          {unread > 0 && <button className="text-xs text-primary hover:underline" onClick={() => markAllRead.mutate()}>Mark all read</button>}
+        </div>
+        <div className="max-h-72 overflow-y-auto divide-y divide-border">
+          {data.notifications.map((n) => (
+            <div key={n.id} className={`p-3 text-sm ${!n.isRead ? "bg-primary/5" : ""}`}>
+              <p className="font-medium text-foreground">{n.title}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{n.message}</p>
+              <p className="text-xs text-muted-foreground mt-1">{new Date(n.createdAt).toLocaleString()}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -444,6 +487,7 @@ export default function Home() {
               My Curriculum
             </Button>
           )}
+          <NotificationBell />
         </div>
       </div>
 

@@ -46,7 +46,11 @@ export interface SendEmailResult {
 
 // ─── Core send function ───────────────────────────────────────────────────────
 
-const FROM_ADDRESS = "EduChamp <noreply@educhamp.app>";
+// From address is configurable via RESEND_FROM_EMAIL env var
+// Default: "EduChamp <invites@educhamp.app>" (requires domain verification in Resend dashboard)
+function getFromAddress(): string {
+  return ENV.resendFromEmail || "EduChamp <invites@educhamp.app>";
+}
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 
@@ -85,7 +89,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       const result = await resend.emails.send({
-        from: FROM_ADDRESS,
+        from: getFromAddress(),
         to: [opts.to],
         subject: opts.subject,
         html: opts.html,

@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerTutorStreamRoute } from "../tutorStream";
 import { gradePromotionHandler } from "../scheduledHandlers";
+import { inviteExpiryHandler } from "../scheduled/inviteExpiry";
 import { seedDefaultRoles } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -42,6 +43,7 @@ async function startServer() {
   registerTutorStreamRoute(app);
   // Scheduled Heartbeat handlers
   app.post("/api/scheduled/grade-promotion", gradePromotionHandler);
+  app.post("/api/scheduled/invite-expiry", inviteExpiryHandler);
   // tRPC API
   app.use(
     "/api/trpc",

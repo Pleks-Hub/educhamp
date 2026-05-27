@@ -47,6 +47,7 @@ import {
   getAllCourseProgressForUser,
   getCourseById,
   getCourseCooldownDays,
+  getDb,
 } from "./db";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -783,6 +784,54 @@ export const appRouter = router({
       .input(z.object({ sessionId: z.number() }))
       .mutation(async ({ input }) => {
         await updateTutorSessionMessages(input.sessionId, []);
+        return { success: true };
+      }),
+  }),
+
+  // ─── In-App Notifications ────────────────────────────────────────────────────
+  notifications: router({
+    getMyNotifications: protectedProcedure
+      .input(z.object({
+        limit: z.number().min(1).max(50).default(20),
+        onlyUnread: z.boolean().default(false),
+      }))
+      .query(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) return { notifications: [], unreadCount: 0 };
+        const { userNotifications } = await import("../drizzle/schema");
+        const { eq, and, desc } = await import("drizzle-orm");
+        const conditions: ReturnType<typeof eq>[] = [eq(userNotifications.userId, ctx.user.id)];
+        if (input.onlyUnread) conditions.push(eq(userNotifications.isRead, false));
+        const rows = await db.select().from(userNotifications)
+          .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+          .orderBy(desc(userNotifications.createdAt))
+          .limit(input.limit);
+        const unreadCount = rows.filter((r) => !r.isRead).length;
+        return { notifications: rows, unreadCount };
+      }),
+
+    markRead: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) return { success: false };
+        const { userNotifications } = await import("../drizzle/schema");
+        const { eq, and } = await import("drizzle-orm");
+        await db.update(userNotifications)
+          .set({ isRead: true })
+          .where(and(eq(userNotifications.id, input.id), eq(userNotifications.userId, ctx.user.id)));
+        return { success: true };
+      }),
+
+    markAllRead: protectedProcedure
+      .mutation(async ({ ctx }) => {
+        const db = await getDb();
+        if (!db) return { success: false };
+        const { userNotifications } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        await db.update(userNotifications)
+          .set({ isRead: true })
+          .where(eq(userNotifications.userId, ctx.user.id));
         return { success: true };
       }),
   }),

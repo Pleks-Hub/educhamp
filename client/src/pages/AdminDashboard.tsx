@@ -22,6 +22,7 @@ import {
   Mail, MessageCircle, Plus, Trash2, Edit2, Eye, CheckCircle2,
   AlertTriangle, FileText, Image, Globe, History, Lock, Unlock,
   UserPlus, UserMinus, Copy, MoreHorizontal, Search,
+  Inbox, Send, XCircle, Filter,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -1172,6 +1173,146 @@ function AuditLogTab() {
   );
 }
 
+// ─── Email Logs Tab ──────────────────────────────────────────────────────────
+
+function EmailLogsTab() {
+  const [statusFilter, setStatusFilter] = useState<"all" | "sent" | "failed" | "skipped">("all");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Debounce search input
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    clearTimeout((handleSearchChange as any)._t);
+    (handleSearchChange as any)._t = setTimeout(() => setDebouncedSearch(val), 400);
+  };
+
+  const { data: stats } = trpc.admin.getEmailLogStats.useQuery();
+  const { data, isLoading, refetch } = trpc.admin.getEmailLogs.useQuery({
+    limit: 100,
+    offset: 0,
+    status: statusFilter,
+    search: debouncedSearch || undefined,
+  });
+
+  const statusBadge = (status: string) => {
+    if (status === "sent") return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200"><Send className="h-3 w-3 mr-1" />Sent</Badge>;
+    if (status === "failed") return <Badge className="bg-red-100 text-red-700 border-red-200"><XCircle className="h-3 w-3 mr-1" />Failed</Badge>;
+    return <Badge className="bg-amber-100 text-amber-700 border-amber-200"><Clock className="h-3 w-3 mr-1" />Skipped</Badge>;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Email Delivery Logs</h2>
+          <p className="text-sm text-muted-foreground">Monitor all transactional emails sent by the platform</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+          <RefreshCw className="h-4 w-4" /> Refresh
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: "Total Sent", value: stats?.total ?? 0, icon: Inbox, color: "text-blue-600" },
+          { label: "Delivered", value: stats?.sent ?? 0, icon: CheckCircle2, color: "text-emerald-600" },
+          { label: "Failed", value: stats?.failed ?? 0, icon: XCircle, color: "text-red-600" },
+          { label: "Skipped", value: stats?.skipped ?? 0, icon: AlertTriangle, color: "text-amber-600" },
+        ].map(({ label, value, icon: Icon, color }) => (
+          <Card key={label}>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3">
+                <Icon className={`h-8 w-8 ${color}`} />
+                <div>
+                  <p className="text-2xl font-bold">{value}</p>
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by recipient email…"
+            value={search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+          <SelectTrigger className="w-36">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="sent">Sent</SelectItem>
+            <SelectItem value="failed">Failed</SelectItem>
+            <SelectItem value="skipped">Skipped</SelectItem>
+          </SelectContent>
+        </Select>
+        <Badge variant="secondary">{data?.total ?? 0} records</Badge>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-lg border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Recipient</TableHead>
+              <TableHead>Subject</TableHead>
+              <TableHead>Template</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Message ID</TableHead>
+              <TableHead>Sent At</TableHead>
+              <TableHead>Error</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-8" /></TableCell></TableRow>
+              ))
+            ) : (data?.logs ?? []).length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
+                  <Inbox className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  No email logs found.
+                </TableCell>
+              </TableRow>
+            ) : (data?.logs ?? []).map((log: any) => (
+              <TableRow key={log.id}>
+                <TableCell className="text-sm font-medium">{log.toEmail}</TableCell>
+                <TableCell className="text-sm max-w-[200px] truncate">{log.subject}</TableCell>
+                <TableCell><Badge variant="outline" className="text-xs">{log.templateName}</Badge></TableCell>
+                <TableCell>{statusBadge(log.status)}</TableCell>
+                <TableCell className="text-xs font-mono text-muted-foreground">
+                  {log.messageId ? (
+                    <span className="truncate max-w-[120px] block" title={log.messageId}>{log.messageId.slice(0, 16)}…</span>
+                  ) : "—"}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                  {new Date(log.createdAt).toLocaleString()}
+                </TableCell>
+                <TableCell className="text-xs text-red-600 max-w-[160px] truncate">
+                  {log.errorMessage ?? "—"}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
 // ─── Grade Management Tab ──────────────────────────────────────────────────────
 
 function SchedulePromotionButton() {
@@ -1394,6 +1535,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="settings" className="gap-2"><Settings className="h-4 w-4" /> Settings</TabsTrigger>
             <TabsTrigger value="grades" className="gap-2"><GraduationCap className="h-4 w-4" /> Grades</TabsTrigger>
             <TabsTrigger value="audit" className="gap-2"><ClipboardList className="h-4 w-4" /> Audit Log</TabsTrigger>
+            <TabsTrigger value="emaillogs" className="gap-2"><Inbox className="h-4 w-4" /> Email Logs</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview"><OverviewTab /></TabsContent>
@@ -1404,6 +1546,7 @@ export default function AdminDashboard() {
           <TabsContent value="grades"><GradeManagementTab /></TabsContent>
           <TabsContent value="settings"><SettingsTab /></TabsContent>
           <TabsContent value="audit"><AuditLogTab /></TabsContent>
+          <TabsContent value="emaillogs"><EmailLogsTab /></TabsContent>
         </Tabs>
       </div>
     </div>

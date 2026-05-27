@@ -761,3 +761,20 @@ export const emailLogs = mysqlTable("emailLogs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type EmailLog = typeof emailLogs.$inferSelect;
+
+/**
+ * In-app notifications for individual users.
+ * Used for system alerts, invite status updates, and platform messages.
+ */
+export const userNotifications = mysqlTable("userNotifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  type: varchar("type", { length: 64 }).notNull().default("general"),
+  // e.g. "invite_expired" | "invite_accepted" | "invite_declined" | "general"
+  title: varchar("title", { length: 256 }).notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("isRead").notNull().default(false),
+  metadata: text("metadata"), // JSON string for extra context
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type UserNotification = typeof userNotifications.$inferSelect;
