@@ -16,6 +16,7 @@ import {
   getParentChildLink,
   getAllUnits,
   getUserMastery,
+  getAllCourseProgressForUser,
 } from "../db";
 import { getMasteryLabel, getAdaptivePath } from "../educhamp-helpers";
 
@@ -104,6 +105,19 @@ export const parentRouter = router({
 
     return children.filter(Boolean);
   }),
+
+  /**
+   * Get all course progress for a single child (multi-course parent view).
+   */
+  getChildAllCourses: protectedProcedure
+    .input(z.object({ childId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const link = await getParentChildLink(ctx.user.id, input.childId);
+      if (!link || !link.isActive) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this student." });
+      }
+      return getAllCourseProgressForUser(input.childId);
+    }),
 
   /**
    * Get detailed progress for a single child.

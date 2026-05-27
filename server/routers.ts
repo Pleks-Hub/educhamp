@@ -38,6 +38,7 @@ import {
   getParentsByChildId,
   getUnitsForCourse,
   getUserCourseEnrollments,
+  getAllCourseProgressForUser,
 } from "./db";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -174,6 +175,10 @@ export const appRouter = router({
           lastAttemptAt: mastery?.lastAttemptAt ?? null,
         };
       });
+    }),
+
+    getAllCourseProgress: protectedProcedure.query(async ({ ctx }) => {
+      return getAllCourseProgressForUser(ctx.user.id);
     }),
 
     getLessonProgress: protectedProcedure

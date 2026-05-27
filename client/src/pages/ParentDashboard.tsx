@@ -543,6 +543,90 @@ function SkillGapPanel({ childId }: { childId: number }) {
 
 // ─── Report Export Panel ──────────────────────────────────────────────────────
 
+// ─── Child Courses Panel ─────────────────────────────────────────────────────
+
+const SUBJECT_COLORS_PARENT: Record<string, { bg: string; text: string }> = {
+  "Mathematics": { bg: "bg-blue-50", text: "text-blue-700" },
+  "English Language Arts": { bg: "bg-purple-50", text: "text-purple-700" },
+  "Science": { bg: "bg-green-50", text: "text-green-700" },
+  "Social Studies": { bg: "bg-amber-50", text: "text-amber-700" },
+  "World Languages": { bg: "bg-rose-50", text: "text-rose-700" },
+};
+
+function ChildCoursesPanel({ childId, childName }: { childId: number; childName: string }) {
+  const { data: courses, isLoading } = trpc.parent.getChildAllCourses.useQuery({ childId });
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {[1, 2].map((i) => (
+          <div key={i} className="h-36 rounded-xl bg-muted animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (!courses || courses.length === 0) {
+    return (
+      <div className="text-center py-8 space-y-2">
+        <BookOpen className="h-10 w-10 text-muted-foreground mx-auto" />
+        <p className="text-sm font-medium text-foreground">{childName} is not enrolled in any courses yet.</p>
+        <p className="text-xs text-muted-foreground">Once they enrol and start learning, their course progress will appear here.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        {childName} is enrolled in <strong>{courses.length}</strong> course{courses.length !== 1 ? "s" : ""}.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {courses.map((cp) => {
+          const colors = SUBJECT_COLORS_PARENT[cp.subject ?? ""] ?? { bg: "bg-muted/40", text: "text-muted-foreground" };
+          return (
+            <Card key={cp.courseId} className={`border ${cp.isCurrent ? "ring-2 ring-primary" : ""}`}>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                      {cp.isCurrent && <Badge className="text-xs bg-primary text-primary-foreground">Active</Badge>}
+                      {cp.gradeLevel && <Badge variant="outline" className="text-xs">{cp.gradeLevel}</Badge>}
+                      {cp.subject && (
+                        <Badge className={`text-xs ${colors.bg} ${colors.text}`}>{cp.subject}</Badge>
+                      )}
+                    </div>
+                    <h4 className="font-semibold text-sm leading-tight">{cp.courseTitle}</h4>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{cp.completedUnits}/{cp.totalUnits} units complete</span>
+                    <span className="font-medium text-foreground">{cp.progressPercent}%</span>
+                  </div>
+                  <Progress value={cp.progressPercent} className="h-1.5" />
+                </div>
+                {cp.activeUnitTitle && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    <span className="text-foreground font-medium">Unit {cp.activeUnitNumber}:</span> {cp.activeUnitTitle}
+                  </p>
+                )}
+                {cp.lastActivityAt && (
+                  <p className="text-xs text-muted-foreground">
+                    Last studied: {new Date(cp.lastActivityAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Report Export Panel ──────────────────────────────────────────────────────
+
 function ReportExportPanel({ childId, childName }: { childId: number; childName: string }) {
   const { data, isLoading } = trpc.parentTools.getReportData.useQuery({ childId });
 
@@ -877,14 +961,20 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
       </div>
 
       {/* Tabbed detail sections */}
-      <Tabs defaultValue="progress">
-        <TabsList className="w-full grid grid-cols-5">
+      <Tabs defaultValue="courses">
+        <TabsList className="w-full grid grid-cols-6">
+          <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
           <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
           <TabsTrigger value="goals" className="text-xs">Goals &amp; Notes</TabsTrigger>
           <TabsTrigger value="gaps" className="text-xs">Skill Gaps</TabsTrigger>
           <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
           <TabsTrigger value="report" className="text-xs">Export</TabsTrigger>
         </TabsList>
+
+        {/* Courses tab — multi-course overview */}
+        <TabsContent value="courses" className="mt-4">
+          <ChildCoursesPanel childId={child.childId} childName={child.name ?? "Student"} />
+        </TabsContent>
 
         {/* Progress tab */}
         <TabsContent value="progress" className="space-y-4 mt-4">

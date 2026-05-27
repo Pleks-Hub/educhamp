@@ -216,19 +216,19 @@
 
 ## Grade-Filtered Courses, Progression Locks & UX Fixes
 
-- [ ] DB/Server: grade-filtered course query — only return courses matching student's gradeLevel from userProfiles
-- [ ] DB/Server: fix lesson count query — count distinct lessons per unit (no duplicates, match actual DB rows)
-- [ ] DB/Server: unit completion gate — unit is "completable" only when all lessons viewed + quiz score ≥ 60%
-- [ ] DB/Server: next-unit unlock logic — unit N+1 locked until unit N completion gate is met
-- [ ] Server: answer normalisation — strip whitespace, lowercase, accept equivalent forms (e.g. "x=3" = "x = 3")
-- [ ] Server: practice question sanity check — audit all Algebra I practice questions for broken codes/rendering
-- [ ] UI: Course Catalogue — grade-grouped layout (Khan/IXL style), subject colour cards, hide off-grade courses
-- [ ] UI: Curriculum page — show lock icon on locked units, tooltip "Complete Unit N first"
-- [ ] UI: Unit detail — show completion checklist (lessons done, quiz passed) before next unit CTA
-- [ ] UI: Practice section — show answer format hint below each input (e.g. "Enter as: x=3 or 3")
-- [ ] UI: Fix (4/3) lesson count display bug — cap displayed count at actual lesson total
-- [ ] UI: Fix next-unit navigation crash — guard against undefined unit before rendering
-- [ ] UI: CourseSwitcher — filter by student's grade level, show grade badge on each course card
+- [x] DB/Server: grade-filtered course query — only return courses matching student's gradeLevel from userProfiles
+- [x] DB/Server: fix lesson count query — count distinct lessons per unit (no duplicates, match actual DB rows)
+- [x] DB/Server: unit completion gate — unit is "completable" only when all lessons viewed + quiz score ≥ 60%
+- [x] DB/Server: next-unit unlock logic — unit N+1 locked until unit N completion gate is met
+- [x] Server: answer normalisation — strip whitespace, lowercase, accept equivalent forms (e.g. "x=3" = "x = 3")
+- [x] Server: practice question sanity check — audit all Algebra I practice questions for broken codes/rendering
+- [x] UI: Course Catalogue — grade-grouped layout (Khan/IXL style), subject colour cards, hide off-grade courses
+- [x] UI: Curriculum page — show lock icon on locked units, tooltip "Complete Unit N first"
+- [x] UI: Unit detail — show completion checklist (lessons done, quiz passed) before next unit CTA
+- [x] UI: Practice section — show answer format hint below each input (e.g. "Enter as: x=3 or 3")
+- [x] UI: Fix (4/3) lesson count display bug — cap displayed count at actual lesson total
+- [x] UI: Fix next-unit navigation crash — guard against undefined unit before rendering
+- [x] UI: CourseSwitcher — filter by student's grade level, show grade badge on each course card
 
 ## Grade-Filtered Courses, Answer Normalisation & Bug Fixes (Sprint 5)
 
@@ -245,3 +245,27 @@
 - [x] UI: Quiz page next-unit button now navigates to specific next unit by unitNumber (not generic /curriculum)
 - [x] UI: LessonDetail independent practice tab now shows Answer Format Tips banner (spaces, equations, commas, fractions)
 - [x] UI: CourseSwitcher grade filter shows all available grade levels dynamically
+
+## Multi-Course Experience, Guided Tour & Grade Management (Sprint 6)
+
+- [ ] DB: add gradeLevel to userProfiles onboarding (parent sets at child profile creation)
+- [ ] DB: admin can assign/change student gradeLevel in userProfiles
+- [ ] DB: end-of-year grade promotion — increment gradeLevel for all active students (scheduled job)
+- [ ] Server: onboarding.saveStudentProfile accepts gradeLevel set by parent during invite flow
+- [ ] Server: admin.setStudentGrade — admin sets/overrides gradeLevel for a specific user
+- [ ] Server: admin.bulkPromoteGrade — increment gradeLevel for all students in a grade cohort
+- [ ] Server: progress.getAllCourseProgress — returns progress summary for ALL enrolled courses (not just active)
+- [ ] Server: progress.switchActiveCourse — student switches active course; returns new course dashboard
+- [ ] UI: First-login guided tour — welcome modal with 4-step walkthrough (Diagnostic → Curriculum → AI Tutor → Quiz)
+- [ ] UI: Tour shows on first login only (stored in userProfiles.onboardingCompleted)
+- [ ] UI: Multi-course Dashboard — course cards grid showing all enrolled courses with per-course progress bars
+- [ ] UI: Multi-course Dashboard — "Active" badge on current course, "Switch" button on each card
+- [ ] UI: Sidebar — course switcher pill shows active course name; click opens full course switcher
+- [ ] UI: Curriculum/Quiz/Tutor pages — course context banner at top showing which course is active
+- [ ] UI: StudentOnboarding — parent sets child's grade level during invite/onboarding flow
+- [ ] UI: Parent Dashboard — per-child course progress cards (one card per enrolled course)
+- [ ] UI: Parent Dashboard — course switcher in child detail panel to view progress per course
+- [ ] UI: Parent Dashboard — cross-course summary table (all courses, mastery %, last active)
+- [ ] UI: Admin Console — student grade assignment field in user management tab
+- [ ] UI: Admin Console — bulk grade promotion tool (select grade cohort, promote all)
+- [ ] UI: Admin Console — end-of-year promotion scheduler (set date, auto-promote)

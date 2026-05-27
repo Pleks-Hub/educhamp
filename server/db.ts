@@ -1167,3 +1167,117 @@ export async function setUserActiveCourse(userId: number, courseId: number) {
       eq(userCourseEnrollments.courseId, courseId)
     ));
 }
+
+// ─── Multi-course progress aggregation ──────────────────────────────────────
+
+/**
+ * Returns progress summary for ALL courses a student is enrolled in.
+ * Used by the multi-course dashboard and parent cross-course view.
+ */
+export async function getAllCourseProgressForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const enrollments = await db
+    .select({ enrollment: userCourseEnrollments, course: courses })
+    .from(userCourseEnrollments)
+    .innerJoin(courses, eq(userCourseEnrollments.courseId, courses.id))
+    .where(and(eq(userCourseEnrollments.userId, userId), eq(userCourseEnrollments.isActive, true)));
+
+  if (enrollments.length === 0) return [];
+
+  const unitProgressData = await db.select().from(unitProgress).where(eq(unitProgress.userId, userId));
+  const progressMap = new Map(unitProgressData.map((p) => [p.unitId, p]));
+
+  const result = await Promise.all(
+    enrollments.map(async ({ enrollment, course }) => {
+      const courseUnits = await db
+        .select()
+        .from(units)
+        .where(eq(units.courseId, course.id))
+        .orderBy(units.sortOrder);
+
+      const totalUnits = courseUnits.length;
+      const completedUnits = courseUnits.filter((u) => progressMap.get(u.id)?.status === "completed").length;
+      const inProgressUnits = courseUnits.filter((u) => {
+        const s = progressMap.get(u.id)?.status;
+        return s === "in_progress" || s === "quiz_unlocked";
+      }).length;
+
+      // Find the current active unit (first in_progress or quiz_unlocked)
+      const activeUnit = courseUnits.find((u) => {
+        const s = progressMap.get(u.id)?.status;
+        return s === "in_progress" || s === "quiz_unlocked";
+      });
+
+      // Last activity across all units in this course
+      const lastActivities = courseUnits
+        .map((u) => progressMap.get(u.id)?.lastActivityAt)
+        .filter(Boolean) as Date[];
+      const lastActivityAt = lastActivities.length > 0
+        ? new Date(Math.max(...lastActivities.map((d) => d.getTime())))
+        : null;
+
+      return {
+        courseId: course.id,
+        courseTitle: course.title,
+        subject: course.subject,
+        gradeLevel: course.gradeLevel,
+        isCurrent: enrollment.isCurrent ?? false,
+        enrolledAt: enrollment.enrolledAt,
+        totalUnits,
+        completedUnits,
+        inProgressUnits,
+        progressPercent: totalUnits > 0 ? Math.round((completedUnits / totalUnits) * 100) : 0,
+        activeUnitTitle: activeUnit?.title ?? null,
+        activeUnitNumber: activeUnit?.unitNumber ?? null,
+        lastActivityAt,
+      };
+    })
+  );
+
+  return result;
+}
+
+// ─── Admin grade management ──────────────────────────────────────────────────
+
+/**
+ * Admin: set or update a student's grade level in their userProfile.
+ */
+export async function setStudentGradeLevel(userId: number, gradeLevel: string) {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId)).limit(1);
+  if (existing.length > 0) {
+    await db.update(userProfiles).set({ gradeLevel }).where(eq(userProfiles.userId, userId));
+  } else {
+    await db.insert(userProfiles).values({ userId, gradeLevel });
+  }
+}
+
+/**
+ * Admin: bulk-promote all students in a specific grade to the next grade.
+ * Returns the count of students promoted.
+ */
+export async function bulkPromoteStudentGrade(fromGrade: string, toGrade: string): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db
+    .update(userProfiles)
+    .set({ gradeLevel: toGrade })
+    .where(eq(userProfiles.gradeLevel, fromGrade));
+  return (result as any)?.[0]?.affectedRows ?? 0;
+}
+
+/**
+ * Get all students with a specific grade level (for admin grade management).
+ */
+export async function getStudentsByGrade(gradeLevel: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({ profile: userProfiles, user: users })
+    .from(userProfiles)
+    .innerJoin(users, eq(userProfiles.userId, users.id))
+    .where(eq(userProfiles.gradeLevel, gradeLevel));
+}

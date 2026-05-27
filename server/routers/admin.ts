@@ -24,6 +24,9 @@ import {
   getUserCourseEnrollments,
   getUnitsForCourse,
   setUserActiveCourse,
+  setStudentGradeLevel,
+  bulkPromoteStudentGrade,
+  getStudentsByGrade,
 } from "../db";
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
@@ -177,5 +180,34 @@ export const adminRouter = router({
     .mutation(async ({ ctx, input }) => {
       await setUserActiveCourse(ctx.user.id, input.courseId);
       return { success: true };
+    }),
+
+  // ── Grade management ───────────────────────────────────────────────────────
+  setStudentGrade: adminProcedure
+    .input(z.object({ userId: z.number(), gradeLevel: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await setStudentGradeLevel(input.userId, input.gradeLevel);
+      await logAdminAction(ctx.user.id, "user.setGrade", "user", input.userId, {
+        gradeLevel: input.gradeLevel,
+      });
+      return { success: true };
+    }),
+
+  getStudentsByGrade: adminProcedure
+    .input(z.object({ gradeLevel: z.string() }))
+    .query(async ({ input }) => {
+      return getStudentsByGrade(input.gradeLevel);
+    }),
+
+  bulkPromoteGrade: adminProcedure
+    .input(z.object({ fromGrade: z.string(), toGrade: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const count = await bulkPromoteStudentGrade(input.fromGrade, input.toGrade);
+      await logAdminAction(ctx.user.id, "grade.bulkPromote", "grade", null, {
+        fromGrade: input.fromGrade,
+        toGrade: input.toGrade,
+        studentsAffected: count,
+      });
+      return { success: true, studentsAffected: count };
     }),
 });

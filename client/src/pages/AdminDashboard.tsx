@@ -452,6 +452,200 @@ function AuditLogTab() {
   );
 }
 
+// ─── Grade Management Tab ──────────────────────────────────────────────────
+
+const GRADE_LEVELS = [
+  "Kindergarten", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5",
+  "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12",
+];
+
+const GRADE_PROMOTIONS: Record<string, string> = {
+  "Kindergarten": "Grade 1", "Grade 1": "Grade 2", "Grade 2": "Grade 3",
+  "Grade 3": "Grade 4", "Grade 4": "Grade 5", "Grade 5": "Grade 6",
+  "Grade 6": "Grade 7", "Grade 7": "Grade 8", "Grade 8": "Grade 9",
+  "Grade 9": "Grade 10", "Grade 10": "Grade 11", "Grade 11": "Grade 12",
+};
+
+function GradeManagementTab() {
+  const [filterGrade, setFilterGrade] = useState<string>("all");
+  const [bulkFromGrade, setBulkFromGrade] = useState<string>("");
+  const [confirmBulk, setConfirmBulk] = useState(false);
+
+  const { data: users, isLoading, refetch } = trpc.admin.listUsers.useQuery({ limit: 500, offset: 0 });
+  const setGrade = trpc.admin.setStudentGrade.useMutation({
+    onSuccess: () => { toast.success("Grade updated"); refetch(); },
+    onError: (err) => toast.error(err.message),
+  });
+  const bulkPromote = trpc.admin.bulkPromoteGrade.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`Promoted ${data.promoted} students from ${bulkFromGrade} to ${GRADE_PROMOTIONS[bulkFromGrade] ?? "next grade"}`);
+      setConfirmBulk(false);
+      setBulkFromGrade("");
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const students = (users ?? []).filter((u: any) => u.accountType === "student");
+  const filtered = filterGrade === "all" ? students : students.filter((u: any) => u.grade === filterGrade);
+
+  const gradeCounts = GRADE_LEVELS.reduce((acc, g) => {
+    acc[g] = students.filter((u: any) => u.grade === g).length;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return (
+    <div className="space-y-6">
+      {/* Grade distribution */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <GraduationCap className="h-4 w-4" /> Grade Distribution
+          </CardTitle>
+          <CardDescription>Current student count per grade level</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+            {GRADE_LEVELS.map((g) => (
+              <button
+                key={g}
+                onClick={() => setFilterGrade(filterGrade === g ? "all" : g)}
+                className={`rounded-lg p-2 text-center border transition-colors ${
+                  filterGrade === g ? "bg-primary text-primary-foreground border-primary" : "bg-muted/40 hover:bg-muted border-border"
+                }`}
+              >
+                <div className="text-lg font-bold">{gradeCounts[g] ?? 0}</div>
+                <div className="text-xs mt-0.5 leading-tight">{g.replace("Grade ", "Gr.")}</div>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Bulk end-of-year promotion */}
+      <Card className="border-amber-200 bg-amber-50/50">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2 text-amber-800">
+            <Brain className="h-4 w-4" /> End-of-Year Grade Promotion
+          </CardTitle>
+          <CardDescription className="text-amber-700">
+            Promote all students in a grade to the next grade level. This is irreversible — use at the end of the school year.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-amber-800">Promote all students from:</span>
+              <Select value={bulkFromGrade} onValueChange={setBulkFromGrade}>
+                <SelectTrigger className="h-9 w-36 text-sm">
+                  <SelectValue placeholder="Select grade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {GRADE_LEVELS.filter((g) => GRADE_PROMOTIONS[g]).map((g) => (
+                    <SelectItem key={g} value={g}>{g} → {GRADE_PROMOTIONS[g]} ({gradeCounts[g] ?? 0} students)</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {bulkFromGrade && !confirmBulk && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-400 text-amber-800 hover:bg-amber-100"
+                onClick={() => setConfirmBulk(true)}
+              >
+                Preview Promotion
+              </Button>
+            )}
+            {confirmBulk && bulkFromGrade && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-amber-800 font-medium">
+                  Promote {gradeCounts[bulkFromGrade] ?? 0} students from {bulkFromGrade} → {GRADE_PROMOTIONS[bulkFromGrade]}?
+                </span>
+                <Button
+                  size="sm"
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  disabled={bulkPromote.isPending}
+                  onClick={() => bulkPromote.mutate({ fromGrade: bulkFromGrade, toGrade: GRADE_PROMOTIONS[bulkFromGrade] })}
+                >
+                  {bulkPromote.isPending ? "Promoting…" : "Confirm Promote"}
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmBulk(false)}>Cancel</Button>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Per-student grade assignment */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <h3 className="font-semibold text-sm">
+            {filterGrade === "all" ? `All Students (${students.length})` : `${filterGrade} (${filtered.length} students)`}
+          </h3>
+          {filterGrade !== "all" && (
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setFilterGrade("all")}>Clear filter</Button>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
+        ) : filtered.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">No students in this grade yet.</p>
+        ) : (
+          <div className="rounded-lg border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Current Grade</TableHead>
+                  <TableHead>School</TableHead>
+                  <TableHead>Assign Grade</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((user: any) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium text-sm">{user.name ?? "—"}</p>
+                        <p className="text-xs text-muted-foreground">{user.email ?? user.openId}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {user.grade ? (
+                        <Badge variant="outline" className="text-xs">{user.grade}</Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Not set</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{user.school ?? "—"}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={user.grade ?? ""}
+                        onValueChange={(v) => setGrade.mutate({ userId: user.id, gradeLevel: v })}
+                      >
+                        <SelectTrigger className="h-8 w-36 text-xs">
+                          <SelectValue placeholder="Set grade" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {GRADE_LEVELS.map((g) => (
+                            <SelectItem key={g} value={g}>{g}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main AdminDashboard ──────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -522,6 +716,9 @@ export default function AdminDashboard() {
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="h-4 w-4" /> Settings
             </TabsTrigger>
+            <TabsTrigger value="grades" className="gap-2">
+              <GraduationCap className="h-4 w-4" /> Grades
+            </TabsTrigger>
             <TabsTrigger value="audit" className="gap-2">
               <ClipboardList className="h-4 w-4" /> Audit Log
             </TabsTrigger>
@@ -530,6 +727,7 @@ export default function AdminDashboard() {
           <TabsContent value="overview"><OverviewTab /></TabsContent>
           <TabsContent value="users"><UsersTab /></TabsContent>
           <TabsContent value="courses"><CoursesTab /></TabsContent>
+          <TabsContent value="grades"><GradeManagementTab /></TabsContent>
           <TabsContent value="settings"><SettingsTab /></TabsContent>
           <TabsContent value="audit"><AuditLogTab /></TabsContent>
         </Tabs>
