@@ -807,9 +807,9 @@
 - [x] Smooth-scroll behavior on click
 
 ### District Logos
-- [ ] Download official logos for Katy ISD, Spring ISD, Cy-Fair ISD, Humble ISD, Conroe ISD, Alief ISD (deferred — awaiting signed partnership agreements)
-- [ ] Upload logos via manus-upload-file --webdev (deferred)
-- [ ] Replace text badge strip in Schools section with <img> logo elements (deferred)
+- [-] Download official logos for Katy ISD, Spring ISD, Cy-Fair ISD, Humble ISD, Conroe ISD, Alief ISD (BLOCKED — awaiting signed partnership agreements)
+- [-] Upload logos via manus-upload-file --webdev (BLOCKED)
+- [-] Replace text badge strip in Schools section with <img> logo elements (BLOCKED)
 
 ### billingPeriod Server Persistence
 - [x] Add billingPeriod column to users table in drizzle/schema.ts (migration 0021 applied)
@@ -876,3 +876,20 @@
 
 ### Vitest
 - [x] 36 tests in server/payment.test.ts: calculateDiscount, getPlanByKey, coupon validation logic, billing period persistence, subscription upsert, payment event logging, admin coupon CRUD, enum validation
+
+## Sprint 26 — Stripe Products, Webhook, PayPal/ACH
+
+### Stripe Products & Prices
+- [x] Create Stripe products (EduChamp Family, EduChamp Premium Family) via API script (scripts/create-stripe-products.mjs)
+- [x] Create monthly and annual prices for each product (4 prices created in Stripe sandbox)
+- [x] Update PLANS in server/stripe.ts with real Stripe Price IDs
+
+### Stripe Webhook Registration
+- [x] Document webhook endpoint URL and required events for manual registration
+- [-] Update STRIPE_WEBHOOK_SECRET once user registers the endpoint (BLOCKED — requires manual Stripe dashboard step)
+
+### PayPal / ACH Payment Options
+- [x] Enable PayPal payment method in Stripe checkout session (payment_method_types: card, paypal, us_bank_account)
+- [x] Enable ACH/bank debit (us_bank_account) in Stripe checkout session
+- [x] Update CheckoutModal UI to show payment method icons (Card, PayPal, Bank/ACH badges)
+- [x] Checkout uses real Stripe Price IDs for proper subscription management

@@ -244,6 +244,32 @@ export function CheckoutModal({
             </div>
           )}
 
+          {/* Accepted payment methods */}
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground text-center">Accepted payment methods</p>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              {/* Card */}
+              <div className="flex items-center gap-1 rounded border px-2 py-1 bg-muted/40 text-xs font-medium">
+                <CreditCard className="h-3.5 w-3.5 text-slate-500" />
+                Credit / Debit Card
+              </div>
+              {/* PayPal */}
+              <div className="flex items-center gap-1 rounded border px-2 py-1 bg-[#FFC439]/10 border-[#FFC439]/40 text-xs font-medium text-[#003087]">
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+                  <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.26-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.477z"/>
+                </svg>
+                PayPal
+              </div>
+              {/* ACH */}
+              <div className="flex items-center gap-1 rounded border px-2 py-1 bg-emerald-50 border-emerald-200 text-xs font-medium text-emerald-700">
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+                  <path d="M11.5 1L2 6v2h19V6L11.5 1zM2 21h19v-2H2v2zm0-5h19v-2H2v2zM4 10v7h2v-7H4zm5 0v7h2v-7H9zm5 0v7h2v-7h-2zm5 0v7h2v-7h-2z"/>
+                </svg>
+                Bank / ACH
+              </div>
+            </div>
+          </div>
+
           {/* Security note */}
           <div className="flex items-start gap-2 text-xs text-muted-foreground">
             <Shield className="h-4 w-4 mt-0.5 shrink-0 text-indigo-400" />

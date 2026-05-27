@@ -219,16 +219,13 @@ export const paymentRouter = router({
         ctx.user.name
       );
 
-      const interval = input.billingPeriod === "annual" ? "year" : "month";
+      const priceEntry = input.billingPeriod === "annual" ? plan.annual : plan.monthly;
+      const stripePriceId = priceEntry.stripePriceId;
 
-      // Build line items using inline price data (no pre-created Stripe products needed)
-      const session = await stripe.checkout.sessions.create({
-        customer: stripeCustomerId,
-        mode: "subscription",
-        allow_promotion_codes: !stripeCouponId, // allow manual codes if no server-side coupon
-        discounts: stripeCouponId ? [{ coupon: stripeCouponId }] : undefined,
-        line_items: [
-          {
+      // Build line items — prefer pre-created Stripe Price ID for proper subscription management
+      const lineItem = stripePriceId
+        ? { price: stripePriceId, quantity: 1 }
+        : {
             price_data: {
               currency: "usd",
               product_data: {
@@ -236,11 +233,18 @@ export const paymentRouter = router({
                 description: plan.features.slice(0, 3).join(" · "),
               },
               unit_amount: amountCents,
-              recurring: { interval },
+              recurring: { interval: (input.billingPeriod === "annual" ? "year" : "month") as "year" | "month" },
             },
             quantity: 1,
-          },
-        ],
+          };
+
+      const session = await stripe.checkout.sessions.create({
+        customer: stripeCustomerId,
+        mode: "subscription",
+        payment_method_types: ["card", "paypal", "us_bank_account"],
+        allow_promotion_codes: !stripeCouponId, // allow manual codes if no server-side coupon
+        discounts: stripeCouponId ? [{ coupon: stripeCouponId }] : undefined,
+        line_items: [lineItem],
         client_reference_id: String(ctx.user.id),
         metadata: {
           user_id: String(ctx.user.id),

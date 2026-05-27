@@ -25,8 +25,8 @@ export const PLANS: Record<
 > = {
   family: {
     name: "Family Plan",
-    monthly: { amountCents: 1999 },   // $19.99/mo
-    annual: { amountCents: 15990 },   // $15.99/mo × 12 = $191.88/yr (billed annually)
+    monthly: { amountCents: 1999, stripePriceId: "price_1TbnYY7Mcfd3gqtzhIiuU8AG" },   // $19.99/mo
+    annual: { amountCents: 15990, stripePriceId: "price_1TbnYa7Mcfd3gqtz6r8qjbHx" },   // $15.99/mo × 12 = $191.88/yr (billed annually)
     features: [
       "1 student account",
       "AI Tutor (EduBot)",
@@ -38,8 +38,8 @@ export const PLANS: Record<
   },
   premium_family: {
     name: "Premium Family Plan",
-    monthly: { amountCents: 2999 },   // $29.99/mo
-    annual: { amountCents: 23990 },   // $23.99/mo × 12 = $287.88/yr (billed annually)
+    monthly: { amountCents: 2999, stripePriceId: "price_1TbnYd7Mcfd3gqtzJc4cBAO6" },   // $29.99/mo
+    annual: { amountCents: 23990, stripePriceId: "price_1TbnYf7Mcfd3gqtzcQzNuisb" },   // $23.99/mo × 12 = $287.88/yr (billed annually)
     features: [
       "Up to 3 student accounts",
       "All Family Plan features",
