@@ -12,7 +12,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft,
   ArrowRight,
+  BookOpen,
   CheckCircle2,
+  ChevronRight,
   Clock,
   Loader2,
   Star,
@@ -312,6 +314,32 @@ export default function Quiz() {
       <div className="p-6 space-y-4">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-48 rounded-xl" />
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="p-6 max-w-2xl">
+        <div className="flex items-center gap-2 mb-6 text-sm text-muted-foreground">
+          <button onClick={() => setLocation(`/curriculum/unit/${unitNumber}`)} className="hover:text-foreground transition-colors">Unit {unitNumber}</button>
+          <ChevronRight className="h-3 w-3" />
+          <span>Quiz</span>
+        </div>
+        <Card className="border-2 border-yellow-200 bg-yellow-50/50">
+          <CardContent className="p-8 text-center space-y-4">
+            <div className="h-12 w-12 rounded-full bg-yellow-100 flex items-center justify-center mx-auto">
+              <BookOpen className="h-6 w-6 text-yellow-600" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground">Quiz Coming Soon</h2>
+            <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+              Quiz questions for this unit are being prepared by your teacher. Check back soon, or continue studying the lessons in the meantime.
+            </p>
+            <Button variant="outline" onClick={() => setLocation(`/curriculum/unit/${unitNumber}`)} className="gap-2">
+              <ArrowLeft className="h-4 w-4" /> Back to Unit
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

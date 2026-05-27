@@ -743,3 +743,11 @@
 - [x] P1: tutor session history — cap stored messages to last 20 turns
 - [x] P1: add robots.txt to disallow /admin, /diagnostic, /quiz, /parent
 - [x] QA: full vitest run, TypeScript check, smoke-test all P0/P1 fixes
+
+## Unit Access & Quiz Fix Sprint
+- [x] Fix: unlock all units after diagnostic completion (not just first two)
+- [x] Fix: quiz crash on Units 4, 5, 11 — seeded 100 quiz questions for Units 3-12; added empty-state guard
+- [x] Fix: apply post-diagnostic unlock logic consistently across all courses
+- [x] Landing page: replace static AI tutor image with animated interactive demo
+- [x] Landing page: four rotating learning modes (Tutor, Quiz, Practice, Exam)
+- [x] QA: full end-to-end content, quiz, progression, navigation validation (72/72 tests, 0 TS errors)

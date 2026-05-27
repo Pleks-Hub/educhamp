@@ -129,6 +129,19 @@ export const appRouter = router({
         await _setActive(userId, defaultCourseId);
         enrollments = await getUserCourseEnrollments(userId);
       }
+      const currentEnrollmentForInit = enrollments.find((e) => e.enrollment.isCurrent) ?? enrollments[0];
+      const initCourseId = currentEnrollmentForInit?.enrollment.courseId ?? 1;
+      // On first load with no unit progress, unlock the first 2 units so students can start immediately
+      // (before taking the diagnostic). After diagnostic, all units get unlocked.
+      const existingProgress = await getUserUnitProgress(userId);
+      if (existingProgress.length === 0 && ctx.user.accountType === "student") {
+        const initUnits = await getUnitsForCourse(initCourseId);
+        const sorted = initUnits.sort((a, b) => a.sortOrder - b.sortOrder);
+        // Unlock first 2 units
+        for (const unit of sorted.slice(0, 2)) {
+          await upsertUnitProgress(userId, unit.id, unit.unitNumber, { status: "in_progress" });
+        }
+      }
       const currentEnrollment = enrollments.find((e) => e.enrollment.isCurrent) ?? enrollments[0];
       const activeCourseId = currentEnrollment?.enrollment.courseId ?? 1;
 

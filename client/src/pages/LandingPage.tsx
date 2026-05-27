@@ -12,6 +12,7 @@ import {
   GraduationCap, Zap, CheckCircle, ArrowRight, MessageCircle,
   Sparkles, Send, X, Menu, Mail, Phone,
 } from "lucide-react";
+import { EduChampDemoWidget } from "@/components/EduChampDemoWidget";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -534,40 +535,9 @@ export default function LandingPage() {
               <p className="mt-4 text-xs text-slate-400">Free to start · No credit card required · Works on any device</p>
             </div>
 
-            {/* Hero visual */}
+            {/* Hero visual — Animated Demo Widget */}
             <div className="hidden lg:block relative">
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm space-y-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center">
-                    <Brain className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm">AI Tutor Session</p>
-                    <p className="text-xs text-slate-400">AP Calculus BC · Unit 3</p>
-                  </div>
-                  <div className="ml-auto flex items-center gap-1.5">
-                    <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-xs text-emerald-400">Live</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="bg-indigo-600/20 rounded-xl p-3 text-sm text-indigo-200 max-w-[85%]">
-                    Can you explain the chain rule with a real example?
-                  </div>
-                  <div className="bg-white/10 rounded-xl p-3 text-sm text-slate-200 ml-auto max-w-[90%]">
-                    Of course! The chain rule says: if y = f(g(x)), then dy/dx = f'(g(x)) · g'(x). For example, if y = (3x² + 1)⁵, then dy/dx = 5(3x² + 1)⁴ · 6x = 30x(3x² + 1)⁴.
-                  </div>
-                </div>
-                <div className="pt-2 border-t border-white/10">
-                  <div className="flex items-center justify-between text-xs text-slate-400">
-                    <span>Unit 3 Progress</span>
-                    <span className="text-indigo-400 font-medium">68%</span>
-                  </div>
-                  <div className="mt-1.5 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full" style={{ width: "68%", transition: "width 1s ease" }} />
-                  </div>
-                </div>
-              </div>
+              <EduChampDemoWidget />
             </div>
           </div>
         </div>
