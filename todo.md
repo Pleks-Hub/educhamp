@@ -754,6 +754,15 @@
 
 ## Sprint: Pagination, Quiz Bank Expansion, Demo CTA
 
-- [ ] Admin Users tab: server-side pagination with Previous/Next controls (offset-based, page size 50)
-- [ ] Algebra I Units 1 & 2: seed 20 additional questions each (total 30/unit)
-- [ ] EduChampDemoWidget: show "Try it free" CTA after demo session auto-completes
+- [x] Admin Users tab: server-side pagination with Previous/Next controls (offset-based, page size 50)
+- [x] Algebra I Units 1 & 2: seed 20 additional questions each (total 30/unit)
+- [x] EduChampDemoWidget: show "Try it free" CTA after demo session auto-completes
+
+## Homepage Redesign: Pricing, Role Selector, UX Overhaul
+- [x] Add role-selector modal (Parent/Student choice before sign-up)
+- [x] Build conversion-focused pricing section (Family $19.99, Premium Family $29.99, ISD/School per-seat)
+- [x] Add "Pricing" link to nav and mobile menu
+- [x] Improve hero section: stronger headline, trust signals, social proof
+- [x] Improve visual hierarchy and CTA placement throughout
+- [x] Ensure all sign-up buttons use role-selector modal
+- [x] Mobile responsiveness pass on all new sections

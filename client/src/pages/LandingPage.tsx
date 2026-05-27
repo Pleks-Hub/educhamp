@@ -10,9 +10,10 @@ import { getLoginUrl } from "@/const";
 import {
   BookOpen, Brain, BarChart3, Users, Star, ChevronDown, ChevronUp,
   GraduationCap, Zap, CheckCircle, ArrowRight, MessageCircle,
-  Sparkles, Send, X, Menu, Mail, Phone,
+  Sparkles, Send, X, Menu, Mail, Phone, Shield, Trophy, Clock,
 } from "lucide-react";
 import { EduChampDemoWidget } from "@/components/EduChampDemoWidget";
+import { RoleSelectModal } from "@/components/RoleSelectModal";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -264,14 +265,15 @@ export default function LandingPage() {
   const [newsletterLoading, setNewsletterLoading] = useState(false);
   const [newsletterDone, setNewsletterDone] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [roleModalOpen, setRoleModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<string | undefined>(undefined);
+
+  function openSignUp(plan?: string) {
+    setSelectedPlan(plan);
+    setRoleModalOpen(true);
+  }
   const subscribeNewsletter = trpc.onboarding.subscribeNewsletter.useMutation();
   const { data: liveStats } = trpc.landing.getStats.useQuery();
-
-  function handleSignUp(role: "student" | "parent" = "student") {
-    const returnPath = role === "parent" ? "/onboarding/parent" : "/onboarding/student";
-    sessionStorage.setItem("educhamp_post_login_redirect", returnPath);
-    window.location.href = getLoginUrl();
-  }
 
   function handleSignIn() {
     window.location.href = getLoginUrl();
@@ -418,7 +420,9 @@ export default function LandingPage() {
   ];
 
   const faqs = [
-    { q: "Is EduChamp free to use?", a: "EduChamp offers a free tier to get started. Sign up to explore the platform — no credit card required." },
+    { q: "Is EduChamp free to use?", a: "EduChamp offers a free tier to get started. Sign up to explore the platform — no credit card required. Paid plans (Family at $19.99/mo and Premium Family at $29.99/mo) unlock unlimited AI tutor sessions, all courses, and the parent dashboard." },
+    { q: "What is the difference between the Family and Premium Family plans?", a: "The Family Plan ($19.99/mo) covers up to 3 students with access to all 56+ courses, unlimited AI tutoring, and the parent dashboard. The Premium Family Plan ($29.99/mo) adds diagnostic assessments, exam prep modules, priority AI sessions, and custom learning paths. Both plans can be cancelled at any time." },
+    { q: "Do you offer plans for schools and school districts?", a: "Yes. The ISD / School License is a per-seat annual contract designed for campuses and districts. It includes teacher and admin dashboards, custom TEKS alignment, bulk content management, and a performance analytics API. Contact schools@educhamp.app for pricing and a demo." },
     { q: "What grade levels are supported?", a: "EduChamp supports students from Grade 3 through Grade 12, including all major AP courses and SAT preparation. The catalogue covers elementary (Grades 3–5), middle school (Grades 6–8), high school (Grades 9–12), and advanced AP/SAT tracks — over 56 courses in total." },
     { q: "What is the difference between ACA and KAP courses?", a: "ACA (Academic) courses follow the standard Katy ISD grade-level curriculum. KAP (Katy Advanced Program) courses are accelerated, enriched variants for students who are ready for a more challenging academic pathway. Both are available for Grades 3–8 in core subjects." },
     { q: "How does course enrollment work?", a: "During onboarding, parents select the student's grade level and the system automatically recommends and enrols the student in the appropriate core courses. Students can also browse the full catalogue and self-enrol in additional subjects, subject to grade and prerequisite validation." },
@@ -450,6 +454,7 @@ export default function LandingPage() {
               <a href="#features" className="hover:text-indigo-600 transition-colors">Features</a>
               <a href="#courses" className="hover:text-indigo-600 transition-colors">Courses</a>
               <a href="#how-it-works" className="hover:text-indigo-600 transition-colors">How It Works</a>
+              <a href="#pricing" className="hover:text-indigo-600 transition-colors font-semibold text-indigo-600">Pricing</a>
               <a href="#faq" className="hover:text-indigo-600 transition-colors">FAQ</a>
             </div>
 
@@ -461,7 +466,7 @@ export default function LandingPage() {
                 Sign In
               </button>
               <button
-                onClick={() => handleSignUp("student")}
+                onClick={() => openSignUp()}
                 className="text-sm bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors font-medium active:scale-95"
               >
                 Sign Up Free
@@ -481,13 +486,14 @@ export default function LandingPage() {
         {/* Mobile menu */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-slate-100 bg-white px-4 py-4 space-y-3">
-            <a href="#features" className="block text-sm text-slate-600 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>Features</a>
+              <a href="#features" className="block text-sm text-slate-600 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>Features</a>
             <a href="#courses" className="block text-sm text-slate-600 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>Courses</a>
             <a href="#how-it-works" className="block text-sm text-slate-600 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>How It Works</a>
+            <a href="#pricing" className="block text-sm font-semibold text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
             <a href="#faq" className="block text-sm text-slate-600 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>FAQ</a>
             <div className="flex gap-2 pt-2">
               <button onClick={handleSignIn} className="flex-1 text-sm border border-slate-200 rounded-lg py-2 text-slate-700 hover:bg-slate-50 transition-colors">Sign In</button>
-              <button onClick={() => handleSignUp("student")} className="flex-1 text-sm bg-indigo-600 text-white rounded-lg py-2 hover:bg-indigo-700 transition-colors">Sign Up Free</button>
+              <button onClick={() => { setMobileMenuOpen(false); openSignUp(); }} className="flex-1 text-sm bg-indigo-600 text-white rounded-lg py-2 hover:bg-indigo-700 transition-colors">Sign Up Free</button>
             </div>
           </div>
         )}
@@ -515,24 +521,54 @@ export default function LandingPage() {
                   Advance Faster
                 </span>
               </h1>
-              <p className="text-lg text-slate-300 mb-8 leading-relaxed max-w-lg">
-                EduChamp's AI tutor EduBot and adaptive placement tests create a personalized learning path for every student — from Grade 3 Math to AP Calculus, AP Chemistry, and SAT Prep. Supporting Grades 3–12 with 56+ courses aligned to Katy ISD TEKS.
+              <p className="text-lg text-slate-300 mb-6 leading-relaxed max-w-lg">
+                EduChamp's AI tutor EduBot and adaptive placement tests create a personalised learning path for every student — from Grade 3 Math to AP Calculus, AP Chemistry, and SAT Prep. Supporting Grades 3–12 with 56+ courses aligned to Katy ISD TEKS.
               </p>
+              {/* Trust micro-badges */}
+              <div className="flex flex-wrap gap-3 mb-8">
+                {[
+                  { icon: Shield, label: "TEKS Aligned" },
+                  { icon: Brain, label: "AI-Powered" },
+                  { icon: Trophy, label: "Mastery-Based" },
+                  { icon: Users, label: "Parent Dashboard" },
+                ].map(({ icon: Icon, label }) => (
+                  <div key={label} className="flex items-center gap-1.5 bg-white/10 border border-white/15 rounded-full px-3 py-1 text-xs text-slate-300">
+                    <Icon className="h-3 w-3 text-indigo-400" />
+                    {label}
+                  </div>
+                ))}
+              </div>
               <div className="flex flex-wrap gap-3">
                 <button
-                  onClick={() => handleSignUp("student")}
+                  onClick={() => openSignUp()}
                   className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-150 active:scale-95 shadow-lg shadow-indigo-900/50"
                 >
-                  Start as Student <ArrowRight className="h-4 w-4" />
+                  Get Started Free <ArrowRight className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => handleSignUp("parent")}
+                  onClick={() => { document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); }}
                   className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-150 active:scale-95 backdrop-blur-sm"
                 >
-                  Sign Up as Parent
+                  View Plans
                 </button>
               </div>
               <p className="mt-4 text-xs text-slate-400">Free to start · No credit card required · Works on any device</p>
+              {/* Social proof */}
+              <div className="mt-6 flex items-center gap-3">
+                <div className="flex -space-x-2">
+                  {["M","J","P","A","C"].map((initial, i) => (
+                    <div key={i} className={`h-8 w-8 rounded-full border-2 border-indigo-900 flex items-center justify-center text-xs font-bold text-white ${
+                      ["bg-indigo-500","bg-violet-500","bg-pink-500","bg-amber-500","bg-emerald-500"][i]
+                    }`}>{initial}</div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex gap-0.5 mb-0.5">
+                    {[...Array(5)].map((_,i) => <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />)}
+                  </div>
+                  <p className="text-xs text-slate-400">Loved by students & parents</p>
+                </div>
+              </div>
             </div>
 
             {/* Hero visual — Animated Demo Widget (desktop) */}
@@ -681,7 +717,7 @@ export default function LandingPage() {
 
           <div className="text-center mt-10">
             <button
-              onClick={() => handleSignUp("student")}
+              onClick={() => openSignUp()}
               className="inline-flex items-center gap-2 bg-indigo-600 text-white font-semibold px-8 py-3 rounded-xl hover:bg-indigo-700 transition-colors active:scale-95"
             >
               Get Started Free <ArrowRight className="h-4 w-4" />
@@ -791,6 +827,137 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Pricing ── */}
+      <section id="pricing" className="py-24 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 rounded-full px-3 py-1 text-xs font-semibold mb-4">
+              <Shield className="h-3.5 w-3.5" /> Simple, transparent pricing
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Choose the plan that fits your family</h2>
+            <p className="text-slate-500 max-w-2xl mx-auto">All plans include access to EduBot AI Tutor, adaptive placement tests, and the full course catalogue. No hidden fees.</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 items-start">
+
+            {/* ── Plan 1: Family ── */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow p-8 flex flex-col">
+              <div className="mb-6">
+                <p className="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-2">Family Plan</p>
+                <div className="flex items-end gap-1 mb-1">
+                  <span className="text-5xl font-extrabold text-slate-900">$19</span>
+                  <span className="text-2xl font-bold text-slate-900">.99</span>
+                  <span className="text-slate-400 text-sm mb-1">/month</span>
+                </div>
+                <p className="text-xs text-slate-400">Billed monthly · Cancel anytime</p>
+              </div>
+              <p className="text-sm text-slate-600 mb-6 leading-relaxed">Everything your family needs to get started — AI tutoring, all courses, and a parent dashboard for up to 3 students.</p>
+              <ul className="space-y-3 mb-8 flex-1">
+                {[
+                  "Up to 3 students",
+                  "All 56+ courses & subjects",
+                  "AI Tutor EduBot (unlimited)",
+                  "Parent dashboard",
+                  "Weekly progress reports",
+                  "Grades 3–12 + AP + SAT Prep",
+                ].map(f => (
+                  <li key={f} className="flex items-start gap-2.5 text-sm text-slate-700">
+                    <CheckCircle className="h-4 w-4 text-indigo-500 flex-shrink-0 mt-0.5" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => openSignUp("Family Plan")}
+                className="w-full py-3 rounded-xl border-2 border-indigo-600 text-indigo-700 font-semibold hover:bg-indigo-50 transition-colors active:scale-[0.98] text-sm"
+              >
+                Get Started — $19.99/mo
+              </button>
+            </div>
+
+            {/* ── Plan 2: Premium Family (highlighted) ── */}
+            <div className="relative bg-gradient-to-b from-indigo-600 to-violet-700 rounded-2xl shadow-xl shadow-indigo-200 p-8 flex flex-col text-white -mt-4 md:-mt-6">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                <span className="bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full shadow-sm whitespace-nowrap">⭐ Most Popular</span>
+              </div>
+              <div className="mb-6">
+                <p className="text-xs font-bold uppercase tracking-widest text-indigo-200 mb-2">Premium Family</p>
+                <div className="flex items-end gap-1 mb-1">
+                  <span className="text-5xl font-extrabold">$29</span>
+                  <span className="text-2xl font-bold">.99</span>
+                  <span className="text-indigo-200 text-sm mb-1">/month</span>
+                </div>
+                <p className="text-xs text-indigo-300">Billed monthly · Cancel anytime</p>
+              </div>
+              <p className="text-sm text-indigo-100 mb-6 leading-relaxed">Everything in Family, plus advanced diagnostics, exam prep, priority AI sessions, and custom learning paths.</p>
+              <ul className="space-y-3 mb-8 flex-1">
+                {[
+                  "Everything in Family Plan",
+                  "Diagnostic assessments",
+                  "Exam prep modules",
+                  "Priority AI sessions",
+                  "Custom learning paths",
+                  "Advanced skill gap analysis",
+                ].map(f => (
+                  <li key={f} className="flex items-start gap-2.5 text-sm text-white">
+                    <CheckCircle className="h-4 w-4 text-indigo-200 flex-shrink-0 mt-0.5" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => openSignUp("Premium Family")}
+                className="w-full py-3 rounded-xl bg-white text-indigo-700 font-bold hover:bg-indigo-50 transition-colors active:scale-[0.98] text-sm shadow-lg"
+              >
+                Get Started — $29.99/mo
+              </button>
+            </div>
+
+            {/* ── Plan 3: ISD / School License ── */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow p-8 flex flex-col">
+              <div className="mb-6">
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">ISD / School License</p>
+                <div className="flex items-end gap-1 mb-1">
+                  <span className="text-4xl font-extrabold text-slate-900">Per-seat</span>
+                </div>
+                <p className="text-slate-400 text-sm">Annual contract · Volume pricing</p>
+              </div>
+              <p className="text-sm text-slate-600 mb-6 leading-relaxed">Purpose-built for school districts and campuses — with teacher dashboards, custom TEKS alignment, and bulk content management.</p>
+              <ul className="space-y-3 mb-8 flex-1">
+                {[
+                  "Unlimited student seats",
+                  "Teacher & admin dashboards",
+                  "Custom TEKS alignment",
+                  "Bulk content management",
+                  "Performance analytics API",
+                  "Dedicated onboarding support",
+                ].map(f => (
+                  <li key={f} className="flex items-start gap-2.5 text-sm text-slate-700">
+                    <CheckCircle className="h-4 w-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href="mailto:schools@educhamp.app"
+                className="w-full py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-colors active:scale-[0.98] text-sm text-center block"
+              >
+                Contact Us for Pricing
+              </a>
+            </div>
+
+          </div>
+
+          {/* Trust badges */}
+          <div className="mt-12 flex flex-wrap justify-center gap-6 text-sm text-slate-500">
+            <div className="flex items-center gap-2"><Shield className="h-4 w-4 text-indigo-500" /> No credit card required to start</div>
+            <div className="flex items-center gap-2"><Trophy className="h-4 w-4 text-amber-500" /> 30-day satisfaction guarantee</div>
+            <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-emerald-500" /> Cancel anytime, no lock-in</div>
+            <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-indigo-500" /> TEKS-aligned curriculum</div>
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA Banner ── */}
       <section className="py-20 bg-gradient-to-br from-indigo-600 to-violet-700 text-white">
         <div className="max-w-4xl mx-auto px-4 text-center">
@@ -798,16 +965,16 @@ export default function LandingPage() {
           <p className="text-indigo-200 mb-8 max-w-xl mx-auto">Join thousands of students already advancing with EduChamp. Sign up in under 2 minutes — no credit card required.</p>
           <div className="flex flex-wrap justify-center gap-4">
             <button
-              onClick={() => handleSignUp("student")}
+              onClick={() => openSignUp()}
               className="flex items-center gap-2 bg-white text-indigo-700 font-bold px-8 py-3 rounded-xl hover:bg-indigo-50 transition-colors active:scale-95 shadow-lg"
             >
-              <GraduationCap className="h-5 w-5" /> Sign Up as Student
+              <GraduationCap className="h-5 w-5" /> Get Started Free
             </button>
             <button
-              onClick={() => handleSignUp("parent")}
+              onClick={() => { document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' }); }}
               className="flex items-center gap-2 bg-white/15 border border-white/30 text-white font-bold px-8 py-3 rounded-xl hover:bg-white/25 transition-colors active:scale-95 backdrop-blur-sm"
             >
-              <Users className="h-5 w-5" /> Sign Up as Parent
+              View Plans
             </button>
           </div>
         </div>
@@ -898,6 +1065,7 @@ export default function LandingPage() {
             <div className="flex items-center gap-6 text-sm">
               <a href="#features" className="hover:text-white transition-colors">Features</a>
               <a href="#courses" className="hover:text-white transition-colors">Courses</a>
+              <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
               <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
               <button onClick={handleSignIn} className="hover:text-white transition-colors">Sign In</button>
             </div>
@@ -908,6 +1076,13 @@ export default function LandingPage() {
 
       {/* ── AI Chatbot ── */}
       <LandingChatbot />
+
+      {/* ── Role Select Modal ── */}
+      <RoleSelectModal
+        isOpen={roleModalOpen}
+        onClose={() => setRoleModalOpen(false)}
+        planName={selectedPlan}
+      />
     </div>
   );
 }
