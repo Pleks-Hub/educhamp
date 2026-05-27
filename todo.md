@@ -440,3 +440,27 @@
 - [x] UI: Chat Management — admin notes and status management per session
 - [x] UI: Chat Management — export CSV button
 - [x] Admin Dashboard: Chat Leads button in header
+
+## Sprint 14 — EduBot Personality, Course Guardrails & Katy ISD Gr 4-8 Catalogue
+
+### EduBot AI Tutor Personality & Course Guardrails
+- [x] Server: buildTutorSystemPrompt — EduBot identity with friendly name, warm introduction on first message
+- [x] Server: buildTutorSystemPrompt — out-of-course redirection instruction (CRITICAL block)
+- [x] Server: tutorStream.ts — pass activeCourse context to system prompt
+- [x] Server: tutorStream.ts — fix hardcoded ALG1 skill prefix to use activeCourseCode
+- [x] Server: routers.ts — pass activeCourse context to buildTutorSystemPrompt in tutor.chat procedure
+- [x] Client: Tutor.tsx — convert MODES to getModes(courseLabel) function for dynamic course-aware starters
+- [x] Client: Tutor.tsx — fix hardcoded "Algebra I" references
+
+### Katy ISD Grades 4–5 Catalogue (ACA + KAP)
+- [x] Seed: Grade 4 Math, ELA, Science, Social Studies, Technology (ACA)
+- [x] Seed: Grade 5 Math, ELA, Science, Social Studies, Technology (ACA)
+- [x] Seed: Grade 4 & 5 KAP Math and ELA (advanced variants)
+
+### Katy ISD Grades 6–8 Catalogue (ACA + KAP)
+- [x] Seed: Grade 6 Math, ELA, Science, Social Studies, Technology (ACA)
+- [x] Seed: Grade 7 Math, ELA, Science, Social Studies, Technology (ACA)
+- [x] Seed: Grade 8 Math, ELA, Science, Social Studies, Technology (ACA)
+- [x] Seed: Grade 6 KAP Math and ELA (advanced variants)
+- [x] Seed: Grade 7 KAP Math and ELA (advanced variants)
+- [x] Seed: Grade 8 KAP Math and ELA (advanced variants)

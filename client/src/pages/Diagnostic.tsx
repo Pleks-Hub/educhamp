@@ -46,7 +46,7 @@ type DiagnosticQuestion = {
   questionType: "multiple_choice" | "short_answer";
   choices: ChoiceItem[] | null;
   mapsToUnit: string;
-  difficulty: "easy" | "medium";
+  difficulty: "easy" | "medium" | "hard";
 };
 
 function parseChoices(raw: unknown): ChoiceItem[] {

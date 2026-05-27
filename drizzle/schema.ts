@@ -129,7 +129,7 @@ export const diagnosticQuestions = mysqlTable("diagnosticQuestions", {
   correctAnswer: varchar("correctAnswer", { length: 512 }).notNull(),
   mapsToUnit: varchar("mapsToUnit", { length: 64 }).notNull(), // unit number or "prerequisite"
   mapsToSkills: json("mapsToSkills").$type<string[]>().notNull(),
-  difficulty: mysqlEnum("difficulty", ["easy", "medium"]).notNull(),
+  difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull(),
   explanation: text("explanation").notNull(),
   sortOrder: int("sortOrder").notNull().default(0),
 });

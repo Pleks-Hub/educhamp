@@ -44,6 +44,7 @@ import {
   getUnitsForCourse,
   getUserCourseEnrollments,
   getAllCourseProgressForUser,
+  getCourseById,
 } from "./db";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -679,17 +680,29 @@ export const appRouter = router({
               input.mode
             );
 
-        // Build mastery context
+                // Build mastery context
         const masteryData = await getUserMastery(ctx.user.id);
         const unitData = input.unitNumber ? await getAllUnits() : [];
         const currentUnit = unitData.find((u) => u.unitNumber === input.unitNumber);
-
-        // Build system prompt
+        // Fetch active course for course-scoped guardrails
+        const activeCourseId = await getActiveCourseIdForUser(ctx.user.id);
+        const activeCourse = activeCourseId ? await getCourseById(activeCourseId) : null;
+        // Build system prompt with full course context
         const systemPrompt = buildTutorSystemPrompt(
           ctx.user.name ?? "Student",
           input.mode,
           currentUnit?.title ?? "",
-          masteryData.map((m) => ({ skillId: m.skillId, score: m.score }))
+          masteryData.map((m) => ({ skillId: m.skillId, score: m.score })),
+          activeCourse ? {
+            courseContext: {
+              title: activeCourse.title,
+              courseCode: activeCourse.courseCode ?? "",
+              subject: activeCourse.subject ?? "other",
+              gradeLevel: activeCourse.gradeLevel ?? "",
+              teksCode: activeCourse.teksCode ?? undefined,
+            },
+            currentUnitNumber: input.unitNumber,
+          } : undefined
         );
 
         // Build message history

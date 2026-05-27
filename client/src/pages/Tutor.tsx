@@ -31,93 +31,95 @@ import { CourseContextBanner } from "@/components/CourseContextBanner";
 type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary";
 const STUDENT_MODES: TutorMode[] = ["teach", "practice", "quiz", "exam_review", "remediation"];
 
-const MODES: {
+function getModes(courseLabel: string): {
   id: TutorMode;
   label: string;
   icon: React.ElementType;
   description: string;
   color: string;
   starters: string[];
-}[] = [
-  {
-    id: "teach",
-    label: "Teach",
-    icon: BookOpen,
-    description: "Explain concepts clearly with examples",
-    color: "bg-blue-100 text-blue-700 border-blue-200",
-    starters: [
-      "Explain slope-intercept form with an example",
-      "What is a linear equation and how do I solve one?",
-      "Walk me through the distributive property",
-      "How do I graph a line from an equation?",
-    ],
-  },
-  {
-    id: "practice",
-    label: "Practice",
-    icon: Target,
-    description: "Guided problem-solving matched to your level",
-    color: "bg-green-100 text-green-700 border-green-200",
-    starters: [
-      "Give me a practice problem based on my weakest skills",
-      "I want to practice solving two-step equations",
-      "Help me practice graphing linear equations",
-      "Give me a word problem to solve",
-    ],
-  },
-  {
-    id: "quiz",
-    label: "Quiz",
-    icon: ClipboardList,
-    description: "Test your knowledge interactively",
-    color: "bg-purple-100 text-purple-700 border-purple-200",
-    starters: [
-      "Quiz me on my weakest unit",
-      "Give me 5 questions on solving equations",
-      "Quiz me on slope and linear equations",
-      "Test me on everything I've learned so far",
-    ],
-  },
-  {
-    id: "exam_review",
-    label: "Exam Review",
-    icon: FileText,
-    description: "Prepare for upcoming assessments",
-    color: "bg-amber-100 text-amber-700 border-amber-200",
-    starters: [
-      "Create a personalized review plan for my exam",
-      "What are the most important topics I should review?",
-      "Give me a practice exam based on my progress",
-      "Review the key formulas I need to know",
-    ],
-  },
-  {
-    id: "remediation",
-    label: "Remediation",
-    icon: Wrench,
-    description: "Targeted support for skills below 60%",
-    color: "bg-red-100 text-red-700 border-red-200",
-    starters: [
-      "Help me with my weakest skills",
-      "I'm struggling with solving equations — start from the beginning",
-      "Reteach me the concepts I'm failing",
-      "Break down the hardest topic for me step by step",
-    ],
-  },
-  {
-    id: "parent_summary",
-    label: "Parent Summary",
-    icon: Users,
-    description: "Full progress report for parents & guardians",
-    color: "bg-teal-100 text-teal-700 border-teal-200",
-    starters: [
-      "Generate a full progress report for my parent",
-      "Summarize my learning progress this week",
-      "What should my parent know about my Algebra I progress?",
-      "Create a summary of my strengths and areas to improve",
-    ],
-  },
-];
+}[] {
+  return [
+    {
+      id: "teach",
+      label: "Teach",
+      icon: BookOpen,
+      description: "Explain concepts clearly with examples",
+      color: "bg-blue-100 text-blue-700 border-blue-200",
+      starters: [
+        `Explain a key concept from ${courseLabel} with an example`,
+        `What are the most important topics in ${courseLabel}?`,
+        "Walk me through the current lesson step by step",
+        "Explain this concept in simple terms",
+      ],
+    },
+    {
+      id: "practice",
+      label: "Practice",
+      icon: Target,
+      description: "Guided problem-solving matched to your level",
+      color: "bg-green-100 text-green-700 border-green-200",
+      starters: [
+        "Give me a practice problem based on my weakest skills",
+        `Give me a challenging problem from ${courseLabel}`,
+        "Help me work through a practice problem step by step",
+        "Give me a word problem to solve",
+      ],
+    },
+    {
+      id: "quiz",
+      label: "Quiz",
+      icon: ClipboardList,
+      description: "Test your knowledge interactively",
+      color: "bg-purple-100 text-purple-700 border-purple-200",
+      starters: [
+        "Quiz me on my weakest unit",
+        `Give me 5 questions on ${courseLabel}`,
+        "Quiz me on what I've been learning",
+        "Test me on everything I've learned so far",
+      ],
+    },
+    {
+      id: "exam_review",
+      label: "Exam Review",
+      icon: FileText,
+      description: "Prepare for upcoming assessments",
+      color: "bg-amber-100 text-amber-700 border-amber-200",
+      starters: [
+        "Create a personalized review plan for my exam",
+        "What are the most important topics I should review?",
+        "Give me a practice exam based on my progress",
+        "Review the key formulas and concepts I need to know",
+      ],
+    },
+    {
+      id: "remediation",
+      label: "Remediation",
+      icon: Wrench,
+      description: "Targeted support for skills below 60%",
+      color: "bg-red-100 text-red-700 border-red-200",
+      starters: [
+        "Help me with my weakest skills",
+        "I'm struggling with this topic — start from the beginning",
+        "Reteach me the concepts I'm failing",
+        "Break down the hardest topic for me step by step",
+      ],
+    },
+    {
+      id: "parent_summary",
+      label: "Parent Summary",
+      icon: Users,
+      description: "Full progress report for parents & guardians",
+      color: "bg-teal-100 text-teal-700 border-teal-200",
+      starters: [
+        "Generate a full progress report for my parent",
+        "Summarize my learning progress this week",
+        `What should my parent know about my ${courseLabel} progress?`,
+        "Create a summary of my strengths and areas to improve",
+      ],
+    },
+  ];
+}
 
 type Message = {
   role: "user" | "assistant";
@@ -163,6 +165,7 @@ export default function Tutor() {
   const courseLabel = dashboard?.courseTitle ?? "your course";
   const isStudent = !user || user.accountType === "student" || !user.accountType;
   // Visible modes: students see 5 learning modes; parents/teachers see all 6
+  const MODES = getModes(courseLabel);
   const visibleModes = MODES.filter((m) => isStudent ? STUDENT_MODES.includes(m.id) : true);
   const [selectedUnit, setSelectedUnit] = useState<number | undefined>(unitParam);
   const currentUnit = units.find((u) => u.unitNumber === selectedUnit);
@@ -308,7 +311,7 @@ export default function Tutor() {
 
   // If a student somehow has parent_summary mode set, reset to teach
   const safeMode: TutorMode = (isStudent && mode === "parent_summary") ? "teach" : mode;
-  const currentModeConfig = MODES.find((m) => m.id === safeMode) ?? MODES[0];
+  const currentModeConfig = MODES.find((m: { id: TutorMode }) => m.id === safeMode) ?? MODES[0];
   const ModeIcon = currentModeConfig.icon;
 
   if (!user) {
@@ -318,7 +321,7 @@ export default function Tutor() {
           <Brain className="h-12 w-12 text-muted-foreground mx-auto" />
           <h2 className="text-lg font-semibold">Sign in to use AI Tutor</h2>
           <p className="text-sm text-muted-foreground">
-            Get personalized Algebra I tutoring powered by AI.
+            Get personalized AI tutoring for your course.
           </p>
           <Button onClick={() => { window.location.href = getLoginUrl(); }}>Sign in</Button>
         </div>
@@ -337,9 +340,9 @@ export default function Tutor() {
         <div className="p-4 border-b shrink-0">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary shrink-0" />
-            <span className="text-sm font-bold text-foreground">AI Tutor</span>
+            <span className="text-sm font-bold text-foreground">EduBot</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{courseLabel} · EduChamp</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{courseLabel} · AI Learning Coach</p>
         </div>
 
         {/* Mode Selection */}
@@ -452,18 +455,25 @@ export default function Tutor() {
           className="flex-1 overflow-y-auto min-h-0 px-4 py-5"
         >
           {messages.length === 0 ? (
-            /* Empty state with starter prompts */
+            /* Empty state with EduBot introduction */
             <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center space-y-5 max-w-xl mx-auto">
-              <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center">
-                <Brain className="h-7 w-7 text-primary" />
+              <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center ring-2 ring-primary/20">
+                <Brain className="h-8 w-8 text-primary" />
               </div>
-              <div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-xs font-semibold text-primary uppercase tracking-widest">EduBot</span>
+                  <span className="text-xs text-muted-foreground">· AI Learning Coach</span>
+                </div>
                 <h3 className="font-semibold text-foreground text-base">
-                  {customWelcome ? customWelcome : `Ready to help, ${aiName}!`}
+                  {customWelcome
+                    ? customWelcome
+                    : `Hi ${aiName}! I'm EduBot, your personal AI learning coach for ${courseLabel}.`}
                 </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {currentModeConfig.description}
-                  {currentUnit ? ` — Unit ${currentUnit.unitNumber}: ${currentUnit.title}` : ""}
+                <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                  {customWelcome
+                    ? currentModeConfig.description
+                    : `I'm here to help you understand lessons, explain difficult concepts, guide you through practice questions, track your progress, and prepare you for quizzes and exams.${currentUnit ? ` We're currently on Unit ${currentUnit.unitNumber}: ${currentUnit.title}.` : ""} Ask me anything — let's learn together!`}
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">

@@ -228,9 +228,10 @@ export function registerTutorStreamRoute(app: Express) {
 
       // ── Build system prompt with full context ─────────────────────────────
       // Build unit-by-unit mastery summary for Parent Summary mode
+      const activeCourseCode = activeCourse?.courseCode ?? "ALG1";
       const unitMasterySummary = allUnits.map((u) => {
         const unitSkills = masteryData.filter((m: { skillId: string; score: number }) =>
-          m.skillId.startsWith(`ALG1-U${u.unitNumber}-`)
+          m.skillId.startsWith(`${activeCourseCode}-U${u.unitNumber}-`)
         );
         const avgScore =
           unitSkills.length > 0

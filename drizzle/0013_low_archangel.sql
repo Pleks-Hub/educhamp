@@ -1,0 +1,1 @@
+ALTER TABLE `diagnosticQuestions` MODIFY COLUMN `difficulty` enum('easy','medium','hard') NOT NULL;
