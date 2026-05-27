@@ -2,7 +2,7 @@
 // Shown whenever a visitor clicks any "Sign Up" / "Get Started" CTA on the landing page.
 // Lets them choose Parent/Guardian or Student before redirecting to the correct onboarding path.
 
-import { GraduationCap, Users, X, CheckCircle } from "lucide-react";
+import { GraduationCap, Users, X, CheckCircle, Calendar } from "lucide-react";
 import { getLoginUrl } from "@/const";
 
 interface Props {
@@ -10,9 +10,11 @@ interface Props {
   onClose: () => void;
   /** Optional plan name to pre-select / display in the modal header */
   planName?: string;
+  /** Billing period chosen on the pricing section */
+  billingPeriod?: "monthly" | "annual";
 }
 
-export function RoleSelectModal({ isOpen, onClose, planName }: Props) {
+export function RoleSelectModal({ isOpen, onClose, planName, billingPeriod }: Props) {
   if (!isOpen) return null;
 
   function handleSelect(role: "student" | "parent") {
@@ -21,8 +23,18 @@ export function RoleSelectModal({ isOpen, onClose, planName }: Props) {
     if (planName) {
       sessionStorage.setItem("educhamp_selected_plan", planName);
     }
+    if (billingPeriod) {
+      sessionStorage.setItem("educhamp_billing_period", billingPeriod);
+    }
     window.location.href = getLoginUrl();
   }
+
+  // Human-readable plan + billing summary
+  const planSummary = planName
+    ? billingPeriod === "annual"
+      ? `${planName} — Annual billing (save 20%)`
+      : `${planName} — Monthly billing`
+    : null;
 
   return (
     <div
@@ -39,7 +51,7 @@ export function RoleSelectModal({ isOpen, onClose, planName }: Props) {
         </button>
 
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center h-14 w-14 rounded-2xl bg-indigo-50 mb-4">
             <GraduationCap className="h-7 w-7 text-indigo-600" />
           </div>
@@ -49,6 +61,14 @@ export function RoleSelectModal({ isOpen, onClose, planName }: Props) {
           <p className="text-slate-500 text-sm">
             Tell us who is signing up so we can personalise your experience.
           </p>
+
+          {/* Plan + billing period pill */}
+          {planSummary && (
+            <div className="mt-3 inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full px-3 py-1 text-xs font-semibold">
+              <Calendar className="h-3 w-3" />
+              {planSummary}
+            </div>
+          )}
         </div>
 
         {/* Role cards */}

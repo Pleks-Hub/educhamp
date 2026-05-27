@@ -98,6 +98,10 @@ export default function StudentOnboarding() {
   const [step, setStep] = useState(1);
   const totalSteps = 3;
 
+  // Retrieve plan + billing period chosen on the landing page
+  const selectedPlan = sessionStorage.getItem("educhamp_selected_plan") ?? null;
+  const billingPeriod = (sessionStorage.getItem("educhamp_billing_period") ?? "monthly") as "monthly" | "annual";
+
   // Invite token from URL (parent-issued invite for student)
   const params = new URLSearchParams(search);
   const inviteToken = params.get("invite") ?? "";
@@ -260,6 +264,14 @@ export default function StudentOnboarding() {
             </div>
           ) : (
             <p className="text-slate-500 mt-1">Let's set up your student profile.</p>
+          )}
+          {/* Plan + billing context pill */}
+          {selectedPlan && (
+            <div className="mt-3 inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full px-3 py-1 text-xs font-semibold">
+              <CheckCircle2 className="h-3 w-3" />
+              {selectedPlan}
+              {billingPeriod === "annual" ? " — Annual billing (save 20%)" : " — Monthly billing"}
+            </div>
           )}
         </div>
 

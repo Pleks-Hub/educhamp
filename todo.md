@@ -781,3 +781,21 @@
 - [x] Pricing: annual billing toggle (monthly/annual) with 20% discount prices
 - [x] Pricing: plan comparison table (feature rows × plan columns)
 - [x] Vitest: add tests for submitDemoRequest validation and admin list procedure (33 tests added in server/demoRequest.test.ts)
+
+## Sprint 23 — DNS Verification, Schools Hero Section, Annual Billing Flow
+
+### Resend DNS Verification (educhamp.app)
+- [x] Document required DNS records (SPF, DKIM, DMARC) for educhamp.app in Resend dashboard
+- [x] Provide step-by-step verification guide for the domain owner
+
+### Schools & Districts Hero Section
+- [x] Add full-width "Schools & Districts" section to LandingPage between How It Works and Pricing
+- [x] Section includes: headline, value prop for ISD decision-makers, 4 benefit pillars, district logo row, prominent "Request a Demo" CTA
+- [x] Mobile-responsive layout
+
+### Annual Billing Period in Sign-Up Flow
+- [x] Pass billingPeriod ('monthly' | 'annual') through openSignUp → RoleSelectModal → onboarding
+- [x] Store billingPeriod in sessionStorage so it survives the OAuth redirect
+- [x] Show selected plan + billing period summary pill in RoleSelectModal
+- [x] Pass billingPeriod through to StudentOnboarding and ParentOnboarding pages
+- [x] Show plan + billing period confirmation pill in onboarding wizard header

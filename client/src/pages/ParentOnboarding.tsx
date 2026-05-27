@@ -38,6 +38,10 @@ export default function ParentOnboarding() {
   const [step, setStep] = useState(1);
   const totalSteps = 3;
 
+  // Retrieve plan + billing period chosen on the landing page
+  const selectedPlan = sessionStorage.getItem("educhamp_selected_plan") ?? null;
+  const billingPeriod = (sessionStorage.getItem("educhamp_billing_period") ?? "monthly") as "monthly" | "annual";
+
   // Parent invite token from URL (student invited this parent)
   const params = new URLSearchParams(search);
   const parentInviteToken = params.get("parentInvite") ?? "";
@@ -112,6 +116,14 @@ export default function ParentOnboarding() {
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Welcome to EduChamp</h1>
           <p className="text-slate-500 mt-1">Let's set up your parent account in a few quick steps.</p>
+          {/* Plan + billing context pill */}
+          {selectedPlan && (
+            <div className="mt-3 inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full px-3 py-1 text-xs font-semibold">
+              <CheckCircle2 className="h-3 w-3" />
+              {selectedPlan}
+              {billingPeriod === "annual" ? " — Annual billing (save 20%)" : " — Monthly billing"}
+            </div>
+          )}
         </div>
 
         {/* Progress */}

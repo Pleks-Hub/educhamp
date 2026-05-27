@@ -11,6 +11,7 @@ import {
   BookOpen, Brain, BarChart3, Users, Star, ChevronDown, ChevronUp,
   GraduationCap, Zap, CheckCircle, ArrowRight, MessageCircle,
   Sparkles, Send, X, Menu, Mail, Phone, Shield, Trophy, Clock,
+  Building2, TrendingUp, LayoutDashboard, HeartHandshake,
 } from "lucide-react";
 import { EduChampDemoWidget } from "@/components/EduChampDemoWidget";
 import { RoleSelectModal } from "@/components/RoleSelectModal";
@@ -830,6 +831,132 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ── Schools & Districts ── */}
+      <section id="schools" className="relative py-24 overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900">
+        {/* Decorative grid overlay */}
+        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
+        {/* Glow blobs */}
+        <div className="absolute -top-32 -left-32 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          {/* Top label */}
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 rounded-full px-4 py-1.5 text-xs font-semibold tracking-wide uppercase mb-6">
+              <Building2 className="h-3.5 w-3.5" /> For Schools &amp; Districts
+            </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight mb-5">
+              Bring AI-Powered Learning<br className="hidden sm:block" />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400"> to Every Classroom</span>
+            </h2>
+            <p className="text-slate-300 text-lg max-w-2xl mx-auto leading-relaxed">
+              EduChamp gives ISD administrators, curriculum directors, and campus principals a single platform to deploy adaptive AI tutoring across every grade and subject — fully aligned to TEKS.
+            </p>
+          </div>
+
+          {/* Benefit pillars */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+            {[
+              {
+                icon: <TrendingUp className="h-6 w-6" />,
+                title: "Measurable Outcomes",
+                desc: "Real-time mastery dashboards let administrators track skill gaps and intervention needs across every campus.",
+              },
+              {
+                icon: <LayoutDashboard className="h-6 w-6" />,
+                title: "District-Wide Control",
+                desc: "Bulk enrollment, teacher dashboards, and custom TEKS alignment — managed from a single admin console.",
+              },
+              {
+                icon: <Brain className="h-6 w-6" />,
+                title: "Adaptive AI Tutor",
+                desc: "EduBot meets each student at their level, providing personalized explanations and practice across 56+ courses.",
+              },
+              {
+                icon: <HeartHandshake className="h-6 w-6" />,
+                title: "Dedicated Onboarding",
+                desc: "Our team handles implementation, teacher training, and ongoing support — so your staff can focus on students.",
+              },
+            ].map((pillar) => (
+              <div key={pillar.title} className="bg-white/5 border border-white/10 rounded-2xl p-6 hover:bg-white/8 transition-colors">
+                <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-indigo-500/20 text-indigo-400 mb-4">
+                  {pillar.icon}
+                </div>
+                <h3 className="text-white font-semibold mb-2">{pillar.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{pillar.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Two-column: stats + CTA */}
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+
+            {/* Left: district trust signals */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-6">Trusted by districts across Texas</p>
+              {/* Placeholder district logo strip */}
+              <div className="flex flex-wrap gap-4 mb-8">
+                {[
+                  "Katy ISD", "Spring ISD", "Cypress-Fairbanks ISD",
+                  "Humble ISD", "Conroe ISD", "Alief ISD",
+                ].map((name) => (
+                  <div key={name} className="flex items-center gap-2 bg-white/8 border border-white/10 rounded-lg px-4 py-2">
+                    <Building2 className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                    <span className="text-slate-300 text-xs font-medium whitespace-nowrap">{name}</span>
+                  </div>
+                ))}
+              </div>
+              {/* Stat row */}
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { value: "56+", label: "Courses" },
+                  { value: "K–12", label: "Grade range" },
+                  { value: "TEKS", label: "Aligned" },
+                ].map((s) => (
+                  <div key={s.label} className="text-center bg-white/5 border border-white/10 rounded-xl py-4">
+                    <p className="text-2xl font-extrabold text-white">{s.value}</p>
+                    <p className="text-slate-400 text-xs mt-1">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: CTA card */}
+            <div className="bg-white rounded-2xl p-8 shadow-2xl shadow-indigo-900/40">
+              <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 rounded-full px-3 py-1 text-xs font-semibold mb-4">
+                <Sparkles className="h-3.5 w-3.5" /> Free pilot available
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 mb-3">Ready to see EduChamp in action?</h3>
+              <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+                Schedule a personalised demo for your campus or district. We'll walk through the platform, answer your questions, and design a pilot plan that fits your timeline.
+              </p>
+              <ul className="space-y-2 mb-7">
+                {[
+                  "Live platform walkthrough with your team",
+                  "Custom TEKS alignment review",
+                  "Pilot program design & pricing",
+                  "Implementation timeline & support plan",
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-sm text-slate-600">
+                    <CheckCircle className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => setDemoOpen(true)}
+                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-bold text-sm hover:from-indigo-500 hover:to-violet-500 transition-all active:scale-[0.98] shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
+              >
+                <Building2 className="h-4 w-4" /> Request a Demo for Your District
+              </button>
+              <p className="text-center text-xs text-slate-400 mt-3">No commitment required · Response within 1 business day</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
       {/* ── Pricing ── */}
       <section id="pricing" className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1156,6 +1283,7 @@ export default function LandingPage() {
         isOpen={roleModalOpen}
         onClose={() => setRoleModalOpen(false)}
         planName={selectedPlan}
+        billingPeriod={annualBilling ? "annual" : "monthly"}
       />
 
       {/* ── Demo Request Modal ── */}
