@@ -13,6 +13,11 @@ import {
   createStudentInviteToken,
   getStudentInviteToken,
   acceptStudentInviteToken,
+  createParentInviteToken,
+  getParentInviteToken,
+  acceptParentInviteToken,
+  getPendingParentInvitesForStudent,
+  subscribeToNewsletter,
   enrollChild,
   updateUserAccountType,
   getParentChildLink,
@@ -256,6 +261,108 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
     const { getPendingStudentInvitesForParent } = await import("../db");
     return getPendingStudentInvitesForParent(ctx.user.id);
   }),
+
+  // ─── Parent Invite Tokens (student → parent direction) ────────────────────
+
+  /**
+   * Student: invite a parent/guardian to link their account.
+   */
+  inviteParent: protectedProcedure
+    .input(
+      z.object({
+        parentName: z.string().max(256).optional(),
+        parentEmail: z.string().email().optional(),
+        parentPhone: z.string().max(32).optional(),
+        origin: z.string().url(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const invite = await createParentInviteToken(
+        ctx.user.id,
+        input.parentName,
+        input.parentEmail,
+        input.parentPhone
+      );
+      if (!invite) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create parent invite." });
+      const inviteUrl = `${input.origin}/join?parentInvite=${invite.token}`;
+      notifyOwner({
+        title: "Student Invited Parent",
+        content: `Student ${ctx.user.name ?? ctx.user.email} invited a parent (${input.parentEmail ?? "no email"}) to join EduChamp.`,
+      }).catch(() => {});
+      return { token: invite.token, inviteUrl, expiresAt: invite.expiresAt };
+    }),
+
+  /**
+   * Public: look up a parent invite token.
+   */
+  lookupParentInvite: publicProcedure
+    .input(z.object({ token: z.string() }))
+    .query(async ({ input }) => {
+      const invite = await getParentInviteToken(input.token);
+      if (!invite) return { valid: false, invite: null };
+      if (invite.status !== "pending") return { valid: false, invite: null, reason: invite.status };
+      if (new Date(invite.expiresAt) < new Date()) return { valid: false, invite: null, reason: "expired" };
+      return {
+        valid: true,
+        invite: {
+          token: invite.token,
+          parentName: invite.parentName,
+          parentEmail: invite.parentEmail,
+          expiresAt: invite.expiresAt,
+        },
+      };
+    }),
+
+  /**
+   * Protected: accept a parent invite token after the parent has signed in.
+   */
+  acceptParentInvite: protectedProcedure
+    .input(z.object({ token: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const invite = await getParentInviteToken(input.token);
+      if (!invite) throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite token." });
+      if (invite.status !== "pending") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `This invite has already been ${invite.status}.` });
+      }
+      if (new Date(invite.expiresAt) < new Date()) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This invite link has expired. Ask the student to send a new one." });
+      }
+      if (ctx.user.accountType !== "parent") {
+        await updateUserAccountType(ctx.user.id, "parent");
+      }
+      await enrollChild(ctx.user.id, invite.studentId, undefined, "student");
+      await acceptParentInviteToken(input.token, ctx.user.id);
+      notifyOwner({
+        title: "Parent Accepted Student Invite",
+        content: `${ctx.user.name ?? ctx.user.email} accepted a parent invite from student ID ${invite.studentId}.`,
+      }).catch(() => {});
+      return { success: true, studentId: invite.studentId };
+    }),
+
+  /**
+   * Student: list pending parent invites they have sent.
+   */
+  listParentInvites: protectedProcedure.query(async ({ ctx }) => {
+    return getPendingParentInvitesForStudent(ctx.user.id);
+  }),
+
+  // ─── Newsletter ────────────────────────────────────────────────────────────
+
+  /**
+   * Public: subscribe to the EduChamp newsletter.
+   */
+  subscribeNewsletter: publicProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        name: z.string().max(256).optional(),
+        source: z.string().max(64).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const result = await subscribeToNewsletter(input.email, input.name, input.source ?? "landing_page");
+      return result ?? { alreadySubscribed: false, email: input.email };
+    }),
 
   /** Get personalization settings for the current user. */
   getPersonalization: protectedProcedure.query(async ({ ctx }) => {

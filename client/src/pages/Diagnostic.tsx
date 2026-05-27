@@ -20,6 +20,7 @@ import {
 import {
   ArrowLeft,
   ArrowRight,
+  BookOpen,
   CheckCircle2,
   ClipboardList,
   Clock,
@@ -87,6 +88,23 @@ type DiagnosticResult = {
 };
 
 const TIMER_DURATION = 60 * 60; // 60 minutes in seconds
+const RETAKE_COOLDOWN_DAYS = 7;
+
+function getCooldownRemaining(completedAt: Date | string | null | undefined): number {
+  if (!completedAt) return 0;
+  const completed = new Date(completedAt).getTime();
+  const cooldownMs = RETAKE_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+  const remaining = completed + cooldownMs - Date.now();
+  return Math.max(0, remaining);
+}
+
+function formatCooldown(ms: number): string {
+  const days = Math.floor(ms / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  if (days > 0) return `${days}d ${hours}h`;
+  const mins = Math.floor((ms % (60 * 60 * 1000)) / 60000);
+  return `${hours}h ${mins}m`;
+}
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -336,6 +354,12 @@ export default function Diagnostic() {
     const attempt = existingAttempt as any;
     const attempts = (allAttempts ?? []) as any[];
     const attemptCount = attempts.length;
+    const cooldownMs = getCooldownRemaining(attempt.completedAt);
+    const onCooldown = cooldownMs > 0;
+    // Find first actionable unit for Start Learning CTA
+    const firstActionableUnit = dashboard?.units?.find(
+      (u: any) => u.status === "in_progress" || u.status === "quiz_unlocked"
+    ) ?? dashboard?.units?.[0];
 
     return (
       <div className="p-6 space-y-6 page-enter max-w-3xl">
@@ -375,18 +399,42 @@ export default function Diagnostic() {
               <p className="text-sm font-semibold text-foreground mb-1">Placement Recommendation</p>
               <p className="text-sm text-muted-foreground leading-relaxed">{attempt.placementRecommendation}</p>
             </div>
+            {/* Start Learning CTA */}
+            {firstActionableUnit && (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-green-800">Ready to start learning?</p>
+                  <p className="text-xs text-green-700 mt-0.5">Your placement is set — jump straight into your first unit.</p>
+                </div>
+                <Button
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white gap-2 shrink-0"
+                  onClick={() => setLocation(`/curriculum/unit/${firstActionableUnit.unitNumber}`)}
+                >
+                  <BookOpen className="h-4 w-4" />
+                  Start Learning
+                </Button>
+              </div>
+            )}
             <div className="flex gap-3">
               <Button onClick={() => setLocation("/curriculum")} className="flex-1">
                 Go to Curriculum
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => { setStarted(true); setAnswers({}); setCurrentIndex(0); setTimeLeft(TIMER_DURATION); }}
-                className="gap-2"
-              >
-                <RotateCcw className="h-4 w-4" />
-                {attemptCount > 0 ? "Retest (New Questions)" : "Retake"}
-              </Button>
+              {onCooldown ? (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-muted/50 text-xs text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                  <span>Retake available in <strong>{formatCooldown(cooldownMs)}</strong></span>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => { setStarted(true); setAnswers({}); setCurrentIndex(0); setTimeLeft(TIMER_DURATION); }}
+                  className="gap-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  {attemptCount > 0 ? "Retest (New Questions)" : "Retake"}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -434,6 +482,10 @@ export default function Diagnostic() {
 
   // ── Results page ──────────────────────────────────────────────────────────
   if (result) {
+    // Find first actionable unit for Start Learning CTA on fresh results
+    const firstActionableUnitResult = dashboard?.units?.find(
+      (u: any) => u.status === "in_progress" || u.status === "quiz_unlocked"
+    ) ?? dashboard?.units?.[0];
     const filteredAnswers = result.gradedAnswers.filter((a) => {
       if (reviewFilter === "correct" && !a.correct) return false;
       if (reviewFilter === "wrong" && a.correct) return false;
@@ -565,6 +617,23 @@ export default function Diagnostic() {
           )}
         </div>
 
+        {/* Start Learning CTA on fresh results */}
+        {firstActionableUnitResult && (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-green-800">Your placement is complete!</p>
+              <p className="text-xs text-green-700 mt-0.5">Jump straight into your first personalised unit now.</p>
+            </div>
+            <Button
+              size="sm"
+              className="bg-green-600 hover:bg-green-700 text-white gap-2 shrink-0"
+              onClick={() => setLocation(`/curriculum/unit/${firstActionableUnitResult.unitNumber}`)}
+            >
+              <BookOpen className="h-4 w-4" />
+              Start Learning
+            </Button>
+          </div>
+        )}
         <div className="flex gap-3">
           <Button onClick={() => setLocation("/curriculum")} className="flex-1">
             Go to Curriculum

@@ -1348,3 +1348,84 @@ export async function getStudentsByGrade(gradeLevel: string) {
     .innerJoin(users, eq(userProfiles.userId, users.id))
     .where(eq(userProfiles.gradeLevel, gradeLevel));
 }
+
+// ─── Parent Invite Tokens (student → parent direction) ───────────────────────
+
+export async function createParentInviteToken(
+  studentId: number,
+  parentName?: string,
+  parentEmail?: string,
+  parentPhone?: string
+) {
+  const db = await getDb();
+  if (!db) return null;
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let token = "";
+  for (let i = 0; i < 48; i++) token += chars[Math.floor(Math.random() * chars.length)];
+  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days
+  const { parentInviteTokens } = await import("../drizzle/schema");
+  await db.insert(parentInviteTokens).values({
+    studentId,
+    token,
+    parentName: parentName ?? null,
+    parentEmail: parentEmail ?? null,
+    parentPhone: parentPhone ?? null,
+    expiresAt,
+  });
+  const result = await db.select().from(parentInviteTokens).where(eq(parentInviteTokens.token, token)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function getParentInviteToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const { parentInviteTokens } = await import("../drizzle/schema");
+  const result = await db.select().from(parentInviteTokens).where(eq(parentInviteTokens.token, token)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function acceptParentInviteToken(token: string, parentId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const { parentInviteTokens } = await import("../drizzle/schema");
+  await db.update(parentInviteTokens)
+    .set({ status: "accepted", parentId, acceptedAt: new Date() })
+    .where(eq(parentInviteTokens.token, token));
+}
+
+export async function getPendingParentInvitesForStudent(studentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const { parentInviteTokens } = await import("../drizzle/schema");
+  return db.select().from(parentInviteTokens)
+    .where(and(eq(parentInviteTokens.studentId, studentId), eq(parentInviteTokens.status, "pending")))
+    .orderBy(desc(parentInviteTokens.createdAt));
+}
+
+// ─── Newsletter Subscriptions ─────────────────────────────────────────────────
+
+export async function subscribeToNewsletter(email: string, name?: string, source = "landing_page") {
+  const db = await getDb();
+  if (!db) return null;
+  const { newsletterSubscriptions } = await import("../drizzle/schema");
+  // Upsert: if already subscribed, reactivate
+  const existing = await db.select().from(newsletterSubscriptions)
+    .where(eq(newsletterSubscriptions.email, email.toLowerCase().trim()))
+    .limit(1);
+  if (existing[0]) {
+    if (!existing[0].isActive) {
+      await db.update(newsletterSubscriptions)
+        .set({ isActive: true, unsubscribedAt: null, source })
+        .where(eq(newsletterSubscriptions.email, email.toLowerCase().trim()));
+    }
+    return { alreadySubscribed: !existing[0].isActive, email };
+  }
+  await db.insert(newsletterSubscriptions).values({
+    email: email.toLowerCase().trim(),
+    name: name ?? null,
+    source,
+    isActive: true,
+  });
+  return { alreadySubscribed: false, email };
+}
+

@@ -11,8 +11,9 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  GraduationCap, School, MapPin, CheckCircle2,
-  ArrowRight, ArrowLeft, Loader2, UserCheck, AlertCircle
+  GraduationCap, School, CheckCircle2, Mail, Phone,
+  ArrowRight, ArrowLeft, Loader2, UserCheck, AlertCircle,
+  Users, Copy, Share2,
 } from "lucide-react";
 
 const US_STATES = [
@@ -50,11 +51,18 @@ export default function StudentOnboarding() {
   const search = useSearch();
   const { user } = useAuth();
   const [step, setStep] = useState(1);
-  const totalSteps = 2;
+  const totalSteps = 3;
 
-  // Invite token from URL
+  // Invite token from URL (parent-issued invite for student)
   const params = new URLSearchParams(search);
   const inviteToken = params.get("invite") ?? "";
+
+  // Step 2: Parent invite
+  const [parentName, setParentName] = useState("");
+  const [parentEmail, setParentEmail] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
+  const [parentInviteResult, setParentInviteResult] = useState<{ inviteUrl: string; token: string } | null>(null);
+  const [parentInviteSent, setParentInviteSent] = useState(false);
 
   // Step 1: School info
   const [schoolType, setSchoolType] = useState("");
@@ -83,6 +91,7 @@ export default function StudentOnboarding() {
   const saveProfile = trpc.onboarding.saveStudentProfile.useMutation();
   const acceptInvite = trpc.onboarding.acceptStudentInvite.useMutation();
   const completeOnboarding = trpc.onboarding.completeOnboarding.useMutation();
+  const inviteParent = trpc.onboarding.inviteParent.useMutation();
 
   async function handleStep1() {
     await saveProfile.mutateAsync({
@@ -98,6 +107,26 @@ export default function StudentOnboarding() {
     setStep(2);
   }
 
+  async function handleSendParentInvite() {
+    if (!parentEmail && !parentPhone) {
+      toast.error("Please enter your parent's email or phone number.");
+      return;
+    }
+    try {
+      const result = await inviteParent.mutateAsync({
+        parentName: parentName || undefined,
+        parentEmail: parentEmail || undefined,
+        parentPhone: parentPhone || undefined,
+        origin: window.location.origin,
+      });
+      setParentInviteResult(result);
+      setParentInviteSent(true);
+      toast.success("Invitation sent! Your parent will receive a link to join EduChamp.");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to send invite. Please try again.");
+    }
+  }
+
   async function handleFinish() {
     try {
       if (inviteToken && inviteLookup.data?.valid) {
@@ -111,8 +140,9 @@ export default function StudentOnboarding() {
     }
   }
 
-  const progress = ((step - 1) / totalSteps) * 100;
   const inviteInfo = inviteLookup.data?.invite;
+
+  const progress = ((step - 1) / totalSteps) * 100;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 flex items-center justify-center p-4">
@@ -272,8 +302,140 @@ export default function StudentOnboarding() {
           </Card>
         )}
 
-        {/* Step 2: Confirm & Finish */}
+        {/* Step 2: Invite Parent */}
         {step === 2 && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-indigo-600" />
+                <CardTitle>Invite Your Parent or Guardian</CardTitle>
+              </div>
+              <CardDescription>
+                Connect a parent or guardian so they can track your progress, approve your subscription, and support your learning journey.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-4 space-y-2">
+                <p className="text-sm font-semibold text-indigo-900">Why connect a parent?</p>
+                <ul className="text-sm text-indigo-800 space-y-1.5">
+                  {[
+                    "They can monitor your progress and quiz scores",
+                    "They can approve and manage your subscription",
+                    "They receive weekly progress reports",
+                    "They can communicate with your AI tutor for parent-level insights",
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {inviteInfo && (
+                <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 flex items-center gap-2">
+                  <UserCheck className="h-4 w-4 shrink-0" />
+                  <span>Your parent has already invited you — your accounts will be linked automatically.</span>
+                </div>
+              )}
+
+              {!inviteInfo && !parentInviteSent && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium">Parent's Name <span className="text-muted-foreground text-xs">(optional)</span></label>
+                    <input
+                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      placeholder="e.g. Jane Smith"
+                      value={parentName}
+                      onChange={e => setParentName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5" /> Parent's Email
+                    </label>
+                    <input
+                      type="email"
+                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      placeholder="parent@example.com"
+                      value={parentEmail}
+                      onChange={e => setParentEmail(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium flex items-center gap-1.5">
+                      <Phone className="h-3.5 w-3.5" /> Parent's Phone <span className="text-muted-foreground text-xs">(optional)</span>
+                    </label>
+                    <input
+                      type="tel"
+                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      placeholder="+1 (555) 000-0000"
+                      value={parentPhone}
+                      onChange={e => setParentPhone(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2"
+                    onClick={handleSendParentInvite}
+                    disabled={inviteParent.isPending}
+                  >
+                    {inviteParent.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Share2 className="h-4 w-4" />
+                    )}
+                    Send Parent Invitation
+                  </Button>
+                </div>
+              )}
+
+              {parentInviteSent && parentInviteResult && (
+                <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-800 font-semibold text-sm">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Invitation created!
+                  </div>
+                  <p className="text-xs text-emerald-700">
+                    Share this link with your parent. They can sign up and link their account to yours.
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <code className="flex-1 text-xs bg-white border rounded px-2 py-1.5 truncate text-slate-700">
+                      {parentInviteResult.inviteUrl}
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0 gap-1"
+                      onClick={() => {
+                        navigator.clipboard.writeText(parentInviteResult.inviteUrl);
+                        toast.success("Link copied!");
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" onClick={() => setStep(1)} className="flex-1 gap-1">
+                  <ArrowLeft className="h-4 w-4" /> Back
+                </Button>
+                <Button
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 gap-1"
+                  onClick={() => setStep(3)}
+                >
+                  {parentInviteSent || inviteInfo ? "Continue" : "Skip for now"}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 3: Confirm & Finish */}
+        {step === 3 && (
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -286,36 +448,33 @@ export default function StudentOnboarding() {
               <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-4 space-y-2">
                 <h3 className="text-sm font-semibold text-indigo-900">Getting started with EduChamp</h3>
                 <ul className="text-sm text-indigo-800 space-y-1.5">
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
-                    Take the placement diagnostic to find your starting point
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
-                    Work through units at your own pace with the AI tutor
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
-                    Take unit quizzes to unlock the next level
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
-                    Your parent can track your progress from their dashboard
-                  </li>
+                  {[
+                    "Take the placement diagnostic to find your starting point",
+                    "Work through units at your own pace with the AI tutor",
+                    "Take unit quizzes to unlock the next level",
+                    "Your parent can track your progress from their dashboard",
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
+                      {item}
+                    </li>
+                  ))}
                 </ul>
               </div>
 
-              {inviteInfo && (
+              {(inviteInfo || parentInviteSent) && (
                 <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
                   <div className="font-medium flex items-center gap-1 mb-1">
-                    <UserCheck className="h-4 w-4" /> Linked to parent account
+                    <UserCheck className="h-4 w-4" /> Parent account connected
                   </div>
-                  Your account will be linked to your parent's EduChamp account so they can track your progress.
+                  {inviteInfo
+                    ? "Your account will be linked to your parent's EduChamp account so they can track your progress."
+                    : "Your parent will receive an invitation to join and link their account."}
                 </div>
               )}
 
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
+                <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
                   <ArrowLeft className="h-4 w-4 mr-2" /> Back
                 </Button>
                 <Button

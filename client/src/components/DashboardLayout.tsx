@@ -42,7 +42,7 @@ import {
   Users,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, Redirect } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import CourseSwitcher from "./CourseSwitcher";
@@ -79,36 +79,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (loading) return <DashboardLayoutSkeleton />;
 
   if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          {/* Logo */}
-          <div className="flex flex-col items-center gap-4">
-            <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg">
-              <GraduationCap className="h-9 w-9 text-primary-foreground" />
-            </div>
-            <div className="text-center">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">EduChamp</h1>
-              <p className="text-sm text-muted-foreground mt-1">Algebra I · Katy ISD</p>
-            </div>
-          </div>
-          <div className="flex flex-col items-center gap-3 text-center">
-            <h2 className="text-xl font-semibold">Sign in to continue</h2>
-            <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-              Access your personalized Algebra I learning path, AI tutor, and progress dashboard.
-            </p>
-          </div>
-          <Button
-            onClick={() => { window.location.href = getLoginUrl(); }}
-            size="lg"
-            className="w-full shadow-md hover:shadow-lg transition-all"
-          >
-            <Sparkles className="mr-2 h-4 w-4" />
-            Sign in to EduChamp
-          </Button>
-        </div>
-      </div>
-    );
+    return <Redirect to="/landing" />;
   }
 
   return (

@@ -4,8 +4,9 @@
  *
  * The entire page is a single call-to-action: "Take the Placement Test Now."
  * Clicking anywhere on the page navigates to /diagnostic.
+ * A collapsible unit list lets students preview the course topics first.
  */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -16,6 +17,8 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   ClipboardList,
   GraduationCap,
   Lightbulb,
@@ -45,20 +48,21 @@ const SUBJECT_ICONS: Record<string, React.ComponentType<{ className?: string }>>
   other: BookOpen,
 };
 
-const SUBJECT_COLORS: Record<string, { bg: string; text: string; accent: string }> = {
-  math: { bg: "from-blue-50 to-indigo-50", text: "text-blue-700", accent: "bg-blue-100 text-blue-800 border-blue-200" },
-  english: { bg: "from-purple-50 to-violet-50", text: "text-purple-700", accent: "bg-purple-100 text-purple-800 border-purple-200" },
-  science: { bg: "from-green-50 to-emerald-50", text: "text-green-700", accent: "bg-green-100 text-green-800 border-green-200" },
-  social_studies: { bg: "from-amber-50 to-yellow-50", text: "text-amber-700", accent: "bg-amber-100 text-amber-800 border-amber-200" },
-  language: { bg: "from-pink-50 to-rose-50", text: "text-pink-700", accent: "bg-pink-100 text-pink-800 border-pink-200" },
-  business: { bg: "from-teal-50 to-cyan-50", text: "text-teal-700", accent: "bg-teal-100 text-teal-800 border-teal-200" },
-  test_prep: { bg: "from-orange-50 to-amber-50", text: "text-orange-700", accent: "bg-orange-100 text-orange-800 border-orange-200" },
-  other: { bg: "from-slate-50 to-gray-50", text: "text-slate-700", accent: "bg-slate-100 text-slate-800 border-slate-200" },
+const SUBJECT_COLORS: Record<string, { bg: string; text: string; accent: string; unitBg: string }> = {
+  math:          { bg: "from-blue-50 to-indigo-50",   text: "text-blue-700",   accent: "bg-blue-100 text-blue-800 border-blue-200",     unitBg: "bg-blue-50 border-blue-100" },
+  english:       { bg: "from-purple-50 to-violet-50", text: "text-purple-700", accent: "bg-purple-100 text-purple-800 border-purple-200", unitBg: "bg-purple-50 border-purple-100" },
+  science:       { bg: "from-green-50 to-emerald-50", text: "text-green-700",  accent: "bg-green-100 text-green-800 border-green-200",    unitBg: "bg-green-50 border-green-100" },
+  social_studies:{ bg: "from-amber-50 to-yellow-50",  text: "text-amber-700",  accent: "bg-amber-100 text-amber-800 border-amber-200",    unitBg: "bg-amber-50 border-amber-100" },
+  language:      { bg: "from-pink-50 to-rose-50",     text: "text-pink-700",   accent: "bg-pink-100 text-pink-800 border-pink-200",       unitBg: "bg-pink-50 border-pink-100" },
+  business:      { bg: "from-teal-50 to-cyan-50",     text: "text-teal-700",   accent: "bg-teal-100 text-teal-800 border-teal-200",       unitBg: "bg-teal-50 border-teal-100" },
+  test_prep:     { bg: "from-orange-50 to-amber-50",  text: "text-orange-700", accent: "bg-orange-100 text-orange-800 border-orange-200", unitBg: "bg-orange-50 border-orange-100" },
+  other:         { bg: "from-slate-50 to-gray-50",    text: "text-slate-700",  accent: "bg-slate-100 text-slate-800 border-slate-200",    unitBg: "bg-slate-50 border-slate-100" },
 };
 
 export default function CourseWelcome() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [unitsOpen, setUnitsOpen] = useState(false);
 
   const { data: dashboard, isLoading } = trpc.progress.getDashboard.useQuery(undefined, {
     enabled: !!user,
@@ -71,16 +75,17 @@ export default function CourseWelcome() {
     }
   }, [isLoading, dashboard, setLocation]);
 
-  const courseTitle = dashboard?.courseTitle ?? "Your Course";
-  const courseSubject = dashboard?.courseSubject ?? "other";
+  const courseTitle       = dashboard?.courseTitle       ?? "Your Course";
+  const courseSubject     = dashboard?.courseSubject     ?? "other";
   const courseDescription = dashboard?.courseDescription ?? "";
-  const courseGradeLevel = dashboard?.courseGradeLevel ?? "";
-  const totalUnits = dashboard?.totalUnits ?? 0;
+  const courseGradeLevel  = dashboard?.courseGradeLevel  ?? "";
+  const totalUnits        = dashboard?.totalUnits        ?? 0;
+  const units             = (dashboard?.units ?? []) as { unitNumber: number; title: string; description?: string }[];
 
   const subjectLabel = SUBJECT_LABELS[courseSubject] ?? courseSubject;
-  const colors = SUBJECT_COLORS[courseSubject] ?? SUBJECT_COLORS.other;
-  const SubjectIcon = SUBJECT_ICONS[courseSubject] ?? BookOpen;
-  const gradeLabel =
+  const colors       = SUBJECT_COLORS[courseSubject] ?? SUBJECT_COLORS.other;
+  const SubjectIcon  = SUBJECT_ICONS[courseSubject]  ?? BookOpen;
+  const gradeLabel   =
     courseGradeLevel === "AP"
       ? "AP / Advanced"
       : courseGradeLevel
@@ -132,7 +137,7 @@ export default function CourseWelcome() {
               )}
             </div>
             <div className="flex items-center justify-center gap-3">
-              <div className={`h-14 w-14 rounded-2xl flex items-center justify-center bg-white shadow-sm border`}>
+              <div className="h-14 w-14 rounded-2xl flex items-center justify-center bg-white shadow-sm border">
                 <SubjectIcon className={`h-7 w-7 ${colors.text}`} />
               </div>
             </div>
@@ -151,8 +156,59 @@ export default function CourseWelcome() {
             )}
           </div>
 
+          {/* Collapsible unit preview */}
+          {units.length > 0 && (
+            <div
+              className="bg-white rounded-2xl border shadow-sm overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                className="w-full flex items-center justify-between px-6 py-4 hover:bg-muted/30 transition-colors"
+                onClick={() => setUnitsOpen((v) => !v)}
+                aria-expanded={unitsOpen}
+              >
+                <div className="flex items-center gap-3">
+                  <BookOpen className={`h-5 w-5 ${colors.text}`} />
+                  <span className="font-semibold text-foreground">
+                    Preview the {units.length} units you will study
+                  </span>
+                </div>
+                {unitsOpen ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </button>
+
+              {unitsOpen && (
+                <div className="border-t divide-y">
+                  {units.map((unit) => (
+                    <div
+                      key={unit.unitNumber}
+                      className={`flex items-start gap-3 px-6 py-3 ${colors.unitBg}`}
+                    >
+                      <span
+                        className={`shrink-0 h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${colors.accent} border`}
+                      >
+                        {unit.unitNumber}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground">{unit.title}</p>
+                        {unit.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">
+                            {unit.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Why the placement test */}
-          <div className="bg-white rounded-2xl border shadow-sm p-6 space-y-5">
+          <div className="bg-white rounded-2xl border shadow-sm p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <ClipboardList className="h-5 w-5 text-primary" />

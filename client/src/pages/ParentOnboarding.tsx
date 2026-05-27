@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -33,9 +33,19 @@ const US_STATES = [
 
 export default function ParentOnboarding() {
   const [, navigate] = useLocation();
+  const search = useSearch();
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const totalSteps = 3;
+
+  // Parent invite token from URL (student invited this parent)
+  const params = new URLSearchParams(search);
+  const parentInviteToken = params.get("parentInvite") ?? "";
+  const parentInviteLookup = trpc.onboarding.lookupParentInvite.useQuery(
+    { token: parentInviteToken },
+    { enabled: !!parentInviteToken }
+  );
+  const acceptParentInvite = trpc.onboarding.acceptParentInvite.useMutation();
 
   // Step 1: Demographics
   const [city, setCity] = useState("");
@@ -77,6 +87,14 @@ export default function ParentOnboarding() {
   }
 
   async function handleFinish() {
+    if (parentInviteToken && parentInviteLookup.data?.valid) {
+      try {
+        await acceptParentInvite.mutateAsync({ token: parentInviteToken });
+        toast.success("Your account has been linked to your student!");
+      } catch {
+        // Non-fatal: continue even if linking fails
+      }
+    }
     await completeOnboarding.mutateAsync();
     toast.success("Welcome to EduChamp! Let's get started.");
     navigate("/");
@@ -242,16 +260,37 @@ export default function ParentOnboarding() {
                 </div>
               </div>
 
+              {parentInviteToken && parentInviteLookup.data?.valid && (
+                <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-3">
+                  <div className="flex items-center gap-2 text-indigo-800 text-sm font-medium mb-1">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Student Invite Detected
+                  </div>
+                  <p className="text-xs text-indigo-700">
+                    Your student invited you to join EduChamp. When you click "Get Started", your accounts will be linked automatically.
+                  </p>
+                </div>
+              )}
               <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
                 <div className="flex items-center gap-2 text-emerald-800 text-sm font-medium mb-1">
                   <CheckCircle2 className="h-4 w-4" />
                   What happens next
                 </div>
                 <ul className="text-xs text-emerald-700 space-y-1 ml-6 list-disc">
-                  <li>Add your child using the Parent Dashboard</li>
-                  <li>Your child receives a secure invite link to join</li>
-                  <li>The AI tutor will align its approach to your stated goal</li>
-                  <li>Track progress in real-time from your dashboard</li>
+                  {parentInviteToken && parentInviteLookup.data?.valid ? (
+                    <>
+                      <li>Your account will be linked to your student automatically</li>
+                      <li>The AI tutor will align its approach to your stated goal</li>
+                      <li>Track your student's progress in real-time from your dashboard</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>Add your child using the Parent Dashboard</li>
+                      <li>Your child receives a secure invite link to join</li>
+                      <li>The AI tutor will align its approach to your stated goal</li>
+                      <li>Track progress in real-time from your dashboard</li>
+                    </>
+                  )}
                 </ul>
               </div>
 

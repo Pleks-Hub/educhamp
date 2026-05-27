@@ -5,6 +5,7 @@ import { authEnhancementsRouter } from "./routers/authEnhancements";
 import { parentToolsRouter } from "./routers/parentTools";
 import { referralRouter } from "./routers/referral";
 import { onboardingRouter } from "./routers/onboarding";
+import { landingRouter } from "./routers/landing";
 import { adminRouter } from "./routers/admin";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
@@ -56,6 +57,7 @@ export const appRouter = router({
   parentTools: parentToolsRouter,
   referral: referralRouter,
   onboarding: onboardingRouter,
+  landing: landingRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

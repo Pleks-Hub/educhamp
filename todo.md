@@ -356,3 +356,24 @@
 - [x] Server: getDashboard hasDiagnosticForActiveCourse used as needsWelcome signal (no separate flag needed)
 - [x] Wire: CourseSwitcher and Home redirect to /course-welcome when hasDiagnosticForActiveCourse is false
 - [x] Wire: clicking anywhere on CourseWelcome navigates to /diagnostic
+
+## Sprint 12 — Enhanced UX, Role-Based Tutor, Landing Page & Onboarding
+
+- [x] DB: add newsletterSubscriptions table and migrate
+- [x] DB: add parentInviteTokens table and migrate
+- [x] AI Tutor: filter unit context to active course only (use getDashboard units)
+- [x] AI Tutor: hide parent_summary mode from students (role-based)
+- [x] AI Tutor: update starter prompts to reference active course title dynamically
+- [x] Diagnostic: add "Start Learning" CTA on results page navigating to first unlocked unit
+- [x] Diagnostic: implement 7-day retake cooldown (block retake button, show countdown)
+- [x] CourseWelcome: add collapsible unit list so students can preview topics before placement test
+- [x] Onboarding: allow students to sign up independently and invite parent/guardian
+- [x] Server: inviteParent, lookupParentInvite, acceptParentInvite, subscribeNewsletter procedures
+- [x] Server: landing.chat AI chatbot procedure (public, course-aware)
+- [x] Landing Page: full redesign with hero, features, testimonials, stats sections
+- [x] Landing Page: Sign Up and Sign In CTAs prominently placed
+- [x] Landing Page: newsletter subscription form (backend + frontend)
+- [x] Landing Page: AI chatbot widget for onboarding guidance
+- [x] Landing Page: animations and micro-interactions
+- [x] DashboardLayout: replace simple sign-in screen with redirect to landing page /landing
+- [x] ParentOnboarding: handle parentInvite token from URL, accept on finish

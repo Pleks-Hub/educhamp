@@ -21,6 +21,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
 import JoinPage from "./pages/JoinPage";
+import LandingPage from "./pages/LandingPage";
 import ParentOnboarding from "./pages/ParentOnboarding";
 import StudentOnboarding from "./pages/StudentOnboarding";
 import Referrals from "./pages/Referrals";
@@ -31,6 +32,7 @@ function Router() {
   return (
     <Switch>
       {/* Public routes — no auth required, no sidebar */}
+      <Route path="/landing" component={LandingPage} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/accept-invite" component={AcceptInvite} />

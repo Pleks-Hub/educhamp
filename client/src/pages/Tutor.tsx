@@ -27,7 +27,9 @@ import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 import { CourseContextBanner } from "@/components/CourseContextBanner";
 
+// parent_summary is a parent-only mode; students see only the 5 learning modes
 type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary";
+const STUDENT_MODES: TutorMode[] = ["teach", "practice", "quiz", "exam_review", "remediation"];
 
 const MODES: {
   id: TutorMode;
@@ -145,8 +147,10 @@ export default function Tutor() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const streamingAbortRef = useRef<AbortController | null>(null);
 
-  const { data: units } = trpc.curriculum.getUnits.useQuery();
+  // Use active-course units from dashboard instead of global getAllUnits
   const { data: dashboard } = trpc.progress.getDashboard.useQuery();
+  // Active-course units are returned by getDashboard; fall back to empty array
+  const units = dashboard?.units ?? [];
   const { data: personalization } = trpc.onboarding.getPersonalization.useQuery(undefined, {
     enabled: !!user,
   });
@@ -157,8 +161,11 @@ export default function Tutor() {
     "there";
   const customWelcome = (personalization as any)?.aiWelcomeMessage as string | undefined;
   const courseLabel = dashboard?.courseTitle ?? "your course";
+  const isStudent = !user || user.accountType === "student" || !user.accountType;
+  // Visible modes: students see 5 learning modes; parents/teachers see all 6
+  const visibleModes = MODES.filter((m) => isStudent ? STUDENT_MODES.includes(m.id) : true);
   const [selectedUnit, setSelectedUnit] = useState<number | undefined>(unitParam);
-  const currentUnit = units?.find((u) => u.unitNumber === selectedUnit);
+  const currentUnit = units.find((u) => u.unitNumber === selectedUnit);
 
   const clearMutation = trpc.tutor.clearSession.useMutation({
     onSuccess: () => {
@@ -224,7 +231,7 @@ export default function Tutor() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               message: text,
-              mode,
+              mode: safeMode,
               unitId: currentUnit?.id,
               unitNumber: selectedUnit,
               sessionId: sessionId ?? undefined,
@@ -299,7 +306,9 @@ export default function Tutor() {
     setTimeout(() => textareaRef.current?.focus(), 100);
   };
 
-  const currentModeConfig = MODES.find((m) => m.id === mode)!;
+  // If a student somehow has parent_summary mode set, reset to teach
+  const safeMode: TutorMode = (isStudent && mode === "parent_summary") ? "teach" : mode;
+  const currentModeConfig = MODES.find((m) => m.id === safeMode) ?? MODES[0];
   const ModeIcon = currentModeConfig.icon;
 
   if (!user) {
@@ -339,7 +348,7 @@ export default function Tutor() {
             Mode
           </p>
           <div className="space-y-0.5">
-            {MODES.map((m) => {
+            {visibleModes.map((m) => {
               const Icon = m.icon;
               const isActive = mode === m.id;
               return (
@@ -374,7 +383,7 @@ export default function Tutor() {
             <MessageSquare className="h-3 w-3 shrink-0" />
             <span>General — {courseLabel}</span>
           </button>
-          {(units ?? []).map((unit) => (
+          {units.map((unit) => (
             <button
               key={unit.id}
               onClick={() => setSelectedUnit(unit.unitNumber)}

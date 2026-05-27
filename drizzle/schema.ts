@@ -560,3 +560,38 @@ export const adminAuditLog = mysqlTable("adminAuditLog", {
 });
 
 export type AdminAuditLogEntry = typeof adminAuditLog.$inferSelect;
+
+// ─── Parent Invite Tokens ─────────────────────────────────────────────────────
+/**
+ * Tokens created by students to invite a parent/guardian to link their account.
+ * This is the reverse of studentInviteTokens (student → parent direction).
+ */
+export const parentInviteTokens = mysqlTable("parentInviteTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  studentId: int("studentId").notNull(),                    // FK → users.id (student who sent invite)
+  parentId: int("parentId"),                                // FK → users.id — set once parent signs up
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  parentName: varchar("parentName", { length: 256 }),       // optional name hint
+  parentEmail: varchar("parentEmail", { length: 320 }),     // email to send invite to
+  parentPhone: varchar("parentPhone", { length: 32 }),      // optional phone
+  status: mysqlEnum("status", ["pending", "accepted", "expired", "revoked"]).notNull().default("pending"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  acceptedAt: timestamp("acceptedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ParentInviteToken = typeof parentInviteTokens.$inferSelect;
+
+// ─── Newsletter Subscriptions ─────────────────────────────────────────────────
+/**
+ * Email addresses that have subscribed to EduChamp updates/newsletter.
+ */
+export const newsletterSubscriptions = mysqlTable("newsletterSubscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  name: varchar("name", { length: 256 }),
+  source: varchar("source", { length: 64 }).notNull().default("landing_page"), // "landing_page" | "onboarding" | "dashboard"
+  subscribedAt: timestamp("subscribedAt").defaultNow().notNull(),
+  unsubscribedAt: timestamp("unsubscribedAt"),
+  isActive: boolean("isActive").notNull().default(true),
+});
+export type NewsletterSubscription = typeof newsletterSubscriptions.$inferSelect;

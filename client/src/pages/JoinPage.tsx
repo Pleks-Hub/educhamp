@@ -19,6 +19,7 @@ export default function JoinPage() {
   const params = new URLSearchParams(search);
   const refCode = params.get("ref") ?? "";
   const inviteToken = params.get("invite") ?? "";
+  const parentInviteToken = params.get("parentInvite") ?? "";
 
   // Look up referral code
   const referralQuery = trpc.referral.lookupCode.useQuery(
@@ -32,28 +33,44 @@ export default function JoinPage() {
     { enabled: !!inviteToken }
   );
 
+  // Look up parent invite token (student invited a parent)
+  const parentInviteQuery = trpc.onboarding.lookupParentInvite.useQuery(
+    { token: parentInviteToken },
+    { enabled: !!parentInviteToken }
+  );
+
   // If user is already logged in, redirect to appropriate onboarding
   useEffect(() => {
     if (!authLoading && user) {
       if (inviteToken) {
         navigate(`/onboarding/student?invite=${inviteToken}`);
+      } else if (parentInviteToken) {
+        // Parent accepting a student's invite — go to parent onboarding with token
+        navigate(`/onboarding/parent?parentInvite=${parentInviteToken}`);
       } else {
         navigate("/");
       }
     }
-  }, [user, authLoading, inviteToken]);
+  }, [user, authLoading, inviteToken, parentInviteToken]);
 
   const isInviteFlow = !!inviteToken;
+  const isParentInviteFlow = !!parentInviteToken;
   const inviteInfo = inviteQuery.data?.invite;
+  const parentInviteInfo = parentInviteQuery.data?.invite;
   const referralInfo = referralQuery.data?.referral;
-  const isLoading = (!!refCode && referralQuery.isLoading) || (!!inviteToken && inviteQuery.isLoading);
+  const isLoading = (!!refCode && referralQuery.isLoading) || (!!inviteToken && inviteQuery.isLoading) || (!!parentInviteToken && parentInviteQuery.isLoading);
 
-  function handleSignUp() {
-    // Build return path so after OAuth we land on onboarding
-    const returnPath = isInviteFlow
-      ? `/onboarding/student?invite=${inviteToken}`
-      : `/onboarding/parent`;
-    // Store return path in sessionStorage so OAuth callback can redirect there
+  function handleSignUp(asRole: "student" | "parent" = "student") {
+    let returnPath: string;
+    if (isInviteFlow) {
+      returnPath = `/onboarding/student?invite=${inviteToken}`;
+    } else if (isParentInviteFlow) {
+      returnPath = `/onboarding/parent?parentInvite=${parentInviteToken}`;
+    } else if (asRole === "parent") {
+      returnPath = `/onboarding/parent`;
+    } else {
+      returnPath = `/onboarding/student`;
+    }
     sessionStorage.setItem("educhamp_post_login_redirect", returnPath);
     const loginUrl = getLoginUrl();
     window.location.href = loginUrl;
@@ -83,7 +100,7 @@ export default function JoinPage() {
           <p className="text-slate-600 mt-2 text-lg">Algebra I Mastery Platform</p>
         </div>
 
-        {/* Invite-specific banner */}
+        {/* Student invite banner (parent → student) */}
         {isInviteFlow && inviteInfo && (
           <div className="mb-4 rounded-xl bg-emerald-50 border border-emerald-200 p-4 flex items-start gap-3">
             <UserCheck className="h-5 w-5 text-emerald-600 mt-0.5 shrink-0" />
@@ -97,11 +114,31 @@ export default function JoinPage() {
             </div>
           </div>
         )}
-
         {isInviteFlow && inviteQuery.data && !inviteQuery.data.valid && (
           <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
             <span className="font-medium">This invite link is no longer valid. </span>
             Please ask your parent to send a new invite from their EduChamp dashboard.
+          </div>
+        )}
+
+        {/* Parent invite banner (student → parent) */}
+        {isParentInviteFlow && parentInviteInfo && (
+          <div className="mb-4 rounded-xl bg-indigo-50 border border-indigo-200 p-4 flex items-start gap-3">
+            <UserCheck className="h-5 w-5 text-indigo-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold text-indigo-900 text-sm">
+                {parentInviteInfo.parentName ? `Hi ${parentInviteInfo.parentName}!` : "You've been invited by your student!"}
+              </p>
+              <p className="text-sm text-indigo-700 mt-0.5">
+                Your student has invited you to join EduChamp as their parent/guardian. Create your account to monitor their progress.
+              </p>
+            </div>
+          </div>
+        )}
+        {isParentInviteFlow && parentInviteQuery.data && !parentInviteQuery.data.valid && (
+          <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
+            <span className="font-medium">This invite link is no longer valid. </span>
+            Please ask your student to send a new invite from their EduChamp dashboard.
           </div>
         )}
 
@@ -141,13 +178,34 @@ export default function JoinPage() {
               ))}
             </div>
 
-            <Button className="w-full h-11 text-base" onClick={handleSignUp}>
-              {isInviteFlow ? (
-                <><UserCheck className="h-4 w-4 mr-2" /> Accept Invite & Sign In</>
-              ) : (
-                <><ArrowRight className="h-4 w-4 mr-2" /> Get Started Free</>
-              )}
-            </Button>
+            {/* Primary CTA */}
+            {isInviteFlow ? (
+              <Button className="w-full h-11 text-base" onClick={() => handleSignUp("student")}>
+                <UserCheck className="h-4 w-4 mr-2" /> Accept Invite & Sign In
+              </Button>
+            ) : isParentInviteFlow ? (
+              <Button className="w-full h-11 text-base" onClick={() => handleSignUp("parent")}>
+                <UserCheck className="h-4 w-4 mr-2" /> Accept Invite & Sign In as Parent
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <Button className="w-full h-11 text-base bg-indigo-600 hover:bg-indigo-700" onClick={() => handleSignUp("student")}>
+                  <GraduationCap className="h-4 w-4 mr-2" /> Sign Up as Student
+                </Button>
+                <Button variant="outline" className="w-full h-11 text-base" onClick={() => handleSignUp("parent")}>
+                  <Users className="h-4 w-4 mr-2" /> Sign Up as Parent / Guardian
+                </Button>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">Already have an account?</span>
+                  </div>
+                </div>
+                <Button variant="ghost" className="w-full" onClick={() => handleSignUp("student")}>
+                  Sign In
+                </Button>
+              </div>
+            )}
 
             <p className="text-xs text-center text-muted-foreground">
               By signing up, you agree to EduChamp's Terms of Service and Privacy Policy.
@@ -155,11 +213,10 @@ export default function JoinPage() {
           </CardContent>
         </Card>
 
-        {/* Note for students: must use parent invite */}
-        {!isInviteFlow && (
-          <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
-            <span className="font-medium">Students:</span> Student accounts must be created by a parent or guardian.
-            Ask your parent to sign up first and send you an invite link from their dashboard.
+        {/* Student sign-up note */}
+        {!isInviteFlow && !isParentInviteFlow && (
+          <div className="mt-4 rounded-lg bg-slate-50 border border-slate-200 p-3 text-xs text-slate-600">
+            <span className="font-medium">Students:</span> You can sign up independently and invite your parent/guardian during onboarding. Parent approval unlocks subscription features and progress monitoring.
           </div>
         )}
       </div>
