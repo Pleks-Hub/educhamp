@@ -1857,3 +1857,55 @@ export async function seedDefaultRoles(createdBy: number) {
     }
   }
 }
+
+
+// ─── Sprint 19: Parent Invite — extended helpers ──────────────────────────────
+
+/**
+ * Look up pending parent invites by the invitee's email address.
+ * Used to show "Pending Student Requests" in the Parent Portal for existing users.
+ */
+export async function getPendingInvitesForParentEmail(email: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const { parentInviteTokens } = await import("../drizzle/schema");
+  return db.select().from(parentInviteTokens)
+    .where(
+      and(
+        eq(parentInviteTokens.parentEmail, email.toLowerCase().trim()),
+        eq(parentInviteTokens.status, "pending")
+      )
+    )
+    .orderBy(desc(parentInviteTokens.createdAt));
+}
+
+/**
+ * Reject a parent invite token (parent declines the student's request).
+ */
+export async function rejectParentInviteToken(token: string) {
+  const db = await getDb();
+  if (!db) return;
+  const { parentInviteTokens } = await import("../drizzle/schema");
+  await db.update(parentInviteTokens)
+    .set({ status: "rejected", rejectedAt: new Date() })
+    .where(eq(parentInviteTokens.token, token));
+}
+
+/**
+ * Update a parent invite token with student context for richer email content.
+ */
+export async function updateParentInviteStudentContext(
+  token: string,
+  context: { studentName?: string; studentGrade?: string; courseName?: string }
+) {
+  const db = await getDb();
+  if (!db) return;
+  const { parentInviteTokens } = await import("../drizzle/schema");
+  await db.update(parentInviteTokens)
+    .set({
+      studentName: context.studentName ?? null,
+      studentGrade: context.studentGrade ?? null,
+      courseName: context.courseName ?? null,
+    })
+    .where(eq(parentInviteTokens.token, token));
+}

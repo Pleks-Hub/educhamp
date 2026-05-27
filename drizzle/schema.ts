@@ -575,9 +575,13 @@ export const parentInviteTokens = mysqlTable("parentInviteTokens", {
   parentName: varchar("parentName", { length: 256 }),       // optional name hint
   parentEmail: varchar("parentEmail", { length: 320 }),     // email to send invite to
   parentPhone: varchar("parentPhone", { length: 32 }),      // optional phone
-  status: mysqlEnum("status", ["pending", "accepted", "expired", "revoked"]).notNull().default("pending"),
+  status: mysqlEnum("status", ["pending", "accepted", "expired", "revoked", "rejected"]).notNull().default("pending"),
+  studentName: varchar("studentName", { length: 256 }),       // student's display name for email
+  studentGrade: varchar("studentGrade", { length: 64 }),      // student's grade level for email
+  courseName: varchar("courseName", { length: 256 }),         // active course name for email
   expiresAt: timestamp("expiresAt").notNull(),
   acceptedAt: timestamp("acceptedAt"),
+  rejectedAt: timestamp("rejectedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type ParentInviteToken = typeof parentInviteTokens.$inferSelect;

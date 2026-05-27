@@ -106,7 +106,7 @@ export default function StudentOnboarding() {
   const [parentName, setParentName] = useState("");
   const [parentEmail, setParentEmail] = useState("");
   const [parentPhone, setParentPhone] = useState("");
-  const [parentInviteResult, setParentInviteResult] = useState<{ inviteUrl: string; token: string } | null>(null);
+  const [parentInviteResult, setParentInviteResult] = useState<{ inviteUrl: string; token: string; isExistingUser?: boolean } | null>(null);
   const [parentInviteSent, setParentInviteSent] = useState(false);
 
   // Step 1: School info
@@ -200,7 +200,11 @@ export default function StudentOnboarding() {
       });
       setParentInviteResult(result);
       setParentInviteSent(true);
-      toast.success("Invitation sent! Your parent will receive a link to join EduChamp.");
+      if (result.isExistingUser) {
+        toast.success("Your parent already has an EduChamp account! They'll see your request in their Parent Portal.");
+      } else {
+        toast.success("Invitation created! Share the link with your parent so they can join EduChamp.");
+      }
     } catch (err: any) {
       toast.error(err?.message ?? "Failed to send invite. Please try again.");
     }
@@ -555,31 +559,77 @@ export default function StudentOnboarding() {
               )}
 
               {parentInviteSent && parentInviteResult && (
-                <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-4 space-y-2">
-                  <div className="flex items-center gap-2 text-emerald-800 font-semibold text-sm">
-                    <CheckCircle2 className="h-4 w-4" />
-                    Invitation created!
+                <div className="rounded-xl border p-4 space-y-3"
+                  style={{ background: parentInviteResult.isExistingUser ? "#f0fdf4" : "#f0f9ff",
+                           borderColor: parentInviteResult.isExistingUser ? "#86efac" : "#93c5fd" }}>
+                  <div className="flex items-start gap-3">
+                    <div className={`h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      parentInviteResult.isExistingUser ? "bg-emerald-100" : "bg-blue-100"
+                    }`}>
+                      <CheckCircle2 className={`h-5 w-5 ${
+                        parentInviteResult.isExistingUser ? "text-emerald-600" : "text-blue-600"
+                      }`} />
+                    </div>
+                    <div>
+                      <p className={`font-semibold text-sm ${
+                        parentInviteResult.isExistingUser ? "text-emerald-900" : "text-blue-900"
+                      }`}>
+                        {parentInviteResult.isExistingUser
+                          ? "Request sent to existing parent account!"
+                          : "Invitation link created!"}
+                      </p>
+                      <p className={`text-xs mt-0.5 ${
+                        parentInviteResult.isExistingUser ? "text-emerald-700" : "text-blue-700"
+                      }`}>
+                        {parentInviteResult.isExistingUser
+                          ? `${parentName || "Your parent"} already has an EduChamp account. They'll see your enrollment request in their Parent Portal under "Pending Student Requests" and can accept or decline from there.`
+                          : "Share this link with your parent or guardian. They'll be taken to EduChamp to create their account and approve your enrollment."}
+                      </p>
+                    </div>
                   </div>
-                  <p className="text-xs text-emerald-700">
-                    Share this link with your parent. They can sign up and link their account to yours.
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <code className="flex-1 text-xs bg-white border rounded px-2 py-1.5 truncate text-slate-700">
-                      {parentInviteResult.inviteUrl}
-                    </code>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="shrink-0 gap-1"
-                      onClick={() => {
-                        navigator.clipboard.writeText(parentInviteResult.inviteUrl);
-                        toast.success("Link copied!");
-                      }}
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                      Copy
-                    </Button>
-                  </div>
+
+                  {!parentInviteResult.isExistingUser && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-xs bg-white border rounded-lg px-3 py-2 truncate text-slate-700 font-mono">
+                          {parentInviteResult.inviteUrl}
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 gap-1.5"
+                          onClick={() => {
+                            navigator.clipboard.writeText(parentInviteResult!.inviteUrl);
+                            toast.success("Link copied to clipboard!");
+                          }}
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                          Copy
+                        </Button>
+                      </div>
+                      <div className="rounded-lg bg-white/60 border border-blue-100 p-3 text-xs text-blue-800 space-y-1">
+                        <p className="font-medium">How to share this link:</p>
+                        <ul className="list-disc list-inside space-y-0.5 pl-1">
+                          <li>Copy the link and send it via text message or email</li>
+                          <li>Your parent will be taken to EduChamp to create their free account</li>
+                          <li>Once they accept, you'll both be linked automatically</li>
+                          <li>The link expires in 7 days — ask your parent to act soon</li>
+                        </ul>
+                      </div>
+                    </>
+                  )}
+
+                  {parentInviteResult.isExistingUser && (
+                    <div className="rounded-lg bg-white/60 border border-emerald-100 p-3 text-xs text-emerald-800 space-y-1">
+                      <p className="font-medium">What happens next?</p>
+                      <ul className="list-disc list-inside space-y-0.5 pl-1">
+                        <li>Your parent will see your request in their Parent Portal</li>
+                        <li>Once they accept, you'll be linked to their account</li>
+                        <li>They'll be able to monitor your progress and receive updates</li>
+                        <li>You can continue setting up your account in the meantime</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
 

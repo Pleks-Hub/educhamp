@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,9 @@ import {
   ChevronRight, GraduationCap, BarChart3, CheckCircle2, Clock,
   Pencil, Trash2, Mail, Plus, X, Star, Target, Brain, ShieldAlert,
   FileText, Download, StickyNote, Flag, TrendingDown, Zap,
-  Loader2, Link2, Copy
+  Loader2, Link2, Copy, Bell, CheckCheck, XCircle, UserCheck, Info
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Streamdown } from "streamdown";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1421,12 +1421,52 @@ function CoParentPanel({ studentId, studentName }: { studentId: number; studentN
 
 export default function ParentDashboard() {
   const { user, isAuthenticated, loading } = useAuth();
+  // useLocation is available for future navigation needs
+  const [, navigate] = useLocation();
   const [enrolOpen, setEnrolOpen] = useState(false);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
+  const [pendingInviteToken, setPendingInviteToken] = useState<string | null>(null);
+  const [showPendingRequests, setShowPendingRequests] = useState(false);
   const utils = trpc.useUtils();
+
+  // Read ?pendingInvite= from URL (deep-link from email for existing parents)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("pendingInvite");
+    if (token) {
+      setPendingInviteToken(token);
+      setShowPendingRequests(true);
+      // Clean the URL without reloading
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, "", cleanUrl);
+    }
+  }, []);
 
   const { data: children, isLoading: childrenLoading } = trpc.parent.listChildren.useQuery(undefined, {
     enabled: isAuthenticated,
+  });
+
+  const { data: pendingInvites, isLoading: pendingLoading, refetch: refetchPending } =
+    trpc.onboarding.getPendingInvitesForMe.useQuery(undefined, {
+      enabled: isAuthenticated,
+      refetchInterval: 30_000, // poll every 30s
+    });
+
+  const acceptInvite = trpc.onboarding.acceptParentInvite.useMutation({
+    onSuccess: (data) => {
+      toast.success("Student request accepted! They have been linked to your account.");
+      utils.parent.listChildren.invalidate();
+      refetchPending();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const rejectInvite = trpc.onboarding.rejectParentInvite.useMutation({
+    onSuccess: () => {
+      toast.success("Request declined.");
+      refetchPending();
+    },
+    onError: (err) => toast.error(err.message),
   });
 
   const becomeParent = trpc.parent.becomeParent.useMutation({
@@ -1469,6 +1509,129 @@ export default function ParentDashboard() {
           Enrol a Student
         </Button>
       </div>
+
+      {/* ── Pending Student Enrollment Requests banner ── */}
+      {pendingInvites && pendingInvites.length > 0 && (
+        <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                  <Bell className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-base text-amber-900 dark:text-amber-200">
+                    Pending Student Enrollment Requests
+                  </CardTitle>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-0.5">
+                    {pendingInvites.length} student{pendingInvites.length !== 1 ? "s have" : " has"} invited you to monitor their learning journey.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-amber-700 dark:text-amber-400 hover:bg-amber-100"
+                onClick={() => setShowPendingRequests((v) => !v)}
+              >
+                {showPendingRequests ? "Hide" : "Review Requests"}
+              </Button>
+            </div>
+          </CardHeader>
+
+          {showPendingRequests && (
+            <CardContent className="pt-0 space-y-3">
+              {pendingInvites.map((inv) => (
+                <div
+                  key={inv.token}
+                  className="bg-white dark:bg-slate-900 rounded-xl border border-amber-200 dark:border-amber-800 p-4 flex flex-col sm:flex-row sm:items-start gap-4"
+                >
+                  {/* Student avatar */}
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <GraduationCap className="h-6 w-6 text-primary" />
+                  </div>
+
+                  {/* Details */}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-base">{inv.studentName}</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {inv.studentGrade && (
+                        <Badge variant="secondary" className="text-xs">{inv.studentGrade}</Badge>
+                      )}
+                      {inv.courseName && (
+                        <Badge variant="outline" className="text-xs gap-1">
+                          <BookOpen className="h-3 w-3" />{inv.courseName}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Invitation received {new Date(inv.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {" · "}
+                      Expires {new Date(inv.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </p>
+
+                    {/* What happens when you accept */}
+                    <div className="mt-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800 text-xs text-muted-foreground space-y-1">
+                      <p className="font-medium text-foreground flex items-center gap-1.5">
+                        <Info className="h-3.5 w-3.5" /> What happens when you accept?
+                      </p>
+                      <ul className="list-disc list-inside space-y-0.5 pl-1">
+                        <li>{inv.studentName} will be linked to your Parent Dashboard</li>
+                        <li>You'll be able to monitor their progress, quiz results, and mastery scores</li>
+                        <li>You'll receive notifications on their learning milestones</li>
+                        <li>You can set goals and review AI-generated progress summaries</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-row sm:flex-col gap-2 flex-shrink-0">
+                    <Button
+                      size="sm"
+                      className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                      disabled={acceptInvite.isPending}
+                      onClick={() => {
+                        if (pendingInviteToken === inv.token || true) {
+                          acceptInvite.mutate({ token: inv.token });
+                        }
+                      }}
+                    >
+                      {acceptInvite.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <CheckCheck className="h-3.5 w-3.5" />
+                      )}
+                      Accept
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 text-red-600 border-red-200 hover:bg-red-50"
+                      disabled={rejectInvite.isPending}
+                      onClick={() => rejectInvite.mutate({ token: inv.token })}
+                    >
+                      <XCircle className="h-3.5 w-3.5" />
+                      Decline
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      {/* ── Deep-linked single invite (token in URL, not yet in pending list) ── */}
+      {pendingInviteToken && (!pendingInvites || !pendingInvites.find((i) => i.token === pendingInviteToken)) && (
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+          <CardContent className="py-4 flex items-center gap-3">
+            <UserCheck className="h-5 w-5 text-blue-600" />
+            <p className="text-sm text-blue-800 dark:text-blue-300">
+              You followed a student invitation link. If the request doesn't appear above, it may have already been processed or the link has expired.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Student account hard block */}
       {user?.accountType === "student" && (

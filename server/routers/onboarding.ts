@@ -16,7 +16,10 @@ import {
   createParentInviteToken,
   getParentInviteToken,
   acceptParentInviteToken,
+  rejectParentInviteToken,
   getPendingParentInvitesForStudent,
+  getPendingInvitesForParentEmail,
+  updateParentInviteStudentContext,
   subscribeToNewsletter,
   enrollChild,
   updateUserAccountType,
@@ -25,7 +28,12 @@ import {
   enrollUserInCourse,
   setUserActiveCourse,
   getUserCourseEnrollments,
+  getUserById,
+  getActiveCourseIdForUser,
+  getCourseById,
+  getUserByEmail,
 } from "../db";
+import { buildParentInviteEmail } from "../emailTemplates/parentInvite";
 import { invokeLLM } from "../_core/llm";
 import { notifyOwner } from "../_core/notification";
 
@@ -296,6 +304,9 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
 
   /**
    * Student: invite a parent/guardian to link their account.
+   * Enriches the invite with student context (name, grade, course) for the email.
+   * Smart-routes: if the parent email already has an EduChamp account, the invite
+   * URL deep-links to the Parent Portal instead of the onboarding flow.
    */
   inviteParent: protectedProcedure
     .input(
@@ -307,6 +318,17 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
       })
     )
     .mutation(async ({ ctx, input }) => {
+      // Gather student context for the email
+      const student = await getUserById(ctx.user.id);
+      const profile = await getUserProfile(ctx.user.id);
+      const studentGrade = (profile as any)?.gradeLevel ?? student?.grade ?? undefined;
+      let courseNameForEmail: string | undefined;
+      try {
+        const courseId = await getActiveCourseIdForUser(ctx.user.id);
+        const course = await getCourseById(courseId);
+        courseNameForEmail = course?.title ?? undefined;
+      } catch { /* ignore */ }
+
       const invite = await createParentInviteToken(
         ctx.user.id,
         input.parentName,
@@ -314,12 +336,49 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         input.parentPhone
       );
       if (!invite) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create parent invite." });
-      const inviteUrl = `${input.origin}/join?parentInvite=${invite.token}`;
+
+      // Persist student context on the invite row
+      await updateParentInviteStudentContext(invite.token, {
+        studentName: student?.name ?? ctx.user.name ?? undefined,
+        studentGrade,
+        courseName: courseNameForEmail,
+      });
+
+      // Detect if parent already has an account → deep-link to portal
+      let isExistingUser = false;
+      if (input.parentEmail) {
+        const existingParent = await getUserByEmail(input.parentEmail);
+        isExistingUser = !!existingParent;
+      }
+
+      const inviteUrl = isExistingUser
+        ? `${input.origin}/parent?pendingInvite=${invite.token}`
+        : `${input.origin}/join?parentInvite=${invite.token}`;
+
+      // Build branded email
+      const emailData = buildParentInviteEmail({
+        studentName: student?.name ?? ctx.user.name ?? "Your student",
+        studentGrade,
+        courseName: courseNameForEmail,
+        parentName: input.parentName,
+        inviteUrl,
+        expiresAt: new Date(invite.expiresAt),
+        isExistingUser,
+      });
+
+      // Log to owner (email delivery via external SMTP not yet configured — URL is returned for manual sharing)
       notifyOwner({
         title: "Student Invited Parent",
-        content: `Student ${ctx.user.name ?? ctx.user.email} invited a parent (${input.parentEmail ?? "no email"}) to join EduChamp.`,
+        content: `Student ${ctx.user.name ?? ctx.user.email} invited ${input.parentEmail ?? "a parent"} to join EduChamp.\nInvite URL: ${inviteUrl}`,
       }).catch(() => {});
-      return { token: invite.token, inviteUrl, expiresAt: invite.expiresAt };
+
+      return {
+        token: invite.token,
+        inviteUrl,
+        expiresAt: invite.expiresAt,
+        isExistingUser,
+        emailPreview: emailData.html,   // returned so frontend can show preview
+      };
     }),
 
   /**
@@ -345,6 +404,7 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
 
   /**
    * Protected: accept a parent invite token after the parent has signed in.
+   * Works for both new parents (via /join flow) and existing parents (via portal).
    */
   acceptParentInvite: protectedProcedure
     .input(z.object({ token: z.string() }))
@@ -357,10 +417,15 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
       if (new Date(invite.expiresAt) < new Date()) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "This invite link has expired. Ask the student to send a new one." });
       }
+      // Upgrade to parent if needed
       if (ctx.user.accountType !== "parent") {
         await updateUserAccountType(ctx.user.id, "parent");
       }
-      await enrollChild(ctx.user.id, invite.studentId, undefined, "student");
+      // Check not already linked
+      const existing = await getParentChildLink(ctx.user.id, invite.studentId);
+      if (!existing?.isActive) {
+        await enrollChild(ctx.user.id, invite.studentId, invite.studentName ?? undefined, "student");
+      }
       await acceptParentInviteToken(input.token, ctx.user.id);
       notifyOwner({
         title: "Parent Accepted Student Invite",
@@ -370,11 +435,68 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
     }),
 
   /**
+   * Protected: reject a parent invite token (parent declines the student's request).
+   */
+  rejectParentInvite: protectedProcedure
+    .input(z.object({ token: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const invite = await getParentInviteToken(input.token);
+      if (!invite) throw new TRPCError({ code: "NOT_FOUND", message: "Invalid invite token." });
+      if (invite.status !== "pending") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `This invite has already been ${invite.status}.` });
+      }
+      await rejectParentInviteToken(input.token);
+      notifyOwner({
+        title: "Parent Rejected Student Invite",
+        content: `${ctx.user.name ?? ctx.user.email} rejected a parent invite from student ID ${invite.studentId}.`,
+      }).catch(() => {});
+      return { success: true };
+    }),
+
+  /**
+   * Protected: get all pending invites addressed to the current user's email.
+   * Used in the Parent Portal to show "Pending Student Requests".
+   */
+  getPendingInvitesForMe: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.user.email) return [];
+    const invites = await getPendingInvitesForParentEmail(ctx.user.email);
+    // Enrich with student name from invite row (already stored) or fall back to studentId
+    return invites.map((inv) => ({
+      id: inv.id,
+      token: inv.token,
+      studentId: inv.studentId,
+      studentName: inv.studentName ?? `Student #${inv.studentId}`,
+      studentGrade: inv.studentGrade ?? null,
+      courseName: inv.courseName ?? null,
+      expiresAt: inv.expiresAt,
+      createdAt: inv.createdAt,
+    }));
+  }),
+
+  /**
    * Student: list pending parent invites they have sent.
    */
   listParentInvites: protectedProcedure.query(async ({ ctx }) => {
     return getPendingParentInvitesForStudent(ctx.user.id);
   }),
+
+  /**
+   * Student: get the status of a specific parent invite token.
+   */
+  getParentInviteStatus: protectedProcedure
+    .input(z.object({ token: z.string() }))
+    .query(async ({ input }) => {
+      const invite = await getParentInviteToken(input.token);
+      if (!invite) return null;
+      return {
+        status: invite.status,
+        parentName: invite.parentName,
+        parentEmail: invite.parentEmail,
+        expiresAt: invite.expiresAt,
+        acceptedAt: invite.acceptedAt,
+        rejectedAt: invite.rejectedAt,
+      };
+    }),
 
   // ─── Newsletter ────────────────────────────────────────────────────────────
 

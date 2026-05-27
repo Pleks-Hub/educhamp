@@ -625,3 +625,39 @@
 - [x] UI: Admin RBAC tab — duplicate/delete role actions
 - [x] UI: Admin RBAC tab — user assignment panel per role
 - [x] UI: Admin sidebar — hide/show menu items based on user's effective permissions
+
+## Sprint 19 — Student-to-Parent Invitation Workflow Redesign & QA
+
+### Invitation Email Redesign
+- [x] Email: redesign invitation email template with EduChamp branding (logo, colors, CTA button, plain-text fallback URL)
+- [x] Email: include student name, grade, course, and enrollment details in email body
+- [x] Email: explain benefits of joining EduChamp and what the parent needs to do
+- [x] Email: smart routing — if parent already exists, deep-link to Parent Portal pending requests instead of onboarding
+
+### Server Procedures
+- [x] Server: update createStudentInvite to embed student name, grade, course in email and token payload
+- [x] Server: add parentInviteAccept mutation — link student, trigger enrollment, notify both parties
+- [x] Server: add parentInviteReject mutation — mark invite rejected, notify student
+- [x] Server: add getPendingInvites query for parent portal (invites addressed to parent's email)
+- [x] Server: add getMyInviteStatus query for student (shows pending/accepted/rejected status per invite)
+- [x] Server: existing-parent detection — if invitee email matches existing user, skip onboarding and route to portal
+
+### Frontend — Parent Portal
+- [x] Frontend: Parent Portal — "Pending Student Requests" section with accept/reject cards showing student details
+- [x] Frontend: Parent Portal — show accepted students immediately after approval without page reload
+- [x] Frontend: Parent Portal — notification badge on pending requests count
+
+### Frontend — Student Experience
+- [x] Frontend: Student onboarding — redesign invite-parent step with clearer UI, status badge, resend option
+- [x] Frontend: Student dashboard — show invite status banner (pending/accepted/rejected) with next-step guidance
+- [x] Frontend: /parent/invite/:token page for new parents (create account → review student details → accept/reject)
+
+### Branding & UI Consistency
+- [x] Branding: audit all onboarding screens for EduChamp logo, colors, and typography consistency
+- [x] Branding: ensure invitation acceptance page matches main platform visual identity
+- [x] Branding: mobile responsive check on all invitation and acceptance screens
+
+### QA & Bug Fixes
+- [x] QA: test full invitation flow (new parent, existing parent, reject, resend, expired token)
+- [x] QA: test parent accept flow on mobile and tablet
+- [x] QA: fix all bugs found during testing
