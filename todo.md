@@ -464,3 +464,34 @@
 - [x] Seed: Grade 6 KAP Math and ELA (advanced variants)
 - [x] Seed: Grade 7 KAP Math and ELA (advanced variants)
 - [x] Seed: Grade 8 KAP Math and ELA (advanced variants)
+
+## Sprint 15 — AP Diagnostic Fix, Auto-Enrolment, Expanded Banks & KAP Gr 6-8 Science/SS
+
+### AP/Advanced Diagnostic Fix
+- [x] Investigate why AP/Advanced course diagnostic questions fail to load
+- [x] Fix root cause (mapsToUnit key mismatch — "Unit 1" vs "1" — fixed in routers.ts grouping logic)
+- [x] Verify all AP/SAT courses return 57 diagnostic questions
+
+### Grade-Aware Auto-Enrolment on Onboarding
+- [x] Server: on student onboarding completion, look up default course for student's gradeLevel
+- [x] Server: auto-enrol student in grade-appropriate default course if no active enrollment exists
+- [x] Server: set that enrollment as isActive=true (current course)
+- [x] UI: onboarding success screen shows the auto-enrolled course name
+
+### Expand Diagnostic Banks to 57 Questions (Variable Retest)
+- [x] Expand Grade 4 Math, ELA, Science, SS, Tech diagnostic banks to 57 questions each
+- [x] Expand Grade 5 Math, ELA, Science, SS, Tech diagnostic banks to 57 questions each
+- [x] Expand Grade 6 Math, ELA, Science, SS, Tech diagnostic banks to 57 questions each
+- [x] Expand Grade 7 Math, ELA, Science, SS, Tech diagnostic banks to 57 questions each
+- [x] Expand Grade 8 Math, ELA, Science, SS, Tech diagnostic banks to 57 questions each
+- [x] Expand AP Chemistry, AP Statistics, AP Calculus BC, AP Literature, AP Business, SAT Prep banks to 57 questions
+- [x] Expand Grade 3 Math, ELA, Science, SS banks to 57 questions
+- [x] Expand Grade 9 English I, Biology I, AP Human Geography, Spanish 2 banks to 57 questions
+
+### KAP Science & Social Studies for Grades 6–8
+- [x] Seed Grade 6 KAP Science (advanced variant)
+- [x] Seed Grade 6 KAP Social Studies (advanced variant)
+- [x] Seed Grade 7 KAP Science (advanced variant)
+- [x] Seed Grade 7 KAP Social Studies (advanced variant)
+- [x] Seed Grade 8 KAP Science (advanced variant)
+- [x] Seed Grade 8 KAP Social Studies (advanced variant)

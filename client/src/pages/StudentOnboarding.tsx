@@ -132,8 +132,15 @@ export default function StudentOnboarding() {
       if (inviteToken && inviteLookup.data?.valid) {
         await acceptInvite.mutateAsync({ token: inviteToken });
       }
-      await completeOnboarding.mutateAsync();
-      toast.success("Welcome to EduChamp! Your account is ready.");
+      const result = await completeOnboarding.mutateAsync();
+      if (result?.autoEnrolledCourse) {
+        toast.success(
+          `Welcome to EduChamp! You've been enrolled in ${result.autoEnrolledCourse.title}. Let's get started!`,
+          { duration: 5000 }
+        );
+      } else {
+        toast.success("Welcome to EduChamp! Your account is ready.");
+      }
       navigate("/");
     } catch (err: any) {
       toast.error(err?.message ?? "Something went wrong. Please try again.");

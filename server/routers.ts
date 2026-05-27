@@ -444,12 +444,22 @@ export const appRouter = router({
         const resolvedCourseId = input?.courseId ?? await getActiveCourseIdForUser(ctx.user.id);
         const allQuestions = await getDiagnosticQuestionsForCourse(resolvedCourseId);
 
-        // Group questions by mapsToUnit
+        // Group questions by mapsToUnit.
+        // Normalise: "Unit 3" → "3", "prerequisite" stays, full-title strings stay as-is.
+        function normaliseUnit(raw: string): string {
+          if (!raw) return raw;
+          const lower = raw.trim().toLowerCase();
+          if (lower === "prerequisite") return "prerequisite";
+          const unitMatch = raw.trim().match(/^[Uu]nit\s+(\d+)$/);
+          if (unitMatch) return unitMatch[1];
+          return raw.trim();
+        }
         const groups = new Map<string, typeof allQuestions>();
         for (const q of allQuestions) {
-          const g = groups.get(q.mapsToUnit) ?? [];
+          const key = normaliseUnit(q.mapsToUnit);
+          const g = groups.get(key) ?? [];
           g.push(q);
-          groups.set(q.mapsToUnit, g);
+          groups.set(key, g);
         }
 
         // Seeded pseudo-random shuffle (mulberry32)
@@ -528,11 +538,23 @@ export const appRouter = router({
         });
 
         // Score prerequisite questions (DIAG-001 to DIAG-006)
+        // Normalise mapsToUnit for scoring (same logic as getQuestions)
+        function normUnit(raw: string | null | undefined): string {
+          if (!raw) return "";
+          const lower = raw.trim().toLowerCase();
+          if (lower === "prerequisite") return "prerequisite";
+          const m = raw.trim().match(/^[Uu]nit\s+(\d+)$/);
+          if (m) return m[1];
+          return raw.trim();
+        }
         const prereqAnswers = gradedAnswers.filter((a) => {
           const q = questionMap.get(a.questionId);
-          return q?.mapsToUnit === "prerequisite";
+          return normUnit(q?.mapsToUnit) === "prerequisite";
         });
-        const prerequisiteScore = prereqAnswers.filter((a) => a.correct).length;
+        // AP/advanced courses may have no prerequisite questions — treat as passing
+        const prerequisiteScore = prereqAnswers.length > 0
+          ? prereqAnswers.filter((a) => a.correct).length
+          : 6; // auto-pass prereq gate for courses without prerequisite questions
 
         // Score per unit
         const unitResults: {
@@ -550,7 +572,7 @@ export const appRouter = router({
         for (let i = 1; i <= 12; i++) {
           const unitAnswers = gradedAnswers.filter((a) => {
             const q = questionMap.get(a.questionId);
-            return q?.mapsToUnit === String(i);
+            return normUnit(q?.mapsToUnit) === String(i);
           });
           const correct = unitAnswers.filter((a) => a.correct).length;
           const total = unitAnswers.length;

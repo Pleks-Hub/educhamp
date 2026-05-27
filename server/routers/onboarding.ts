@@ -21,6 +21,10 @@ import {
   enrollChild,
   updateUserAccountType,
   getParentChildLink,
+  getGradeDefaultCourse,
+  enrollUserInCourse,
+  setUserActiveCourse,
+  getUserCourseEnrollments,
 } from "../db";
 import { invokeLLM } from "../_core/llm";
 import { notifyOwner } from "../_core/notification";
@@ -167,10 +171,36 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
 
   /**
    * Mark onboarding as complete for the current user.
+   * For student accounts: auto-enrols them in the grade-appropriate default course
+   * if they have no active enrollment yet.
    */
   completeOnboarding: protectedProcedure.mutation(async ({ ctx }) => {
     await markOnboardingComplete(ctx.user.id);
-    return { success: true };
+
+    let autoEnrolledCourse: { id: number; title: string; courseCode: string } | null = null;
+
+    // Auto-enrol student accounts in their grade-appropriate default course
+    if (ctx.user.accountType !== "parent") {
+      const existingEnrollments = await getUserCourseEnrollments(ctx.user.id);
+      if (existingEnrollments.length === 0) {
+        // Determine grade level from profile or user record
+        const profile = await getUserProfile(ctx.user.id);
+        const rawGrade = (profile as any)?.gradeLevel ?? ctx.user.grade ?? "9";
+        // Normalise "Grade 6" → "6", "Grade 9" → "9", "AP" stays "AP"
+        const gradeLevel = rawGrade.replace(/^Grade\s+/i, "").trim() || "9";
+        const defaultCourse = await getGradeDefaultCourse(gradeLevel);
+        if (defaultCourse) {
+          await setUserActiveCourse(ctx.user.id, defaultCourse.id);
+          autoEnrolledCourse = {
+            id: defaultCourse.id,
+            title: defaultCourse.title,
+            courseCode: defaultCourse.courseCode,
+          };
+        }
+      }
+    }
+
+    return { success: true, autoEnrolledCourse };
   }),
 
   // ─── Student Invite Tokens ─────────────────────────────────────────────────
