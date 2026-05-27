@@ -780,4 +780,4 @@
 - [x] Admin Console: Demo Request detail panel — full submission view + response form
 - [x] Pricing: annual billing toggle (monthly/annual) with 20% discount prices
 - [x] Pricing: plan comparison table (feature rows × plan columns)
-- [ ] Vitest: add tests for submitDemoRequest validation and admin list procedure
+- [x] Vitest: add tests for submitDemoRequest validation and admin list procedure (33 tests added in server/demoRequest.test.ts)
