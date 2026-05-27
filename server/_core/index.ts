@@ -12,6 +12,8 @@ import { registerTutorStreamRoute } from "../tutorStream";
 import { gradePromotionHandler } from "../scheduledHandlers";
 import { inviteExpiryHandler } from "../scheduled/inviteExpiry";
 import { seedDefaultRoles } from "../db";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -32,12 +34,50 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+// ── Rate limiters ──────────────────────────────────────────────────────────────
+// Public LLM chatbot: 20 requests / 5 minutes per IP
+const chatbotLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests — please wait a moment before chatting again." },
+});
+
+// General API: 300 requests / minute per IP (protects tRPC)
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path.startsWith("/api/oauth"), // OAuth callbacks must never be rate-limited
+});
+
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // Trust the first proxy hop (Cloud Run / Manus gateway) so rate-limit
+  // can read the real client IP from X-Forwarded-For
+  app.set("trust proxy", 1);
+
+  // ── Security headers (Helmet) ──────────────────────────────────────────────
+  app.use(
+    helmet({
+      // Allow inline scripts/styles needed by Vite HMR in dev; tighten in prod
+      contentSecurityPolicy: process.env.NODE_ENV === "production" ? undefined : false,
+      crossOriginEmbedderPolicy: false, // Required for Manus storage proxy
+    })
+  );
+
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+  // ── Rate limiting ──────────────────────────────────────────────────────────
+  app.use("/api/trpc", apiLimiter);
+  app.use("/api/tutor/stream", chatbotLimiter);
+
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   registerTutorStreamRoute(app);

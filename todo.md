@@ -729,3 +729,17 @@
 - [x] Landing page: display full course catalogue arranged by grade level in "Browse All Courses" section
 - [x] Fix hardcoded "Continue to Algebra I" text on the sign-in/account selection screen
 - [x] Remove all "Powered by Manus" branding from UI, metadata, footer, and codebase
+
+## Production-Ready Sprint
+- [x] DB seed: add description to every course row (already populated in all seed files)
+- [x] Landing page: subject-filter pills above grade tabs in course catalogue
+- [x] P0: add Helmet security headers to Express server
+- [x] P0: rate-limit public LLM chatbot endpoint (landing page chat)
+- [x] P0: enforce user.status (suspended/deleted) check in authenticateRequest
+- [x] P0: register invite-expiry heartbeat cron (task_uid: R3xaGZyn92oQu2Wwj8FTeP, runs daily 02:00 UTC)
+- [x] P1: add DB indexes on high-traffic userId columns (unitProgress, lessonProgress, quizAttempts, userMastery, etc.)
+- [x] P1: ErrorBoundary — hide raw stack traces from end users in production
+- [x] P1: listUsers — move search filter server-side (SQL LIKE query)
+- [x] P1: tutor session history — cap stored messages to last 20 turns
+- [x] P1: add robots.txt to disallow /admin, /diagnostic, /quiz, /parent
+- [x] QA: full vitest run, TypeScript check, smoke-test all P0/P1 fixes

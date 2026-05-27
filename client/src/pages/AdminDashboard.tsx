@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -127,13 +127,24 @@ function OverviewTab() {
 
 function UsersTab() {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEnrollDialog, setShowEnrollDialog] = useState<number | null>(null);
   const [newUser, setNewUser] = useState({ name: "", email: "", accountType: "student" as const, role: "user" as const });
 
-  const { data: users, isLoading, refetch } = trpc.admin.listUsers.useQuery({ limit: 1000, offset: 0 });
+  // Debounce search to avoid a DB query on every keystroke
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data: users, isLoading, refetch } = trpc.admin.listUsers.useQuery({
+    limit: 200,
+    offset: 0,
+    search: debouncedSearch || undefined,
+  });
   const { data: courses } = trpc.admin.listCourses.useQuery();
   const updateRole = trpc.admin.updateUserRole.useMutation({ onSuccess: () => { toast.success("Role updated"); refetch(); } });
   const updateAccountType = trpc.admin.updateUserAccountType.useMutation({ onSuccess: () => { toast.success("Account type updated"); refetch(); } });

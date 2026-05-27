@@ -301,6 +301,14 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
+    // P0 security: block suspended or deleted accounts
+    if ((user as any).status === "suspended") {
+      throw ForbiddenError("Your account has been suspended. Please contact support.");
+    }
+    if ((user as any).status === "deleted") {
+      throw ForbiddenError("This account no longer exists.");
+    }
+
     await db.upsertUser({
       openId: user.openId,
       lastSignedIn: signedInAt,

@@ -127,6 +127,13 @@
       "when": 1779881399313,
       "tag": "0017_spicy_logan",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1779885904584,
+      "tag": "0018_easy_ultimates",
+      "breakpoints": true
     }
   ]
 }

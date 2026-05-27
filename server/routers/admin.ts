@@ -81,7 +81,7 @@ export const adminRouter = router({
       search: z.string().optional(),
     }))
     .query(async ({ input }) => {
-      return getAllUsers(input.limit, input.offset);
+      return getAllUsers(input.limit, input.offset, input.search);
     }),
 
   createUser: adminProcedure

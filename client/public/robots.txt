@@ -1,0 +1,14 @@
+User-agent: *
+Disallow: /admin
+Disallow: /admin/
+Disallow: /diagnostic
+Disallow: /diagnostic/
+Disallow: /quiz
+Disallow: /quiz/
+Disallow: /api/
+Disallow: /parent/
+Disallow: /profile
+Disallow: /onboarding
+Allow: /
+
+Sitemap: https://educhamp.app/sitemap.xml

@@ -353,17 +353,38 @@ export default function LandingPage() {
   };
 
   const [activeCatalogueGrade, setActiveCatalogueGrade] = useState<string>("3");
+  const [activeSubjectFilter, setActiveSubjectFilter] = useState<string>("all");
 
-  // Group courses by gradeLevel
+  // Subject filter pills definition
+  const SUBJECT_FILTERS = [
+    { value: "all",           label: "All Subjects" },
+    { value: "math",          label: "Math" },
+    { value: "english",       label: "English" },
+    { value: "science",       label: "Science" },
+    { value: "social_studies",label: "Social Studies" },
+    { value: "language",      label: "Language" },
+    { value: "technology",    label: "Technology" },
+    { value: "other",         label: "Other" },
+  ];
+
+  // Subject-filtered catalogue
+  const filteredCatalogue = useMemo(
+    () => activeSubjectFilter === "all"
+      ? courseCatalogue
+      : courseCatalogue.filter((c) => c.subject === activeSubjectFilter),
+    [courseCatalogue, activeSubjectFilter]
+  );
+
+  // Group filtered courses by gradeLevel
   const coursesByGrade = useMemo(() => {
-    const map: Record<string, typeof courseCatalogue> = {};
-    for (const c of courseCatalogue) {
+    const map: Record<string, typeof filteredCatalogue> = {};
+    for (const c of filteredCatalogue) {
       const g = c.gradeLevel ?? "other";
       if (!map[g]) map[g] = [];
       map[g].push(c);
     }
     return map;
-  }, [courseCatalogue]);
+  }, [filteredCatalogue]);
 
   // Only show grade tabs that have at least one course, sorted by GRADE_ORDER
   const availableGrades = useMemo(
@@ -371,7 +392,7 @@ export default function LandingPage() {
     [coursesByGrade]
   );
 
-  // Auto-select first available grade when data loads
+  // Auto-select first available grade when data loads or filter changes
   useEffect(() => {
     if (availableGrades.length > 0 && !coursesByGrade[activeCatalogueGrade]) {
       setActiveCatalogueGrade(availableGrades[0]);
@@ -597,6 +618,27 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Full Course Catalogue</h2>
             <p className="text-slate-500 max-w-2xl mx-auto">Browse all courses by grade level — from Grade 3 foundational skills to AP Calculus, AP Chemistry, and SAT Prep. All courses are aligned to Katy ISD TEKS and AP College Board standards with both ACA (standard) and KAP (advanced) pathways.</p>
+          </div>
+
+          {/* Subject filter pills */}
+          <div className="flex flex-wrap gap-2 justify-center mb-5">
+            {SUBJECT_FILTERS.filter((sf) =>
+              sf.value === "all" || courseCatalogue.some((c) => c.subject === sf.value)
+            ).map((sf) => (
+              <button
+                key={sf.value}
+                onClick={() => {
+                  setActiveSubjectFilter(sf.value);
+                }}
+                className={`px-3.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                  activeSubjectFilter === sf.value
+                    ? "bg-slate-900 text-white border-slate-900"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-indigo-400 hover:text-indigo-700"
+                }`}
+              >
+                {sf.label}
+              </button>
+            ))}
           </div>
 
           {/* Grade-level tab bar */}

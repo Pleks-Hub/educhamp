@@ -1,4 +1,4 @@
-import { and, count as sqlCount, desc, eq, inArray } from "drizzle-orm";
+import { and, count as sqlCount, desc, eq, inArray, like, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -1097,10 +1097,19 @@ export async function getAdminStats() {
   };
 }
 
-export async function getAllUsers(limit = 100, offset = 0) {
+export async function getAllUsers(limit = 100, offset = 0, search?: string) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(users).limit(limit).offset(offset).orderBy(desc(users.createdAt));
+  const q = db.select().from(users);
+  if (search && search.trim()) {
+    const pattern = `%${search.trim()}%`;
+    return q
+      .where(or(like(users.name, pattern), like(users.email, pattern)))
+      .limit(limit)
+      .offset(offset)
+      .orderBy(desc(users.createdAt));
+  }
+  return q.limit(limit).offset(offset).orderBy(desc(users.createdAt));
 }
 
 export async function updateUserRole(userId: number, role: "admin" | "user") {

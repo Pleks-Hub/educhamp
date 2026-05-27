@@ -360,11 +360,17 @@ export function registerTutorStreamRoute(app: Express) {
 
       // ── Persist session messages ──────────────────────────────────────────
       if (session) {
-        const newMessages = [
+        const allMessages = [
           ...history,
           { role: "user" as const, content: message, timestamp: Date.now() },
           { role: "assistant" as const, content: fullContent, timestamp: Date.now() },
         ];
+        // Cap stored history to the last 40 messages (20 turns) to prevent
+        // unbounded JSON column growth and slow reads over time.
+        const MAX_STORED_MESSAGES = 40;
+        const newMessages = allMessages.length > MAX_STORED_MESSAGES
+          ? allMessages.slice(allMessages.length - MAX_STORED_MESSAGES)
+          : allMessages;
         await updateTutorSessionMessages(session.id, newMessages);
       }
 

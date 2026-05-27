@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   int,
   json,
   mysqlEnum,
@@ -147,7 +148,10 @@ export const userMastery = mysqlTable("userMastery", {
   attemptCount: int("attemptCount").notNull().default(0),
   lastAttemptAt: timestamp("lastAttemptAt").defaultNow(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ({
+  userIdIdx: index("userMastery_userId_idx").on(t.userId),
+  userSkillIdx: uniqueIndex("userMastery_userId_skillId_idx").on(t.userId, t.skillId),
+}));
 
 export type UserMastery = typeof userMastery.$inferSelect;
 
@@ -165,7 +169,10 @@ export const unitProgress = mysqlTable("unitProgress", {
   quizAttempts: int("quizAttempts").notNull().default(0),
   lastActivityAt: timestamp("lastActivityAt").defaultNow(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ({
+  userIdIdx: index("unitProgress_userId_idx").on(t.userId),
+  userUnitIdx: uniqueIndex("unitProgress_userId_unitId_idx").on(t.userId, t.unitId),
+}));
 
 export type UnitProgress = typeof unitProgress.$inferSelect;
 
@@ -181,7 +188,10 @@ export const lessonProgress = mysqlTable("lessonProgress", {
   independentCompleted: boolean("independentCompleted").notNull().default(false),
   completedAt: timestamp("completedAt"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ({
+  userIdIdx: index("lessonProgress_userId_idx").on(t.userId),
+  userLessonIdx: uniqueIndex("lessonProgress_userId_lessonId_idx").on(t.userId, t.lessonId),
+}));
 
 export type LessonProgress = typeof lessonProgress.$inferSelect;
 
@@ -197,7 +207,10 @@ export const quizAttempts = mysqlTable("quizAttempts", {
   totalQuestions: int("totalQuestions").notNull(),
   correctCount: int("correctCount").notNull(),
   completedAt: timestamp("completedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdIdx: index("quizAttempts_userId_idx").on(t.userId),
+  userUnitIdx: index("quizAttempts_userId_unitId_idx").on(t.userId, t.unitId),
+}));
 
 export type QuizAttempt = typeof quizAttempts.$inferSelect;
 
@@ -213,7 +226,10 @@ export const diagnosticAttempts = mysqlTable("diagnosticAttempts", {
   overallScore: int("overallScore").notNull(),
   placementRecommendation: text("placementRecommendation"),
   completedAt: timestamp("completedAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdIdx: index("diagnosticAttempts_userId_idx").on(t.userId),
+  userCourseIdx: index("diagnosticAttempts_userId_courseId_idx").on(t.userId, t.courseId),
+}));
 
 export type DiagnosticAttempt = typeof diagnosticAttempts.$inferSelect;
 
@@ -520,7 +536,10 @@ export const userCourseEnrollments = mysqlTable("userCourseEnrollments", {
   isCurrent: boolean("isCurrent").notNull().default(false), // the course currently shown in the UI
   enrolledAt: timestamp("enrolledAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ({
+  userIdIdx: index("userCourseEnrollments_userId_idx").on(t.userId),
+  userCourseIdx: uniqueIndex("userCourseEnrollments_userId_courseId_idx").on(t.userId, t.courseId),
+}));
 
 export type UserCourseEnrollment = typeof userCourseEnrollments.$inferSelect;
 
@@ -776,5 +795,8 @@ export const userNotifications = mysqlTable("userNotifications", {
   isRead: boolean("isRead").notNull().default(false),
   metadata: text("metadata"), // JSON string for extra context
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  userIdIdx: index("userNotifications_userId_idx").on(t.userId),
+  userReadIdx: index("userNotifications_userId_isRead_idx").on(t.userId, t.isRead),
+}));
 export type UserNotification = typeof userNotifications.$inferSelect;
