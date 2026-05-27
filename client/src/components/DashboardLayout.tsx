@@ -21,6 +21,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
+import { trpc } from "@/lib/trpc";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   BarChart3,
@@ -168,6 +169,10 @@ function DashboardLayoutContent({
     .toUpperCase()
     .slice(0, 2) ?? "?";
   const [courseSwitcherOpen, setCourseSwitcherOpen] = useState(false);
+  const dashboardQuery = trpc.progress.getDashboard.useQuery(undefined, {
+    staleTime: 60_000,
+  });
+  const activeCourseTitle = dashboardQuery.data?.courseTitle;
 
   return (
     <>
@@ -190,13 +195,24 @@ function DashboardLayoutContent({
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-sidebar-foreground truncate leading-none">EduChamp</p>
-                    <button
-                      onClick={() => setCourseSwitcherOpen(true)}
-                      className="text-[10px] text-sidebar-foreground/50 truncate mt-0.5 hover:text-sidebar-foreground/80 transition-colors text-left"
-                      title="Switch course"
-                    >
-                      Switch course ↗
-                    </button>
+                    {activeCourseTitle ? (
+                      <button
+                        onClick={() => setCourseSwitcherOpen(true)}
+                        className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded-md bg-sidebar-primary/20 text-sidebar-primary text-[10px] font-medium truncate max-w-full hover:bg-sidebar-primary/30 transition-colors"
+                        title="Switch course"
+                      >
+                        <span className="truncate">{activeCourseTitle}</span>
+                        <span className="shrink-0 opacity-60">↗</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => setCourseSwitcherOpen(true)}
+                        className="text-[10px] text-sidebar-foreground/50 truncate mt-0.5 hover:text-sidebar-foreground/80 transition-colors text-left"
+                        title="Switch course"
+                      >
+                        Select a course ↗
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

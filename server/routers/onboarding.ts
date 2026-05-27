@@ -178,13 +178,14 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
     .input(z.object({
       childName: z.string().min(1).max(256).optional(),
       childEmail: z.string().email().optional(),
+      childGrade: z.string().optional(),   // parent pre-sets child's grade level
     }))
     .mutation(async ({ ctx, input }) => {
       // Upgrade to parent if needed
       if (ctx.user.accountType !== "parent") {
         await updateUserAccountType(ctx.user.id, "parent");
       }
-      const invite = await createStudentInviteToken(ctx.user.id, input.childName, input.childEmail);
+      const invite = await createStudentInviteToken(ctx.user.id, input.childName, input.childEmail, input.childGrade);
       if (!invite) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create invite." });
       return { token: invite.token, expiresAt: invite.expiresAt };
     }),
@@ -205,6 +206,7 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
           token: invite.token,
           childName: invite.childName,
           childEmail: invite.childEmail,
+          childGrade: invite.childGrade,   // pre-fills grade in StudentOnboarding
           expiresAt: invite.expiresAt,
         },
       };

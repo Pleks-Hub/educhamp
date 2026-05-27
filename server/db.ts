@@ -986,7 +986,8 @@ export async function getReferralSignups(referrerId: number) {
 export async function createStudentInviteToken(
   parentId: number,
   childName?: string,
-  childEmail?: string
+  childEmail?: string,
+  childGrade?: string
 ) {
   const db = await getDb();
   if (!db) return null;
@@ -999,6 +1000,7 @@ export async function createStudentInviteToken(
     token,
     childName: childName ?? null,
     childEmail: childEmail ?? null,
+    childGrade: childGrade ?? null,
     expiresAt,
   });
   const result = await db.select().from(studentInviteTokens).where(eq(studentInviteTokens.token, token)).limit(1);

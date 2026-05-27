@@ -466,6 +466,7 @@ export const studentInviteTokens = mysqlTable("studentInviteTokens", {
   token: varchar("token", { length: 128 }).notNull().unique(),
   childName: varchar("childName", { length: 256 }),
   childEmail: varchar("childEmail", { length: 320 }),
+  childGrade: varchar("childGrade", { length: 32 }),      // pre-set by parent, pre-fills student onboarding
   status: mysqlEnum("status", ["pending", "accepted", "expired", "revoked"]).notNull().default("pending"),
   expiresAt: timestamp("expiresAt").notNull(),
   acceptedAt: timestamp("acceptedAt"),

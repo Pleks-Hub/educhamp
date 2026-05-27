@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -189,6 +189,8 @@ export function GuidedTour({ accountType, forceShow, onClose }: GuidedTourProps)
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       <DialogContent className="max-w-md p-0 overflow-hidden" aria-describedby="tour-description">
+        {/* Visually hidden title for screen readers */}
+        <DialogTitle className="sr-only">EduChamp Platform Tour</DialogTitle>
         {/* Progress bar */}
         <div className="h-1 bg-muted">
           <div

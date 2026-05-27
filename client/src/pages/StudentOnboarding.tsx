@@ -72,6 +72,14 @@ export default function StudentOnboarding() {
     { enabled: !!inviteToken }
   );
 
+  // Pre-fill grade from invite token when it loads
+  useEffect(() => {
+    const inviteGrade = inviteLookup.data?.invite?.childGrade;
+    if (inviteGrade && !gradeLevel) {
+      setGradeLevel(inviteGrade);
+    }
+  }, [inviteLookup.data]);
+
   const saveProfile = trpc.onboarding.saveStudentProfile.useMutation();
   const acceptInvite = trpc.onboarding.acceptStudentInvite.useMutation();
   const completeOnboarding = trpc.onboarding.completeOnboarding.useMutation();

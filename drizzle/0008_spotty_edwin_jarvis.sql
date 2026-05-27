@@ -1,0 +1,1 @@
+ALTER TABLE `studentInviteTokens` ADD `childGrade` varchar(32);

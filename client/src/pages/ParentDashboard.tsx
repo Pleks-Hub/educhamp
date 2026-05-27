@@ -543,6 +543,128 @@ function SkillGapPanel({ childId }: { childId: number }) {
 
 // ─── Report Export Panel ──────────────────────────────────────────────────────
 
+// ─── Cross-Course Summary Table ─────────────────────────────────────────────
+
+/** Fetches courses for a single child — used as a row in CrossCourseSummaryTable */
+function ChildCourseRow({ child }: { child: ChildSummary }) {
+  const { data: courses, isLoading } = trpc.parent.getChildAllCourses.useQuery({ childId: child.childId });
+
+  const activeCourse = courses?.find((c) => c.isCurrent);
+  const totalEnrolled = courses?.length ?? 0;
+  const totalProgress = courses && courses.length > 0
+    ? Math.round(courses.reduce((sum, c) => sum + c.progressPercent, 0) / courses.length)
+    : null;
+
+  return (
+    <tr className="border-b border-border hover:bg-muted/30 transition-colors">
+      {/* Child name + grade */}
+      <td className="py-3 px-4">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+            {(child.name ?? "S")[0].toUpperCase()}
+          </div>
+          <div>
+            <div className="font-medium text-sm">{child.name}</div>
+            <div className="text-xs text-muted-foreground">Grade {child.grade ?? "—"}</div>
+          </div>
+        </div>
+      </td>
+      {/* Courses enrolled */}
+      <td className="py-3 px-4 text-center">
+        {isLoading ? (
+          <div className="h-4 w-8 bg-muted animate-pulse rounded mx-auto" />
+        ) : (
+          <span className="text-sm font-semibold">{totalEnrolled}</span>
+        )}
+      </td>
+      {/* Active course */}
+      <td className="py-3 px-4">
+        {isLoading ? (
+          <div className="h-4 w-28 bg-muted animate-pulse rounded" />
+        ) : activeCourse ? (
+          <div>
+            <div className="text-sm font-medium truncate max-w-[180px]">{activeCourse.courseTitle}</div>
+            {activeCourse.gradeLevel && (
+              <span className="text-xs text-muted-foreground">{activeCourse.gradeLevel}</span>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-muted-foreground">None selected</span>
+        )}
+      </td>
+      {/* Active course progress */}
+      <td className="py-3 px-4">
+        {isLoading ? (
+          <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+        ) : activeCourse ? (
+          <div className="space-y-1 min-w-[100px]">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">{activeCourse.completedUnits}/{activeCourse.totalUnits} units</span>
+              <span className="font-medium">{activeCourse.progressPercent}%</span>
+            </div>
+            <Progress value={activeCourse.progressPercent} className="h-1.5" />
+          </div>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </td>
+      {/* Overall mastery */}
+      <td className="py-3 px-4 text-center">
+        {child.overallMastery !== null ? (
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${masteryColor(child.overallMastery)}`}>
+            {child.overallMastery}%
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </td>
+      {/* Avg progress across all courses */}
+      <td className="py-3 px-4 text-center">
+        {isLoading ? (
+          <div className="h-4 w-10 bg-muted animate-pulse rounded mx-auto" />
+        ) : totalProgress !== null ? (
+          <span className="text-sm font-semibold">{totalProgress}%</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function CrossCourseSummaryTable({ children }: { children: ChildSummary[] }) {
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+          <BarChart3 className="h-4 w-4 text-primary" />
+          <h3 className="font-semibold text-sm">Cross-Course Summary</h3>
+          <span className="text-xs text-muted-foreground ml-1">— all students at a glance</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
+                <th className="text-left py-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Student</th>
+                <th className="text-center py-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Courses</th>
+                <th className="text-left py-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Active Course</th>
+                <th className="text-left py-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Active Progress</th>
+                <th className="text-center py-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Mastery</th>
+                <th className="text-center py-2 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Avg Progress</th>
+              </tr>
+            </thead>
+            <tbody>
+              {children.map((child) => (
+                <ChildCourseRow key={child.childId} child={child} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Child Courses Panel ─────────────────────────────────────────────────────
 
 const SUBJECT_COLORS_PARENT: Record<string, { bg: string; text: string }> = {
@@ -1386,6 +1508,11 @@ export default function ParentDashboard() {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Cross-course summary table */}
+      {children && children.filter(Boolean).length > 1 && (
+        <CrossCourseSummaryTable children={children.filter((c): c is NonNullable<typeof c> => c !== null)} />
       )}
 
       {/* Children grid + detail panel */}
