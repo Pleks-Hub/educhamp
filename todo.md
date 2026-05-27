@@ -248,24 +248,24 @@
 
 ## Multi-Course Experience, Guided Tour & Grade Management (Sprint 6)
 
-- [ ] DB: add gradeLevel to userProfiles onboarding (parent sets at child profile creation)
-- [ ] DB: admin can assign/change student gradeLevel in userProfiles
-- [ ] DB: end-of-year grade promotion — increment gradeLevel for all active students (scheduled job)
+- [x] DB: add gradeLevel to userProfiles onboarding (parent sets at child profile creation)
+- [x] DB: admin can assign/change student gradeLevel in userProfiles
+- [x] DB: end-of-year grade promotion — increment gradeLevel for all active students (scheduled job)
 - [ ] Server: onboarding.saveStudentProfile accepts gradeLevel set by parent during invite flow
-- [ ] Server: admin.setStudentGrade — admin sets/overrides gradeLevel for a specific user
-- [ ] Server: admin.bulkPromoteGrade — increment gradeLevel for all students in a grade cohort
-- [ ] Server: progress.getAllCourseProgress — returns progress summary for ALL enrolled courses (not just active)
+- [x] Server: admin.setStudentGrade — admin sets/overrides gradeLevel for a specific user
+- [x] Server: admin.bulkPromoteGrade — increment gradeLevel for all students in a grade cohort
+- [x] Server: progress.getAllCourseProgress — returns progress summary for ALL enrolled courses (not just active)
 - [ ] Server: progress.switchActiveCourse — student switches active course; returns new course dashboard
-- [ ] UI: First-login guided tour — welcome modal with 4-step walkthrough (Diagnostic → Curriculum → AI Tutor → Quiz)
-- [ ] UI: Tour shows on first login only (stored in userProfiles.onboardingCompleted)
-- [ ] UI: Multi-course Dashboard — course cards grid showing all enrolled courses with per-course progress bars
-- [ ] UI: Multi-course Dashboard — "Active" badge on current course, "Switch" button on each card
+- [x] UI: First-login guided tour — welcome modal with 4-step walkthrough (Diagnostic → Curriculum → AI Tutor → Quiz)
+- [x] UI: Tour shows on first login only (stored in userProfiles.onboardingCompleted)
+- [x] UI: Multi-course Dashboard — course cards grid showing all enrolled courses with per-course progress bars
+- [x] UI: Multi-course Dashboard — "Active" badge on current course, "Switch" button on each card
 - [ ] UI: Sidebar — course switcher pill shows active course name; click opens full course switcher
 - [ ] UI: Curriculum/Quiz/Tutor pages — course context banner at top showing which course is active
 - [ ] UI: StudentOnboarding — parent sets child's grade level during invite/onboarding flow
-- [ ] UI: Parent Dashboard — per-child course progress cards (one card per enrolled course)
+- [x] UI: Parent Dashboard — per-child course progress cards (one card per enrolled course)
 - [ ] UI: Parent Dashboard — course switcher in child detail panel to view progress per course
 - [ ] UI: Parent Dashboard — cross-course summary table (all courses, mastery %, last active)
-- [ ] UI: Admin Console — student grade assignment field in user management tab
-- [ ] UI: Admin Console — bulk grade promotion tool (select grade cohort, promote all)
+- [x] UI: Admin Console — student grade assignment field in user management tab
+- [x] UI: Admin Console — bulk grade promotion tool (select grade cohort, promote all)
 - [ ] UI: Admin Console — end-of-year promotion scheduler (set date, auto-promote)

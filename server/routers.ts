@@ -181,6 +181,14 @@ export const appRouter = router({
       return getAllCourseProgressForUser(ctx.user.id);
     }),
 
+    switchActiveCourse: protectedProcedure
+      .input(z.object({ courseId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const { setUserActiveCourse } = await import("./db");
+        await setUserActiveCourse(ctx.user.id, input.courseId);
+        return { success: true };
+      }),
+
     getLessonProgress: protectedProcedure
       .input(z.object({ unitId: z.number() }))
       .query(async ({ ctx, input }) => {

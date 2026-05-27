@@ -82,10 +82,11 @@ export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
     onError: () => toast.error("Failed to enrol. Please try again."),
   });
 
-  const setActive = trpc.admin.setActiveCourse.useMutation({
+  const setActive = trpc.progress.switchActiveCourse.useMutation({
     onSuccess: (_, vars) => {
       utils.admin.myEnrollments.invalidate();
       utils.progress.getDashboard.invalidate();
+      utils.progress.getAllCourseProgress.invalidate();
       const course = allCourses?.find((c: any) => c.id === vars.courseId);
       toast.success(`Switched to ${course?.title ?? "course"}`);
       onClose();

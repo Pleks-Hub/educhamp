@@ -23,6 +23,7 @@ import {
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
+import { CourseContextBanner } from "@/components/CourseContextBanner";
 
 type ChoiceItem = { label: string; text: string };
 
@@ -246,6 +247,7 @@ export default function Quiz() {
   if (!started) {
     return (
       <div className="p-6 space-y-6 page-enter max-w-2xl">
+        <CourseContextBanner />
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <button onClick={() => setLocation(`/curriculum/unit/${unitNumber}`)} className="hover:text-foreground flex items-center gap-1">
             <ArrowLeft className="h-3.5 w-3.5" />

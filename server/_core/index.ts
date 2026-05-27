@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerTutorStreamRoute } from "../tutorStream";
+import { gradePromotionHandler } from "../scheduledHandlers";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -38,6 +39,8 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   registerTutorStreamRoute(app);
+  // Scheduled Heartbeat handlers
+  app.post("/api/scheduled/grade-promotion", gradePromotionHandler);
   // tRPC API
   app.use(
     "/api/trpc",

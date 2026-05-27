@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   Users, BookOpen, BarChart3, Settings, Shield, ClipboardList,
-  GraduationCap, Brain, Activity, RefreshCw, ChevronRight,
+  GraduationCap, Brain, Activity, RefreshCw, ChevronRight, Clock,
 } from "lucide-react";
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -466,6 +466,30 @@ const GRADE_PROMOTIONS: Record<string, string> = {
   "Grade 9": "Grade 10", "Grade 10": "Grade 11", "Grade 11": "Grade 12",
 };
 
+function SchedulePromotionButton() {
+  const schedule = trpc.admin.scheduleGradePromotion.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`Annual grade promotion scheduled! Next run: ${data.nextExecutionAt ? new Date(data.nextExecutionAt).toLocaleDateString() : "June 15"}`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+  return (
+    <div className="flex items-center gap-3">
+      <Button
+        size="sm"
+        className="bg-blue-600 hover:bg-blue-700 text-white"
+        disabled={schedule.isPending}
+        onClick={() => schedule.mutate({ cron: "0 0 2 15 6 *" })}
+      >
+        {schedule.isPending ? "Scheduling…" : "Activate Annual Promotion (June 15)"}
+      </Button>
+      <span className="text-xs text-blue-700">
+        Runs every June 15 at 2:00 AM UTC · Idempotent (safe to re-run)
+      </span>
+    </div>
+  );
+}
+
 function GradeManagementTab() {
   const [filterGrade, setFilterGrade] = useState<string>("all");
   const [bulkFromGrade, setBulkFromGrade] = useState<string>("");
@@ -574,6 +598,22 @@ function GradeManagementTab() {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Automated annual promotion scheduler */}
+      <Card className="border-blue-200 bg-blue-50/50">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2 text-blue-800">
+            <Clock className="h-4 w-4" /> Automated Annual Grade Promotion
+          </CardTitle>
+          <CardDescription className="text-blue-700">
+            Schedule a recurring cron job that automatically promotes all students to the next grade on June 15 each year.
+            <strong className="block mt-1">The site must be deployed before this can be activated.</strong>
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SchedulePromotionButton />
         </CardContent>
       </Card>
 

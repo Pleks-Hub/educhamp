@@ -15,6 +15,7 @@ import {
   Star,
   Trophy,
 } from "lucide-react";
+import { CourseContextBanner } from "@/components/CourseContextBanner";
 
 function getStatusConfig(status: string) {
   switch (status) {
@@ -51,6 +52,7 @@ export default function Curriculum() {
 
   return (
     <div className="p-6 space-y-6 page-enter max-w-6xl">
+      <CourseContextBanner />
       <div>
         <h1 className="text-2xl font-bold text-foreground">{courseTitle}</h1>
         <p className="text-muted-foreground text-sm mt-1">{totalUnits} units · Katy ISD · TEKS-aligned</p>

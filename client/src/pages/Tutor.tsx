@@ -25,6 +25,7 @@ import {
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
+import { CourseContextBanner } from "@/components/CourseContextBanner";
 
 type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary";
 
@@ -145,6 +146,7 @@ export default function Tutor() {
   const streamingAbortRef = useRef<AbortController | null>(null);
 
   const { data: units } = trpc.curriculum.getUnits.useQuery();
+  const { data: dashboard } = trpc.progress.getDashboard.useQuery();
   const [selectedUnit, setSelectedUnit] = useState<number | undefined>(unitParam);
   const currentUnit = units?.find((u) => u.unitNumber === selectedUnit);
 
@@ -318,7 +320,7 @@ export default function Tutor() {
             <Sparkles className="h-4 w-4 text-primary shrink-0" />
             <span className="text-sm font-bold text-foreground">AI Tutor</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">Algebra I · EduChamp</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{dashboard?.courseTitle ?? "Algebra I"} · EduChamp</p>
         </div>
 
         {/* Mode Selection */}

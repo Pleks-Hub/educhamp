@@ -210,4 +210,39 @@ export const adminRouter = router({
       });
       return { success: true, studentsAffected: count };
     }),
+
+  /**
+   * Schedule the end-of-year grade promotion heartbeat cron.
+   * Runs once per year on a date chosen by the admin (default: June 15 at 2am UTC).
+   * The site must be deployed before this cron can fire.
+   */
+  scheduleGradePromotion: adminProcedure
+    .input(z.object({
+      // 6-field cron: sec min hour dom mon dow (UTC)
+      // Default: 0 0 2 15 6 * = June 15 at 02:00 UTC
+      cron: z.string().default("0 0 2 15 6 *"),
+    }))
+    .mutation(async ({ ctx }) => {
+      const { createHeartbeatJob } = await import("../_core/heartbeat");
+      const { parse: parseCookie } = await import("cookie");
+      const { COOKIE_NAME } = await import("../../shared/const");
+
+      const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
+      if (!sessionToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "No session cookie" });
+
+      const job = await createHeartbeatJob({
+        name: "end-of-year-grade-promotion",
+        cron: "0 0 2 15 6 *",
+        path: "/api/scheduled/grade-promotion",
+        description: "Annual end-of-year student grade promotion (K→1, 1→2, …, 11→12)",
+      }, sessionToken);
+
+      await upsertPlatformSetting("gradePromotionCronTaskUid", job.taskUid, "Task UID for the annual grade promotion heartbeat cron");
+      await logAdminAction(ctx.user.id, "grade.schedulePromotion", "grade", null, {
+        taskUid: job.taskUid,
+        nextExecutionAt: job.nextExecutionAt,
+      });
+
+      return { success: true, taskUid: job.taskUid, nextExecutionAt: job.nextExecutionAt };
+    }),
 });
