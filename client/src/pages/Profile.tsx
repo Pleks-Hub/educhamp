@@ -415,9 +415,9 @@ export default function Profile() {
           <div className="flex items-start gap-3">
             <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
             <div className="text-sm text-muted-foreground">
-              <strong className="text-foreground">Note:</strong> EduChamp uses Manus OAuth for authentication.
-              Your password is managed by your OAuth provider. To change your password or email,
-              please visit your Manus account settings.
+              <strong className="text-foreground">Note:</strong> EduChamp uses secure single sign-on.
+              Your account credentials are managed by your identity provider. To update your email or
+              password, please visit your account settings through the sign-in portal.
             </div>
           </div>
         </CardContent>

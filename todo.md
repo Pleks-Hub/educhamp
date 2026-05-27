@@ -724,3 +724,8 @@
 - [x] QA: verify Email Logs tab loads and filters correctly
 - [x] QA: verify heartbeat marks expired tokens and creates notifications
 - [x] QA: TypeScript 0 errors, all tests passing
+
+## Landing Page & Auth UX Improvements (Round N)
+- [x] Landing page: display full course catalogue arranged by grade level in "Browse All Courses" section
+- [x] Fix hardcoded "Continue to Algebra I" text on the sign-in/account selection screen
+- [x] Remove all "Powered by Manus" branding from UI, metadata, footer, and codebase

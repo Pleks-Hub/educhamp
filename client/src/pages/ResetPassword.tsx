@@ -53,8 +53,7 @@ export default function ResetPassword() {
           <div>
             <h3 className="font-semibold text-lg">Reset link confirmed</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
-              Your reset request has been acknowledged. Since EduChamp uses Manus OAuth,
-              please sign in again using the button below.
+              Your reset request has been acknowledged. Please sign in again using the button below.
             </p>
           </div>
           <Button
@@ -62,7 +61,7 @@ export default function ResetPassword() {
             onClick={() => { window.location.href = getLoginUrl(); }}
           >
             <ExternalLink className="h-4 w-4" />
-            Sign in with Manus
+            Sign in to EduChamp
           </Button>
         </div>
       </PageShell>
@@ -73,11 +72,11 @@ export default function ResetPassword() {
     <PageShell>
       <div className="space-y-4">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-          <p className="font-semibold mb-1">About EduChamp authentication</p>
+          <p className="font-semibold mb-1">About EduChamp sign-in</p>
           <p>
-            EduChamp uses Manus OAuth for secure sign-in — there are no passwords to reset.
+            EduChamp uses secure single sign-on — there are no passwords to reset.
             Clicking "Confirm &amp; Sign In" will acknowledge this request and redirect you to the
-            Manus login page.
+            EduChamp sign-in page.
           </p>
         </div>
 

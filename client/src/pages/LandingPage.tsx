@@ -3,7 +3,7 @@
 // Includes: hero, features, how-it-works, testimonials, newsletter, AI chatbot.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
@@ -331,20 +331,52 @@ export default function LandingPage() {
     { icon: Zap, title: "Instant Feedback & Insights", desc: "Every quiz and exercise provides immediate, detailed feedback. AI-driven skill gap analysis highlights exactly where to focus next." },
   ];
 
-  const courses = [
-    { name: "Grade 3–5 Math (ACA & KAP)", grade: "3rd–5th", subject: "Math", color: "bg-blue-100 text-blue-800" },
-    { name: "Grade 3–5 ELA (ACA & KAP)", grade: "3rd–5th", subject: "English", color: "bg-purple-100 text-purple-800" },
-    { name: "Grade 3–5 Science", grade: "3rd–5th", subject: "Science", color: "bg-green-100 text-green-800" },
-    { name: "Grade 6–8 Math (ACA & KAP)", grade: "6th–8th", subject: "Math", color: "bg-blue-100 text-blue-800" },
-    { name: "Grade 6–8 Science (ACA & KAP)", grade: "6th–8th", subject: "Science", color: "bg-green-100 text-green-800" },
-    { name: "Grade 6–8 Social Studies (ACA & KAP)", grade: "6th–8th", subject: "Social Studies", color: "bg-amber-100 text-amber-800" },
-    { name: "Grade 9 Algebra I & English I", grade: "9th", subject: "Core", color: "bg-indigo-100 text-indigo-800" },
-    { name: "AP Calculus BC", grade: "11th–12th", subject: "AP Math", color: "bg-blue-100 text-blue-800" },
-    { name: "AP Chemistry / AP Statistics", grade: "11th–12th", subject: "AP Science", color: "bg-green-100 text-green-800" },
-    { name: "AP Literature / AP Business", grade: "11th–12th", subject: "AP Elective", color: "bg-purple-100 text-purple-800" },
-    { name: "AP Human Geography", grade: "9th–10th", subject: "AP Social Studies", color: "bg-amber-100 text-amber-800" },
-    { name: "SAT Prep", grade: "10th–12th", subject: "Test Prep", color: "bg-orange-100 text-orange-800" },
-  ];
+  const { data: courseCatalogue = [] } = trpc.landing.getCourseCatalogue.useQuery();
+
+  // Subject → colour mapping for badges
+  const subjectColor: Record<string, string> = {
+    math:           "bg-blue-100 text-blue-800",
+    english:        "bg-purple-100 text-purple-800",
+    science:        "bg-green-100 text-green-800",
+    social_studies: "bg-amber-100 text-amber-800",
+    language:       "bg-rose-100 text-rose-800",
+    other:          "bg-slate-100 text-slate-700",
+  };
+
+  // Grade-level ordering — mirrors CourseCatalog.tsx GRADE_ORDER
+  const GRADE_ORDER = ["Kindergarten","1","2","3","4","5","6","7","8","9","10","11","12","AP","SAT"];
+  const gradeLabel = (g: string) => g === "AP" ? "AP Courses" : g === "SAT" ? "SAT Prep" : g === "Kindergarten" ? "Kindergarten" : `Grade ${g}`;
+  const gradeSort  = (a: string, b: string) => {
+    const ia = GRADE_ORDER.indexOf(a), ib = GRADE_ORDER.indexOf(b);
+    if (ia === -1 && ib === -1) return a.localeCompare(b);
+    if (ia === -1) return 1; if (ib === -1) return -1; return ia - ib;
+  };
+
+  const [activeCatalogueGrade, setActiveCatalogueGrade] = useState<string>("3");
+
+  // Group courses by gradeLevel
+  const coursesByGrade = useMemo(() => {
+    const map: Record<string, typeof courseCatalogue> = {};
+    for (const c of courseCatalogue) {
+      const g = c.gradeLevel ?? "other";
+      if (!map[g]) map[g] = [];
+      map[g].push(c);
+    }
+    return map;
+  }, [courseCatalogue]);
+
+  // Only show grade tabs that have at least one course, sorted by GRADE_ORDER
+  const availableGrades = useMemo(
+    () => Object.keys(coursesByGrade).sort(gradeSort),
+    [coursesByGrade]
+  );
+
+  // Auto-select first available grade when data loads
+  useEffect(() => {
+    if (availableGrades.length > 0 && !coursesByGrade[activeCatalogueGrade]) {
+      setActiveCatalogueGrade(availableGrades[0]);
+    }
+  }, [availableGrades]);
 
   const steps = [
     { num: "01", title: "Sign Up", desc: "Create your account as a student or parent in under 2 minutes. Parents can enrol children and manage multiple students from one dashboard." },
@@ -562,32 +594,80 @@ export default function LandingPage() {
       {/* ── Courses ── */}
       <section id="courses" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">56+ Courses, Grades 3–12 & AP</h2>
-            <p className="text-slate-500 max-w-xl mx-auto">From Grade 3 foundational skills to AP Calculus, AP Chemistry, and SAT Prep — all aligned to Katy ISD TEKS and AP College Board standards. Both ACA (standard) and KAP (advanced) pathways available.</p>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Full Course Catalogue</h2>
+            <p className="text-slate-500 max-w-2xl mx-auto">Browse all courses by grade level — from Grade 3 foundational skills to AP Calculus, AP Chemistry, and SAT Prep. All courses are aligned to Katy ISD TEKS and AP College Board standards with both ACA (standard) and KAP (advanced) pathways.</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {courses.map((c) => (
-              <div key={c.name} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all group">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-indigo-100 flex items-center justify-center">
-                    <BookOpen className="h-4 w-4 text-indigo-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm text-slate-900">{c.name}</p>
-                    <p className="text-xs text-slate-400">Grade {c.grade}</p>
-                  </div>
-                </div>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${c.color}`}>{c.subject}</span>
+
+          {/* Grade-level tab bar */}
+          {availableGrades.length > 0 && (
+            <>
+              <div className="flex flex-wrap gap-2 justify-center mb-8">
+                {availableGrades.map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => setActiveCatalogueGrade(g)}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      activeCatalogueGrade === g
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "bg-slate-100 text-slate-600 hover:bg-indigo-50 hover:text-indigo-700"
+                    }`}
+                  >
+                    {gradeLabel(g)}
+                    <span className="ml-1.5 text-xs opacity-70">
+                      ({coursesByGrade[g]?.length ?? 0})
+                    </span>
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
+
+              {/* Course cards for active grade */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 min-h-[120px]">
+                {(coursesByGrade[activeCatalogueGrade] ?? []).map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-start gap-3 p-4 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/40 transition-all"
+                  >
+                    <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-indigo-100 flex items-center justify-center mt-0.5">
+                      <BookOpen className="h-4 w-4 text-indigo-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-slate-900 leading-snug">{c.title}</p>
+                      {c.teksCode && (
+                        <p className="text-xs text-slate-400 mt-0.5">{c.teksCode}</p>
+                      )}
+                      {c.description && (
+                        <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{c.description}</p>
+                      )}
+                    </div>
+                    <span
+                      className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full capitalize ${
+                        subjectColor[c.subject] ?? subjectColor.other
+                      }`}
+                    >
+                      {c.subject.replace("_", " ")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Fallback while loading */}
+          {availableGrades.length === 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-20 rounded-xl bg-slate-100 animate-pulse" />
+              ))}
+            </div>
+          )}
+
           <div className="text-center mt-10">
             <button
               onClick={() => handleSignUp("student")}
               className="inline-flex items-center gap-2 bg-indigo-600 text-white font-semibold px-8 py-3 rounded-xl hover:bg-indigo-700 transition-colors active:scale-95"
             >
-              Browse All Courses <ArrowRight className="h-4 w-4" />
+              Get Started Free <ArrowRight className="h-4 w-4" />
             </button>
           </div>
         </div>

@@ -158,7 +158,7 @@ export default function JoinPage() {
             </CardTitle>
             <CardDescription>
               {isInviteFlow
-                ? "Sign in with your Manus account to link to your parent and start learning."
+                ? "Sign in to your EduChamp account to link to your parent and start learning."
                 : "Create your free account and start learning with your AI-powered tutor."}
             </CardDescription>
           </CardHeader>

@@ -106,7 +106,7 @@ export default function ForgotPassword() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground">
-          EduChamp uses Manus OAuth for authentication. If you're having trouble signing in,
+          EduChamp uses secure single sign-on. If you're having trouble signing in,
           contact your platform administrator.
         </p>
       </div>

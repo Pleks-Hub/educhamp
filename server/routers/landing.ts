@@ -3,7 +3,7 @@ import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
 import { getDb } from "../db";
 import { courses, users, userCourseEnrollments, diagnosticAttempts, chatSessions, chatMessages } from "../../drizzle/schema";
-import { count, eq, desc, like, or, and, gte, lte, isNotNull } from "drizzle-orm";
+import { count, eq, desc, like, or, and, gte, lte, isNotNull, asc } from "drizzle-orm";
 import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
 
@@ -254,6 +254,27 @@ export const landingRouter = router({
 
       return { ok: true };
     }),
+
+  /** Public course catalogue — returns all active courses ordered by sortOrder for the landing page */
+  getCourseCatalogue: publicProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+    const rows = await db
+      .select({
+        id: courses.id,
+        courseCode: courses.courseCode,
+        title: courses.title,
+        subject: courses.subject,
+        gradeLevel: courses.gradeLevel,
+        description: courses.description,
+        teksCode: courses.teksCode,
+        sortOrder: courses.sortOrder,
+      })
+      .from(courses)
+      .where(eq(courses.isActive, true))
+      .orderBy(asc(courses.sortOrder));
+    return rows;
+  }),
 
   /** Get summary stats for chat sessions (admin only) */
   adminGetChatStats: protectedProcedure.query(async ({ ctx }) => {
