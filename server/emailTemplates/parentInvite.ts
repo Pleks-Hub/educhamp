@@ -31,7 +31,7 @@ const TEXT_PRIMARY = "#0f172a"; // slate-900
 const TEXT_MUTED = "#64748b";   // slate-500
 const LOGO_URL = "https://educhamp.manus.space/manus-storage/educhamp-logo-64_2d79ce04.png";
 
-export function buildParentInviteEmail(data: ParentInviteEmailData): { html: string; text: string } {
+export function buildParentInviteEmail(data: ParentInviteEmailData): { html: string; text: string; subject: string } {
   const {
     studentName,
     studentGrade,
@@ -271,5 +271,8 @@ If you don't recognise this student, you can safely ignore this email.
 © ${new Date().getFullYear()} EduChamp | https://educhamp.app
 `.trim();
 
-  return { html, text };
+  const subject = data.isExistingUser
+    ? `${data.studentName} has invited you to their EduChamp learning journey`
+    : `You've been invited to join EduChamp — ${data.studentName} needs your approval`;
+  return { html, text, subject };
 }

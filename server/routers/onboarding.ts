@@ -34,6 +34,7 @@ import {
   getUserByEmail,
 } from "../db";
 import { buildParentInviteEmail } from "../emailTemplates/parentInvite";
+import { sendEmail } from "../emailService";
 import { invokeLLM } from "../_core/llm";
 import { notifyOwner } from "../_core/notification";
 
@@ -366,10 +367,26 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         isExistingUser,
       });
 
-      // Log to owner (email delivery via external SMTP not yet configured — URL is returned for manual sharing)
+      // Send transactional email via Resend (non-blocking — don't fail the invite if email fails)
+      let emailSent = false;
+      let emailError: string | undefined;
+      if (input.parentEmail) {
+        const emailResult = await sendEmail({
+          to: input.parentEmail,
+          subject: emailData.subject,
+          html: emailData.html,
+          text: emailData.text,
+          templateName: "parent-invite",
+          referenceId: invite.token,
+        });
+        emailSent = emailResult.success;
+        emailError = emailResult.error;
+      }
+
+      // Also notify owner for audit trail
       notifyOwner({
         title: "Student Invited Parent",
-        content: `Student ${ctx.user.name ?? ctx.user.email} invited ${input.parentEmail ?? "a parent"} to join EduChamp.\nInvite URL: ${inviteUrl}`,
+        content: `Student ${ctx.user.name ?? ctx.user.email} invited ${input.parentEmail ?? "a parent"} to join EduChamp.\nInvite URL: ${inviteUrl}\nEmail sent: ${emailSent ? "yes" : `no (${emailError ?? "no email provided"})`}`,
       }).catch(() => {});
 
       return {
@@ -377,9 +394,154 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         inviteUrl,
         expiresAt: invite.expiresAt,
         isExistingUser,
-        emailPreview: emailData.html,   // returned so frontend can show preview
+        emailSent,
+        emailPreview: emailData.html,
       };
     }),
+
+  /**
+   * Student: resend a parent invite — revoke the old token, create a fresh one, and re-send the email.
+   * Rate-limited to 10 resends per student per 24 hours.
+   */
+  resendParentInvite: protectedProcedure
+    .input(
+      z.object({
+        oldToken: z.string(),
+        origin: z.string().url(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const oldInvite = await getParentInviteToken(input.oldToken);
+      if (!oldInvite) throw new TRPCError({ code: "NOT_FOUND", message: "Invite not found." });
+      if (oldInvite.studentId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Not your invite." });
+
+      // Rate-limit: max 10 resends in 24h
+      const resendCount = oldInvite.resendCount ?? 0;
+      const lastResent = oldInvite.lastResentAt ? new Date(oldInvite.lastResentAt) : null;
+      const hoursSinceLast = lastResent ? (Date.now() - lastResent.getTime()) / 3_600_000 : 999;
+      if (resendCount >= 10 && hoursSinceLast < 24) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "You have reached the resend limit (10 per 24 hours). Please wait before trying again." });
+      }
+
+      // Revoke old token
+      await rejectParentInviteToken(input.oldToken); // reuses reject helper to set status=rejected/revoked
+
+      // Gather student context
+      const student = await getUserById(ctx.user.id);
+      const profile = await getUserProfile(ctx.user.id);
+      const studentGrade = (profile as any)?.gradeLevel ?? student?.grade ?? undefined;
+      let courseNameForEmail: string | undefined;
+      try {
+        const courseId = await getActiveCourseIdForUser(ctx.user.id);
+        const course = await getCourseById(courseId);
+        courseNameForEmail = course?.title ?? undefined;
+      } catch { /* ignore */ }
+
+      // Create new token
+      const newInvite = await createParentInviteToken(
+        ctx.user.id,
+        oldInvite.parentName ?? undefined,
+        oldInvite.parentEmail ?? undefined,
+        oldInvite.parentPhone ?? undefined
+      );
+      if (!newInvite) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create new invite." });
+
+      await updateParentInviteStudentContext(newInvite.token, {
+        studentName: student?.name ?? ctx.user.name ?? undefined,
+        studentGrade,
+        courseName: courseNameForEmail,
+      });
+
+      // Bump resend counter on new token
+      const db = await (await import("../db")).getDb();
+      if (db) {
+        const { parentInviteTokens } = await import("../../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        await db.update(parentInviteTokens)
+          .set({ resendCount: resendCount + 1, lastResentAt: new Date() })
+          .where(eq(parentInviteTokens.token, newInvite.token));
+      }
+
+      // Detect existing parent
+      let isExistingUser = false;
+      if (oldInvite.parentEmail) {
+        const existingParent = await getUserByEmail(oldInvite.parentEmail);
+        isExistingUser = !!existingParent;
+      }
+
+      const inviteUrl = isExistingUser
+        ? `${input.origin}/parent?pendingInvite=${newInvite.token}`
+        : `${input.origin}/join?parentInvite=${newInvite.token}`;
+
+      // Build and send email
+      const emailData = buildParentInviteEmail({
+        studentName: student?.name ?? ctx.user.name ?? "Your student",
+        studentGrade,
+        courseName: courseNameForEmail,
+        parentName: oldInvite.parentName ?? undefined,
+        inviteUrl,
+        expiresAt: new Date(newInvite.expiresAt),
+        isExistingUser,
+      });
+
+      let emailSent = false;
+      if (oldInvite.parentEmail) {
+        const emailResult = await sendEmail({
+          to: oldInvite.parentEmail,
+          subject: `[Resent] ${emailData.subject}`,
+          html: emailData.html,
+          text: emailData.text,
+          templateName: "parent-invite-resend",
+          referenceId: newInvite.token,
+        });
+        emailSent = emailResult.success;
+      }
+
+      notifyOwner({
+        title: "Student Resent Parent Invite",
+        content: `Student ${ctx.user.name ?? ctx.user.email} resent parent invite to ${oldInvite.parentEmail ?? "unknown"}. New token: ${newInvite.token}. Email sent: ${emailSent}.`,
+      }).catch(() => {});
+
+      return {
+        token: newInvite.token,
+        inviteUrl,
+        expiresAt: newInvite.expiresAt,
+        isExistingUser,
+        emailSent,
+        resendCount: resendCount + 1,
+      };
+    }),
+
+  /**
+   * Student: get the full status of all parent invites they have sent (for the dashboard banner).
+   */
+  getMyParentInviteStatus: protectedProcedure.query(async ({ ctx }) => {
+    const invites = await getPendingParentInvitesForStudent(ctx.user.id);
+    // Also check for non-pending (accepted/rejected) invites
+    const db = await (await import("../db")).getDb();
+    if (!db) return [];
+    const { parentInviteTokens } = await import("../../drizzle/schema");
+    const { eq, desc } = await import("drizzle-orm");
+    const allInvites = await db
+      .select()
+      .from(parentInviteTokens)
+      .where(eq(parentInviteTokens.studentId, ctx.user.id))
+      .orderBy(desc(parentInviteTokens.createdAt))
+      .limit(10);
+    return allInvites.map((inv) => ({
+      id: inv.id,
+      token: inv.token,
+      parentName: inv.parentName,
+      parentEmail: inv.parentEmail,
+      status: inv.status,
+      expiresAt: inv.expiresAt,
+      acceptedAt: inv.acceptedAt,
+      rejectedAt: inv.rejectedAt,
+      resendCount: inv.resendCount ?? 0,
+      lastResentAt: inv.lastResentAt,
+      createdAt: inv.createdAt,
+    }));
+  }),
 
   /**
    * Public: look up a parent invite token.

@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import {
   GraduationCap, School, CheckCircle2, Mail, Phone,
   ArrowRight, ArrowLeft, Loader2, UserCheck, AlertCircle,
-  Users, Copy, Share2, ShieldAlert, Target,
+  Users, Copy, Share2, ShieldAlert, Target, RefreshCw,
 } from "lucide-react";
 
 const US_STATES = [
@@ -106,7 +106,7 @@ export default function StudentOnboarding() {
   const [parentName, setParentName] = useState("");
   const [parentEmail, setParentEmail] = useState("");
   const [parentPhone, setParentPhone] = useState("");
-  const [parentInviteResult, setParentInviteResult] = useState<{ inviteUrl: string; token: string; isExistingUser?: boolean } | null>(null);
+  const [parentInviteResult, setParentInviteResult] = useState<{ inviteUrl: string; token: string; isExistingUser?: boolean; emailSent?: boolean; expiresAt?: Date | string } | null>(null);
   const [parentInviteSent, setParentInviteSent] = useState(false);
 
   // Step 1: School info
@@ -158,6 +158,13 @@ export default function StudentOnboarding() {
   const acceptInvite = trpc.onboarding.acceptStudentInvite.useMutation();
   const completeOnboarding = trpc.onboarding.completeOnboarding.useMutation();
   const inviteParent = trpc.onboarding.inviteParent.useMutation();
+  const resendParentInvite = trpc.onboarding.resendParentInvite.useMutation({
+    onSuccess: (data) => {
+      setParentInviteResult(data);
+      toast.success("Invitation resent! A fresh link and email have been sent.");
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   async function handleStep1() {
     // Mandatory: date of birth
@@ -202,6 +209,8 @@ export default function StudentOnboarding() {
       setParentInviteSent(true);
       if (result.isExistingUser) {
         toast.success("Your parent already has an EduChamp account! They'll see your request in their Parent Portal.");
+      } else if (result.emailSent) {
+        toast.success("Invitation email sent to your parent/guardian!");
       } else {
         toast.success("Invitation created! Share the link with your parent so they can join EduChamp.");
       }
@@ -588,6 +597,21 @@ export default function StudentOnboarding() {
                     </div>
                   </div>
 
+                  {/* Email delivery status indicator */}
+                  {!parentInviteResult.isExistingUser && (
+                    <div className="flex items-center gap-2 text-xs">
+                      {parentInviteResult.emailSent ? (
+                        <span className="flex items-center gap-1 text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
+                          <CheckCircle2 className="h-3 w-3" /> Email delivered to {parentEmail || "parent"}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
+                          <AlertCircle className="h-3 w-3" /> Email not sent — share the link below manually
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {!parentInviteResult.isExistingUser && (
                     <>
                       <div className="flex items-center gap-2">
@@ -613,9 +637,22 @@ export default function StudentOnboarding() {
                           <li>Copy the link and send it via text message or email</li>
                           <li>Your parent will be taken to EduChamp to create their free account</li>
                           <li>Once they accept, you'll both be linked automatically</li>
-                          <li>The link expires in 7 days — ask your parent to act soon</li>
+                          {parentInviteResult.expiresAt && (
+                            <li>Link expires on {new Date(parentInviteResult.expiresAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</li>
+                          )}
                         </ul>
                       </div>
+                      {/* Resend button — available immediately after first send */}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="w-full gap-1.5 text-xs text-muted-foreground hover:text-primary"
+                        disabled={resendParentInvite.isPending}
+                        onClick={() => resendParentInvite.mutate({ oldToken: parentInviteResult!.token, origin: window.location.origin })}
+                      >
+                        <RefreshCw className="h-3 w-3" />
+                        {resendParentInvite.isPending ? "Generating new link…" : "Generate a new invitation link"}
+                      </Button>
                     </>
                   )}
 

@@ -661,3 +661,36 @@
 - [x] QA: test full invitation flow (new parent, existing parent, reject, resend, expired token)
 - [x] QA: test parent accept flow on mobile and tablet
 - [x] QA: fix all bugs found during testing
+
+## Sprint 20 — Transactional Email, Invite Status Banner & Resend Workflow
+
+### Transactional Email (Resend)
+- [x] Install resend npm package
+- [x] Create server/emailService.ts with sendEmail helper (Resend SDK, HTML + text fallback, retry logic)
+- [x] DB: emailLogs table (id, toEmail, subject, templateName, status, messageId, errorMessage, sentAt, createdAt)
+- [x] DB: add resendCount, lastResentAt columns to parentInviteTokens
+- [x] Server: wire inviteParent to call sendEmail after token creation
+- [x] Server: add resendParentInvite procedure (invalidate old token, create new, send email, log)
+- [x] Server: log all email sends to emailLogs table (success + failure)
+- [x] Admin: show email delivery status in audit log / invite management
+
+### Student Invite Status Banner
+- [x] Server: getMyParentInviteStatus procedure — returns latest invite with status, sentAt, resendCount, parentEmail
+- [x] Frontend: StudentDashboard — persistent invite status banner (Pending/Accepted/Declined/Expired)
+- [x] Frontend: Banner shows sent timestamp, parent email, and status badge
+- [x] Frontend: Banner shows "Resend Invite" button if pending >24h or expired
+- [x] Frontend: Banner auto-refreshes every 30s for real-time status updates
+- [x] Frontend: Banner shows next-step guidance per status (e.g. "Ask your parent to check their email")
+
+### Resend Workflow
+- [x] Server: resendParentInvite — revoke old token (status=revoked), create new token, send email, return new inviteUrl
+- [x] Server: handle multiple resend attempts gracefully (cap at 10 resends per student per 24h)
+- [x] Frontend: StudentOnboarding — "Resend Invite" button on success screen after 24h
+- [x] Frontend: StudentOnboarding — show new shareable link after resend
+- [x] Frontend: StudentDashboard — resend from banner with loading state and success toast
+
+### QA & Bug Fixes
+- [x] QA: test full email delivery flow (new parent invite, existing parent, resend, expired)
+- [x] QA: test status banner state transitions (pending → accepted, pending → declined, expired)
+- [x] QA: test resend rate limiting (>10 resends in 24h)
+- [x] QA: TypeScript 0 errors, all tests passing

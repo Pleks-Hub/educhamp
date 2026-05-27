@@ -10,24 +10,32 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GuidedTour } from "@/components/GuidedTour";
 import CourseSwitcher from "@/components/CourseSwitcher";
 import {
+  AlertCircle,
   ArrowRight,
   BookOpen,
   Brain,
   CheckCircle2,
   ChevronRight,
   ClipboardList,
+  Clock,
   GraduationCap,
   Lock,
+  Mail,
   PlayCircle,
   Plus,
   RefreshCw,
+  Send,
   Sparkles,
   Star,
   Target,
   TrendingUp,
   Trophy,
   BookMarked,
+  UserCheck,
+  XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
+import { useMemo } from "react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -199,6 +207,108 @@ function EmptyEnrollmentState({ onBrowse }: { onBrowse: () => void }) {
   );
 }
 
+// ─── Parent Invite Status Banner ─────────────────────────────────────────────
+
+function ParentInviteBanner() {
+  const { data: invites, refetch } = trpc.onboarding.getMyParentInviteStatus.useQuery(undefined, {
+    refetchInterval: 30_000, // poll every 30s for real-time status updates
+  });
+  const utils = trpc.useUtils();
+  const resend = trpc.onboarding.resendParentInvite.useMutation({
+    onSuccess: () => {
+      toast.success("Invitation resent! A fresh email has been sent to your parent/guardian.");
+      refetch();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  // Only show banner for the most recent invite
+  const latest = useMemo(() => {
+    if (!invites || invites.length === 0) return null;
+    return invites[0];
+  }, [invites]);
+
+  if (!latest) return null;
+
+  const isExpired = latest.status === "pending" && new Date(latest.expiresAt) < new Date();
+  const effectiveStatus = isExpired ? "expired" : latest.status;
+  const sentAt = new Date(latest.createdAt);
+  const hoursSinceSent = (Date.now() - sentAt.getTime()) / 3_600_000;
+  const canResend = (effectiveStatus === "pending" && hoursSinceSent >= 24) || effectiveStatus === "expired";
+
+  const statusConfig = {
+    pending: {
+      bg: "bg-amber-50 border-amber-200",
+      icon: <Clock className="h-5 w-5 text-amber-500 shrink-0" />,
+      title: "Parent Invitation Pending",
+      desc: `Your invitation to ${latest.parentEmail ?? "your parent/guardian"} is awaiting their response.`,
+      badge: <span className="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Pending</span>,
+    },
+    accepted: {
+      bg: "bg-green-50 border-green-200",
+      icon: <UserCheck className="h-5 w-5 text-green-500 shrink-0" />,
+      title: "Parent Account Linked!",
+      desc: `${latest.parentName ?? "Your parent/guardian"} has accepted your invitation and is now monitoring your learning journey.`,
+      badge: <span className="text-xs font-semibold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Accepted</span>,
+    },
+    rejected: {
+      bg: "bg-red-50 border-red-200",
+      icon: <XCircle className="h-5 w-5 text-red-500 shrink-0" />,
+      title: "Invitation Declined",
+      desc: `${latest.parentName ?? "Your parent/guardian"} declined the invitation. You can send a new invite to a different email address from your profile.`,
+      badge: <span className="text-xs font-semibold bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Declined</span>,
+    },
+    expired: {
+      bg: "bg-slate-50 border-slate-200",
+      icon: <AlertCircle className="h-5 w-5 text-slate-400 shrink-0" />,
+      title: "Invitation Expired",
+      desc: `Your invitation to ${latest.parentEmail ?? "your parent/guardian"} has expired. Send a new one to continue.`,
+      badge: <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">Expired</span>,
+    },
+    revoked: {
+      bg: "bg-slate-50 border-slate-200",
+      icon: <AlertCircle className="h-5 w-5 text-slate-400 shrink-0" />,
+      title: "Invitation Cancelled",
+      desc: "This invitation was cancelled. You can send a new one from the onboarding flow.",
+      badge: <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">Cancelled</span>,
+    },
+  } as const;
+
+  const cfg = statusConfig[effectiveStatus as keyof typeof statusConfig] ?? statusConfig.pending;
+
+  return (
+    <div className={`flex items-start gap-3 rounded-xl border p-4 ${cfg.bg}`}>
+      {cfg.icon}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-semibold text-foreground">{cfg.title}</p>
+          {cfg.badge}
+        </div>
+        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{cfg.desc}</p>
+        <div className="flex items-center gap-3 mt-2 flex-wrap">
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Mail className="h-3 w-3" />
+            Sent {sentAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+            {latest.resendCount > 0 && ` · Resent ${latest.resendCount}×`}
+          </span>
+          {canResend && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
+              disabled={resend.isPending}
+              onClick={() => resend.mutate({ oldToken: latest.token, origin: window.location.origin })}
+            >
+              <Send className="h-3 w-3" />
+              {resend.isPending ? "Sending…" : "Resend Invite"}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -292,6 +402,9 @@ export default function Home() {
         utils.progress.getAllCourseProgress.invalidate();
         utils.progress.getDashboard.invalidate();
       }} />
+
+      {/* Parent invite status banner — shown to students who have sent a parent invite */}
+      {user?.accountType === "student" && <ParentInviteBanner />}
 
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">

@@ -582,6 +582,8 @@ export const parentInviteTokens = mysqlTable("parentInviteTokens", {
   expiresAt: timestamp("expiresAt").notNull(),
   acceptedAt: timestamp("acceptedAt"),
   rejectedAt: timestamp("rejectedAt"),
+  resendCount: int("resendCount").notNull().default(0),
+  lastResentAt: timestamp("lastResentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type ParentInviteToken = typeof parentInviteTokens.$inferSelect;
@@ -741,3 +743,21 @@ export const adminRoleAssignments = mysqlTable("adminRoleAssignments", {
   userRoleUnique: uniqueIndex("user_role_unique").on(t.userId, t.roleId),
 }));
 export type AdminRoleAssignment = typeof adminRoleAssignments.$inferSelect;
+
+// ─── Email Logs ───────────────────────────────────────────────────────────────
+
+/**
+ * Audit log for all transactional emails sent by EduChamp.
+ * Records delivery status, Resend message ID, and any error messages.
+ */
+export const emailLogs = mysqlTable("emailLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  toEmail: varchar("toEmail", { length: 320 }).notNull(),
+  subject: varchar("subject", { length: 512 }).notNull(),
+  templateName: varchar("templateName", { length: 128 }).notNull(),
+  status: mysqlEnum("status", ["sent", "failed", "skipped"]).notNull(),
+  messageId: varchar("messageId", { length: 256 }),   // Resend message ID
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type EmailLog = typeof emailLogs.$inferSelect;
