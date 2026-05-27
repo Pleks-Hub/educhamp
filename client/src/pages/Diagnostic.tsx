@@ -251,9 +251,11 @@ export default function Diagnostic() {
     { seed: sessionSeed, courseId: activeCourseId },
     { enabled: started && activeCourseId !== undefined }
   );
-  const { data: existingAttempt } = trpc.diagnostic.getLatestAttempt.useQuery(undefined, {
-    enabled: !!user,
-  });
+  const courseTitle = dashboard?.courseTitle ?? "Course";
+  const { data: existingAttempt } = trpc.diagnostic.getLatestAttempt.useQuery(
+    activeCourseId ? { courseId: activeCourseId } : undefined,
+    { enabled: !!user && activeCourseId !== undefined }
+  );
   const { data: allAttempts } = trpc.diagnostic.getAllAttempts.useQuery(undefined, {
     enabled: !!user,
   });
@@ -340,7 +342,7 @@ export default function Diagnostic() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Placement Diagnostic</h1>
-            <p className="text-muted-foreground text-sm mt-1">Algebra I · 30 Questions</p>
+            <p className="text-muted-foreground text-sm mt-1">{courseTitle} · 30 Questions</p>
           </div>
           {attemptCount > 1 && (
             <Badge variant="outline" className="gap-1.5 text-xs shrink-0">
@@ -581,7 +583,7 @@ export default function Diagnostic() {
       <div className="p-6 space-y-6 page-enter max-w-2xl">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Placement Diagnostic</h1>
-          <p className="text-muted-foreground text-sm mt-1">Algebra I · Katy ISD</p>
+          <p className="text-muted-foreground text-sm mt-1">{courseTitle} · Katy ISD</p>
         </div>
 
         <Card className="border shadow-sm">
@@ -608,7 +610,7 @@ export default function Diagnostic() {
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                  Test concepts across all 12 Algebra I units
+                  Test concepts across all 12 {courseTitle} units
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />

@@ -3,6 +3,7 @@
  * enrol, and switch their active course. Persists the selection server-side.
  */
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,6 +63,7 @@ interface CourseSwitcherProps {
 
 export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
   const utils = trpc.useUtils();
+  const [, setLocation] = useLocation();
   const [gradeFilter, setGradeFilter] = useState<string | "all">("all");
 
   const { data: allCourses, isLoading: loadingCourses } = trpc.admin.getPublicCourses.useQuery(
@@ -83,13 +85,25 @@ export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
   });
 
   const setActive = trpc.progress.switchActiveCourse.useMutation({
-    onSuccess: (_, vars) => {
-      utils.admin.myEnrollments.invalidate();
-      utils.progress.getDashboard.invalidate();
-      utils.progress.getAllCourseProgress.invalidate();
+    onSuccess: async (_, vars) => {
+      await Promise.all([
+        utils.admin.myEnrollments.invalidate(),
+        utils.progress.getDashboard.invalidate(),
+        utils.progress.getAllCourseProgress.invalidate(),
+      ]);
       const course = allCourses?.find((c: any) => c.id === vars.courseId);
       toast.success(`Switched to ${course?.title ?? "course"}`);
       onClose();
+      // After switching, check if the new course has a diagnostic attempt.
+      // We do this by re-fetching getDashboard (already invalidated above) and
+      // redirecting to /diagnostic if hasDiagnosticForActiveCourse is false.
+      // We use a short delay to let the cache update settle.
+      setTimeout(async () => {
+        const freshDashboard = await utils.progress.getDashboard.fetch();
+        if (!freshDashboard?.hasDiagnosticForActiveCourse) {
+          setLocation("/diagnostic");
+        }
+      }, 300);
     },
     onError: () => toast.error("Failed to switch course. Please try again."),
   });

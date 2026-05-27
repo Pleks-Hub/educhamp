@@ -321,12 +321,14 @@ export async function saveDiagnosticAttempt(
   unitResults: unknown[],
   prerequisiteScore: number,
   overallScore: number,
-  placementRecommendation: string
+  placementRecommendation: string,
+  courseId: number = 1
 ) {
   const db = await getDb();
   if (!db) return null;
   return db.insert(diagnosticAttempts).values({
     userId,
+    courseId,
     answers,
     unitResults: unitResults as any,
     prerequisiteScore,
@@ -343,6 +345,18 @@ export async function getLatestDiagnosticAttempt(userId: number) {
     .select()
     .from(diagnosticAttempts)
     .where(eq(diagnosticAttempts.userId, userId))
+    .orderBy(desc(diagnosticAttempts.completedAt))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function getLatestDiagnosticAttemptForCourse(userId: number, courseId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(diagnosticAttempts)
+    .where(and(eq(diagnosticAttempts.userId, userId), eq(diagnosticAttempts.courseId, courseId)))
     .orderBy(desc(diagnosticAttempts.completedAt))
     .limit(1);
   return result[0] ?? null;

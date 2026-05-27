@@ -299,3 +299,31 @@
 - [x] UI: PaletteContext with 6 palettes applied as CSS class on html element
 - [x] UI: Profile page — PersonalizationCard with palette picker and display name
 - [x] CSS: 6 palette CSS classes in index.css (indigo, emerald, rose, violet, amber, teal)
+
+## Sprint 9 — Course-Aware Diagnostic First-Run & Correct Course Labels
+
+- [ ] Server: getQuestions always resolves courseId from active course when not passed; randomise question order per call
+- [ ] Server: submitDiagnostic always resolves courseId from active course when not passed
+- [ ] Server: getDashboard returns hasDiagnosticForActiveCourse boolean
+- [ ] Server: getCourseTitle helper used everywhere instead of hard-coded "Algebra I"
+- [ ] UI: Home dashboard — show "Take Diagnostic" CTA (not "Continue Learning") when hasDiagnosticForActiveCourse is false
+- [ ] UI: Diagnostic page — show active course title/name, not "Algebra I"
+- [ ] UI: CourseSwitcher — after switching, navigate to /diagnostic if no prior diagnostic for new course
+- [ ] UI: DashboardLayout course context banner — show active course name correctly
+- [ ] UI: Fix all hard-coded "Algebra I" or "ALG1" labels in Diagnostic, Home, and Curriculum pages
+
+## Sprint 9 — Course-Aware Diagnostic & Auto-Redirect
+
+- [x] DB: Add courseId column to diagnosticAttempts table (migration applied)
+- [x] Server: Add getLatestDiagnosticAttemptForCourse(userId, courseId) db helper
+- [x] Server: Update saveDiagnosticAttempt to accept and store courseId
+- [x] Server: Update diagnostic.getLatestAttempt to accept optional courseId and filter by active course
+- [x] Server: Update getDashboard to return hasDiagnosticForActiveCourse boolean
+- [x] Server: Fix courseTitle fallback from hard-coded "Algebra I" to "Course"
+- [x] Server: Pass resolvedCourseId to saveDiagnosticAttempt in submitDiagnostic
+- [x] UI: Diagnostic page — show courseTitle in all labels (not hard-coded "Algebra I")
+- [x] UI: Diagnostic page — getLatestAttempt is now course-aware (uses activeCourseId)
+- [x] UI: Home dashboard — use hasDiagnosticForActiveCourse for all CTA logic
+- [x] UI: Home dashboard — amber "Start Placement Test" card when no diagnostic for active course
+- [x] UI: Home dashboard — amber hint text under greeting when diagnostic not yet taken
+- [x] UI: CourseSwitcher — after switching, auto-redirect to /diagnostic if no diagnostic for new course

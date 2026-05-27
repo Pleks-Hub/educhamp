@@ -206,6 +206,7 @@ export type QuizAttempt = typeof quizAttempts.$inferSelect;
 export const diagnosticAttempts = mysqlTable("diagnosticAttempts", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
+  courseId: int("courseId").notNull().default(1),
   answers: json("answers").$type<{ questionId: string; answer: string; correct: boolean }[]>().notNull(),
   unitResults: json("unitResults").$type<DiagnosticUnitResult[]>().notNull(),
   prerequisiteScore: int("prerequisiteScore").notNull(),

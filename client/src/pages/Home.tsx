@@ -212,9 +212,13 @@ export default function Home() {
   const { data: allCourseProgress, isLoading: isLoadingCourses } = trpc.progress.getAllCourseProgress.useQuery(undefined, {
     enabled: !!user,
   });
-  const { data: diagnostic } = trpc.diagnostic.getLatestAttempt.useQuery(undefined, {
-    enabled: !!user,
-  });
+  const activeCourseId = dashboard?.activeCourseId;
+  const { data: diagnostic } = trpc.diagnostic.getLatestAttempt.useQuery(
+    activeCourseId ? { courseId: activeCourseId } : undefined,
+    { enabled: !!user && activeCourseId !== undefined }
+  );
+  // Use server-computed flag for whether this course has a diagnostic
+  const hasDiagnosticForActiveCourse = dashboard?.hasDiagnosticForActiveCourse ?? false;
 
   const utils = trpc.useUtils();
   const setActiveCourse = trpc.admin.setActiveCourse.useMutation({
@@ -285,9 +289,14 @@ export default function Home() {
             {dashboard?.courseTitle ?? "EduChamp"} · Katy ISD ·{" "}
             {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
           </p>
+          {!hasDiagnosticForActiveCourse && enrolledCount > 0 && (
+            <p className="text-xs text-amber-600 font-medium mt-0.5 flex items-center gap-1">
+              <ClipboardList className="h-3 w-3" /> Take the placement test to start {dashboard?.courseTitle ?? "this course"}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          {!diagnostic && enrolledCount > 0 && (
+          {!hasDiagnosticForActiveCourse && enrolledCount > 0 && (
             <Button
               onClick={() => setLocation("/diagnostic")}
               variant="outline"
@@ -466,19 +475,19 @@ export default function Home() {
                     </div>
                   </CardContent>
                 </Card>
-              ) : !diagnostic ? (
-                <Card className="border border-dashed shadow-sm">
+              ) : !hasDiagnosticForActiveCourse ? (
+                <Card className="border border-dashed border-amber-300 bg-amber-50/50 shadow-sm">
                   <CardContent className="p-6 text-center space-y-3">
-                    <ClipboardList className="h-10 w-10 text-muted-foreground mx-auto" />
+                    <ClipboardList className="h-10 w-10 text-amber-500 mx-auto" />
                     <div>
-                      <p className="font-medium text-foreground">Start with the Placement Test</p>
+                      <p className="font-medium text-foreground">Take the {dashboard?.courseTitle ?? "Course"} Placement Test</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        The diagnostic assessment places you at the right starting point.
+                        The diagnostic assessment places you at the right starting point in {dashboard?.courseTitle ?? "this course"}.
                       </p>
                     </div>
-                    <Button onClick={() => setLocation("/diagnostic")} className="gap-2">
+                    <Button onClick={() => setLocation("/diagnostic")} className="gap-2 bg-amber-500 hover:bg-amber-600">
                       <ClipboardList className="h-4 w-4" />
-                      Take Placement Test
+                      Start Placement Test
                     </Button>
                   </CardContent>
                 </Card>
@@ -539,7 +548,7 @@ export default function Home() {
                 onClick={() => setLocation("/diagnostic")}
               >
                 <ClipboardList className="h-3.5 w-3.5 text-amber-500" />
-                {diagnostic ? "Retest Placement" : "Placement Test"}
+                {hasDiagnosticForActiveCourse ? "Retest Placement" : "Take Placement Test"}
               </Button>
               <Button
                 variant="outline"

@@ -22,6 +22,7 @@ import {
   getLessonProgressForUser,
   getLessonsByUnit,
   getLatestDiagnosticAttempt,
+  getLatestDiagnosticAttemptForCourse,
   getLatestQuizAttempt,
   getOrCreateTutorSession,
   getQuizAttemptsForUser,
@@ -151,11 +152,11 @@ export const appRouter = router({
           ? Math.round(masteryData.reduce((sum, m) => sum + m.score, 0) / masteryData.length)
           : 0;
 
-      // Count only units in the active course for completedUnits/inProgressUnits
+            // Count only units in the active course for completedUnits/inProgressUnits
       const activeUnitIds = new Set(allUnits.map((u) => u.id));
       const completedUnits = unitProgressData.filter((p) => activeUnitIds.has(p.unitId) && p.status === "completed").length;
       const inProgressUnits = unitProgressData.filter((p) => activeUnitIds.has(p.unitId) && (p.status === "in_progress" || p.status === "quiz_unlocked")).length;
-
+      const latestDiag = await getLatestDiagnosticAttemptForCourse(ctx.user.id, activeCourseId);
       return {
         units: unitsWithProgress,
         mastery: masteryData,
@@ -164,8 +165,9 @@ export const appRouter = router({
         inProgressUnits,
         totalUnits: allUnits.length,
         recentQuizAttempts: quizAttemptsData.slice(0, 5),
-        courseTitle: currentEnrollment?.course?.title ?? "Algebra I",
+        courseTitle: currentEnrollment?.course?.title ?? "Course",
         activeCourseId,
+        hasDiagnosticForActiveCourse: latestDiag !== null,
       };
     }),
 
@@ -588,7 +590,8 @@ export const appRouter = router({
           unitResults,
           prerequisiteScore,
           overallScore,
-          placementRecommendation
+          placementRecommendation,
+          resolvedCourseId
         );
 
         // Initialize unit progress for all units
@@ -625,9 +628,12 @@ export const appRouter = router({
         };
       }),
 
-    getLatestAttempt: protectedProcedure.query(async ({ ctx }) => {
-      return getLatestDiagnosticAttempt(ctx.user.id);
-    }),
+    getLatestAttempt: protectedProcedure
+      .input(z.object({ courseId: z.number().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const resolvedCourseId = input?.courseId ?? await getActiveCourseIdForUser(ctx.user.id);
+        return getLatestDiagnosticAttemptForCourse(ctx.user.id, resolvedCourseId);
+      }),
 
     getAllAttempts: protectedProcedure.query(async ({ ctx }) => {
       return getAllDiagnosticAttempts(ctx.user.id);
