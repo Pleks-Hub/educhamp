@@ -1,8 +1,8 @@
 /**
- * admin.ts — Admin router
+ * admin.ts — Admin router (Sprint 18 enhanced)
  * Provides platform stats, user management, course management,
- * platform settings, and audit log procedures.
- * All procedures require role === "admin".
+ * CMS, RBAC, platform settings, and audit log procedures.
+ * All admin-gated procedures require role === "admin".
  */
 
 import { TRPCError } from "@trpc/server";
@@ -13,9 +13,16 @@ import {
   getAllUsers,
   updateUserRole,
   updateUserAccountType,
+  updateUserStatus,
+  deleteUser,
+  createUser,
   getAllCourses,
   getCourseById,
   updateCourse,
+  updateCourseWithStatus,
+  getCourseCooldownDays,
+  removeStudentFromCourse,
+  bulkEnrollStudents,
   getPlatformSettings,
   upsertPlatformSetting,
   logAdminAction,
@@ -28,6 +35,23 @@ import {
   bulkPromoteStudentGrade,
   getStudentsByGrade,
   getUserProfile,
+  // CMS
+  getCmsContent,
+  getCmsContentByKey,
+  upsertCmsDraft,
+  publishCmsContent,
+  revertCmsContent,
+  getCmsHistory,
+  // RBAC
+  listAdminRoles,
+  createAdminRole,
+  updateAdminRole,
+  deleteAdminRole,
+  assignRoleToUser,
+  revokeRoleFromUser,
+  getUserRoles,
+  getUserPermissions,
+  seedDefaultRoles,
 } from "../db";
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
@@ -51,9 +75,33 @@ export const adminRouter = router({
 
   // ── User Management ────────────────────────────────────────────────────────
   listUsers: adminProcedure
-    .input(z.object({ limit: z.number().min(1).max(200).default(100), offset: z.number().min(0).default(0) }))
+    .input(z.object({
+      limit: z.number().min(1).max(200).default(100),
+      offset: z.number().min(0).default(0),
+      search: z.string().optional(),
+    }))
     .query(async ({ input }) => {
       return getAllUsers(input.limit, input.offset);
+    }),
+
+  createUser: adminProcedure
+    .input(z.object({
+      name: z.string().min(1).max(256),
+      email: z.string().email(),
+      role: z.enum(["user", "admin"]).default("user"),
+      accountType: z.enum(["student", "parent", "teacher"]).default("student"),
+      grade: z.string().optional(),
+      school: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await createUser(input);
+      await logAdminAction(ctx.user.id, "user.create", "user", null, {
+        name: input.name,
+        email: input.email,
+        accountType: input.accountType,
+        createdBy: ctx.user.id,
+      });
+      return { success: true };
     }),
 
   updateUserRole: adminProcedure
@@ -78,6 +126,30 @@ export const adminRouter = router({
       return { success: true };
     }),
 
+  updateUserStatus: adminProcedure
+    .input(z.object({
+      userId: z.number(),
+      status: z.enum(["active", "suspended", "archived", "deleted"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await updateUserStatus(input.userId, input.status);
+      await logAdminAction(ctx.user.id, "user.status_change", "user", input.userId, {
+        newStatus: input.status,
+        changedBy: ctx.user.id,
+      });
+      return { success: true };
+    }),
+
+  deleteUser: adminProcedure
+    .input(z.object({ userId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await deleteUser(input.userId);
+      await logAdminAction(ctx.user.id, "user.delete", "user", input.userId, {
+        deletedBy: ctx.user.id,
+      });
+      return { success: true };
+    }),
+
   enrollUserInCourse: adminProcedure
     .input(z.object({ userId: z.number(), courseId: z.number() }))
     .mutation(async ({ ctx, input }) => {
@@ -89,10 +161,39 @@ export const adminRouter = router({
       return { success: true };
     }),
 
+  removeStudentFromCourse: adminProcedure
+    .input(z.object({ userId: z.number(), courseId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await removeStudentFromCourse(input.userId, input.courseId);
+      await logAdminAction(ctx.user.id, "user.course_remove", "user", input.userId, {
+        courseId: input.courseId,
+        removedBy: ctx.user.id,
+      });
+      return { success: true };
+    }),
+
+  bulkEnrollStudents: adminProcedure
+    .input(z.object({ userIds: z.array(z.number()), courseId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const count = await bulkEnrollStudents(input.userIds, input.courseId);
+      await logAdminAction(ctx.user.id, "course.bulk_enroll", "course", input.courseId, {
+        userIds: input.userIds,
+        enrolled: count,
+        enrolledBy: ctx.user.id,
+      });
+      return { success: true, enrolled: count };
+    }),
+
   getUserEnrollments: adminProcedure
     .input(z.object({ userId: z.number() }))
     .query(async ({ input }) => {
       return getUserCourseEnrollments(input.userId);
+    }),
+
+  getUserRoles: adminProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      return getUserRoles(input.userId);
     }),
 
   // ── Course Management ──────────────────────────────────────────────────────
@@ -122,10 +223,12 @@ export const adminRouter = router({
       isActive: z.boolean().optional(),
       isDefault: z.boolean().optional(),
       sortOrder: z.number().optional(),
+      status: z.enum(["active", "archived", "suspended"]).optional(),
+      diagnosticCooldownDays: z.number().min(0).max(365).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { courseId, ...data } = input;
-      await updateCourse(courseId, data);
+      await updateCourseWithStatus(courseId, data);
       await logAdminAction(ctx.user.id, "course.update", "course", courseId, { changes: data });
       return { success: true };
     }),
@@ -157,6 +260,144 @@ export const adminRouter = router({
       return getAdminAuditLog(input.limit);
     }),
 
+  // ── CMS ────────────────────────────────────────────────────────────────────
+  cms: router({
+    listContent: adminProcedure
+      .input(z.object({ section: z.string().optional() }))
+      .query(async ({ input }) => {
+        return getCmsContent(input.section);
+      }),
+
+    getContent: adminProcedure
+      .input(z.object({ key: z.string() }))
+      .query(async ({ input }) => {
+        return getCmsContentByKey(input.key);
+      }),
+
+    saveDraft: adminProcedure
+      .input(z.object({
+        key: z.string(),
+        section: z.string(),
+        label: z.string(),
+        draftValue: z.string(),
+        contentType: z.enum(["text", "richtext", "image", "url", "boolean"]).default("text"),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await upsertCmsDraft(input.key, input.section, input.label, input.draftValue, ctx.user.id, input.contentType);
+        await logAdminAction(ctx.user.id, "cms.draft", "cms", null, { key: input.key });
+        return { success: true };
+      }),
+
+    publish: adminProcedure
+      .input(z.object({ key: z.string(), changeNote: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        await publishCmsContent(input.key, ctx.user.id, input.changeNote);
+        await logAdminAction(ctx.user.id, "cms.publish", "cms", null, { key: input.key, changeNote: input.changeNote });
+        return { success: true };
+      }),
+
+    revert: adminProcedure
+      .input(z.object({ key: z.string(), version: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await revertCmsContent(input.key, input.version, ctx.user.id);
+        await logAdminAction(ctx.user.id, "cms.revert", "cms", null, { key: input.key, version: input.version });
+        return { success: true };
+      }),
+
+    getHistory: adminProcedure
+      .input(z.object({ key: z.string() }))
+      .query(async ({ input }) => {
+        return getCmsHistory(input.key);
+      }),
+  }),
+
+  // ── RBAC ───────────────────────────────────────────────────────────────────
+  rbac: router({
+    listRoles: adminProcedure.query(async () => {
+      return listAdminRoles();
+    }),
+
+    createRole: adminProcedure
+      .input(z.object({
+        name: z.string().min(1).max(128),
+        description: z.string().default(""),
+        permissions: z.array(z.object({
+          resource: z.string(),
+          action: z.string(),
+        })),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const roleId = await createAdminRole(input.name, input.description, input.permissions, ctx.user.id);
+        await logAdminAction(ctx.user.id, "rbac.createRole", "rbac", roleId ?? null, {
+          name: input.name,
+          permissionCount: input.permissions.length,
+        });
+        return { success: true, roleId };
+      }),
+
+    updateRole: adminProcedure
+      .input(z.object({
+        roleId: z.number(),
+        name: z.string().min(1).max(128),
+        description: z.string().default(""),
+        permissions: z.array(z.object({
+          resource: z.string(),
+          action: z.string(),
+        })),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        await updateAdminRole(input.roleId, input.name, input.description, input.permissions);
+        await logAdminAction(ctx.user.id, "rbac.updateRole", "rbac", input.roleId, {
+          name: input.name,
+          permissionCount: input.permissions.length,
+        });
+        return { success: true };
+      }),
+
+    deleteRole: adminProcedure
+      .input(z.object({ roleId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await deleteAdminRole(input.roleId);
+        await logAdminAction(ctx.user.id, "rbac.deleteRole", "rbac", input.roleId, {});
+        return { success: true };
+      }),
+
+    assignRole: adminProcedure
+      .input(z.object({ userId: z.number(), roleId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await assignRoleToUser(input.userId, input.roleId, ctx.user.id);
+        await logAdminAction(ctx.user.id, "rbac.assignRole", "user", input.userId, {
+          roleId: input.roleId,
+          assignedBy: ctx.user.id,
+        });
+        return { success: true };
+      }),
+
+    revokeRole: adminProcedure
+      .input(z.object({ userId: z.number(), roleId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await revokeRoleFromUser(input.userId, input.roleId);
+        await logAdminAction(ctx.user.id, "rbac.revokeRole", "user", input.userId, {
+          roleId: input.roleId,
+          revokedBy: ctx.user.id,
+        });
+        return { success: true };
+      }),
+
+    getUserPermissions: adminProcedure
+      .input(z.object({ userId: z.number() }))
+      .query(async ({ input }) => {
+        return getUserPermissions(input.userId);
+      }),
+
+    seedDefaultRoles: adminProcedure
+      .mutation(async ({ ctx }) => {
+        await seedDefaultRoles(ctx.user.id);
+        await logAdminAction(ctx.user.id, "rbac.seedDefaultRoles", "rbac", null, {});
+        return { success: true };
+      }),
+  }),
+
   // ── Public course list (for course switcher) ───────────────────────────────
   getPublicCourses: protectedProcedure.query(async () => {
     const all = await getAllCourses();
@@ -164,7 +405,6 @@ export const adminRouter = router({
   }),
 
   // ── Grade-filtered course catalog for self-enrollment ────────────────────
-  // Returns all active courses annotated with enrollment status and grade fit.
   getCourseCatalog: protectedProcedure.query(async ({ ctx }) => {
     const all = await getAllCourses();
     const enrollments = await getUserCourseEnrollments(ctx.user.id);
@@ -184,9 +424,7 @@ export const adminRouter = router({
       .filter((c) => c.isActive)
       .map((c) => {
         const courseGradeNum = gradeToNum(c.gradeLevel);
-        const isRecommended =
-          studentGrade !== null &&
-          c.gradeLevel === studentGrade;
+        const isRecommended = studentGrade !== null && c.gradeLevel === studentGrade;
         const isGradeAppropriate =
           studentGradeNum === null ||
           courseGradeNum === null ||
@@ -212,14 +450,13 @@ export const adminRouter = router({
     .mutation(async ({ ctx, input }) => {
       const existing = await getUserCourseEnrollments(ctx.user.id);
       await enrollUserInCourse(ctx.user.id, input.courseId);
-      // If this is the first enrollment, also make it the active course
       if (existing.length === 0) {
         await setUserActiveCourse(ctx.user.id, input.courseId);
       }
       return { success: true };
     }),
 
-  // ── Set active course (persists isCurrent flag) ────────────────────────────
+  // ── Set active course ──────────────────────────────────────────────────────
   setActiveCourse: protectedProcedure
     .input(z.object({ courseId: z.number() }))
     .mutation(async ({ ctx, input }) => {
@@ -256,15 +493,8 @@ export const adminRouter = router({
       return { success: true, studentsAffected: count };
     }),
 
-  /**
-   * Schedule the end-of-year grade promotion heartbeat cron.
-   * Runs once per year on a date chosen by the admin (default: June 15 at 2am UTC).
-   * The site must be deployed before this cron can fire.
-   */
   scheduleGradePromotion: adminProcedure
     .input(z.object({
-      // 6-field cron: sec min hour dom mon dow (UTC)
-      // Default: 0 0 2 15 6 * = June 15 at 02:00 UTC
       cron: z.string().default("0 0 2 15 6 *"),
     }))
     .mutation(async ({ ctx }) => {

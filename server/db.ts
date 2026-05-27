@@ -1440,3 +1440,420 @@ export async function subscribeToNewsletter(email: string, name?: string, source
   return { alreadySubscribed: false, email };
 }
 
+
+// ─── Sprint 18: User Status Management ───────────────────────────────────────
+
+export async function updateUserStatus(userId: number, status: "active" | "suspended" | "archived" | "deleted") {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ status }).where(eq(users.id, userId));
+}
+
+export async function deleteUser(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  // Soft-delete: mark as deleted
+  await db.update(users).set({ status: "deleted" }).where(eq(users.id, userId));
+}
+
+export async function createUser(data: {
+  name: string;
+  email: string;
+  role: "user" | "admin";
+  accountType: "student" | "parent" | "teacher";
+  grade?: string;
+  school?: string;
+}) {
+  const db = await getDb();
+  if (!db) return null;
+  // Generate a unique openId for manually-created users
+  const openId = `manual_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const result = await db.insert(users).values({
+    openId,
+    name: data.name,
+    email: data.email,
+    role: data.role,
+    accountType: data.accountType,
+    grade: data.grade ?? null,
+    school: data.school ?? null,
+    status: "active",
+    lastSignedIn: new Date(),
+  });
+  return result;
+}
+
+// ─── Sprint 18: Course Status & Cooldown ─────────────────────────────────────
+
+export async function updateCourseWithStatus(courseId: number, data: {
+  title?: string;
+  description?: string;
+  isActive?: boolean;
+  isDefault?: boolean;
+  sortOrder?: number;
+  status?: "active" | "archived" | "suspended";
+  diagnosticCooldownDays?: number;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(courses).set(data).where(eq(courses.id, courseId));
+}
+
+export async function getCourseCooldownDays(courseId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 7;
+  const result = await db.select({ diagnosticCooldownDays: courses.diagnosticCooldownDays })
+    .from(courses).where(eq(courses.id, courseId)).limit(1);
+  return result[0]?.diagnosticCooldownDays ?? 7;
+}
+
+export async function removeStudentFromCourse(userId: number, courseId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(userCourseEnrollments)
+    .where(and(eq(userCourseEnrollments.userId, userId), eq(userCourseEnrollments.courseId, courseId)));
+}
+
+export async function bulkEnrollStudents(userIds: number[], courseId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  let enrolled = 0;
+  for (const userId of userIds) {
+    const existing = await db.select().from(userCourseEnrollments)
+      .where(and(eq(userCourseEnrollments.userId, userId), eq(userCourseEnrollments.courseId, courseId)))
+      .limit(1);
+    if (existing.length === 0) {
+      await db.insert(userCourseEnrollments).values({ userId, courseId, isCurrent: false });
+      enrolled++;
+    }
+  }
+  return enrolled;
+}
+
+// ─── Sprint 18: CMS Content ───────────────────────────────────────────────────
+
+export async function getCmsContent(section?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const { cmsContent } = await import("../drizzle/schema");
+  if (section) {
+    return db.select().from(cmsContent).where(eq(cmsContent.section, section)).orderBy(cmsContent.key);
+  }
+  return db.select().from(cmsContent).orderBy(cmsContent.section, cmsContent.key);
+}
+
+export async function getCmsContentByKey(key: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const { cmsContent } = await import("../drizzle/schema");
+  const result = await db.select().from(cmsContent).where(eq(cmsContent.key, key)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function upsertCmsDraft(key: string, section: string, label: string, draftValue: string, updatedBy: number, contentType: "text" | "richtext" | "image" | "url" | "boolean" = "text") {
+  const db = await getDb();
+  if (!db) return;
+  const { cmsContent } = await import("../drizzle/schema");
+  const existing = await db.select().from(cmsContent).where(eq(cmsContent.key, key)).limit(1);
+  if (existing.length > 0) {
+    await db.update(cmsContent)
+      .set({ draftValue, isDraft: true, updatedBy, updatedAt: new Date() })
+      .where(eq(cmsContent.key, key));
+  } else {
+    await db.insert(cmsContent).values({
+      key, section, label, contentType,
+      publishedValue: null, draftValue, isDraft: true,
+      version: 1, updatedBy,
+    });
+  }
+}
+
+export async function publishCmsContent(key: string, updatedBy: number, changeNote?: string) {
+  const db = await getDb();
+  if (!db) return;
+  const { cmsContent, cmsContentHistory } = await import("../drizzle/schema");
+  const existing = await db.select().from(cmsContent).where(eq(cmsContent.key, key)).limit(1);
+  if (!existing[0]) return;
+  const item = existing[0];
+  // Save current published value to history before overwriting
+  if (item.publishedValue !== null) {
+    await db.insert(cmsContentHistory).values({
+      contentId: item.id,
+      version: item.version,
+      value: item.publishedValue,
+      changedBy: updatedBy,
+      changeNote: changeNote ?? "Published update",
+    });
+  }
+  await db.update(cmsContent)
+    .set({
+      publishedValue: item.draftValue,
+      draftValue: null,
+      isDraft: false,
+      version: item.version + 1,
+      updatedBy,
+      updatedAt: new Date(),
+    })
+    .where(eq(cmsContent.key, key));
+}
+
+export async function revertCmsContent(key: string, version: number, updatedBy: number) {
+  const db = await getDb();
+  if (!db) return;
+  const { cmsContent, cmsContentHistory } = await import("../drizzle/schema");
+  const historyRow = await db.select().from(cmsContentHistory)
+    .where(and(
+      eq(cmsContentHistory.version, version),
+    ))
+    .limit(1);
+  if (!historyRow[0]) return;
+  const item = await db.select().from(cmsContent).where(eq(cmsContent.key, key)).limit(1);
+  if (!item[0]) return;
+  // Save current as history
+  await db.insert(cmsContentHistory).values({
+    contentId: item[0].id,
+    version: item[0].version,
+    value: item[0].publishedValue,
+    changedBy: updatedBy,
+    changeNote: `Reverted to version ${version}`,
+  });
+  await db.update(cmsContent)
+    .set({
+      publishedValue: historyRow[0].value,
+      draftValue: null,
+      isDraft: false,
+      version: item[0].version + 1,
+      updatedBy,
+      updatedAt: new Date(),
+    })
+    .where(eq(cmsContent.key, key));
+}
+
+export async function getCmsHistory(key: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const { cmsContent, cmsContentHistory } = await import("../drizzle/schema");
+  const item = await db.select().from(cmsContent).where(eq(cmsContent.key, key)).limit(1);
+  if (!item[0]) return [];
+  return db.select().from(cmsContentHistory)
+    .where(eq(cmsContentHistory.contentId, item[0].id))
+    .orderBy(desc(cmsContentHistory.changedAt));
+}
+
+// ─── Sprint 18: RBAC ─────────────────────────────────────────────────────────
+
+export async function listAdminRoles() {
+  const db = await getDb();
+  if (!db) return [];
+  const { adminRoles, rolePermissions } = await import("../drizzle/schema");
+  const roles = await db.select().from(adminRoles).where(eq(adminRoles.isActive, true)).orderBy(adminRoles.name);
+  const perms = await db.select().from(rolePermissions);
+  return roles.map((r) => ({
+    ...r,
+    permissions: perms.filter((p) => p.roleId === r.id),
+  }));
+}
+
+export async function createAdminRole(name: string, description: string, permissions: Array<{ resource: string; action: string }>, createdBy: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const { adminRoles, rolePermissions } = await import("../drizzle/schema");
+  const result = await db.insert(adminRoles).values({
+    name, description, isSystem: false, isActive: true, createdBy,
+  });
+  const roleId = (result as unknown as [{ insertId: number }])[0].insertId;
+  if (permissions.length > 0) {
+    await db.insert(rolePermissions).values(permissions.map((p) => ({ roleId, resource: p.resource, action: p.action })));
+  }
+  return roleId;
+}
+
+export async function updateAdminRole(roleId: number, name: string, description: string, permissions: Array<{ resource: string; action: string }>) {
+  const db = await getDb();
+  if (!db) return;
+  const { adminRoles, rolePermissions } = await import("../drizzle/schema");
+  await db.update(adminRoles).set({ name, description, updatedAt: new Date() }).where(eq(adminRoles.id, roleId));
+  // Replace permissions
+  await db.delete(rolePermissions).where(eq(rolePermissions.roleId, roleId));
+  if (permissions.length > 0) {
+    await db.insert(rolePermissions).values(permissions.map((p) => ({ roleId, resource: p.resource, action: p.action })));
+  }
+}
+
+export async function deleteAdminRole(roleId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const { adminRoles, rolePermissions, adminRoleAssignments } = await import("../drizzle/schema");
+  // Check if system role
+  const role = await db.select().from(adminRoles).where(eq(adminRoles.id, roleId)).limit(1);
+  if (role[0]?.isSystem) throw new Error("Cannot delete a system role");
+  await db.delete(rolePermissions).where(eq(rolePermissions.roleId, roleId));
+  await db.delete(adminRoleAssignments).where(eq(adminRoleAssignments.roleId, roleId));
+  await db.delete(adminRoles).where(eq(adminRoles.id, roleId));
+}
+
+export async function assignRoleToUser(userId: number, roleId: number, assignedBy: number) {
+  const db = await getDb();
+  if (!db) return;
+  const { adminRoleAssignments } = await import("../drizzle/schema");
+  const existing = await db.select().from(adminRoleAssignments)
+    .where(and(eq(adminRoleAssignments.userId, userId), eq(adminRoleAssignments.roleId, roleId)))
+    .limit(1);
+  if (existing.length > 0) {
+    await db.update(adminRoleAssignments).set({ isActive: true }).where(eq(adminRoleAssignments.id, existing[0].id));
+  } else {
+    await db.insert(adminRoleAssignments).values({ userId, roleId, assignedBy, isActive: true });
+  }
+}
+
+export async function revokeRoleFromUser(userId: number, roleId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const { adminRoleAssignments } = await import("../drizzle/schema");
+  await db.update(adminRoleAssignments).set({ isActive: false })
+    .where(and(eq(adminRoleAssignments.userId, userId), eq(adminRoleAssignments.roleId, roleId)));
+}
+
+export async function getUserRoles(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const { adminRoles, adminRoleAssignments, rolePermissions } = await import("../drizzle/schema");
+  const assignments = await db.select().from(adminRoleAssignments)
+    .where(and(eq(adminRoleAssignments.userId, userId), eq(adminRoleAssignments.isActive, true)));
+  if (assignments.length === 0) return [];
+  const roleIds = assignments.map((a) => a.roleId);
+  const roles = await db.select().from(adminRoles).where(inArray(adminRoles.id, roleIds));
+  const perms = await db.select().from(rolePermissions).where(inArray(rolePermissions.roleId, roleIds));
+  return roles.map((r) => ({
+    ...r,
+    permissions: perms.filter((p) => p.roleId === r.id),
+  }));
+}
+
+export async function getUserPermissions(userId: number): Promise<Array<{ resource: string; action: string }>> {
+  const roles = await getUserRoles(userId);
+  const perms: Array<{ resource: string; action: string }> = [];
+  for (const role of roles) {
+    for (const p of role.permissions) {
+      if (!perms.find((x) => x.resource === p.resource && x.action === p.action)) {
+        perms.push({ resource: p.resource, action: p.action });
+      }
+    }
+  }
+  return perms;
+}
+
+export async function seedDefaultRoles(createdBy: number) {
+  const db = await getDb();
+  if (!db) return;
+  const { adminRoles, rolePermissions } = await import("../drizzle/schema");
+  const existing = await db.select({ name: adminRoles.name }).from(adminRoles);
+  const existingNames = new Set(existing.map((r) => r.name));
+
+  const systemRoles: Array<{
+    name: string;
+    description: string;
+    permissions: Array<{ resource: string; action: string }>;
+  }> = [
+    {
+      name: "Super Administrator",
+      description: "Full access to all platform features and settings.",
+      permissions: [
+        "users", "courses", "cms", "rbac", "reports", "diagnostics", "settings", "enrollments"
+      ].flatMap((r) => ["view", "create", "edit", "delete", "approve", "export"].map((a) => ({ resource: r, action: a }))),
+    },
+    {
+      name: "Content Manager",
+      description: "Can manage CMS content, banners, FAQs, and announcements.",
+      permissions: [
+        { resource: "cms", action: "view" },
+        { resource: "cms", action: "create" },
+        { resource: "cms", action: "edit" },
+        { resource: "cms", action: "approve" },
+        { resource: "courses", action: "view" },
+      ],
+    },
+    {
+      name: "Academic Coordinator",
+      description: "Manages courses, enrollments, and diagnostic results.",
+      permissions: [
+        { resource: "courses", action: "view" },
+        { resource: "courses", action: "create" },
+        { resource: "courses", action: "edit" },
+        { resource: "enrollments", action: "view" },
+        { resource: "enrollments", action: "create" },
+        { resource: "enrollments", action: "delete" },
+        { resource: "diagnostics", action: "view" },
+        { resource: "reports", action: "view" },
+        { resource: "reports", action: "export" },
+      ],
+    },
+    {
+      name: "Customer Support Officer",
+      description: "Can view and manage user accounts for support purposes.",
+      permissions: [
+        { resource: "users", action: "view" },
+        { resource: "users", action: "edit" },
+        { resource: "enrollments", action: "view" },
+        { resource: "enrollments", action: "create" },
+        { resource: "reports", action: "view" },
+      ],
+    },
+    {
+      name: "Teacher/Tutor",
+      description: "Can view student progress and diagnostic results for their courses.",
+      permissions: [
+        { resource: "users", action: "view" },
+        { resource: "courses", action: "view" },
+        { resource: "diagnostics", action: "view" },
+        { resource: "reports", action: "view" },
+        { resource: "enrollments", action: "view" },
+      ],
+    },
+    {
+      name: "Finance/Admin Officer",
+      description: "Access to financial reports and platform settings.",
+      permissions: [
+        { resource: "reports", action: "view" },
+        { resource: "reports", action: "export" },
+        { resource: "settings", action: "view" },
+        { resource: "settings", action: "edit" },
+      ],
+    },
+    {
+      name: "Marketing Officer",
+      description: "Can manage CMS content and view analytics reports.",
+      permissions: [
+        { resource: "cms", action: "view" },
+        { resource: "cms", action: "edit" },
+        { resource: "reports", action: "view" },
+        { resource: "reports", action: "export" },
+      ],
+    },
+    {
+      name: "Parent Support Representative",
+      description: "Can view parent and student accounts for support.",
+      permissions: [
+        { resource: "users", action: "view" },
+        { resource: "enrollments", action: "view" },
+        { resource: "diagnostics", action: "view" },
+      ],
+    },
+  ];
+
+  for (const roleData of systemRoles) {
+    if (existingNames.has(roleData.name)) continue;
+    const result = await db.insert(adminRoles).values({
+      name: roleData.name,
+      description: roleData.description,
+      isSystem: true,
+      isActive: true,
+      createdBy,
+    });
+    const roleId = (result as unknown as [{ insertId: number }])[0].insertId;
+    if (roleData.permissions.length > 0) {
+      await db.insert(rolePermissions).values(
+        roleData.permissions.map((p) => ({ roleId, resource: p.resource, action: p.action }))
+      );
+    }
+  }
+}

@@ -10,6 +10,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerTutorStreamRoute } from "../tutorStream";
 import { gradePromotionHandler } from "../scheduledHandlers";
+import { seedDefaultRoles } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -63,9 +64,10 @@ async function startServer() {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
+    server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // Seed default RBAC roles on startup (idempotent — skips existing roles)
+    seedDefaultRoles(1).catch((err) => console.warn("[RBAC] Seed default roles failed:", err));
   });
 }
-
 startServer().catch(console.error);

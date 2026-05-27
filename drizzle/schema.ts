@@ -21,13 +21,13 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   accountType: mysqlEnum("accountType", ["student", "parent", "teacher"]).default("student").notNull(),
-  grade: varchar("grade", { length: 16 }).default("9"),
+    grade: varchar("grade", { length: 16 }).default("9"),
   school: varchar("school", { length: 256 }),
+  status: mysqlEnum("status", ["active", "suspended", "archived", "deleted"]).notNull().default("active"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
-
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
@@ -497,13 +497,14 @@ export const courses = mysqlTable("courses", {
   gradeLevel: varchar("gradeLevel", { length: 16 }).notNull(), // "3" | "9" | "AP" etc.
   description: text("description"),
   teksCode: varchar("teksCode", { length: 128 }),           // e.g. "TEKS 111.39"
-  isActive: boolean("isActive").notNull().default(true),
+    isActive: boolean("isActive").notNull().default(true),
   isDefault: boolean("isDefault").notNull().default(false), // the course shown to new students by default
   sortOrder: int("sortOrder").notNull().default(0),
+  status: mysqlEnum("status", ["active", "archived", "suspended"]).notNull().default("active"),
+  diagnosticCooldownDays: int("diagnosticCooldownDays").notNull().default(7), // per-course retake cooldown
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
-
 export type Course = typeof courses.$inferSelect;
 
 // ─── User Course Enrollments ──────────────────────────────────────────────────
@@ -651,3 +652,88 @@ export const chatMessages = mysqlTable("chatMessages", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+// ─── CMS Content ─────────────────────────────────────────────────────────────
+
+/**
+ * Stores all editable site content blocks (hero text, FAQ entries, banners, etc.)
+ * Each row has a stable `key` (e.g. "home.hero.title"), a `publishedValue` (live),
+ * and a `draftValue` (pending). Admins edit the draft, then publish to go live.
+ */
+export const cmsContent = mysqlTable("cmsContent", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 128 }).notNull().unique(),   // e.g. "home.hero.title"
+  section: varchar("section", { length: 64 }).notNull(),     // "homepage" | "faq" | "banners" | "announcements" | "onboarding"
+  label: varchar("label", { length: 256 }).notNull(),        // Human-readable label for admin UI
+  contentType: mysqlEnum("contentType", ["text", "richtext", "image", "url", "boolean"]).notNull().default("text"),
+  publishedValue: text("publishedValue"),                    // Currently live value
+  draftValue: text("draftValue"),                            // Pending draft (null = no pending changes)
+  isDraft: boolean("isDraft").notNull().default(false),      // true when draftValue differs from publishedValue
+  version: int("version").notNull().default(1),
+  updatedBy: int("updatedBy"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type CmsContent = typeof cmsContent.$inferSelect;
+
+/**
+ * Full version history for each CMS content entry.
+ */
+export const cmsContentHistory = mysqlTable("cmsContentHistory", {
+  id: int("id").autoincrement().primaryKey(),
+  contentId: int("contentId").notNull(),
+  version: int("version").notNull(),
+  value: text("value"),
+  changedBy: int("changedBy"),
+  changedAt: timestamp("changedAt").defaultNow().notNull(),
+  changeNote: varchar("changeNote", { length: 512 }),
+});
+export type CmsContentHistory = typeof cmsContentHistory.$inferSelect;
+
+// ─── RBAC: Admin Roles & Permissions ─────────────────────────────────────────
+
+/**
+ * Custom administrative roles (e.g. "Content Manager", "Academic Coordinator").
+ * System roles (isSystem=true) cannot be deleted.
+ */
+export const adminRoles = mysqlTable("adminRoles", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 128 }).notNull().unique(),
+  description: text("description"),
+  isSystem: boolean("isSystem").notNull().default(false),   // built-in roles cannot be deleted
+  isActive: boolean("isActive").notNull().default(true),
+  createdBy: int("createdBy"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AdminRole = typeof adminRoles.$inferSelect;
+
+/**
+ * Granular permission entries per role.
+ * resource: users | courses | cms | rbac | reports | diagnostics | settings | enrollments
+ * action:   view | create | edit | delete | approve | export
+ */
+export const rolePermissions = mysqlTable("rolePermissions", {
+  id: int("id").autoincrement().primaryKey(),
+  roleId: int("roleId").notNull(),
+  resource: varchar("resource", { length: 64 }).notNull(),
+  action: varchar("action", { length: 32 }).notNull(),
+}, (t) => ({
+  roleResourceActionUnique: uniqueIndex("role_resource_action_unique").on(t.roleId, t.resource, t.action),
+}));
+export type RolePermission = typeof rolePermissions.$inferSelect;
+
+/**
+ * Assigns admin roles to users. A user can have multiple roles.
+ */
+export const adminRoleAssignments = mysqlTable("adminRoleAssignments", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  roleId: int("roleId").notNull(),
+  assignedBy: int("assignedBy").notNull(),
+  assignedAt: timestamp("assignedAt").defaultNow().notNull(),
+  isActive: boolean("isActive").notNull().default(true),
+}, (t) => ({
+  userRoleUnique: uniqueIndex("user_role_unique").on(t.userId, t.roleId),
+}));
+export type AdminRoleAssignment = typeof adminRoleAssignments.$inferSelect;

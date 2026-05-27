@@ -563,3 +563,65 @@
 - [x] Audit and fix Onboarding pages on mobile
 - [x] Audit and fix Admin Console on mobile
 - [x] Fix any overflow, truncation, or layout issues discovered
+
+## Sprint 18 — Course-Specific Diagnostic Cooldown, Enhanced Admin Portal, CMS, RBAC
+
+### Course-Specific Diagnostic Cooldown
+- [x] DB: add diagnosticCooldownDays column to courses table (default 7)
+- [x] Server: update diagnostic.getStatus to use per-course cooldownDays instead of global 7
+- [x] Server: admin procedure to update diagnosticCooldownDays for any course
+- [x] UI: Admin Courses tab — cooldown days field per course (editable inline)
+- [x] UI: Diagnostic page — show course-specific cooldown remaining days
+
+### Enhanced User Management
+- [x] DB: add status column to users table (active | suspended | archived | deleted)
+- [x] Server: admin.createUser — create user account with role/type
+- [x] Server: admin.updateUserStatus — suspend, archive, reactivate, or soft-delete user
+- [x] Server: admin.deleteUser — hard delete with audit log
+- [x] Server: admin.manageStudentParent — add/remove student from parent account, reassign between parents
+- [x] Server: admin.getRelationshipGraph — view all student-parent-teacher-course relationships
+- [x] UI: Admin Users tab — create user modal, status badge, suspend/archive/delete actions
+- [x] UI: Admin Users tab — relationship panel showing linked parents, courses, co-parents
+
+### Enhanced Course Management
+- [x] DB: add status column to courses table (active | archived | suspended)
+- [x] Server: admin.createCourse — create new course with all fields
+- [x] Server: admin.updateCourseStatus — archive, suspend, reactivate course
+- [x] Server: admin.deleteCourse — soft delete with audit log
+- [x] Server: admin.bulkEnrollStudents — assign course to multiple students at once
+- [x] Server: admin.removeStudentFromCourse — unenroll a specific student
+- [x] UI: Admin Courses tab — create course modal, status management, bulk enrollment
+
+### Content Management System (CMS)
+- [x] DB: cmsContent table (key, section, contentType, value, publishedValue, isDraft, version, updatedBy, updatedAt)
+- [x] DB: cmsContentHistory table (contentId, version, value, changedBy, changedAt)
+- [x] Server: cms.getContent — fetch all CMS entries by section
+- [x] Server: cms.updateContent — save draft update with version bump
+- [x] Server: cms.publishContent — promote draft to published (live)
+- [x] Server: cms.revertContent — roll back to a previous version
+- [x] Server: cms.getHistory — fetch version history for a content key
+- [x] UI: Admin CMS tab — section browser (Homepage, FAQ, Banners, Announcements, Onboarding)
+- [x] UI: Admin CMS tab — inline rich-text editor for each content block
+- [x] UI: Admin CMS tab — preview panel showing live vs draft side-by-side
+- [x] UI: Admin CMS tab — publish/revert controls with version history drawer
+- [x] UI: LandingPage — read FAQ and banner content from CMS table (fallback to static)
+
+### Role-Based Access Control (RBAC)
+- [x] DB: adminRoles table (id, name, description, isSystem, isActive, createdBy, createdAt)
+- [x] DB: rolePermissions table (roleId, resource, action) — resources: users, courses, cms, rbac, reports, diagnostics, settings; actions: view, create, edit, delete, approve, export
+- [x] DB: adminRoleAssignments table (userId, roleId, assignedBy, assignedAt, isActive)
+- [x] DB: extend adminAuditLog with roleId and permissionContext
+- [x] Server: rbac.listRoles — list all roles with permission counts
+- [x] Server: rbac.createRole — create custom role with name, description, permissions
+- [x] Server: rbac.updateRole — edit role name, description, permissions
+- [x] Server: rbac.duplicateRole — clone a role with all its permissions
+- [x] Server: rbac.deleteRole — soft delete (cannot delete system roles)
+- [x] Server: rbac.assignRole — assign role to user(s)
+- [x] Server: rbac.revokeRole — remove role assignment
+- [x] Server: rbac.getUserPermissions — resolve effective permissions for a user (union of all assigned roles)
+- [x] Server: hasPermission middleware — gate admin procedures by resource+action
+- [x] UI: Admin RBAC tab — role list with permission matrix
+- [x] UI: Admin RBAC tab — create/edit role modal with permission checkboxes
+- [x] UI: Admin RBAC tab — duplicate/delete role actions
+- [x] UI: Admin RBAC tab — user assignment panel per role
+- [x] UI: Admin sidebar — hide/show menu items based on user's effective permissions

@@ -46,6 +46,7 @@ import {
   getUserCourseEnrollments,
   getAllCourseProgressForUser,
   getCourseById,
+  getCourseCooldownDays,
 } from "./db";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -182,6 +183,7 @@ export const appRouter = router({
         courseCode: currentEnrollment?.course?.courseCode ?? "",
         activeCourseId,
         hasDiagnosticForActiveCourse: latestDiag !== null,
+        diagnosticCooldownDays: currentEnrollment?.course?.diagnosticCooldownDays ?? 7,
       };
     }),
 
@@ -673,7 +675,9 @@ export const appRouter = router({
       .input(z.object({ courseId: z.number().optional() }).optional())
       .query(async ({ ctx, input }) => {
         const resolvedCourseId = input?.courseId ?? await getActiveCourseIdForUser(ctx.user.id);
-        return getLatestDiagnosticAttemptForCourse(ctx.user.id, resolvedCourseId);
+        const attempt = await getLatestDiagnosticAttemptForCourse(ctx.user.id, resolvedCourseId);
+        const cooldownDays = await getCourseCooldownDays(resolvedCourseId);
+        return attempt ? { ...attempt, cooldownDays } : null;
       }),
 
     getAllAttempts: protectedProcedure.query(async ({ ctx }) => {

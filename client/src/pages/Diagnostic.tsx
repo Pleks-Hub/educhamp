@@ -88,12 +88,11 @@ type DiagnosticResult = {
 };
 
 const TIMER_DURATION = 60 * 60; // 60 minutes in seconds
-const RETAKE_COOLDOWN_DAYS = 7;
 
-function getCooldownRemaining(completedAt: Date | string | null | undefined): number {
+function getCooldownRemaining(completedAt: Date | string | null | undefined, cooldownDays = 7): number {
   if (!completedAt) return 0;
   const completed = new Date(completedAt).getTime();
-  const cooldownMs = RETAKE_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+  const cooldownMs = cooldownDays * 24 * 60 * 60 * 1000;
   const remaining = completed + cooldownMs - Date.now();
   return Math.max(0, remaining);
 }
@@ -367,7 +366,8 @@ export default function Diagnostic() {
     const attempt = existingAttempt as any;
     const attempts = (allAttempts ?? []) as any[];
     const attemptCount = attempts.length;
-    const cooldownMs = getCooldownRemaining(attempt.completedAt);
+    const cooldownDays = (attempt as any).cooldownDays ?? dashboard?.diagnosticCooldownDays ?? 7;
+    const cooldownMs = getCooldownRemaining(attempt.completedAt, cooldownDays);
     const onCooldown = cooldownMs > 0;
     // Find first actionable unit for Start Learning CTA
     const firstActionableUnit = dashboard?.units?.find(
