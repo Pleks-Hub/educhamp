@@ -1,5 +1,6 @@
-import { useAuth } from "@/_core/hooks/useAuth";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GuidedTour } from "@/components/GuidedTour";
+import CourseSwitcher from "@/components/CourseSwitcher";
 import {
   ArrowRight,
   BookOpen,
@@ -17,12 +19,13 @@ import {
   GraduationCap,
   Lock,
   PlayCircle,
+  Plus,
+  RefreshCw,
   Sparkles,
   Star,
   Target,
   TrendingUp,
   Trophy,
-  RefreshCw,
   BookMarked,
 } from "lucide-react";
 
@@ -52,21 +55,14 @@ function getMasteryBadgeClass(score: number): string {
   return "mastery-advanced";
 }
 
-function getStatusIcon(status: string) {
-  switch (status) {
-    case "completed": return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-    case "quiz_unlocked": return <Star className="h-4 w-4 text-yellow-500" />;
-    case "in_progress": return <PlayCircle className="h-4 w-4 text-blue-500" />;
-    default: return <Lock className="h-4 w-4 text-muted-foreground" />;
-  }
-}
-
 const SUBJECT_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   "Mathematics": { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
   "English Language Arts": { bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-200" },
   "Science": { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
   "Social Studies": { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
   "World Languages": { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" },
+  "Test Preparation": { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200" },
+  "Business": { bg: "bg-teal-50", text: "text-teal-700", border: "border-teal-200" },
 };
 
 function subjectColor(subject?: string | null) {
@@ -112,7 +108,7 @@ function CourseCard({
                 <Badge className="text-xs bg-primary text-primary-foreground">Active</Badge>
               )}
               {gradeLevel && (
-                <Badge variant="outline" className="text-xs">{gradeLevel}</Badge>
+                <Badge variant="outline" className="text-xs">{gradeLevel === "AP" ? "AP / Advanced" : `Grade ${gradeLevel}`}</Badge>
               )}
               {subject && (
                 <Badge className={`text-xs border ${colors.bg} ${colors.text} ${colors.border}`}>
@@ -176,11 +172,39 @@ function CourseCard({
   );
 }
 
+// ─── Empty Enrollment State ───────────────────────────────────────────────────
+
+function EmptyEnrollmentState({ onBrowse }: { onBrowse: () => void }) {
+  return (
+    <Card className="border-2 border-dashed border-primary/30 bg-primary/3 shadow-none">
+      <CardContent className="p-8 text-center space-y-4">
+        <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+          <BookOpen className="h-8 w-8 text-primary" />
+        </div>
+        <div>
+          <p className="font-semibold text-foreground text-lg">Welcome to EduChamp!</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+            Browse the course catalogue to enrol in your first course. You can take multiple courses at the same time and switch between them anytime.
+          </p>
+        </div>
+        <Button onClick={onBrowse} className="gap-2 px-6">
+          <Plus className="h-4 w-4" />
+          Browse &amp; Enrol in Courses
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          Courses available: Algebra I, English I, Biology I, AP Courses, SAT Prep, and more
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Home() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const [courseSwitcherOpen, setCourseSwitcherOpen] = useState(false);
 
   const { data: dashboard, isLoading } = trpc.progress.getDashboard.useQuery(undefined, {
     enabled: !!user,
@@ -212,7 +236,6 @@ export default function Home() {
   }
 
   function handleOpenCourse(courseId: number) {
-    // Switch to course then navigate to curriculum
     if (courseId !== dashboard?.activeCourseId) {
       setActiveCourse.mutate({ courseId }, {
         onSuccess: () => setLocation("/curriculum"),
@@ -245,6 +268,13 @@ export default function Home() {
       {/* Guided tour — shown once on first login */}
       <GuidedTour accountType={user?.accountType ?? "student"} />
 
+      {/* Course Switcher / Catalogue dialog */}
+      <CourseSwitcher open={courseSwitcherOpen} onClose={() => {
+        setCourseSwitcherOpen(false);
+        utils.progress.getAllCourseProgress.invalidate();
+        utils.progress.getDashboard.invalidate();
+      }} />
+
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
@@ -257,7 +287,7 @@ export default function Home() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {!diagnostic && (
+          {!diagnostic && enrolledCount > 0 && (
             <Button
               onClick={() => setLocation("/diagnostic")}
               variant="outline"
@@ -267,15 +297,17 @@ export default function Home() {
               Take Placement Test
             </Button>
           )}
-          <Button
-            onClick={() => setLocation("/curriculum")}
-            variant="default"
-            size="sm"
-            className="gap-2"
-          >
-            <BookOpen className="h-4 w-4" />
-            My Curriculum
-          </Button>
+          {enrolledCount > 0 && (
+            <Button
+              onClick={() => setLocation("/curriculum")}
+              variant="default"
+              size="sm"
+              className="gap-2"
+            >
+              <BookOpen className="h-4 w-4" />
+              My Curriculum
+            </Button>
+          )}
         </div>
       </div>
 
@@ -339,123 +371,133 @@ export default function Home() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column: Continue Learning + My Courses */}
+        {/* Left column: My Courses + Continue Learning */}
         <div className="lg:col-span-2 space-y-6">
 
-          {/* Continue Learning — active course */}
+          {/* My Courses — multi-course grid */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-foreground">Continue Learning</h2>
-              <Button variant="ghost" size="sm" className="text-xs gap-1 text-muted-foreground"
-                onClick={() => setLocation("/curriculum")}>
-                View all units <ChevronRight className="h-3.5 w-3.5" />
+              <h2 className="text-base font-semibold text-foreground">My Courses</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs h-7"
+                onClick={() => setCourseSwitcherOpen(true)}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Course
               </Button>
             </div>
 
-            {activeUnit ? (
-              <Card className="border shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-                onClick={() => setLocation(`/curriculum/unit/${activeUnit.unitNumber}`)}>
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="secondary" className="text-xs font-medium">
-                          Unit {activeUnit.unitNumber}
-                        </Badge>
-                        {activeUnit.status === "quiz_unlocked" && (
-                          <Badge className="text-xs bg-yellow-100 text-yellow-700 border-yellow-200">
-                            Quiz Ready
-                          </Badge>
-                        )}
-                        <Badge variant="outline" className="text-xs">
-                          {dashboard?.courseTitle}
-                        </Badge>
-                      </div>
-                      <h3 className="font-semibold text-foreground text-base leading-tight mb-2">{activeUnit.title}</h3>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground mb-3">
-                        <span>{activeUnit.lessonsCompleted}/{activeUnit.totalLessons || "—"} lessons</span>
-                        {activeUnit.quizScore !== null && (
-                          <span>Quiz: {activeUnit.quizScore}%</span>
-                        )}
-                      </div>
-                      <Progress value={activeUnit.totalLessons > 0 ? (activeUnit.lessonsCompleted / activeUnit.totalLessons) * 100 : 0} className="h-1.5" />
-                    </div>
-                    <Button size="sm" className="shrink-0 gap-1 group-hover:translate-x-0.5 transition-transform">
-                      Continue <ArrowRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : !diagnostic ? (
-              <Card className="border border-dashed shadow-sm">
-                <CardContent className="p-6 text-center space-y-3">
-                  <ClipboardList className="h-10 w-10 text-muted-foreground mx-auto" />
-                  <div>
-                    <p className="font-medium text-foreground">Start with the Placement Test</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      The diagnostic assessment places you at the right starting point so you don't waste time on content you already know.
-                    </p>
-                  </div>
-                  <Button onClick={() => setLocation("/diagnostic")} className="gap-2">
-                    <ClipboardList className="h-4 w-4" />
-                    Take Placement Test
-                  </Button>
-                </CardContent>
-              </Card>
+            {isLoadingCourses ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[1, 2].map((i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
+              </div>
+            ) : enrolledCount === 0 ? (
+              <EmptyEnrollmentState onBrowse={() => setCourseSwitcherOpen(true)} />
             ) : (
-              <Card className="border border-dashed shadow-sm">
-                <CardContent className="p-6 text-center space-y-3">
-                  <GraduationCap className="h-10 w-10 text-muted-foreground mx-auto" />
-                  <div>
-                    <p className="font-medium text-foreground">All units complete!</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      You've completed all available units in your active course. Enrol in another course to keep learning.
-                    </p>
-                  </div>
-                  <Button variant="outline" onClick={() => setLocation("/curriculum")} className="gap-2">
-                    <BookOpen className="h-4 w-4" />
-                    View Curriculum
-                  </Button>
-                </CardContent>
-              </Card>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {allCourseProgress?.map((cp) => (
+                  <CourseCard
+                    key={cp.courseId}
+                    courseId={cp.courseId}
+                    courseTitle={cp.courseTitle}
+                    subject={cp.subject}
+                    gradeLevel={cp.gradeLevel}
+                    isCurrent={cp.isCurrent}
+                    totalUnits={cp.totalUnits}
+                    completedUnits={cp.completedUnits}
+                    inProgressUnits={cp.inProgressUnits}
+                    progressPercent={cp.progressPercent}
+                    activeUnitTitle={cp.activeUnitTitle}
+                    activeUnitNumber={cp.activeUnitNumber}
+                    lastActivityAt={cp.lastActivityAt}
+                    onSwitch={handleSwitchCourse}
+                    onOpen={handleOpenCourse}
+                    isSwitching={setActiveCourse.isPending}
+                  />
+                ))}
+              </div>
             )}
           </div>
 
-          {/* My Courses — multi-course grid */}
+          {/* Continue Learning — active course unit */}
           {enrolledCount > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold text-foreground">My Courses</h2>
-                <span className="text-xs text-muted-foreground">{enrolledCount} enrolled</span>
+                <h2 className="text-base font-semibold text-foreground">Continue Learning</h2>
+                <Button variant="ghost" size="sm" className="text-xs gap-1 text-muted-foreground"
+                  onClick={() => setLocation("/curriculum")}>
+                  View all units <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
               </div>
 
-              {isLoadingCourses ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {[1, 2].map((i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
-                </div>
+              {activeUnit ? (
+                <Card className="border shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+                  onClick={() => setLocation(`/curriculum/unit/${activeUnit.unitNumber}`)}>
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="secondary" className="text-xs font-medium">
+                            Unit {activeUnit.unitNumber}
+                          </Badge>
+                          {activeUnit.status === "quiz_unlocked" && (
+                            <Badge className="text-xs bg-yellow-100 text-yellow-700 border-yellow-200">
+                              Quiz Ready
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {dashboard?.courseTitle}
+                          </Badge>
+                        </div>
+                        <h3 className="font-semibold text-foreground text-base leading-tight mb-2">{activeUnit.title}</h3>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground mb-3">
+                          <span>{activeUnit.lessonsCompleted}/{activeUnit.totalLessons || "—"} lessons</span>
+                          {activeUnit.quizScore !== null && (
+                            <span>Quiz: {activeUnit.quizScore}%</span>
+                          )}
+                        </div>
+                        <Progress value={activeUnit.totalLessons > 0 ? (activeUnit.lessonsCompleted / activeUnit.totalLessons) * 100 : 0} className="h-1.5" />
+                      </div>
+                      <Button size="sm" className="shrink-0 gap-1 group-hover:translate-x-0.5 transition-transform">
+                        Continue <ArrowRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : !diagnostic ? (
+                <Card className="border border-dashed shadow-sm">
+                  <CardContent className="p-6 text-center space-y-3">
+                    <ClipboardList className="h-10 w-10 text-muted-foreground mx-auto" />
+                    <div>
+                      <p className="font-medium text-foreground">Start with the Placement Test</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        The diagnostic assessment places you at the right starting point.
+                      </p>
+                    </div>
+                    <Button onClick={() => setLocation("/diagnostic")} className="gap-2">
+                      <ClipboardList className="h-4 w-4" />
+                      Take Placement Test
+                    </Button>
+                  </CardContent>
+                </Card>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {allCourseProgress?.map((cp) => (
-                    <CourseCard
-                      key={cp.courseId}
-                      courseId={cp.courseId}
-                      courseTitle={cp.courseTitle}
-                      subject={cp.subject}
-                      gradeLevel={cp.gradeLevel}
-                      isCurrent={cp.isCurrent}
-                      totalUnits={cp.totalUnits}
-                      completedUnits={cp.completedUnits}
-                      inProgressUnits={cp.inProgressUnits}
-                      progressPercent={cp.progressPercent}
-                      activeUnitTitle={cp.activeUnitTitle}
-                      activeUnitNumber={cp.activeUnitNumber}
-                      lastActivityAt={cp.lastActivityAt}
-                      onSwitch={handleSwitchCourse}
-                      onOpen={handleOpenCourse}
-                      isSwitching={setActiveCourse.isPending}
-                    />
-                  ))}
-                </div>
+                <Card className="border border-dashed shadow-sm">
+                  <CardContent className="p-6 text-center space-y-3">
+                    <GraduationCap className="h-10 w-10 text-muted-foreground mx-auto" />
+                    <div>
+                      <p className="font-medium text-foreground">All units complete!</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        You've completed all available units. Enrol in another course to keep learning.
+                      </p>
+                    </div>
+                    <Button variant="outline" onClick={() => setCourseSwitcherOpen(true)} className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Browse More Courses
+                    </Button>
+                  </CardContent>
+                </Card>
               )}
             </div>
           )}
@@ -472,6 +514,15 @@ export default function Home() {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full justify-start gap-2 text-xs"
+                onClick={() => setCourseSwitcherOpen(true)}
+              >
+                <BookOpen className="h-3.5 w-3.5 text-blue-500" />
+                Browse Course Catalogue
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -503,40 +554,42 @@ export default function Home() {
           </Card>
 
           {/* Mastery Overview */}
-          <Card className="border shadow-sm">
-            <CardHeader className="pb-3 pt-4 px-4">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Target className="h-4 w-4 text-primary" />
-                Skill Mastery
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4 space-y-2">
-              {dashboard?.mastery.slice(0, 5).map((m) => (
-                <div key={m.skillId} className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground font-mono w-24 shrink-0 truncate">{m.skillId}</span>
-                  <Progress value={m.score} className="h-1.5 flex-1" />
-                  <span className={`text-xs font-semibold w-8 text-right ${getMasteryColor(m.score)}`}>
-                    {m.score}%
-                  </span>
-                </div>
-              ))}
-              {(dashboard?.mastery.length ?? 0) === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-2">
-                  Complete quizzes to track skill mastery
-                </p>
-              )}
-              {(dashboard?.mastery.length ?? 0) > 5 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-xs text-muted-foreground mt-1"
-                  onClick={() => setLocation("/progress")}
-                >
-                  View all skills
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+          {enrolledCount > 0 && (
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-3 pt-4 px-4">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  Skill Mastery
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 space-y-2">
+                {dashboard?.mastery.slice(0, 5).map((m) => (
+                  <div key={m.skillId} className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground font-mono w-24 shrink-0 truncate">{m.skillId}</span>
+                    <Progress value={m.score} className="h-1.5 flex-1" />
+                    <span className={`text-xs font-semibold w-8 text-right ${getMasteryColor(m.score)}`}>
+                      {m.score}%
+                    </span>
+                  </div>
+                ))}
+                {(dashboard?.mastery.length ?? 0) === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">
+                    Complete quizzes to track skill mastery
+                  </p>
+                )}
+                {(dashboard?.mastery.length ?? 0) > 5 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs text-muted-foreground mt-1"
+                    onClick={() => setLocation("/progress")}
+                  >
+                    View all skills
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Diagnostic Result */}
           {diagnostic && (

@@ -269,3 +269,19 @@
 - [x] UI: Admin Console — student grade assignment field in user management tab
 - [x] UI: Admin Console — bulk grade promotion tool (select grade cohort, promote all)
 - [x] UI: Admin Console — end-of-year promotion scheduler (set date, auto-promote)
+
+## Multi-Course Enrollment Fix & New AP/SAT Courses (Sprint 7)
+
+- [x] Server: auto-enroll student in grade-appropriate default course on first login if no enrollments exist
+- [x] Server: enrollSelf also sets isCurrent=true if it's the student's first enrollment
+- [x] UI: Home dashboard — show "Browse Courses" CTA prominently when student has 0 enrollments
+- [x] UI: Home dashboard — "Add Course" button in My Courses section header
+- [x] UI: Home dashboard — CourseSwitcher dialog accessible from dashboard (not just sidebar)
+- [x] UI: After enrollSelf, invalidate getAllCourseProgress so course appears immediately
+- [x] Seed: AP Chemistry (12 units, AP-level, gradeLevel=AP)
+- [x] Seed: AP Statistics (12 units, AP-level, gradeLevel=AP)
+- [x] Seed: AP Calculus BC (12 units, AP-level, gradeLevel=AP)
+- [x] Seed: AP Literature (12 units, AP-level, gradeLevel=AP)
+- [x] Seed: AP Business with Personal Finance (12 units, AP-level, gradeLevel=AP)
+- [x] Seed: SAT Prep (12 units, test-prep tricks + advanced skills, gradeLevel=AP)
+- [x] UI: CourseSwitcher — add "AP / Test Prep" grade filter pill for new AP courses

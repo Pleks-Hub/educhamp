@@ -170,7 +170,12 @@ export const adminRouter = router({
   enrollSelf: protectedProcedure
     .input(z.object({ courseId: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      const existing = await getUserCourseEnrollments(ctx.user.id);
       await enrollUserInCourse(ctx.user.id, input.courseId);
+      // If this is the first enrollment, also make it the active course
+      if (existing.length === 0) {
+        await setUserActiveCourse(ctx.user.id, input.courseId);
+      }
       return { success: true };
     }),
 

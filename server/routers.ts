@@ -103,9 +103,18 @@ export const appRouter = router({
     getDashboard: protectedProcedure.query(async ({ ctx }) => {
       const userId = ctx.user.id;
 
-      // Determine which course to show: use the student's current active enrollment,
-      // falling back to courseId=1 (Algebra I) for backward compatibility.
-      const enrollments = await getUserCourseEnrollments(userId);
+      // Determine which course to show: use the student's current active enrollment.
+      // If a student has no enrollments yet, auto-enroll them in a grade-appropriate
+      // default course so the dashboard is never empty on first login.
+      let enrollments = await getUserCourseEnrollments(userId);
+      if (enrollments.length === 0 && ctx.user.accountType === "student") {
+        const { getGradeDefaultCourse: _getDefault, enrollUserInCourse: _enroll, setUserActiveCourse: _setActive } = await import("./db");
+        const defaultCourse = await _getDefault(ctx.user.grade ?? "9");
+        const defaultCourseId = defaultCourse?.id ?? 1;
+        await _enroll(userId, defaultCourseId);
+        await _setActive(userId, defaultCourseId);
+        enrollments = await getUserCourseEnrollments(userId);
+      }
       const currentEnrollment = enrollments.find((e) => e.enrollment.isCurrent) ?? enrollments[0];
       const activeCourseId = currentEnrollment?.enrollment.courseId ?? 1;
 

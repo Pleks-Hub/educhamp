@@ -1126,6 +1126,27 @@ export async function getAdminAuditLog(limit = 50) {
   return db.select().from(adminAuditLog).orderBy(desc(adminAuditLog.createdAt)).limit(limit);
 }
 
+/**
+ * Returns the best default course for a given grade level.
+ * Prefers isDefault=true, then falls back to the first active course for that grade.
+ * Falls back to courseId=1 (Algebra I) if nothing found.
+ */
+export async function getGradeDefaultCourse(gradeLevel: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // Try isDefault first
+  const defaults = await db.select().from(courses)
+    .where(and(eq(courses.gradeLevel, gradeLevel), eq(courses.isActive, true), eq(courses.isDefault, true)))
+    .limit(1);
+  if (defaults.length > 0) return defaults[0];
+  // Fall back to first active course for this grade
+  const fallback = await db.select().from(courses)
+    .where(and(eq(courses.gradeLevel, gradeLevel), eq(courses.isActive, true)))
+    .orderBy(courses.sortOrder)
+    .limit(1);
+  return fallback[0] ?? null;
+}
+
 export async function enrollUserInCourse(userId: number, courseId: number) {
   const db = await getDb();
   if (!db) return;
