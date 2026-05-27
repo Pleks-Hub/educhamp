@@ -300,6 +300,12 @@
   max-width: 1280px;
 }
 
+/* Prevent horizontal overflow on mobile */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 /* Button press effect */
 button:active:not(:disabled) {
   transform: scale(0.97);

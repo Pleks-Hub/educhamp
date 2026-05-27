@@ -162,8 +162,8 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed && (
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="h-7 w-7 rounded-lg bg-sidebar-primary flex items-center justify-center shrink-0">
-                    <GraduationCap className="h-4 w-4 text-sidebar-primary-foreground" />
+                  <div className="h-7 w-7 rounded-lg overflow-hidden shrink-0 bg-white flex items-center justify-center">
+                    <img src="/manus-storage/educhamp-logo-64_2d79ce04.png" alt="EduChamp" className="h-6 w-6 object-contain" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-sidebar-foreground truncate leading-none">EduChamp</p>
@@ -309,9 +309,14 @@ function DashboardLayoutContent({
         {/* Mobile top bar */}
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-4 backdrop-blur sticky top-0 z-40">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9 rounded-lg" />
-              <span className="font-semibold text-sm">{activeItem?.label ?? "EduChamp"}</span>
+              <div className="flex items-center gap-1.5">
+                <div className="h-6 w-6 rounded overflow-hidden bg-white flex items-center justify-center">
+                  <img src="/manus-storage/educhamp-logo-64_2d79ce04.png" alt="EduChamp" className="h-5 w-5 object-contain" />
+                </div>
+                <span className="font-semibold text-sm truncate max-w-[140px]">{activeItem?.label ?? "EduChamp"}</span>
+              </div>
             </div>
           </div>
         )}

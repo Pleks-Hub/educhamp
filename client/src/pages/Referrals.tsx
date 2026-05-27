@@ -70,7 +70,7 @@ export default function Referrals() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="text-2xl font-bold text-slate-900">{codes?.length ?? 0}</div>

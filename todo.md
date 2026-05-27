@@ -535,3 +535,31 @@
 - [x] Test: data saving, session continuity, and recovery handling — verified
 - [x] Test: export, reporting, and summary features — verified
 - [x] Produce QA/UAT report with bugs, severity, root cause, fixes, and production-readiness assessment
+
+## Sprint 17 — Diagnostic Course Name Fix, Logo/Favicon, Mobile Responsiveness
+
+### Diagnostic Course Name Fix
+- [x] Fix "Pre Algebra 1" hardcoded label on Diagnostic page — use active course title
+- [x] Fix all hardcoded course name references in Diagnostic.tsx (headings, descriptions, buttons)
+- [x] Fix DiagnosticResults.tsx to show correct course name
+- [x] Validate all diagnostic flows show correct course name for all 56 courses
+
+### Logo & Favicon
+- [x] Process uploaded EduChamp logo (crop, optimise, resize for web)
+- [x] Upload logo to webdev static assets and get CDN URL
+- [x] Generate favicon.ico and apple-touch-icon from logo
+- [x] Replace GraduationCap icon with EduChamp logo in DashboardLayout sidebar
+- [x] Replace GraduationCap icon with EduChamp logo in LandingPage nav
+- [x] Replace GraduationCap icon with EduChamp logo in ForgotPassword/ResetPassword pages
+- [x] Update favicon in client/index.html
+
+### Mobile Responsiveness
+- [x] Audit and fix DashboardLayout sidebar (mobile drawer, overlay, close button)
+- [x] Audit and fix LandingPage (hero, features, courses, FAQ, nav) on mobile
+- [x] Audit and fix Diagnostic page on mobile (question cards, timer, navigation)
+- [x] Audit and fix AI Tutor page on mobile (chat input, mode selector, message bubbles)
+- [x] Audit and fix Curriculum/Lesson pages on mobile
+- [x] Audit and fix Parent Dashboard on mobile
+- [x] Audit and fix Onboarding pages on mobile
+- [x] Audit and fix Admin Console on mobile
+- [x] Fix any overflow, truncation, or layout issues discovered

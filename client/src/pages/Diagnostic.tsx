@@ -114,7 +114,7 @@ function formatTime(seconds: number): string {
 
 // ─── Question Review Card ─────────────────────────────────────────────────────
 
-function QuestionReviewCard({ answer, index }: { answer: GradedAnswer; index: number }) {
+function QuestionReviewCard({ answer, index, prereqLabel }: { answer: GradedAnswer; index: number; prereqLabel: string }) {
   const [expanded, setExpanded] = useState(!answer.correct);
   const choices = parseChoices(answer.choices);
 
@@ -154,7 +154,7 @@ function QuestionReviewCard({ answer, index }: { answer: GradedAnswer; index: nu
                     : "border-blue-200 text-blue-700"
                 }`}
               >
-                {answer.mapsToUnit === "prerequisite" ? "Pre-Algebra" : `Unit ${answer.mapsToUnit}`}
+                {answer.mapsToUnit === "prerequisite" ? prereqLabel : `Unit ${answer.mapsToUnit}`}
               </Badge>
             </div>
             <p className="text-sm font-medium text-foreground leading-snug line-clamp-2">
@@ -270,6 +270,19 @@ export default function Diagnostic() {
     { enabled: started && activeCourseId !== undefined }
   );
   const courseTitle = dashboard?.courseTitle ?? "Course";
+  const courseSubject = dashboard?.courseSubject ?? "other";
+  const unitCount = dashboard?.units?.length ?? 8;
+  // Derive a subject-appropriate label for prerequisite/foundational questions
+  const prereqLabel = (() => {
+    const s = courseSubject.toLowerCase();
+    if (s === "math") return "Foundational Math";
+    if (s === "ela" || s === "english") return "Reading Foundations";
+    if (s === "science") return "Science Basics";
+    if (s === "social_studies" || s === "social studies" || s === "socialstudies") return "Social Studies Foundations";
+    if (s === "technology") return "Technology Basics";
+    if (s === "spanish" || s === "language") return "Language Foundations";
+    return "Foundational Skills";
+  })();
   const { data: existingAttempt } = trpc.diagnostic.getLatestAttempt.useQuery(
     activeCourseId ? { courseId: activeCourseId } : undefined,
     { enabled: !!user && activeCourseId !== undefined }
@@ -505,7 +518,7 @@ export default function Diagnostic() {
         </div>
 
         {/* Score Summary */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Card className="border shadow-sm">
             <CardContent className="p-4 text-center">
               <p className="text-3xl font-bold text-foreground">{result.overallScore}%</p>
@@ -641,7 +654,7 @@ export default function Diagnostic() {
                 <option value="all">All Units</option>
                 {unitOptions.map((u) => (
                   <option key={u} value={u}>
-                    {u === "prerequisite" ? "Pre-Algebra" : `Unit ${u}`}
+                    {u === "prerequisite" ? prereqLabel : `Unit ${u}`}
                   </option>
                 ))}
               </select>
@@ -653,7 +666,7 @@ export default function Diagnostic() {
           ) : (
             <div className="space-y-3">
               {filteredAnswers.map((a, idx) => (
-                <QuestionReviewCard key={a.questionId} answer={a} index={idx} />
+                <QuestionReviewCard key={a.questionId} answer={a} index={idx} prereqLabel={prereqLabel} />
               ))}
             </div>
           )}
@@ -717,11 +730,11 @@ export default function Diagnostic() {
               <ul className="space-y-1.5 ml-4">
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                  Assess prerequisite skills (pre-algebra foundations)
+                  Assess prerequisite skills ({prereqLabel.toLowerCase()})
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                  Test concepts across all 12 {courseTitle} units
+                  Test concepts across all {unitCount} {courseTitle} units
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
@@ -828,20 +841,20 @@ export default function Diagnostic() {
 
       <div className="p-6 space-y-5 page-enter max-w-2xl">
         {/* Header with timer */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h1 className="text-lg font-bold text-foreground">Placement Diagnostic</h1>
             <p className="text-xs text-muted-foreground">
               Question {currentIndex + 1} of {totalQ} · {answeredCount} answered
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary" className="text-xs">
-              {currentQ.mapsToUnit === "prerequisite" ? "Pre-Algebra" : `Unit ${currentQ.mapsToUnit}`}
+              {currentQ.mapsToUnit === "prerequisite" ? prereqLabel : `Unit ${currentQ.mapsToUnit}`}
             </Badge>
             {/* Timer */}
             <div
-              className={`flex items-center gap-1.5 font-mono text-sm font-semibold px-3 py-1.5 rounded-lg border ${
+              className={`flex items-center gap-1.5 font-mono text-sm font-semibold px-2.5 py-1.5 rounded-lg border ${
                 timeLeft <= 300
                   ? "bg-red-50 border-red-200 text-red-700"
                   : timeLeft <= 600
@@ -854,7 +867,7 @@ export default function Diagnostic() {
             </div>
             <button
               onClick={() => setShowTimeUpDialog(true)}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors hidden sm:inline"
             >
               Need more time?
             </button>

@@ -385,8 +385,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/landing")}>
-              <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-                <GraduationCap className="h-5 w-5 text-white" />
+              <div className="h-9 w-9 rounded-lg overflow-hidden bg-white border border-slate-100 flex items-center justify-center">
+                <img src="/manus-storage/educhamp-logo-64_2d79ce04.png" alt="EduChamp" className="h-8 w-8 object-contain" />
               </div>
               <span className="font-bold text-lg text-slate-900">EduChamp</span>
             </div>
@@ -743,8 +743,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-indigo-600 flex items-center justify-center">
-                <GraduationCap className="h-4 w-4 text-white" />
+              <div className="h-7 w-7 rounded-lg overflow-hidden bg-white flex items-center justify-center">
+                <img src="/manus-storage/educhamp-logo-64_2d79ce04.png" alt="EduChamp" className="h-6 w-6 object-contain" />
               </div>
               <span className="font-bold text-white">EduChamp</span>
             </div>

@@ -256,7 +256,7 @@ export default function LessonDetail() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full">
           <TabsTrigger value="explanation" className="text-xs">
             <BookOpen className="h-3.5 w-3.5 mr-1.5" />
             Explanation

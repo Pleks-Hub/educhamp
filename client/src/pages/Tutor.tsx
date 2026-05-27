@@ -141,7 +141,8 @@ export default function Tutor() {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
 
   // The key fix: use a plain div ref, not ScrollArea, so we control scrolling directly
   const messagesEndRef = useRef<HTMLDivElement>(null);

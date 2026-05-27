@@ -811,7 +811,7 @@ function ReportExportPanel({ childId, childName }: { childId: number; childName:
         </div>
 
         {/* Summary stats */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Card className="text-center p-3">
             <div className="text-xl font-bold text-primary">{data.totalSkills}</div>
             <div className="text-xs text-muted-foreground mt-1">Total Skills</div>
@@ -1067,7 +1067,7 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card className="text-center p-4">
           <div className="text-2xl font-bold text-primary">{child.completedUnits}</div>
           <div className="text-xs text-muted-foreground mt-1">Units Completed</div>
@@ -1084,10 +1084,10 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
 
       {/* Tabbed detail sections */}
       <Tabs defaultValue="courses">
-        <TabsList className="w-full grid grid-cols-6">
+        <TabsList className="w-full grid grid-cols-3 sm:grid-cols-6">
           <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
           <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
-          <TabsTrigger value="goals" className="text-xs">Goals &amp; Notes</TabsTrigger>
+          <TabsTrigger value="goals" className="text-xs">Goals</TabsTrigger>
           <TabsTrigger value="gaps" className="text-xs">Skill Gaps</TabsTrigger>
           <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
           <TabsTrigger value="report" className="text-xs">Export</TabsTrigger>
