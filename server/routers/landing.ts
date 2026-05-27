@@ -2,8 +2,9 @@ import { z } from "zod";
 import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
 import { invokeLLM } from "../_core/llm";
 import { getDb } from "../db";
-import { courses, users, userCourseEnrollments, diagnosticAttempts, chatSessions, chatMessages } from "../../drizzle/schema";
+import { courses, users, userCourseEnrollments, diagnosticAttempts, chatSessions, chatMessages, demoRequests } from "../../drizzle/schema";
 import { count, eq, desc, like, or, and, gte, lte, isNotNull, asc } from "drizzle-orm";
+import { sendEmail } from "../emailService";
 import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
 
@@ -253,6 +254,116 @@ export const landingRouter = router({
         .where(eq(chatSessions.id, input.sessionId));
 
       return { ok: true };
+    }),
+
+  /** Submit an ISD/School demo request — public endpoint */
+  submitDemoRequest: publicProcedure
+    .input(z.object({
+      fullName: z.string().min(2).max(256),
+      schoolName: z.string().min(2).max(256),
+      roleTitle: z.string().min(2).max(128),
+      email: z.string().email().max(320),
+      phone: z.string().max(32).optional(),
+      numStudents: z.string().max(64).optional(),
+      gradeLevels: z.array(z.string()).optional(),
+      subjects: z.array(z.string()).optional(),
+      challenges: z.string().max(2000).optional(),
+      interestType: z.enum(["demo", "pilot", "district_license", "campus_license", "partnership", "curriculum_licensing", "other"]).default("demo"),
+      preferredTime: z.string().max(128).optional(),
+      notes: z.string().max(2000).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      let requestId: number | null = null;
+
+      if (db) {
+        const [result] = await db.insert(demoRequests).values({
+          fullName: input.fullName,
+          schoolName: input.schoolName,
+          roleTitle: input.roleTitle,
+          email: input.email,
+          phone: input.phone ?? null,
+          numStudents: input.numStudents ?? null,
+          gradeLevels: input.gradeLevels ? JSON.stringify(input.gradeLevels) : null,
+          subjects: input.subjects ? JSON.stringify(input.subjects) : null,
+          challenges: input.challenges ?? null,
+          interestType: input.interestType,
+          preferredTime: input.preferredTime ?? null,
+          notes: input.notes ?? null,
+          status: "new",
+        });
+        requestId = (result as { insertId?: number })?.insertId ?? null;
+      }
+
+      // Confirmation email to requester
+      const interestLabels: Record<string, string> = {
+        demo: "Product Demo",
+        pilot: "Pilot Program",
+        district_license: "District License",
+        campus_license: "Campus License",
+        partnership: "Partnership",
+        curriculum_licensing: "Curriculum Licensing",
+        other: "General Inquiry",
+      };
+      const interestLabel = interestLabels[input.interestType] ?? input.interestType;
+
+      await sendEmail({
+        to: input.email,
+        subject: `EduChamp — We received your ${interestLabel} request`,
+        templateName: "demo_request_confirmation",
+        html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:40px 0">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:32px 40px;text-align:center">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:-0.5px">EduChamp</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px">AI-Powered Adaptive Learning</p>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:40px">
+          <h2 style="margin:0 0 16px;color:#1e293b;font-size:22px">Thank you, ${input.fullName}!</h2>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6">We've received your <strong>${interestLabel}</strong> request for <strong>${input.schoolName}</strong>. Our team will review your inquiry and reach out within 1–2 business days.</p>
+          <!-- Summary box -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;border-radius:8px;padding:24px;margin-bottom:24px">
+            <tr><td>
+              <p style="margin:0 0 8px;color:#64748b;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Request Summary</p>
+              <table width="100%" cellpadding="4" cellspacing="0" style="font-size:14px;color:#334155">
+                <tr><td style="font-weight:600;width:140px">School / ISD:</td><td>${input.schoolName}</td></tr>
+                <tr><td style="font-weight:600">Your Role:</td><td>${input.roleTitle}</td></tr>
+                <tr><td style="font-weight:600">Interest:</td><td>${interestLabel}</td></tr>
+                ${input.numStudents ? `<tr><td style="font-weight:600">Students:</td><td>${input.numStudents}</td></tr>` : ""}
+                ${input.preferredTime ? `<tr><td style="font-weight:600">Preferred Time:</td><td>${input.preferredTime}</td></tr>` : ""}
+              </table>
+            </td></tr>
+          </table>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6">In the meantime, feel free to explore EduChamp at <a href="https://educhamp.app" style="color:#4f46e5;text-decoration:none">educhamp.app</a> or reply to this email if you have any questions.</p>
+          <a href="https://educhamp.app" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:15px">Explore EduChamp →</a>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="background:#f8fafc;padding:24px 40px;text-align:center;border-top:1px solid #e2e8f0">
+          <p style="margin:0;color:#94a3b8;font-size:12px">EduChamp · AI-Powered K-12 Adaptive Learning · <a href="https://educhamp.app" style="color:#94a3b8">educhamp.app</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+        text: `Hi ${input.fullName},\n\nThank you for your ${interestLabel} request for ${input.schoolName}. Our team will reach out within 1–2 business days.\n\nRequest Summary:\n- School: ${input.schoolName}\n- Role: ${input.roleTitle}\n- Interest: ${interestLabel}\n\nExplore EduChamp: https://educhamp.app\n\nThe EduChamp Team`,
+      });
+
+      // Internal notification to admin
+      const { notifyOwner } = await import("../_core/notification");
+      await notifyOwner({
+        title: `New ${interestLabel} Request — ${input.schoolName}`,
+        content: `${input.fullName} (${input.roleTitle}) at ${input.schoolName} submitted a ${interestLabel} request.\nEmail: ${input.email}${input.phone ? `\nPhone: ${input.phone}` : ""}${input.numStudents ? `\nStudents: ${input.numStudents}` : ""}\n\nView in Admin Console: https://educhamp.app/admin`,
+      });
+
+      return { ok: true, requestId };
     }),
 
   /** Public course catalogue — returns all active courses ordered by sortOrder for the landing page */

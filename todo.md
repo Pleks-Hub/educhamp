@@ -766,3 +766,18 @@
 - [x] Improve visual hierarchy and CTA placement throughout
 - [x] Ensure all sign-up buttons use role-selector modal
 - [x] Mobile responsiveness pass on all new sections
+
+## ISD Demo Request System & Pricing Enhancements
+- [x] DB: demoRequests table (fullName, schoolName, role, email, phone, numStudents, gradeLevels, subjects, challenges, interestType, preferredTime, notes, status, assignedTo, adminNotes, createdAt, updatedAt)
+- [x] DB: generate and apply migration (migration 0019 applied)
+- [x] Server: landing.submitDemoRequest (public) — save to DB, send confirmation email to requester, notify admin
+- [x] Server: admin.listDemoRequests — paginated, filterable by status
+- [x] Server: admin.updateDemoRequest — update status, assignedTo, adminNotes
+- [x] Server: admin.respondToDemoRequest — send branded follow-up email to requester
+- [x] Frontend: RequestDemoModal — 12-field form, mobile-friendly, branded, step indicator
+- [x] Frontend: wire ISD/School "Request a Demo" and "Contact Us" buttons to modal
+- [x] Admin Console: Demo Requests tab — CRM table with status badges, assignment, respond action
+- [x] Admin Console: Demo Request detail panel — full submission view + response form
+- [x] Pricing: annual billing toggle (monthly/annual) with 20% discount prices
+- [x] Pricing: plan comparison table (feature rows × plan columns)
+- [ ] Vitest: add tests for submitDemoRequest validation and admin list procedure

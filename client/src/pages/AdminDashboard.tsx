@@ -16,13 +16,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { DemoRequestsTab } from "@/components/DemoRequestsTab";
 import {
   Users, BookOpen, BarChart3, Settings, Shield, ClipboardList,
   GraduationCap, Brain, Activity, RefreshCw, ChevronRight, Clock,
   Mail, MessageCircle, Plus, Trash2, Edit2, Eye, CheckCircle2,
   AlertTriangle, FileText, Image, Globe, History, Lock, Unlock,
   UserPlus, UserMinus, Copy, MoreHorizontal, Search,
-  Inbox, Send, XCircle, Filter,
+  Inbox, Send, XCircle, Filter, Building2, Phone, Calendar, Sparkles,
+  ChevronLeft, ChevronDown, ChevronUp, Star,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -1579,6 +1581,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="grades" className="gap-2"><GraduationCap className="h-4 w-4" /> Grades</TabsTrigger>
             <TabsTrigger value="audit" className="gap-2"><ClipboardList className="h-4 w-4" /> Audit Log</TabsTrigger>
             <TabsTrigger value="emaillogs" className="gap-2"><Inbox className="h-4 w-4" /> Email Logs</TabsTrigger>
+            <TabsTrigger value="demorequests" className="gap-2"><Building2 className="h-4 w-4" /> Demo Requests</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview"><OverviewTab /></TabsContent>
@@ -1590,6 +1593,7 @@ export default function AdminDashboard() {
           <TabsContent value="settings"><SettingsTab /></TabsContent>
           <TabsContent value="audit"><AuditLogTab /></TabsContent>
           <TabsContent value="emaillogs"><EmailLogsTab /></TabsContent>
+          <TabsContent value="demorequests"><DemoRequestsTab /></TabsContent>
         </Tabs>
       </div>
     </div>

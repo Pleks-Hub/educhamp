@@ -800,3 +800,60 @@ export const userNotifications = mysqlTable("userNotifications", {
   userReadIdx: index("userNotifications_userId_isRead_idx").on(t.userId, t.isRead),
 }));
 export type UserNotification = typeof userNotifications.$inferSelect;
+
+// ─── Demo Requests (ISD / School Licensing Leads) ────────────────────────────
+
+export const demoRequests = mysqlTable("demoRequests", {
+  id: int("id").autoincrement().primaryKey(),
+
+  // Submitter info
+  fullName: varchar("fullName", { length: 256 }).notNull(),
+  schoolName: varchar("schoolName", { length: 256 }).notNull(),
+  roleTitle: varchar("roleTitle", { length: 128 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 32 }),
+
+  // Institutional details
+  numStudents: varchar("numStudents", { length: 64 }),       // e.g. "500-1000"
+  gradeLevels: text("gradeLevels"),                          // JSON array of strings
+  subjects: text("subjects"),                                // JSON array of strings
+  challenges: text("challenges"),                            // free text
+
+  // Engagement details
+  interestType: mysqlEnum("interestType", [
+    "demo",
+    "pilot",
+    "district_license",
+    "campus_license",
+    "partnership",
+    "curriculum_licensing",
+    "other",
+  ]).notNull().default("demo"),
+  preferredTime: varchar("preferredTime", { length: 128 }),  // e.g. "Weekday mornings"
+  notes: text("notes"),
+
+  // CRM workflow
+  status: mysqlEnum("status", [
+    "new",
+    "contacted",
+    "demo_scheduled",
+    "proposal_sent",
+    "closed_won",
+    "closed_lost",
+    "on_hold",
+  ]).notNull().default("new"),
+  assignedTo: varchar("assignedTo", { length: 256 }),        // admin name / email
+  adminNotes: text("adminNotes"),
+  respondedAt: timestamp("respondedAt"),
+
+  // Audit
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  emailIdx: index("demoRequests_email_idx").on(t.email),
+  statusIdx: index("demoRequests_status_idx").on(t.status),
+  createdAtIdx: index("demoRequests_createdAt_idx").on(t.createdAt),
+}));
+
+export type DemoRequest = typeof demoRequests.$inferSelect;
+export type InsertDemoRequest = typeof demoRequests.$inferInsert;

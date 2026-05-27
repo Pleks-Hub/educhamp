@@ -560,6 +560,168 @@ export const adminRouter = router({
     };
   }),
 
+  // ─── Demo Requests CRM ──────────────────────────────────────────────────────
+
+  listDemoRequests: adminProcedure
+    .input(z.object({
+      search: z.string().optional(),
+      status: z.enum(["all", "new", "contacted", "demo_scheduled", "proposal_sent", "closed_won", "closed_lost", "on_hold"]).default("all"),
+      interestType: z.enum(["all", "demo", "pilot", "district_license", "campus_license", "partnership", "curriculum_licensing", "other"]).default("all"),
+      page: z.number().int().min(1).default(1),
+      pageSize: z.number().int().min(1).max(100).default(25),
+    }))
+    .query(async ({ input }) => {
+      const db = await (await import("../db")).getDb();
+      if (!db) return { rows: [], total: 0 };
+      const { demoRequests } = await import("../../drizzle/schema");
+      const { count: drizzleCount, eq, desc, like, or, and } = await import("drizzle-orm");
+
+      const conditions: ReturnType<typeof eq>[] = [];
+      if (input.status !== "all") {
+        conditions.push(eq(demoRequests.status, input.status as "new" | "contacted" | "demo_scheduled" | "proposal_sent" | "closed_won" | "closed_lost" | "on_hold"));
+      }
+      if (input.interestType !== "all") {
+        conditions.push(eq(demoRequests.interestType, input.interestType as "demo" | "pilot" | "district_license" | "campus_license" | "partnership" | "curriculum_licensing" | "other"));
+      }
+      if (input.search) {
+        const s = `%${input.search}%`;
+        conditions.push(or(
+          like(demoRequests.fullName, s),
+          like(demoRequests.schoolName, s),
+          like(demoRequests.email, s),
+        ) as ReturnType<typeof eq>);
+      }
+
+      const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const [rows, [totalRow]] = await Promise.all([
+        db.select().from(demoRequests)
+          .where(where)
+          .orderBy(desc(demoRequests.createdAt))
+          .limit(input.pageSize)
+          .offset((input.page - 1) * input.pageSize),
+        db.select({ value: drizzleCount() }).from(demoRequests).where(where),
+      ]);
+
+      return { rows, total: totalRow?.value ?? 0 };
+    }),
+
+  getDemoRequest: adminProcedure
+    .input(z.object({ id: z.number().int() }))
+    .query(async ({ input }) => {
+      const db = await (await import("../db")).getDb();
+      if (!db) return null;
+      const { demoRequests } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const [row] = await db.select().from(demoRequests).where(eq(demoRequests.id, input.id)).limit(1);
+      return row ?? null;
+    }),
+
+  updateDemoRequest: adminProcedure
+    .input(z.object({
+      id: z.number().int(),
+      status: z.enum(["new", "contacted", "demo_scheduled", "proposal_sent", "closed_won", "closed_lost", "on_hold"]).optional(),
+      assignedTo: z.string().max(256).optional(),
+      adminNotes: z.string().max(4000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await (await import("../db")).getDb();
+      if (!db) return { ok: true };
+      const { demoRequests } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const updates: Record<string, string | Date | null> = { updatedAt: new Date() };
+      if (input.status !== undefined) updates.status = input.status;
+      if (input.assignedTo !== undefined) updates.assignedTo = input.assignedTo;
+      if (input.adminNotes !== undefined) updates.adminNotes = input.adminNotes;
+
+      await db.update(demoRequests).set(updates).where(eq(demoRequests.id, input.id));
+      await logAdminAction(ctx.user.id, "demoRequest.update", "demoRequest", input.id, { status: input.status, assignedTo: input.assignedTo });
+      return { ok: true };
+    }),
+
+  respondToDemoRequest: adminProcedure
+    .input(z.object({
+      id: z.number().int(),
+      replyMessage: z.string().min(10).max(5000),
+      newStatus: z.enum(["contacted", "demo_scheduled", "proposal_sent", "closed_won", "closed_lost", "on_hold"]).default("contacted"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await (await import("../db")).getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { demoRequests } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const [request] = await db.select().from(demoRequests).where(eq(demoRequests.id, input.id)).limit(1);
+      if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Demo request not found" });
+
+      // Send reply email to requester
+      const { sendEmail } = await import("../emailService");
+      await sendEmail({
+        to: request.email,
+        subject: `EduChamp — Follow-up on your inquiry from ${request.schoolName}`,
+        templateName: "demo_request_reply",
+        html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:40px 0">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+        <tr><td style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:32px 40px;text-align:center">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700">EduChamp</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px">AI-Powered Adaptive Learning</p>
+        </td></tr>
+        <tr><td style="padding:40px">
+          <h2 style="margin:0 0 16px;color:#1e293b;font-size:22px">Hi ${request.fullName},</h2>
+          <div style="color:#475569;font-size:15px;line-height:1.7;white-space:pre-wrap">${input.replyMessage.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+          <hr style="border:none;border-top:1px solid #e2e8f0;margin:32px 0">
+          <a href="https://educhamp.app" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:15px">Visit EduChamp →</a>
+        </td></tr>
+        <tr><td style="background:#f8fafc;padding:24px 40px;text-align:center;border-top:1px solid #e2e8f0">
+          <p style="margin:0;color:#94a3b8;font-size:12px">EduChamp · AI-Powered K-12 Adaptive Learning</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+        text: `Hi ${request.fullName},\n\n${input.replyMessage}\n\nThe EduChamp Team\nhttps://educhamp.app`,
+      });
+
+      // Update status and mark responded
+      await db.update(demoRequests)
+        .set({ status: input.newStatus, respondedAt: new Date(), updatedAt: new Date() })
+        .where(eq(demoRequests.id, input.id));
+
+      await logAdminAction(ctx.user.id, "demoRequest.respond", "demoRequest", input.id, { newStatus: input.newStatus });
+      return { ok: true };
+    }),
+
+  getDemoRequestStats: adminProcedure.query(async () => {
+    const db = await (await import("../db")).getDb();
+    if (!db) return { total: 0, new: 0, contacted: 0, scheduled: 0, won: 0 };
+    const { demoRequests } = await import("../../drizzle/schema");
+    const { count: drizzleCount, eq } = await import("drizzle-orm");
+
+    const [total, newCount, contacted, scheduled, won] = await Promise.all([
+      db.select({ v: drizzleCount() }).from(demoRequests),
+      db.select({ v: drizzleCount() }).from(demoRequests).where(eq(demoRequests.status, "new")),
+      db.select({ v: drizzleCount() }).from(demoRequests).where(eq(demoRequests.status, "contacted")),
+      db.select({ v: drizzleCount() }).from(demoRequests).where(eq(demoRequests.status, "demo_scheduled")),
+      db.select({ v: drizzleCount() }).from(demoRequests).where(eq(demoRequests.status, "closed_won")),
+    ]);
+
+    return {
+      total: total[0]?.v ?? 0,
+      new: newCount[0]?.v ?? 0,
+      contacted: contacted[0]?.v ?? 0,
+      scheduled: scheduled[0]?.v ?? 0,
+      won: won[0]?.v ?? 0,
+    };
+  }),
+
   scheduleGradePromotion: adminProcedure
     .input(z.object({
       cron: z.string().default("0 0 2 15 6 *"),

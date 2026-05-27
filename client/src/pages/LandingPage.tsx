@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { EduChampDemoWidget } from "@/components/EduChampDemoWidget";
 import { RoleSelectModal } from "@/components/RoleSelectModal";
+import { RequestDemoModal } from "@/components/RequestDemoModal";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -267,6 +268,8 @@ export default function LandingPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [roleModalOpen, setRoleModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string | undefined>(undefined);
+  const [demoOpen, setDemoOpen] = useState(false);
+  const [annualBilling, setAnnualBilling] = useState(false);
 
   function openSignUp(plan?: string) {
     setSelectedPlan(plan);
@@ -836,6 +839,27 @@ export default function LandingPage() {
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Choose the plan that fits your family</h2>
             <p className="text-slate-500 max-w-2xl mx-auto">All plans include access to EduBot AI Tutor, adaptive placement tests, and the full course catalogue. No hidden fees.</p>
+
+            {/* Annual / Monthly toggle */}
+            <div className="mt-8 inline-flex items-center gap-3 bg-white border border-slate-200 rounded-full px-4 py-2 shadow-sm">
+              <span className={`text-sm font-medium transition-colors ${!annualBilling ? 'text-slate-900' : 'text-slate-400'}`}>Monthly</span>
+              <button
+                role="switch"
+                aria-checked={annualBilling}
+                onClick={() => setAnnualBilling(a => !a)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                  annualBilling ? 'bg-indigo-600' : 'bg-slate-200'
+                }`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  annualBilling ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+              <span className={`text-sm font-medium transition-colors ${annualBilling ? 'text-slate-900' : 'text-slate-400'}`}>
+                Annual
+                <span className="ml-1.5 inline-flex items-center bg-emerald-100 text-emerald-700 text-xs font-bold px-1.5 py-0.5 rounded-full">Save 20%</span>
+              </span>
+            </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 items-start">
@@ -845,11 +869,12 @@ export default function LandingPage() {
               <div className="mb-6">
                 <p className="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-2">Family Plan</p>
                 <div className="flex items-end gap-1 mb-1">
-                  <span className="text-5xl font-extrabold text-slate-900">$19</span>
-                  <span className="text-2xl font-bold text-slate-900">.99</span>
+                  {annualBilling && <span className="text-2xl font-bold text-slate-300 line-through mr-1">$19.99</span>}
+                  <span className="text-5xl font-extrabold text-slate-900">{annualBilling ? '$15' : '$19'}</span>
+                  <span className="text-2xl font-bold text-slate-900">{annualBilling ? '.99' : '.99'}</span>
                   <span className="text-slate-400 text-sm mb-1">/month</span>
                 </div>
-                <p className="text-xs text-slate-400">Billed monthly · Cancel anytime</p>
+                <p className="text-xs text-slate-400">{annualBilling ? 'Billed annually ($191.88/yr) · Cancel anytime' : 'Billed monthly · Cancel anytime'}</p>
               </div>
               <p className="text-sm text-slate-600 mb-6 leading-relaxed">Everything your family needs to get started — AI tutoring, all courses, and a parent dashboard for up to 3 students.</p>
               <ul className="space-y-3 mb-8 flex-1">
@@ -871,7 +896,7 @@ export default function LandingPage() {
                 onClick={() => openSignUp("Family Plan")}
                 className="w-full py-3 rounded-xl border-2 border-indigo-600 text-indigo-700 font-semibold hover:bg-indigo-50 transition-colors active:scale-[0.98] text-sm"
               >
-                Get Started — $19.99/mo
+                Get Started — {annualBilling ? '$15.99/mo' : '$19.99/mo'}
               </button>
             </div>
 
@@ -883,11 +908,12 @@ export default function LandingPage() {
               <div className="mb-6">
                 <p className="text-xs font-bold uppercase tracking-widest text-indigo-200 mb-2">Premium Family</p>
                 <div className="flex items-end gap-1 mb-1">
-                  <span className="text-5xl font-extrabold">$29</span>
-                  <span className="text-2xl font-bold">.99</span>
+                  {annualBilling && <span className="text-2xl font-bold text-indigo-300 line-through mr-1">$29.99</span>}
+                  <span className="text-5xl font-extrabold">{annualBilling ? '$23' : '$29'}</span>
+                  <span className="text-2xl font-bold">{annualBilling ? '.99' : '.99'}</span>
                   <span className="text-indigo-200 text-sm mb-1">/month</span>
                 </div>
-                <p className="text-xs text-indigo-300">Billed monthly · Cancel anytime</p>
+                <p className="text-xs text-indigo-300">{annualBilling ? 'Billed annually ($287.88/yr) · Cancel anytime' : 'Billed monthly · Cancel anytime'}</p>
               </div>
               <p className="text-sm text-indigo-100 mb-6 leading-relaxed">Everything in Family, plus advanced diagnostics, exam prep, priority AI sessions, and custom learning paths.</p>
               <ul className="space-y-3 mb-8 flex-1">
@@ -909,7 +935,7 @@ export default function LandingPage() {
                 onClick={() => openSignUp("Premium Family")}
                 className="w-full py-3 rounded-xl bg-white text-indigo-700 font-bold hover:bg-indigo-50 transition-colors active:scale-[0.98] text-sm shadow-lg"
               >
-                Get Started — $29.99/mo
+                Get Started — {annualBilling ? '$23.99/mo' : '$29.99/mo'}
               </button>
             </div>
 
@@ -938,14 +964,62 @@ export default function LandingPage() {
                   </li>
                 ))}
               </ul>
-              <a
-                href="mailto:schools@educhamp.app"
+              <button
+                onClick={() => setDemoOpen(true)}
                 className="w-full py-3 rounded-xl border-2 border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 transition-colors active:scale-[0.98] text-sm text-center block"
               >
-                Contact Us for Pricing
-              </a>
+                Request a Demo
+              </button>
             </div>
 
+          </div>
+
+          {/* ── Plan Comparison Table ── */}
+          <div className="mt-16 overflow-x-auto">
+            <h3 className="text-center text-lg font-bold text-slate-800 mb-6">Full Feature Comparison</h3>
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b-2 border-slate-200">
+                  <th className="text-left py-3 px-4 text-slate-500 font-medium w-1/3">Feature</th>
+                  <th className="text-center py-3 px-4 text-indigo-700 font-semibold">Family<br/><span className="text-xs font-normal text-slate-400">{annualBilling ? '$15.99/mo' : '$19.99/mo'}</span></th>
+                  <th className="text-center py-3 px-4 bg-indigo-50 rounded-t-lg text-indigo-700 font-semibold">Premium Family<br/><span className="text-xs font-normal text-indigo-400">{annualBilling ? '$23.99/mo' : '$29.99/mo'}</span></th>
+                  <th className="text-center py-3 px-4 text-slate-700 font-semibold">ISD / School<br/><span className="text-xs font-normal text-slate-400">Per-seat annual</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { feature: 'Number of students', family: 'Up to 3', premium: 'Up to 3', isd: 'Unlimited' },
+                  { feature: 'All courses & subjects (56+)', family: '✓', premium: '✓', isd: '✓' },
+                  { feature: 'AI Tutor EduBot', family: 'Unlimited', premium: 'Priority access', isd: 'Priority access' },
+                  { feature: 'Diagnostic assessments', family: '—', premium: '✓', isd: '✓' },
+                  { feature: 'Exam prep modules', family: '—', premium: '✓', isd: '✓' },
+                  { feature: 'Custom learning paths', family: '—', premium: '✓', isd: '✓' },
+                  { feature: 'Parent dashboard', family: '✓', premium: '✓', isd: 'Admin dashboard' },
+                  { feature: 'Weekly progress reports', family: '✓', premium: '✓', isd: '✓' },
+                  { feature: 'Advanced skill gap analysis', family: '—', premium: '✓', isd: '✓' },
+                  { feature: 'Teacher dashboards', family: '—', premium: '—', isd: '✓' },
+                  { feature: 'Custom TEKS alignment', family: '—', premium: '—', isd: '✓' },
+                  { feature: 'Bulk content management', family: '—', premium: '—', isd: '✓' },
+                  { feature: 'Performance analytics API', family: '—', premium: '—', isd: '✓' },
+                  { feature: 'Dedicated onboarding support', family: '—', premium: '—', isd: '✓' },
+                  { feature: 'TEKS-aligned curriculum', family: '✓', premium: '✓', isd: '✓' },
+                  { feature: 'Cancel anytime', family: '✓', premium: '✓', isd: 'Annual contract' },
+                ].map((row, i) => (
+                  <tr key={row.feature} className={`border-b border-slate-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                    <td className="py-3 px-4 text-slate-700 font-medium">{row.feature}</td>
+                    <td className="py-3 px-4 text-center text-slate-600">
+                      {row.family === '✓' ? <CheckCircle className="h-4 w-4 text-indigo-500 mx-auto" /> : row.family === '—' ? <span className="text-slate-300">—</span> : <span className="text-xs">{row.family}</span>}
+                    </td>
+                    <td className="py-3 px-4 text-center bg-indigo-50/50 text-slate-600">
+                      {row.premium === '✓' ? <CheckCircle className="h-4 w-4 text-indigo-600 mx-auto" /> : row.premium === '—' ? <span className="text-slate-300">—</span> : <span className="text-xs font-medium text-indigo-700">{row.premium}</span>}
+                    </td>
+                    <td className="py-3 px-4 text-center text-slate-600">
+                      {row.isd === '✓' ? <CheckCircle className="h-4 w-4 text-emerald-500 mx-auto" /> : row.isd === '—' ? <span className="text-slate-300">—</span> : <span className="text-xs">{row.isd}</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {/* Trust badges */}
@@ -1082,6 +1156,13 @@ export default function LandingPage() {
         isOpen={roleModalOpen}
         onClose={() => setRoleModalOpen(false)}
         planName={selectedPlan}
+      />
+
+      {/* ── Demo Request Modal ── */}
+      <RequestDemoModal
+        open={demoOpen}
+        onClose={() => setDemoOpen(false)}
+        defaultInterest="demo"
       />
     </div>
   );
