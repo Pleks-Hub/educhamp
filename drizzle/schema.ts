@@ -410,6 +410,8 @@ export const userProfiles = mysqlTable("userProfiles", {
   // Personalization
   colorPalette: varchar("colorPalette", { length: 32 }).default("indigo"),
   displayName: varchar("displayName", { length: 128 }),
+  preferredName: varchar("preferredName", { length: 64 }),   // nickname the AI uses when addressing the student
+  aiWelcomeMessage: text("aiWelcomeMessage"),                 // custom welcome message shown in AI chat
   // Onboarding state
   onboardingCompleted: boolean("onboardingCompleted").notNull().default(false),
   onboardingStep: int("onboardingStep").notNull().default(0),

@@ -3,6 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -430,28 +431,41 @@ function PersonalizationCard() {
   const { palette, setPalette, isSaving } = usePalette();
   const { user } = useAuth();
   const utils = trpc.useUtils();
-  const [displayName, setDisplayName] = useState("");
-  const [nameInitialized, setNameInitialized] = useState(false);
 
-  const saveDisplayName = trpc.onboarding.savePersonalization.useMutation({
+  const [displayName, setDisplayName] = useState("");
+  const [preferredName, setPreferredName] = useState("");
+  const [aiWelcomeMessage, setAiWelcomeMessage] = useState("");
+  const [initialized, setInitialized] = useState(false);
+
+  const saveMutation = trpc.onboarding.savePersonalization.useMutation({
     onSuccess: () => {
       utils.onboarding.getPersonalization.invalidate();
-      toast.success("Display name saved!");
+      toast.success("Settings saved!");
     },
-    onError: () => toast.error("Failed to save display name."),
+    onError: () => toast.error("Failed to save settings."),
   });
 
   const { data: personalization } = trpc.onboarding.getPersonalization.useQuery(undefined, {
     enabled: !!user,
   });
 
-  // Populate display name from server on first load (useEffect avoids setState-in-render)
+  // Populate fields from server on first load
   useEffect(() => {
-    if (personalization?.displayName && !nameInitialized) {
-      setDisplayName(personalization.displayName);
-      setNameInitialized(true);
+    if (personalization && !initialized) {
+      setDisplayName(personalization.displayName ?? "");
+      setPreferredName((personalization as any).preferredName ?? "");
+      setAiWelcomeMessage((personalization as any).aiWelcomeMessage ?? "");
+      setInitialized(true);
     }
-  }, [personalization?.displayName, nameInitialized]);
+  }, [personalization, initialized]);
+
+  const handleSaveNames = () => {
+    saveMutation.mutate({
+      displayName: displayName.trim() || undefined,
+      preferredName: preferredName.trim() || null,
+      aiWelcomeMessage: aiWelcomeMessage.trim() || null,
+    });
+  };
 
   return (
     <Card>
@@ -460,7 +474,7 @@ function PersonalizationCard() {
           <Palette className="h-4 w-4" />
           Personalization
         </CardTitle>
-        <CardDescription>Choose a colour palette and display name for your EduChamp experience.</CardDescription>
+        <CardDescription>Customise your colours, name, and AI tutor experience.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Colour Palette */}
@@ -504,30 +518,68 @@ function PersonalizationCard() {
         {/* Display Name */}
         <div className="space-y-2">
           <Label htmlFor="displayName" className="text-sm font-medium">Display Name</Label>
-          <p className="text-xs text-muted-foreground">Override how your name appears in EduChamp (optional).</p>
-          <div className="flex gap-2">
-            <Input
-              id="displayName"
-              placeholder={user?.name ?? "Your display name"}
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="max-w-xs"
-              maxLength={128}
-            />
-            <Button
-              size="sm"
-              disabled={saveDisplayName.isPending || !displayName.trim()}
-              onClick={() => saveDisplayName.mutate({ displayName: displayName.trim() })}
-              className="gap-1.5"
-            >
-              {saveDisplayName.isPending ? (
-                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
-              ) : (
-                "Save"
-              )}
-            </Button>
-          </div>
+          <p className="text-xs text-muted-foreground">Override how your name appears across EduChamp (optional).</p>
+          <Input
+            id="displayName"
+            placeholder={user?.name ?? "Your display name"}
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            className="max-w-xs"
+            maxLength={128}
+          />
         </div>
+
+        <Separator />
+
+        {/* Preferred Name / Nickname for AI */}
+        <div className="space-y-2">
+          <Label htmlFor="preferredName" className="text-sm font-medium">AI Nickname</Label>
+          <p className="text-xs text-muted-foreground">
+            What should your AI tutor call you? Leave blank to use your display name.
+            Examples: <span className="font-medium">"Alex"</span>, <span className="font-medium">"Champ"</span>, <span className="font-medium">"Ms. Johnson"</span>.
+          </p>
+          <Input
+            id="preferredName"
+            placeholder={user?.name?.split(" ")[0] ?? "Nickname"}
+            value={preferredName}
+            onChange={(e) => setPreferredName(e.target.value)}
+            className="max-w-xs"
+            maxLength={64}
+          />
+        </div>
+
+        <Separator />
+
+        {/* Custom AI Welcome Message */}
+        <div className="space-y-2">
+          <Label htmlFor="aiWelcomeMessage" className="text-sm font-medium">Custom AI Welcome Message</Label>
+          <p className="text-xs text-muted-foreground">
+            Personalise the greeting your AI tutor shows when you open a chat session.
+            Leave blank for the default welcome.
+          </p>
+          <Textarea
+            id="aiWelcomeMessage"
+            placeholder="e.g. Hey! Ready to crush some algebra today? Let's go! 🚀"
+            value={aiWelcomeMessage}
+            onChange={(e) => setAiWelcomeMessage(e.target.value)}
+            className="resize-none"
+            rows={3}
+            maxLength={500}
+          />
+          <p className="text-xs text-muted-foreground text-right">{aiWelcomeMessage.length}/500</p>
+        </div>
+
+        <Button
+          onClick={handleSaveNames}
+          disabled={saveMutation.isPending}
+          className="gap-1.5"
+        >
+          {saveMutation.isPending ? (
+            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
+          ) : (
+            "Save Preferences"
+          )}
+        </Button>
       </CardContent>
     </Card>
   );

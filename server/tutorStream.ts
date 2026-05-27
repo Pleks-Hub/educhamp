@@ -25,6 +25,8 @@ import {
   getQuizAttemptsForUser,
   getUserUnitProgress,
   getLessonsByUnit,
+  getUserCourseEnrollments,
+  getActiveCourseIdForUser,
 } from "./db";
 
 type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary";
@@ -151,13 +153,34 @@ export function registerTutorStreamRoute(app: Express) {
       const recentHistory = history.slice(-20);
 
       // ── Gather full student context ───────────────────────────────────────
-      const [masteryData, allUnits, diagnosticAttempt, allQuizAttempts, unitProgressData] = await Promise.all([
+      const [masteryData, allUnitsAll, diagnosticAttempt, allQuizAttempts, unitProgressData, enrollments, activeCourseId] = await Promise.all([
         getUserMastery(contextUserId),
         getAllUnits(),
         getLatestDiagnosticAttempt(contextUserId),
         getQuizAttemptsForUser(contextUserId),
         getUserUnitProgress(contextUserId),
+        getUserCourseEnrollments(contextUserId),
+        getActiveCourseIdForUser(contextUserId),
       ]);
+
+      // Resolve active course details for course-aware system prompt
+      const activeEnrollment = enrollments.find((e) => e.enrollment.courseId === activeCourseId) ?? enrollments[0];
+      const activeCourse = activeEnrollment?.course;
+
+      // Filter units to only those belonging to the active course
+      const allUnits = activeCourse
+        ? allUnitsAll.filter((u: { courseId?: number }) => u.courseId === activeCourse.id)
+        : allUnitsAll;
+
+      // Load preferred name and ai welcome message from user profile
+      let preferredName: string | null = null;
+      let aiWelcomeMessage: string | null = null;
+      try {
+        const { getUserProfile } = await import("./db");
+        const profile = await getUserProfile(contextUserId);
+        preferredName = (profile as any)?.preferredName ?? null;
+        aiWelcomeMessage = (profile as any)?.aiWelcomeMessage ?? null;
+      } catch { /* non-fatal */ }
 
       const currentUnit = allUnits.find((u) => u.unitNumber === unitNumber);
 
@@ -254,6 +277,17 @@ export function registerTutorStreamRoute(app: Express) {
           learningObjectives: learningObjectivesText,
           parentGoalContext,
           studentDemographics,
+          courseContext: activeCourse
+            ? {
+                title: activeCourse.title,
+                subject: activeCourse.subject,
+                gradeLevel: activeCourse.gradeLevel,
+                teksCode: activeCourse.teksCode ?? null,
+                courseCode: activeCourse.courseCode,
+                preferredName: preferredName,
+                aiWelcomeMessage: aiWelcomeMessage,
+              }
+            : undefined,
         }
       );
 

@@ -941,6 +941,8 @@ export async function upsertUserProfile(
     parentGoalDetail: string;
     colorPalette: string;
     displayName: string;
+    preferredName: string;
+    aiWelcomeMessage: string;
     onboardingCompleted: boolean;
     onboardingStep: number;
   }>

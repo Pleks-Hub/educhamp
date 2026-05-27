@@ -147,6 +147,16 @@ export default function Tutor() {
 
   const { data: units } = trpc.curriculum.getUnits.useQuery();
   const { data: dashboard } = trpc.progress.getDashboard.useQuery();
+  const { data: personalization } = trpc.onboarding.getPersonalization.useQuery(undefined, {
+    enabled: !!user,
+  });
+  // Resolve the name the AI tutor uses: preferredName > displayName first word > account first name
+  const aiName = (personalization as any)?.preferredName ||
+    personalization?.displayName?.split(" ")[0] ||
+    user?.name?.split(" ")[0] ||
+    "there";
+  const customWelcome = (personalization as any)?.aiWelcomeMessage as string | undefined;
+  const courseLabel = dashboard?.courseTitle ?? "your course";
   const [selectedUnit, setSelectedUnit] = useState<number | undefined>(unitParam);
   const currentUnit = units?.find((u) => u.unitNumber === selectedUnit);
 
@@ -320,7 +330,7 @@ export default function Tutor() {
             <Sparkles className="h-4 w-4 text-primary shrink-0" />
             <span className="text-sm font-bold text-foreground">AI Tutor</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-0.5">{dashboard?.courseTitle ?? "Algebra I"} · EduChamp</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{courseLabel} · EduChamp</p>
         </div>
 
         {/* Mode Selection */}
@@ -362,7 +372,7 @@ export default function Tutor() {
             }`}
           >
             <MessageSquare className="h-3 w-3 shrink-0" />
-            <span>General Algebra I</span>
+            <span>General — {courseLabel}</span>
           </button>
           {(units ?? []).map((unit) => (
             <button
@@ -440,7 +450,7 @@ export default function Tutor() {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground text-base">
-                  Ready to help, {user.name?.split(" ")[0]}!
+                  {customWelcome ? customWelcome : `Ready to help, ${aiName}!`}
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">
                   {currentModeConfig.description}
@@ -547,7 +557,7 @@ export default function Tutor() {
                     ? "Ask for an exam review plan or practice questions…"
                     : mode === "remediation"
                     ? "Tell me what you're struggling with…"
-                    : "Ask anything about Algebra I…"
+                    : `Ask anything about ${courseLabel}…`
                 }
                 className="flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 text-sm min-h-[36px] max-h-32 py-1 px-0 placeholder:text-muted-foreground/60"
                 rows={1}

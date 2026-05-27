@@ -261,8 +261,10 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
   getPersonalization: protectedProcedure.query(async ({ ctx }) => {
     const profile = await getUserProfile(ctx.user.id);
     return {
-      colorPalette: profile?.colorPalette ?? "indigo",
-      displayName: profile?.displayName ?? null,
+      colorPalette: (profile as any)?.colorPalette ?? "indigo",
+      displayName: (profile as any)?.displayName ?? null,
+      preferredName: (profile as any)?.preferredName ?? null,
+      aiWelcomeMessage: (profile as any)?.aiWelcomeMessage ?? null,
     };
   }),
 
@@ -272,12 +274,20 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
       z.object({
         colorPalette: z.enum(["indigo", "emerald", "rose", "violet", "amber", "teal"]).optional(),
         displayName: z.string().max(128).optional(),
+        preferredName: z.string().max(64).optional().nullable(),
+        aiWelcomeMessage: z.string().max(500).optional().nullable(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       await upsertUserProfile(ctx.user.id, {
         ...(input.colorPalette !== undefined ? { colorPalette: input.colorPalette } : {}),
         ...(input.displayName !== undefined ? { displayName: input.displayName } : {}),
+        ...(input.preferredName !== undefined && input.preferredName !== null
+          ? { preferredName: input.preferredName }
+          : {}),
+        ...(input.aiWelcomeMessage !== undefined && input.aiWelcomeMessage !== null
+          ? { aiWelcomeMessage: input.aiWelcomeMessage }
+          : {}),
       });
       return { success: true };
     }),

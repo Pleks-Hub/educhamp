@@ -166,6 +166,11 @@ export const appRouter = router({
         totalUnits: allUnits.length,
         recentQuizAttempts: quizAttemptsData.slice(0, 5),
         courseTitle: currentEnrollment?.course?.title ?? "Course",
+        courseSubject: currentEnrollment?.course?.subject ?? "other",
+        courseGradeLevel: currentEnrollment?.course?.gradeLevel ?? "",
+        courseTeksCode: currentEnrollment?.course?.teksCode ?? null,
+        courseDescription: currentEnrollment?.course?.description ?? null,
+        courseCode: currentEnrollment?.course?.courseCode ?? "",
         activeCourseId,
         hasDiagnosticForActiveCourse: latestDiag !== null,
       };

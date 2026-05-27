@@ -302,15 +302,15 @@
 
 ## Sprint 9 — Course-Aware Diagnostic First-Run & Correct Course Labels
 
-- [ ] Server: getQuestions always resolves courseId from active course when not passed; randomise question order per call
-- [ ] Server: submitDiagnostic always resolves courseId from active course when not passed
-- [ ] Server: getDashboard returns hasDiagnosticForActiveCourse boolean
-- [ ] Server: getCourseTitle helper used everywhere instead of hard-coded "Algebra I"
-- [ ] UI: Home dashboard — show "Take Diagnostic" CTA (not "Continue Learning") when hasDiagnosticForActiveCourse is false
-- [ ] UI: Diagnostic page — show active course title/name, not "Algebra I"
-- [ ] UI: CourseSwitcher — after switching, navigate to /diagnostic if no prior diagnostic for new course
-- [ ] UI: DashboardLayout course context banner — show active course name correctly
-- [ ] UI: Fix all hard-coded "Algebra I" or "ALG1" labels in Diagnostic, Home, and Curriculum pages
+- [x] Server: getQuestions always resolves courseId from active course when not passed; randomise question order per call
+- [x] Server: submitDiagnostic always resolves courseId from active course when not passed
+- [x] Server: getDashboard returns hasDiagnosticForActiveCourse boolean
+- [x] Server: getCourseTitle helper used everywhere instead of hard-coded "Algebra I"
+- [x] UI: Home dashboard — show "Take Diagnostic" CTA (not "Continue Learning") when hasDiagnosticForActiveCourse is false
+- [x] UI: Diagnostic page — show active course title/name, not "Algebra I"
+- [x] UI: CourseSwitcher — after switching, navigate to /diagnostic if no prior diagnostic for new course
+- [x] UI: DashboardLayout course context banner — show active course name correctly
+- [x] UI: Fix all hard-coded "Algebra I" or "ALG1" labels in Diagnostic, Home, and Curriculum pages
 
 ## Sprint 9 — Course-Aware Diagnostic & Auto-Redirect
 
@@ -327,3 +327,17 @@
 - [x] UI: Home dashboard — amber "Start Placement Test" card when no diagnostic for active course
 - [x] UI: Home dashboard — amber hint text under greeting when diagnostic not yet taken
 - [x] UI: CourseSwitcher — after switching, auto-redirect to /diagnostic if no diagnostic for new course
+
+## Sprint 10 — Curriculum Course-Awareness, AI Tutor Context & Personalisation
+
+- [x] UI: Curriculum page — show active course title in page header and breadcrumbs (not "Algebra I")
+- [x] UI: Curriculum page — show active course subject badge and description
+- [x] UI: Curriculum/Diagnostic label — "Placement Diagnostic" subtitle shows active course name
+- [x] Server: AI Tutor — build course-specific system prompt sections for all 10 courses
+- [x] Server: AI Tutor — inject active course context (title, subject, units, grade level) into every tutor session
+- [x] DB: userProfiles — add preferredName and aiWelcomeMessage columns
+- [x] Server: onboarding.savePersonalization — accept preferredName and aiWelcomeMessage
+- [x] UI: Profile → Personalisation tab — preferred name input + AI welcome message textarea
+- [x] UI: Dashboard greeting — use preferredName when set, fall back to first name
+- [x] UI: AI Tutor — show customised welcome message when student opens chat
+- [x] UI: AI Tutor — address student by preferredName in all AI responses (injected into system prompt)

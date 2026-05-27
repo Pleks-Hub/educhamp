@@ -10,12 +10,24 @@ import {
   ArrowRight,
   BookOpen,
   CheckCircle2,
+  ChevronRight,
   Lock,
   PlayCircle,
   Star,
   Trophy,
 } from "lucide-react";
 import { CourseContextBanner } from "@/components/CourseContextBanner";
+
+const SUBJECT_LABELS: Record<string, string> = {
+  math: "Mathematics",
+  english: "English Language Arts",
+  science: "Science",
+  social_studies: "Social Studies",
+  language: "World Language",
+  business: "Business & Finance",
+  test_prep: "Test Preparation",
+  other: "",
+};
 
 function getStatusConfig(status: string) {
   switch (status) {
@@ -38,6 +50,7 @@ export default function Curriculum() {
   if (isLoading) {
     return (
       <div className="p-6 space-y-4 page-enter">
+        <Skeleton className="h-6 w-64" />
         <Skeleton className="h-8 w-48" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
@@ -49,13 +62,49 @@ export default function Curriculum() {
   const units = dashboard?.units ?? [];
   const courseTitle = dashboard?.courseTitle ?? "Curriculum";
   const totalUnits = dashboard?.totalUnits ?? units.length;
+  const courseSubject = dashboard?.courseSubject ?? "other";
+  const courseGradeLevel = dashboard?.courseGradeLevel ?? "";
+  const courseTeksCode = dashboard?.courseTeksCode ?? null;
+
+  // Human-readable grade label
+  const gradeLabel =
+    courseGradeLevel === "AP"
+      ? "AP / Advanced"
+      : courseGradeLevel
+      ? `Grade ${courseGradeLevel}`
+      : "";
+  const subjectLabel = SUBJECT_LABELS[courseSubject] ?? courseSubject;
+  const teksLabel = courseTeksCode ? `${courseTeksCode}` : "TEKS-aligned";
+
+  // Subtitle parts: e.g. "Grade 9 · Mathematics · TEKS 111.39"
+  const subtitleParts = [gradeLabel, subjectLabel, teksLabel].filter(Boolean);
 
   return (
     <div className="p-6 space-y-6 page-enter max-w-6xl">
       <CourseContextBanner />
+
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <button onClick={() => setLocation("/")} className="hover:text-foreground transition-colors">
+          Dashboard
+        </button>
+        <ChevronRight className="h-3 w-3" />
+        <span className="text-foreground font-medium">{courseTitle}</span>
+      </nav>
+
+      {/* Course Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">{courseTitle}</h1>
-        <p className="text-muted-foreground text-sm mt-1">{totalUnits} units · Katy ISD · TEKS-aligned</p>
+        <div className="flex items-center gap-2 mb-1">
+          <h1 className="text-2xl font-bold text-foreground">{courseTitle}</h1>
+          {courseGradeLevel === "AP" && (
+            <Badge variant="secondary" className="text-xs font-semibold bg-violet-100 text-violet-700 border-violet-200">
+              AP
+            </Badge>
+          )}
+        </div>
+        <p className="text-muted-foreground text-sm">
+          {totalUnits} units · {subtitleParts.join(" · ")}
+        </p>
       </div>
 
       {/* Progress Summary */}
