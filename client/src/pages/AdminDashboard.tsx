@@ -17,6 +17,9 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { DemoRequestsTab } from "@/components/DemoRequestsTab";
+import { CouponManagerTab } from "@/components/admin/CouponManagerTab";
+import { SubscriptionCRMTab } from "@/components/admin/SubscriptionCRMTab";
+import { PaymentAnalyticsTab } from "@/components/admin/PaymentAnalyticsTab";
 import {
   Users, BookOpen, BarChart3, Settings, Shield, ClipboardList,
   GraduationCap, Brain, Activity, RefreshCw, ChevronRight, Clock,
@@ -24,7 +27,7 @@ import {
   AlertTriangle, FileText, Image, Globe, History, Lock, Unlock,
   UserPlus, UserMinus, Copy, MoreHorizontal, Search,
   Inbox, Send, XCircle, Filter, Building2, Phone, Calendar, Sparkles,
-  ChevronLeft, ChevronDown, ChevronUp, Star,
+  ChevronLeft, ChevronDown, ChevronUp, Star, Tag, CreditCard,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -1582,6 +1585,9 @@ export default function AdminDashboard() {
             <TabsTrigger value="audit" className="gap-2"><ClipboardList className="h-4 w-4" /> Audit Log</TabsTrigger>
             <TabsTrigger value="emaillogs" className="gap-2"><Inbox className="h-4 w-4" /> Email Logs</TabsTrigger>
             <TabsTrigger value="demorequests" className="gap-2"><Building2 className="h-4 w-4" /> Demo Requests</TabsTrigger>
+            <TabsTrigger value="coupons" className="gap-2"><Tag className="h-4 w-4" /> Coupons</TabsTrigger>
+            <TabsTrigger value="subscriptions" className="gap-2"><CreditCard className="h-4 w-4" /> Subscriptions</TabsTrigger>
+            <TabsTrigger value="paymentanalytics" className="gap-2"><BarChart3 className="h-4 w-4" /> Payment Analytics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview"><OverviewTab /></TabsContent>
@@ -1594,6 +1600,9 @@ export default function AdminDashboard() {
           <TabsContent value="audit"><AuditLogTab /></TabsContent>
           <TabsContent value="emaillogs"><EmailLogsTab /></TabsContent>
           <TabsContent value="demorequests"><DemoRequestsTab /></TabsContent>
+          <TabsContent value="coupons"><CouponManagerTab /></TabsContent>
+          <TabsContent value="subscriptions"><SubscriptionCRMTab /></TabsContent>
+          <TabsContent value="paymentanalytics"><PaymentAnalyticsTab /></TabsContent>
         </Tabs>
       </div>
     </div>

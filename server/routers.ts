@@ -8,6 +8,7 @@ import { onboardingRouter } from "./routers/onboarding";
 import { landingRouter } from "./routers/landing";
 import { adminRouter } from "./routers/admin";
 import { newsletterRouter } from "./routers/newsletter";
+import { paymentRouter } from "./routers/payment";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
@@ -64,6 +65,7 @@ export const appRouter = router({
   onboarding: onboardingRouter,
   landing: landingRouter,
   newsletter: newsletterRouter,
+  payment: paymentRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

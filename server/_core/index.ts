@@ -12,6 +12,7 @@ import { registerTutorStreamRoute } from "../tutorStream";
 import { gradePromotionHandler } from "../scheduledHandlers";
 import { inviteExpiryHandler } from "../scheduled/inviteExpiry";
 import { seedDefaultRoles } from "../db";
+import { registerStripeWebhook } from "../stripeWebhook";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 
@@ -69,6 +70,9 @@ async function startServer() {
       crossOriginEmbedderPolicy: false, // Required for Manus storage proxy
     })
   );
+
+  // ── Stripe webhook (must be registered BEFORE express.json) ─────────────────
+  registerStripeWebhook(app);
 
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));

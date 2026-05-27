@@ -30,6 +30,7 @@ import CourseCatalog from "./pages/CourseCatalog";
 import AdminDashboard from "./pages/AdminDashboard";
 import NewsletterConsole from "./pages/NewsletterConsole";
 import ChatManagement from "./pages/ChatManagement";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
 
 function Router() {
   return (
@@ -42,6 +43,7 @@ function Router() {
       <Route path="/join" component={JoinPage} />
       <Route path="/onboarding/parent" component={ParentOnboarding} />
       <Route path="/onboarding/student" component={StudentOnboarding} />
+      <Route path="/checkout/success" component={CheckoutSuccess} />
       {/* Admin console — standalone, no sidebar */}
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/admin/newsletter" component={NewsletterConsole} />

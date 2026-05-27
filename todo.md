@@ -799,3 +799,80 @@
 - [x] Show selected plan + billing period summary pill in RoleSelectModal
 - [x] Pass billingPeriod through to StudentOnboarding and ParentOnboarding pages
 - [x] Show plan + billing period confirmation pill in onboarding wizard header
+
+## Sprint 24 — Nav Link, District Logos, Billing Period Persistence
+
+### Schools Nav Link
+- [x] Add "Schools" link to top nav bar pointing to #schools anchor
+- [x] Smooth-scroll behavior on click
+
+### District Logos
+- [ ] Download official logos for Katy ISD, Spring ISD, Cy-Fair ISD, Humble ISD, Conroe ISD, Alief ISD (deferred — awaiting signed partnership agreements)
+- [ ] Upload logos via manus-upload-file --webdev (deferred)
+- [ ] Replace text badge strip in Schools section with <img> logo elements (deferred)
+
+### billingPeriod Server Persistence
+- [x] Add billingPeriod column to users table in drizzle/schema.ts (migration 0021 applied)
+- [x] Generate and apply migration SQL
+- [x] Add saveUserBillingPeriod query helper in server/db.ts
+- [x] Add onboarding.saveBillingPeriod tRPC procedure
+- [x] Call procedure from ParentOnboarding and StudentOnboarding on mount (read from sessionStorage)
+- [x] Vitest: add tests for billingPeriod persistence (included in server/payment.test.ts)
+
+## Sprint 25 — Stripe Integration, Coupon Management, Billing Period Persistence, Payment Analytics
+
+### DB Schema
+- [x] Add billingPeriod column to users table (enum: monthly | annual) — migration 0021
+- [x] Create coupons table (code, name, discountType, discountValue, applicablePlans, usageLimit, perUserLimit, startDate, expiresAt, duration, isRecurring, eligibility, minAmount, status, createdBy)
+- [x] Create couponRedemptions table (couponId, userId, redeemedAt, planName, discountApplied)
+- [x] Create subscriptions table (userId, stripeCustomerId, stripeSubscriptionId, planName, billingPeriod, status, currentPeriodEnd, cancelAtPeriodEnd, trialEnd)
+- [x] Create paymentAuditLog table (userId, event, stripeEventId, amount, currency, status, metadata, createdAt)
+- [x] Generate and apply all migrations
+
+### Server — Stripe & Payments
+- [x] Create server/stripe.ts helper (stripe client, product/price map for all plans + billing periods, calculateDiscount, getOrCreateStripeCustomer)
+- [x] Add payment.createCheckoutSession procedure (plan, billingPeriod, couponCode)
+- [x] Add payment.validateCoupon procedure (public) — validate code, return discount details
+- [x] Add payment.getBillingPortalUrl procedure (protected) — Stripe customer portal
+- [x] Add payment.getSubscriptionStatus procedure (protected)
+- [x] Add payment.getPaymentHistory procedure (protected)
+- [x] Implement /api/stripe/webhook route with signature verification and test event handling
+- [x] Handle webhook events: checkout.session.completed, customer.subscription.updated, customer.subscription.deleted, invoice.paid, invoice.payment_failed, payment_intent.succeeded
+
+### Server — Coupon Management
+- [x] Add payment.admin.createCoupon procedure
+- [x] Add payment.admin.listCoupons procedure (paginated, filterable by status)
+- [x] Add payment.admin.updateCoupon procedure (status, params)
+- [x] Add payment.admin.deleteCoupon procedure
+- [x] Add payment.admin.getCouponStats procedure (usage count, revenue impact)
+
+### Server — billingPeriod Persistence
+- [x] Add onboarding.saveBillingPeriod procedure (reads from sessionStorage on mount, saves to users table)
+
+### Frontend — Checkout & Payment
+- [x] Create CheckoutModal component (plan summary, coupon entry, real-time price calc, Stripe redirect)
+- [x] Wire pricing CTA buttons to CheckoutModal for logged-in users; RoleSelectModal for new users
+- [x] Show original price, discount amount, final price, coupon validity in CheckoutModal
+- [x] Create /checkout/success page (post-Stripe redirect landing)
+- [ ] Create /billing page (subscription status, payment history, billing portal link) — deferred to Sprint 26
+- [ ] Add Billing nav item to student/parent dashboard — deferred to Sprint 26
+
+### Admin Console — Coupon Manager
+- [x] Create CouponManagerTab in AdminDashboard
+- [x] Coupon list table with status badges (active, paused, expired, archived)
+- [x] Create/Edit coupon form (all configurable parameters)
+- [x] Coupon detail panel with redemption history and stats
+
+### Admin Console — Subscription CRM
+- [x] Create SubscriptionCRMTab in AdminDashboard
+- [x] Table of all active/cancelled subscriptions with plan, billing period, status, renewal date
+- [x] Per-user subscription detail with payment history
+
+### Admin Console — Payment Analytics
+- [x] Create PaymentAnalyticsTab in AdminDashboard
+- [x] KPI cards: MRR, active subscriptions, coupon redemptions, failed payments
+- [x] Charts: billing period split (bar), plan distribution (pie), recent payment events
+- [ ] Export CSV for coupon usage and payment reports — deferred to Sprint 26
+
+### Vitest
+- [x] 36 tests in server/payment.test.ts: calculateDiscount, getPlanByKey, coupon validation logic, billing period persistence, subscription upsert, payment event logging, admin coupon CRUD, enum validation

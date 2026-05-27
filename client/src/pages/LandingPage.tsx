@@ -16,6 +16,7 @@ import {
 import { EduChampDemoWidget } from "@/components/EduChampDemoWidget";
 import { RoleSelectModal } from "@/components/RoleSelectModal";
 import { RequestDemoModal } from "@/components/RequestDemoModal";
+import { CheckoutModal } from "@/components/CheckoutModal";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -271,10 +272,31 @@ export default function LandingPage() {
   const [selectedPlan, setSelectedPlan] = useState<string | undefined>(undefined);
   const [demoOpen, setDemoOpen] = useState(false);
   const [annualBilling, setAnnualBilling] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutPlanKey, setCheckoutPlanKey] = useState<"family" | "premium_family">("family");
+  const [checkoutPlanName, setCheckoutPlanName] = useState("Family Plan");
+
+  const { data: currentUser } = trpc.auth.me.useQuery();
 
   function openSignUp(plan?: string) {
-    setSelectedPlan(plan);
-    setRoleModalOpen(true);
+    // Map display plan name to plan key
+    const planKeyMap: Record<string, "family" | "premium_family"> = {
+      "Family Plan": "family",
+      "Premium Family": "premium_family",
+    };
+    const planKey = plan ? (planKeyMap[plan] ?? "family") : "family";
+    const planName = plan ?? "Family Plan";
+
+    if (currentUser) {
+      // Already logged in — go straight to checkout
+      setCheckoutPlanKey(planKey);
+      setCheckoutPlanName(planName);
+      setCheckoutOpen(true);
+    } else {
+      // Not logged in — show role selection / sign-up
+      setSelectedPlan(plan);
+      setRoleModalOpen(true);
+    }
   }
   const subscribeNewsletter = trpc.onboarding.subscribeNewsletter.useMutation();
   const { data: liveStats } = trpc.landing.getStats.useQuery();
@@ -459,6 +481,9 @@ export default function LandingPage() {
               <a href="#courses" className="hover:text-indigo-600 transition-colors">Courses</a>
               <a href="#how-it-works" className="hover:text-indigo-600 transition-colors">How It Works</a>
               <a href="#pricing" className="hover:text-indigo-600 transition-colors font-semibold text-indigo-600">Pricing</a>
+              <a href="#schools" className="hover:text-indigo-600 transition-colors flex items-center gap-1">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-500"></span>Schools
+              </a>
               <a href="#faq" className="hover:text-indigo-600 transition-colors">FAQ</a>
             </div>
 
@@ -494,6 +519,7 @@ export default function LandingPage() {
             <a href="#courses" className="block text-sm text-slate-600 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>Courses</a>
             <a href="#how-it-works" className="block text-sm text-slate-600 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>How It Works</a>
             <a href="#pricing" className="block text-sm font-semibold text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
+            <a href="#schools" className="block text-sm text-slate-600 hover:text-indigo-600 py-1 font-medium" onClick={() => setMobileMenuOpen(false)}>Schools &amp; Districts</a>
             <a href="#faq" className="block text-sm text-slate-600 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>FAQ</a>
             <div className="flex gap-2 pt-2">
               <button onClick={handleSignIn} className="flex-1 text-sm border border-slate-200 rounded-lg py-2 text-slate-700 hover:bg-slate-50 transition-colors">Sign In</button>
@@ -1267,6 +1293,7 @@ export default function LandingPage() {
               <a href="#features" className="hover:text-white transition-colors">Features</a>
               <a href="#courses" className="hover:text-white transition-colors">Courses</a>
               <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
+              <a href="#schools" className="hover:text-white transition-colors">Schools</a>
               <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
               <button onClick={handleSignIn} className="hover:text-white transition-colors">Sign In</button>
             </div>
@@ -1291,6 +1318,20 @@ export default function LandingPage() {
         open={demoOpen}
         onClose={() => setDemoOpen(false)}
         defaultInterest="demo"
+      />
+
+      {/* ── Checkout Modal (logged-in users) ── */}
+      <CheckoutModal
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        planKey={checkoutPlanKey}
+        planName={checkoutPlanName}
+        billingPeriod={annualBilling ? "annual" : "monthly"}
+        amountCents={
+          checkoutPlanKey === "premium_family"
+            ? (annualBilling ? 2399 * 12 : 2999)
+            : (annualBilling ? 1599 * 12 : 1999)
+        }
       />
     </div>
   );

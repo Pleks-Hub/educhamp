@@ -1,0 +1,1 @@
+ALTER TABLE `coupons` MODIFY COLUMN `applicablePlans` json;

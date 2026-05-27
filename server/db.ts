@@ -1920,3 +1920,426 @@ export async function updateParentInviteStudentContext(
     })
     .where(eq(parentInviteTokens.token, token));
 }
+
+// ─── Billing Period ───────────────────────────────────────────────────────────
+
+export async function saveUserBillingPeriod(
+  userId: number,
+  billingPeriod: "monthly" | "annual"
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ billingPeriod }).where(eq(users.id, userId));
+}
+
+// ─── Coupons ──────────────────────────────────────────────────────────────────
+
+export async function getCouponByCode(code: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const { coupons } = await import("../drizzle/schema");
+  const rows = await db
+    .select()
+    .from(coupons)
+    .where(eq(coupons.code, code.toUpperCase().trim()))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getCouponById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const { coupons } = await import("../drizzle/schema");
+  const rows = await db.select().from(coupons).where(eq(coupons.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function listCoupons(opts: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const db = await getDb();
+  if (!db) return { rows: [], total: 0 };
+  const { coupons } = await import("../drizzle/schema");
+  const { and, count, desc } = await import("drizzle-orm");
+  const conditions = [];
+  if (opts.status) conditions.push(eq(coupons.status, opts.status as any));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select()
+      .from(coupons)
+      .where(where)
+      .orderBy(desc(coupons.createdAt))
+      .limit(opts.limit ?? 50)
+      .offset(opts.offset ?? 0),
+    db.select({ total: count() }).from(coupons).where(where),
+  ]);
+  return { rows, total };
+}
+
+export async function createCoupon(data: {
+  code: string;
+  name: string;
+  description?: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  maxDiscountAmount?: number;
+  applicablePlans?: string[];
+  eligibility: "all" | "new_users" | "parents" | "students" | "schools" | "selected";
+  selectedUserIds?: number[];
+  minAmount?: number;
+  usageLimit?: number;
+  perUserLimit?: number;
+  duration: "once" | "repeating" | "forever";
+  durationMonths?: number;
+  startDate?: Date;
+  expiresAt?: Date;
+  isStackable?: boolean;
+  stripeCouponId?: string;
+  stripePromotionCodeId?: string;
+  createdBy?: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const { coupons } = await import("../drizzle/schema");
+  const [result] = await db.insert(coupons).values({
+    code: data.code.toUpperCase().trim(),
+    name: data.name,
+    description: data.description ?? null,
+    discountType: data.discountType,
+    discountValue: data.discountValue,
+    maxDiscountAmount: data.maxDiscountAmount ?? null,
+    applicablePlans: data.applicablePlans ?? null,
+    eligibility: data.eligibility,
+    selectedUserIds: data.selectedUserIds ?? null,
+    minAmount: data.minAmount ?? null,
+    usageLimit: data.usageLimit ?? null,
+    perUserLimit: data.perUserLimit ?? 1,
+    duration: data.duration,
+    durationMonths: data.durationMonths ?? null,
+    startDate: data.startDate ?? null,
+    expiresAt: data.expiresAt ?? null,
+    isStackable: data.isStackable ?? false,
+    stripeCouponId: data.stripeCouponId ?? null,
+    stripePromotionCodeId: data.stripePromotionCodeId ?? null,
+    createdBy: data.createdBy ?? null,
+  });
+  return result;
+}
+
+export async function updateCoupon(
+  id: number,
+  data: Partial<{
+    name: string;
+    description: string;
+    discountType: "percentage" | "fixed";
+    discountValue: number;
+    maxDiscountAmount: number;
+    applicablePlans: string[];
+    eligibility: "all" | "new_users" | "parents" | "students" | "schools" | "selected";
+    usageLimit: number;
+    perUserLimit: number;
+    duration: "once" | "repeating" | "forever";
+    durationMonths: number;
+    startDate: Date;
+    expiresAt: Date;
+    status: "active" | "paused" | "expired" | "archived";
+    isStackable: boolean;
+    stripeCouponId: string;
+    stripePromotionCodeId: string;
+  }>
+) {
+  const db = await getDb();
+  if (!db) return;
+  const { coupons } = await import("../drizzle/schema");
+  await db.update(coupons).set(data as any).where(eq(coupons.id, id));
+}
+
+export async function incrementCouponUsage(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  const { coupons } = await import("../drizzle/schema");
+  const { sql } = await import("drizzle-orm");
+  await db
+    .update(coupons)
+    .set({ usageCount: sql`${coupons.usageCount} + 1` })
+    .where(eq(coupons.id, id));
+}
+
+export async function recordCouponRedemption(data: {
+  couponId: number;
+  userId: number;
+  planName: string;
+  billingPeriod: "monthly" | "annual";
+  originalAmountCents: number;
+  discountAmountCents: number;
+  finalAmountCents: number;
+  stripeCheckoutSessionId?: string;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  const { couponRedemptions } = await import("../drizzle/schema");
+  await db.insert(couponRedemptions).values({
+    couponId: data.couponId,
+    userId: data.userId,
+    planName: data.planName,
+    billingPeriod: data.billingPeriod,
+    originalAmountCents: data.originalAmountCents,
+    discountAmountCents: data.discountAmountCents,
+    finalAmountCents: data.finalAmountCents,
+    stripeCheckoutSessionId: data.stripeCheckoutSessionId ?? null,
+  });
+}
+
+export async function countUserCouponRedemptions(couponId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const { couponRedemptions } = await import("../drizzle/schema");
+  const { count, and } = await import("drizzle-orm");
+  const [row] = await db
+    .select({ total: count() })
+    .from(couponRedemptions)
+    .where(and(eq(couponRedemptions.couponId, couponId), eq(couponRedemptions.userId, userId)));
+  return row?.total ?? 0;
+}
+
+export async function getCouponRedemptionStats(couponId: number) {
+  const db = await getDb();
+  if (!db) return { totalRedemptions: 0, totalDiscountCents: 0 };
+  const { couponRedemptions } = await import("../drizzle/schema");
+  const { count, sum } = await import("drizzle-orm");
+  const [row] = await db
+    .select({
+      totalRedemptions: count(),
+      totalDiscountCents: sum(couponRedemptions.discountAmountCents),
+    })
+    .from(couponRedemptions)
+    .where(eq(couponRedemptions.couponId, couponId));
+  return {
+    totalRedemptions: row?.totalRedemptions ?? 0,
+    totalDiscountCents: Number(row?.totalDiscountCents ?? 0),
+  };
+}
+
+// ─── Subscriptions ────────────────────────────────────────────────────────────
+
+export async function upsertSubscription(data: {
+  userId: number;
+  planName: string;
+  billingPeriod: "monthly" | "annual";
+  status: "trialing" | "active" | "past_due" | "canceled" | "unpaid" | "incomplete";
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  stripeCheckoutSessionId?: string;
+  currentPeriodStart?: Date;
+  currentPeriodEnd?: Date;
+  cancelAtPeriodEnd?: boolean;
+  canceledAt?: Date;
+  trialEnd?: Date;
+  amountCents?: number;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  const { subscriptions } = await import("../drizzle/schema");
+  const { sql } = await import("drizzle-orm");
+  await db
+    .insert(subscriptions)
+    .values({
+      userId: data.userId,
+      planName: data.planName,
+      billingPeriod: data.billingPeriod,
+      status: data.status,
+      stripeCustomerId: data.stripeCustomerId ?? null,
+      stripeSubscriptionId: data.stripeSubscriptionId ?? null,
+      stripeCheckoutSessionId: data.stripeCheckoutSessionId ?? null,
+      currentPeriodStart: data.currentPeriodStart ?? null,
+      currentPeriodEnd: data.currentPeriodEnd ?? null,
+      cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
+      canceledAt: data.canceledAt ?? null,
+      trialEnd: data.trialEnd ?? null,
+      amountCents: data.amountCents ?? null,
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        planName: data.planName,
+        billingPeriod: data.billingPeriod,
+        status: data.status,
+        stripeCustomerId: data.stripeCustomerId ?? null,
+        currentPeriodStart: data.currentPeriodStart ?? null,
+        currentPeriodEnd: data.currentPeriodEnd ?? null,
+        cancelAtPeriodEnd: data.cancelAtPeriodEnd ?? false,
+        canceledAt: data.canceledAt ?? null,
+        trialEnd: data.trialEnd ?? null,
+        amountCents: data.amountCents ?? null,
+        updatedAt: sql`NOW()`,
+      },
+    });
+}
+
+export async function getActiveSubscription(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const { subscriptions } = await import("../drizzle/schema");
+  const { inArray } = await import("drizzle-orm");
+  const rows = await db
+    .select()
+    .from(subscriptions)
+    .where(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (t: any) =>
+        inArray(t.status, ["active", "trialing", "past_due"]) &&
+        eq(t.userId, userId)
+    )
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getUserSubscription(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const { subscriptions } = await import("../drizzle/schema");
+  const rows = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.userId, userId))
+    .orderBy(subscriptions.createdAt)
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function listSubscriptions(opts: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const db = await getDb();
+  if (!db) return { rows: [], total: 0 };
+  const { subscriptions } = await import("../drizzle/schema");
+  const { and, count, desc } = await import("drizzle-orm");
+  const conditions = [eq(subscriptions.userId, subscriptions.userId)];
+  if (opts.status) conditions.push(eq(subscriptions.status, opts.status as any));
+  const where = and(...conditions);
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select()
+      .from(subscriptions)
+      .where(where)
+      .orderBy(desc(subscriptions.createdAt))
+      .limit(opts.limit ?? 50)
+      .offset(opts.offset ?? 0),
+    db.select({ total: count() }).from(subscriptions).where(where),
+  ]);
+  return { rows, total };
+}
+
+// ─── Payment Audit Log ────────────────────────────────────────────────────────
+
+export async function logPaymentEvent(data: {
+  userId?: number;
+  event: string;
+  stripeEventId?: string;
+  stripeObjectId?: string;
+  amountCents?: number;
+  currency?: string;
+  status?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  const { paymentAuditLog } = await import("../drizzle/schema");
+  await db.insert(paymentAuditLog).values({
+    userId: data.userId ?? null,
+    event: data.event,
+    stripeEventId: data.stripeEventId ?? null,
+    stripeObjectId: data.stripeObjectId ?? null,
+    amountCents: data.amountCents ?? null,
+    currency: data.currency ?? null,
+    status: data.status ?? null,
+    metadata: data.metadata ?? null,
+  });
+}
+
+export async function getPaymentAnalytics() {
+  const db = await getDb();
+  if (!db) return null;
+  const { subscriptions, couponRedemptions, paymentAuditLog } = await import("../drizzle/schema");
+  const { count, sum, inArray } = await import("drizzle-orm");
+
+  const [
+    [activeSubsRow],
+    [trialSubsRow],
+    [canceledSubsRow],
+    [mrrRow],
+    [totalRedemptionsRow],
+    [totalDiscountRow],
+    [failedPaymentsRow],
+  ] = await Promise.all([
+    db.select({ total: count() }).from(subscriptions).where(eq(subscriptions.status, "active")),
+    db.select({ total: count() }).from(subscriptions).where(eq(subscriptions.status, "trialing")),
+    db.select({ total: count() }).from(subscriptions).where(eq(subscriptions.status, "canceled")),
+    db
+      .select({ total: sum(subscriptions.amountCents) })
+      .from(subscriptions)
+      .where(eq(subscriptions.status, "active")),
+    db.select({ total: count() }).from(couponRedemptions),
+    db.select({ total: sum(couponRedemptions.discountAmountCents) }).from(couponRedemptions),
+    db
+      .select({ total: count() })
+      .from(paymentAuditLog)
+      .where(eq(paymentAuditLog.event, "invoice.payment_failed")),
+  ]);
+
+  const mrrCents = Number(mrrRow?.total ?? 0);
+
+  // Plan breakdown
+  const { sql } = await import("drizzle-orm");
+  const planRows = await db
+    .select({ planName: subscriptions.planName, cnt: count() })
+    .from(subscriptions)
+    .where(eq(subscriptions.status, "active"))
+    .groupBy(subscriptions.planName);
+
+  const planBreakdown: Record<string, number> = {};
+  for (const r of planRows) planBreakdown[r.planName] = r.cnt;
+
+  // Billing period split
+  const billingRows = await db
+    .select({ billingPeriod: subscriptions.billingPeriod, cnt: count() })
+    .from(subscriptions)
+    .where(eq(subscriptions.status, "active"))
+    .groupBy(subscriptions.billingPeriod);
+
+  let monthlyCount = 0;
+  let annualCount = 0;
+  for (const r of billingRows) {
+    if (r.billingPeriod === "monthly") monthlyCount = r.cnt;
+    else if (r.billingPeriod === "annual") annualCount = r.cnt;
+  }
+
+  // Recent payment events (last 20)
+  const { desc } = await import("drizzle-orm");
+  const recentEvents = await db
+    .select()
+    .from(paymentAuditLog)
+    .orderBy(desc(paymentAuditLog.createdAt))
+    .limit(20);
+
+  return {
+    activeSubscriptions: activeSubsRow?.total ?? 0,
+    trialSubscriptions: trialSubsRow?.total ?? 0,
+    canceledSubscriptions: canceledSubsRow?.total ?? 0,
+    mrrCents,
+    arrCents: mrrCents * 12,
+    monthlyRevenueCents: mrrCents,
+    totalCouponRedemptions: totalRedemptionsRow?.total ?? 0,
+    totalRedemptions: totalRedemptionsRow?.total ?? 0,
+    totalDiscountCents: Number(totalDiscountRow?.total ?? 0),
+    failedPayments: failedPaymentsRow?.total ?? 0,
+    planBreakdown,
+    monthlyCount,
+    annualCount,
+    recentEvents,
+  };
+}

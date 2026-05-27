@@ -25,6 +25,7 @@ export const users = mysqlTable("users", {
     grade: varchar("grade", { length: 16 }).default("9"),
   school: varchar("school", { length: 256 }),
   status: mysqlEnum("status", ["active", "suspended", "archived", "deleted"]).notNull().default("active"),
+  billingPeriod: mysqlEnum("billingPeriod", ["monthly", "annual"]).default("monthly"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -857,3 +858,130 @@ export const demoRequests = mysqlTable("demoRequests", {
 
 export type DemoRequest = typeof demoRequests.$inferSelect;
 export type InsertDemoRequest = typeof demoRequests.$inferInsert;
+
+// ─── Coupons ──────────────────────────────────────────────────────────────────
+
+export const coupons = mysqlTable("coupons", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 256 }).notNull(),
+  description: text("description"),
+
+  // Discount configuration
+  discountType: mysqlEnum("discountType", ["percentage", "fixed"]).notNull(),
+  discountValue: float("discountValue").notNull(),               // % or cents
+  maxDiscountAmount: float("maxDiscountAmount"),                  // cap for percentage discounts
+
+  // Applicability
+  applicablePlans: json("applicablePlans").$type<string[]>(), // [] = all plans; nullable, default handled in app layer
+  eligibility: mysqlEnum("eligibility", ["all", "new_users", "parents", "students", "schools", "selected"]).notNull().default("all"),
+  selectedUserIds: json("selectedUserIds").$type<number[]>(),    // only used when eligibility = 'selected'
+  minAmount: float("minAmount"),                                 // minimum subscription price in cents
+
+  // Usage limits
+  usageLimit: int("usageLimit"),                                 // null = unlimited
+  perUserLimit: int("perUserLimit").notNull().default(1),
+  usageCount: int("usageCount").notNull().default(0),
+
+  // Duration
+  duration: mysqlEnum("duration", ["once", "repeating", "forever"]).notNull().default("once"),
+  durationMonths: int("durationMonths"),                         // only for repeating
+
+  // Validity
+  startDate: timestamp("startDate"),
+  expiresAt: timestamp("expiresAt"),
+  status: mysqlEnum("status", ["active", "paused", "expired", "archived"]).notNull().default("active"),
+
+  // Stacking
+  isStackable: boolean("isStackable").notNull().default(false),
+
+  // Stripe coupon ID (synced when created)
+  stripeCouponId: varchar("stripeCouponId", { length: 128 }),
+  stripePromotionCodeId: varchar("stripePromotionCodeId", { length: 128 }),
+
+  createdBy: int("createdBy"),                                   // FK → users.id
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  codeIdx: uniqueIndex("coupons_code_idx").on(t.code),
+  statusIdx: index("coupons_status_idx").on(t.status),
+}));
+
+export type Coupon = typeof coupons.$inferSelect;
+export type InsertCoupon = typeof coupons.$inferInsert;
+
+// ─── Coupon Redemptions ───────────────────────────────────────────────────────
+
+export const couponRedemptions = mysqlTable("couponRedemptions", {
+  id: int("id").autoincrement().primaryKey(),
+  couponId: int("couponId").notNull(),
+  userId: int("userId").notNull(),
+  planName: varchar("planName", { length: 128 }).notNull(),
+  billingPeriod: mysqlEnum("billingPeriod", ["monthly", "annual"]).notNull().default("monthly"),
+  originalAmountCents: int("originalAmountCents").notNull(),
+  discountAmountCents: int("discountAmountCents").notNull(),
+  finalAmountCents: int("finalAmountCents").notNull(),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 256 }),
+  redeemedAt: timestamp("redeemedAt").defaultNow().notNull(),
+}, (t) => ({
+  couponIdIdx: index("couponRedemptions_couponId_idx").on(t.couponId),
+  userIdIdx: index("couponRedemptions_userId_idx").on(t.userId),
+}));
+
+export type CouponRedemption = typeof couponRedemptions.$inferSelect;
+
+// ─── Subscriptions ────────────────────────────────────────────────────────────
+
+export const subscriptions = mysqlTable("subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  planName: varchar("planName", { length: 128 }).notNull(),
+  billingPeriod: mysqlEnum("billingPeriod", ["monthly", "annual"]).notNull().default("monthly"),
+  status: mysqlEnum("status", ["trialing", "active", "past_due", "canceled", "unpaid", "incomplete"]).notNull().default("active"),
+
+  // Stripe identifiers
+  stripeCustomerId: varchar("stripeCustomerId", { length: 128 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 128 }).unique(),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 256 }),
+
+  // Billing cycle
+  currentPeriodStart: timestamp("currentPeriodStart"),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").notNull().default(false),
+  canceledAt: timestamp("canceledAt"),
+  trialEnd: timestamp("trialEnd"),
+
+  // Pricing snapshot
+  amountCents: int("amountCents"),
+  currency: varchar("currency", { length: 8 }).notNull().default("usd"),
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  userIdIdx: index("subscriptions_userId_idx").on(t.userId),
+  stripeSubIdx: index("subscriptions_stripeSubscriptionId_idx").on(t.stripeSubscriptionId),
+}));
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+// ─── Payment Audit Log ────────────────────────────────────────────────────────
+
+export const paymentAuditLog = mysqlTable("paymentAuditLog", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId"),
+  event: varchar("event", { length: 128 }).notNull(),            // e.g. "checkout.session.completed"
+  stripeEventId: varchar("stripeEventId", { length: 256 }).unique(),
+  stripeObjectId: varchar("stripeObjectId", { length: 256 }),    // subscription/invoice/payment_intent ID
+  amountCents: int("amountCents"),
+  currency: varchar("currency", { length: 8 }),
+  status: varchar("status", { length: 64 }),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  userIdIdx: index("paymentAuditLog_userId_idx").on(t.userId),
+  eventIdx: index("paymentAuditLog_event_idx").on(t.event),
+  createdAtIdx: index("paymentAuditLog_createdAt_idx").on(t.createdAt),
+}));
+
+export type PaymentAuditLogEntry = typeof paymentAuditLog.$inferSelect;

@@ -1,0 +1,273 @@
+import type { Express, Request, Response } from "express";
+import express from "express";
+import { ENV } from "./_core/env";
+import { stripe } from "./stripe";
+import {
+  upsertSubscription,
+  logPaymentEvent,
+  saveUserBillingPeriod,
+  incrementCouponUsage,
+  recordCouponRedemption,
+  getDb,
+} from "./db";
+import { users, subscriptions } from "../drizzle/schema";
+import { eq } from "drizzle-orm";
+
+export function registerStripeWebhook(app: Express) {
+  // MUST use express.raw BEFORE express.json for webhook signature verification
+  app.post(
+    "/api/stripe/webhook",
+    express.raw({ type: "application/json" }),
+    async (req: Request, res: Response) => {
+      const sig = req.headers["stripe-signature"];
+
+      // ── Test event detection (required by Manus Stripe integration) ──────────
+      let event: any;
+      try {
+        const rawBody = req.body as Buffer;
+        const bodyStr = rawBody.toString("utf8");
+        const parsed = JSON.parse(bodyStr);
+
+        if (parsed.id && parsed.id.startsWith("evt_test_")) {
+          console.log("[Webhook] Test event detected, returning verification response");
+          return res.json({ verified: true });
+        }
+
+        // Verify real webhook signature
+        if (!ENV.stripeWebhookSecret) {
+          console.warn("[Webhook] STRIPE_WEBHOOK_SECRET not set — skipping signature check");
+          event = parsed;
+        } else {
+          event = stripe.webhooks.constructEvent(rawBody, sig as string, ENV.stripeWebhookSecret);
+        }
+      } catch (err: any) {
+        console.error("[Webhook] Signature verification failed:", err.message);
+        return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+      }
+
+      console.log(`[Webhook] Processing event: ${event.type} (${event.id})`);
+
+      try {
+        await handleStripeEvent(event);
+      } catch (err) {
+        console.error("[Webhook] Handler error:", err);
+        // Return 200 to prevent Stripe from retrying — log the error for investigation
+      }
+
+      res.json({ received: true });
+    }
+  );
+}
+
+async function getUserIdFromStripeCustomer(customerId: string): Promise<number | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select({ id: subscriptions.userId })
+    .from(subscriptions)
+    .where(eq(subscriptions.stripeCustomerId, customerId))
+    .limit(1);
+  return rows[0]?.id ?? null;
+}
+
+async function getUserIdFromMetadata(metadata: Record<string, string>): Promise<number | null> {
+  const rawId = metadata?.user_id;
+  if (!rawId) return null;
+  const parsed = parseInt(rawId, 10);
+  return isNaN(parsed) ? null : parsed;
+}
+
+async function handleStripeEvent(event: any) {
+  const obj = event.data?.object;
+
+  switch (event.type) {
+    // ── Checkout completed ─────────────────────────────────────────────────────
+    case "checkout.session.completed": {
+      const session = obj;
+      const userId =
+        (await getUserIdFromMetadata(session.metadata ?? {})) ??
+        (session.customer ? await getUserIdFromStripeCustomer(session.customer) : null);
+
+      const planKey = session.metadata?.plan_key ?? "family";
+      const billingPeriod: "monthly" | "annual" =
+        session.metadata?.billing_period === "annual" ? "annual" : "monthly";
+      const couponIdStr = session.metadata?.coupon_id;
+
+      if (userId) {
+        // Persist billing period to user profile
+        await saveUserBillingPeriod(userId, billingPeriod);
+
+        // Upsert subscription record
+        await upsertSubscription({
+          userId,
+          planName: planKey,
+          billingPeriod,
+          status: "active",
+          stripeCustomerId: session.customer ?? undefined,
+          stripeCheckoutSessionId: session.id,
+          amountCents: session.amount_total ?? undefined,
+        });
+
+        // Record coupon redemption if applicable
+        if (couponIdStr) {
+          const couponId = parseInt(couponIdStr, 10);
+          if (!isNaN(couponId) && session.total_details?.amount_discount) {
+            await incrementCouponUsage(couponId);
+            await recordCouponRedemption({
+              couponId,
+              userId,
+              planName: planKey,
+              billingPeriod,
+              originalAmountCents: (session.amount_total ?? 0) + (session.total_details?.amount_discount ?? 0),
+              discountAmountCents: session.total_details.amount_discount,
+              finalAmountCents: session.amount_total ?? 0,
+              stripeCheckoutSessionId: session.id,
+            });
+          }
+        }
+      }
+
+      await logPaymentEvent({
+        userId: userId ?? undefined,
+        event: event.type,
+        stripeEventId: event.id,
+        stripeObjectId: session.id,
+        amountCents: session.amount_total ?? undefined,
+        currency: session.currency ?? "usd",
+        status: session.payment_status,
+        metadata: { planKey, billingPeriod, customerId: session.customer },
+      });
+      break;
+    }
+
+    // ── Subscription lifecycle ─────────────────────────────────────────────────
+    case "customer.subscription.created":
+    case "customer.subscription.updated": {
+      const sub = obj;
+      const userId = sub.customer
+        ? await getUserIdFromStripeCustomer(sub.customer)
+        : null;
+
+      if (userId) {
+        const item = sub.items?.data?.[0];
+        const interval = item?.price?.recurring?.interval;
+        const billingPeriod: "monthly" | "annual" = interval === "year" ? "annual" : "monthly";
+
+        await upsertSubscription({
+          userId,
+          planName: sub.metadata?.plan_key ?? "family",
+          billingPeriod,
+          status: sub.status,
+          stripeCustomerId: sub.customer,
+          stripeSubscriptionId: sub.id,
+          currentPeriodStart: sub.current_period_start
+            ? new Date(sub.current_period_start * 1000)
+            : undefined,
+          currentPeriodEnd: sub.current_period_end
+            ? new Date(sub.current_period_end * 1000)
+            : undefined,
+          cancelAtPeriodEnd: sub.cancel_at_period_end ?? false,
+          canceledAt: sub.canceled_at ? new Date(sub.canceled_at * 1000) : undefined,
+          trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000) : undefined,
+          amountCents: item?.price?.unit_amount ?? undefined,
+        });
+      }
+
+      await logPaymentEvent({
+        userId: userId ?? undefined,
+        event: event.type,
+        stripeEventId: event.id,
+        stripeObjectId: sub.id,
+        status: sub.status,
+        metadata: { customerId: sub.customer },
+      });
+      break;
+    }
+
+    case "customer.subscription.deleted": {
+      const sub = obj;
+      const userId = sub.customer
+        ? await getUserIdFromStripeCustomer(sub.customer)
+        : null;
+
+      if (userId) {
+        await upsertSubscription({
+          userId,
+          planName: sub.metadata?.plan_key ?? "family",
+          billingPeriod: "monthly",
+          status: "canceled",
+          stripeCustomerId: sub.customer,
+          stripeSubscriptionId: sub.id,
+          canceledAt: new Date(),
+        });
+      }
+
+      await logPaymentEvent({
+        userId: userId ?? undefined,
+        event: event.type,
+        stripeEventId: event.id,
+        stripeObjectId: sub.id,
+        status: "canceled",
+        metadata: { customerId: sub.customer },
+      });
+      break;
+    }
+
+    // ── Invoice events ─────────────────────────────────────────────────────────
+    case "invoice.paid": {
+      const invoice = obj;
+      const userId = invoice.customer
+        ? await getUserIdFromStripeCustomer(invoice.customer)
+        : null;
+
+      await logPaymentEvent({
+        userId: userId ?? undefined,
+        event: event.type,
+        stripeEventId: event.id,
+        stripeObjectId: invoice.id,
+        amountCents: invoice.amount_paid,
+        currency: invoice.currency,
+        status: "paid",
+        metadata: { subscriptionId: invoice.subscription, customerId: invoice.customer },
+      });
+      break;
+    }
+
+    case "invoice.payment_failed": {
+      const invoice = obj;
+      const userId = invoice.customer
+        ? await getUserIdFromStripeCustomer(invoice.customer)
+        : null;
+
+      // Update subscription status to past_due
+      if (userId) {
+        const db = await getDb();
+        if (db && invoice.subscription) {
+          await db
+            .update(subscriptions)
+            .set({ status: "past_due" })
+            .where(eq(subscriptions.stripeSubscriptionId, invoice.subscription));
+        }
+      }
+
+      await logPaymentEvent({
+        userId: userId ?? undefined,
+        event: event.type,
+        stripeEventId: event.id,
+        stripeObjectId: invoice.id,
+        amountCents: invoice.amount_due,
+        currency: invoice.currency,
+        status: "failed",
+        metadata: {
+          subscriptionId: invoice.subscription,
+          customerId: invoice.customer,
+          nextPaymentAttempt: invoice.next_payment_attempt,
+        },
+      });
+      break;
+    }
+
+    default:
+      console.log(`[Webhook] Unhandled event type: ${event.type}`);
+  }
+}
