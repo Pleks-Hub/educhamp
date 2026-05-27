@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -10,8 +10,9 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
   User, Shield, ShieldCheck, ShieldOff, KeyRound, Copy, RefreshCw,
-  CheckCircle2, AlertTriangle, Loader2, QrCode
+  CheckCircle2, AlertTriangle, Loader2, QrCode, Palette
 } from "lucide-react";
+import { usePalette, PALETTES, type PaletteId } from "@/contexts/PaletteContext";
 
 // ─── 2FA Setup Flow ───────────────────────────────────────────────────────────
 
@@ -404,6 +405,9 @@ export default function Profile() {
         </CardContent>
       </Card>
 
+      {/* Personalization */}
+      <PersonalizationCard />
+
       {/* Account Security Note */}
       <Card className="border-muted bg-muted/30">
         <CardContent className="pt-4 pb-4">
@@ -418,5 +422,113 @@ export default function Profile() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// ─── Personalization Card ─────────────────────────────────────────────────────
+function PersonalizationCard() {
+  const { palette, setPalette, isSaving } = usePalette();
+  const { user } = useAuth();
+  const utils = trpc.useUtils();
+  const [displayName, setDisplayName] = useState("");
+  const [nameInitialized, setNameInitialized] = useState(false);
+
+  const saveDisplayName = trpc.onboarding.savePersonalization.useMutation({
+    onSuccess: () => {
+      utils.onboarding.getPersonalization.invalidate();
+      toast.success("Display name saved!");
+    },
+    onError: () => toast.error("Failed to save display name."),
+  });
+
+  const { data: personalization } = trpc.onboarding.getPersonalization.useQuery(undefined, {
+    enabled: !!user,
+  });
+
+  // Populate display name from server on first load (useEffect avoids setState-in-render)
+  useEffect(() => {
+    if (personalization?.displayName && !nameInitialized) {
+      setDisplayName(personalization.displayName);
+      setNameInitialized(true);
+    }
+  }, [personalization?.displayName, nameInitialized]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Palette className="h-4 w-4" />
+          Personalization
+        </CardTitle>
+        <CardDescription>Choose a colour palette and display name for your EduChamp experience.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Colour Palette */}
+        <div className="space-y-3">
+          <Label className="text-sm font-medium">Colour Palette</Label>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {PALETTES.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setPalette(p.id as PaletteId)}
+                className={`group relative flex flex-col items-center gap-1.5 p-2 rounded-xl border-2 transition-all ${
+                  palette === p.id
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-border hover:border-primary/40 hover:bg-muted/40"
+                }`}
+              >
+                <div className="flex gap-0.5">
+                  <div className={`h-5 w-5 rounded-full ${p.primary}`} />
+                  <div className={`h-5 w-5 rounded-full ${p.accent}`} />
+                </div>
+                <span className="text-[10px] font-medium text-muted-foreground leading-tight text-center">
+                  {p.label}
+                </span>
+                {palette === p.id && (
+                  <div className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-primary flex items-center justify-center">
+                    <CheckCircle2 className="h-2.5 w-2.5 text-primary-foreground" />
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+          {isSaving && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" /> Saving palette…
+            </p>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* Display Name */}
+        <div className="space-y-2">
+          <Label htmlFor="displayName" className="text-sm font-medium">Display Name</Label>
+          <p className="text-xs text-muted-foreground">Override how your name appears in EduChamp (optional).</p>
+          <div className="flex gap-2">
+            <Input
+              id="displayName"
+              placeholder={user?.name ?? "Your display name"}
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="max-w-xs"
+              maxLength={128}
+            />
+            <Button
+              size="sm"
+              disabled={saveDisplayName.isPending || !displayName.trim()}
+              onClick={() => saveDisplayName.mutate({ displayName: displayName.trim() })}
+              className="gap-1.5"
+            >
+              {saveDisplayName.isPending ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</>
+              ) : (
+                "Save"
+              )}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

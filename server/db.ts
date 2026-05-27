@@ -157,6 +157,21 @@ export async function getAllDiagnosticQuestions() {
   return db.select().from(diagnosticQuestions).orderBy(diagnosticQuestions.sortOrder);
 }
 
+/** Returns diagnostic questions for a specific course. Falls back to courseId=1 if none found. */
+export async function getDiagnosticQuestionsForCourse(courseId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select()
+    .from(diagnosticQuestions)
+    .where(eq(diagnosticQuestions.courseId, courseId))
+    .orderBy(diagnosticQuestions.sortOrder);
+  if (rows.length === 0 && courseId !== 1) {
+    return db.select().from(diagnosticQuestions).where(eq(diagnosticQuestions.courseId, 1)).orderBy(diagnosticQuestions.sortOrder);
+  }
+  return rows;
+}
+
 // ─── User Mastery ─────────────────────────────────────────────────────────────
 
 export async function getUserMastery(userId: number) {
@@ -910,6 +925,8 @@ export async function upsertUserProfile(
     parentSignupReason: string;
     parentGoalCategory: string;
     parentGoalDetail: string;
+    colorPalette: string;
+    displayName: string;
     onboardingCompleted: boolean;
     onboardingStep: number;
   }>
@@ -1191,8 +1208,19 @@ export async function setUserActiveCourse(userId: number, courseId: number) {
     ));
 }
 
-// ─── Multi-course progress aggregation ──────────────────────────────────────
+/** Returns the courseId of the user's currently active course (isCurrent=true), or 1 as fallback. */
+export async function getActiveCourseIdForUser(userId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 1;
+  const rows = await db
+    .select({ courseId: userCourseEnrollments.courseId })
+    .from(userCourseEnrollments)
+    .where(and(eq(userCourseEnrollments.userId, userId), eq(userCourseEnrollments.isCurrent, true)))
+    .limit(1);
+  return rows[0]?.courseId ?? 1;
+}
 
+// ─── Multi-course progress aggregation ──────────────────────────────────────
 /**
  * Returns progress summary for ALL courses a student is enrolled in.
  * Used by the multi-course dashboard and parent cross-course view.

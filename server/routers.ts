@@ -13,6 +13,8 @@ import { protectedProcedure, studentProcedure, publicProcedure, router } from ".
 import { systemRouter } from "./_core/systemRouter";
 import {
   getAllDiagnosticQuestions,
+  getDiagnosticQuestionsForCourse,
+  getActiveCourseIdForUser,
   getAllDiagnosticAttempts,
   getAllSkills,
   getAllUnits,
@@ -425,9 +427,10 @@ export const appRouter = router({
      * A stable `seed` string can be passed to reproduce a specific set (used in tests).
      */
     getQuestions: protectedProcedure
-      .input(z.object({ seed: z.string().optional() }).optional())
-      .query(async ({ input }) => {
-        const allQuestions = await getAllDiagnosticQuestions();
+      .input(z.object({ seed: z.string().optional(), courseId: z.number().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const resolvedCourseId = input?.courseId ?? await getActiveCourseIdForUser(ctx.user.id);
+        const allQuestions = await getDiagnosticQuestionsForCourse(resolvedCourseId);
 
         // Group questions by mapsToUnit
         const groups = new Map<string, typeof allQuestions>();
@@ -497,10 +500,12 @@ export const appRouter = router({
       .input(
         z.object({
           answers: z.array(z.object({ questionId: z.string(), answer: z.string() })),
+          courseId: z.number().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const questions = await getAllDiagnosticQuestions();
+        const resolvedCourseId = input.courseId ?? await getActiveCourseIdForUser(ctx.user.id);
+        const questions = await getDiagnosticQuestionsForCourse(resolvedCourseId);
         const questionMap = new Map(questions.map((q) => [q.questionId, q]));
 
         const gradedAnswers = input.answers.map((a) => {
@@ -527,7 +532,7 @@ export const appRouter = router({
           recommendation: string;
         }[] = [];
 
-        const allUnits = await getAllUnits();
+        const allUnits = await getUnitsForCourse(resolvedCourseId);
         const unitMap = new Map(allUnits.map((u) => [String(u.unitNumber), u]));
 
         for (let i = 1; i <= 12; i++) {
@@ -569,11 +574,11 @@ export const appRouter = router({
         let placementRecommendation: string;
         if (prerequisiteScore < 4) {
           placementRecommendation =
-            "Pre-algebra gaps detected. Recommend reviewing order of operations, integer operations, fractions, and basic variable expressions before starting Algebra I.";
+            "Foundational gaps detected. Recommend reviewing prerequisite concepts before starting this course.";
         } else {
           const firstGap = unitResults.find((u) => u.status === "needs_instruction");
           placementRecommendation = firstGap
-            ? `Ready for Algebra I. Recommend starting at Unit ${firstGap.unitNumber}: ${firstGap.unitTitle}.`
+            ? `Ready to begin. Recommend starting at Unit ${firstGap.unitNumber}: ${firstGap.unitTitle}.`
             : "Strong foundation across all units. Begin with Unit 1 and use unit quizzes to confirm mastery before advancing.";
         }
 

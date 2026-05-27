@@ -256,4 +256,29 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
     const { getPendingStudentInvitesForParent } = await import("../db");
     return getPendingStudentInvitesForParent(ctx.user.id);
   }),
+
+  /** Get personalization settings for the current user. */
+  getPersonalization: protectedProcedure.query(async ({ ctx }) => {
+    const profile = await getUserProfile(ctx.user.id);
+    return {
+      colorPalette: profile?.colorPalette ?? "indigo",
+      displayName: profile?.displayName ?? null,
+    };
+  }),
+
+  /** Save personalization settings for the current user. */
+  savePersonalization: protectedProcedure
+    .input(
+      z.object({
+        colorPalette: z.enum(["indigo", "emerald", "rose", "violet", "amber", "teal"]).optional(),
+        displayName: z.string().max(128).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await upsertUserProfile(ctx.user.id, {
+        ...(input.colorPalette !== undefined ? { colorPalette: input.colorPalette } : {}),
+        ...(input.displayName !== undefined ? { displayName: input.displayName } : {}),
+      });
+      return { success: true };
+    }),
 });

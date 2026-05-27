@@ -285,3 +285,17 @@
 - [x] Seed: AP Business with Personal Finance (12 units, AP-level, gradeLevel=AP)
 - [x] Seed: SAT Prep (12 units, test-prep tricks + advanced skills, gradeLevel=AP)
 - [x] UI: CourseSwitcher — add "AP / Test Prep" grade filter pill for new AP courses
+
+## Sprint 8 — Course-Aware Diagnostic, Inline Course Switcher, Personalization
+
+- [x] Server: getDiagnosticQuestionsForCourse(courseId) db helper
+- [x] Server: getActiveCourseIdForUser(userId) db helper
+- [x] Server: diagnostic.getQuestions accepts courseId param (defaults to active course)
+- [x] Server: diagnostic.submitDiagnostic accepts courseId param (defaults to active course)
+- [x] UI: Diagnostic page passes activeCourseId to getQuestions and submitDiagnostic
+- [x] DB: Add colorPalette column to userProfiles (migration applied)
+- [x] DB: Add displayName column to userProfiles (migration applied)
+- [x] Server: onboarding.getPersonalization and savePersonalization procedures
+- [x] UI: PaletteContext with 6 palettes applied as CSS class on html element
+- [x] UI: Profile page — PersonalizationCard with palette picker and display name
+- [x] CSS: 6 palette CSS classes in index.css (indigo, emerald, rose, violet, amber, teal)

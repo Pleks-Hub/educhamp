@@ -243,9 +243,13 @@ export default function Diagnostic() {
   // Retest: generate a unique seed per session so each attempt gets different questions
   const [sessionSeed] = useState(() => Date.now().toString() + Math.random().toString(36).slice(2));
 
+  // Get the active course so the diagnostic uses course-specific questions
+  const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!user });
+  const activeCourseId = dashboard?.activeCourseId;
+
   const { data: questions, isLoading } = trpc.diagnostic.getQuestions.useQuery(
-    { seed: sessionSeed },
-    { enabled: started }
+    { seed: sessionSeed, courseId: activeCourseId },
+    { enabled: started && activeCourseId !== undefined }
   );
   const { data: existingAttempt } = trpc.diagnostic.getLatestAttempt.useQuery(undefined, {
     enabled: !!user,
@@ -297,7 +301,7 @@ export default function Diagnostic() {
       questionId: q.questionId,
       answer: answers[q.questionId] ?? "",
     }));
-    submitMutation.mutate({ answers: answerArray });
+    submitMutation.mutate({ answers: answerArray, courseId: activeCourseId });
   }, [questions, answers, submitMutation]);
 
   const handleExtendTime = () => {

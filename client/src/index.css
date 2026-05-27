@@ -311,3 +311,63 @@ button:active:not(:disabled) {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
+
+/* ─── Colour Palettes ────────────────────────────────────────────────────────
+   Applied as a class on <html> when the user selects a palette.
+   Each palette overrides --primary, --ring, --sidebar-primary, and accent tokens.
+   The default (no class) is the original Deep Navy + Warm Gold palette.
+─────────────────────────────────────────────────────────────────────────── */
+
+/* Indigo (default — Deep Navy) */
+.palette-indigo {
+  --primary: oklch(0.28 0.08 250);
+  --primary-foreground: oklch(0.98 0.005 240);
+  --ring: oklch(0.28 0.08 250);
+  --sidebar-primary: oklch(0.78 0.14 75);
+  --accent: oklch(0.78 0.14 75);
+}
+
+/* Emerald — Forest Green */
+.palette-emerald {
+  --primary: oklch(0.38 0.14 155);
+  --primary-foreground: oklch(0.98 0.005 155);
+  --ring: oklch(0.38 0.14 155);
+  --sidebar-primary: oklch(0.72 0.16 65);
+  --accent: oklch(0.72 0.16 65);
+}
+
+/* Rose — Warm Pink */
+.palette-rose {
+  --primary: oklch(0.45 0.20 10);
+  --primary-foreground: oklch(0.98 0.005 10);
+  --ring: oklch(0.45 0.20 10);
+  --sidebar-primary: oklch(0.78 0.14 75);
+  --accent: oklch(0.78 0.14 75);
+}
+
+/* Violet — Purple */
+.palette-violet {
+  --primary: oklch(0.40 0.20 290);
+  --primary-foreground: oklch(0.98 0.005 290);
+  --ring: oklch(0.40 0.20 290);
+  --sidebar-primary: oklch(0.72 0.16 65);
+  --accent: oklch(0.72 0.16 65);
+}
+
+/* Amber — Warm Gold */
+.palette-amber {
+  --primary: oklch(0.55 0.18 65);
+  --primary-foreground: oklch(0.15 0.02 65);
+  --ring: oklch(0.55 0.18 65);
+  --sidebar-primary: oklch(0.78 0.14 75);
+  --accent: oklch(0.78 0.14 75);
+}
+
+/* Teal — Cyan-Green */
+.palette-teal {
+  --primary: oklch(0.42 0.14 195);
+  --primary-foreground: oklch(0.98 0.005 195);
+  --ring: oklch(0.42 0.14 195);
+  --sidebar-primary: oklch(0.72 0.16 65);
+  --accent: oklch(0.72 0.16 65);
+}

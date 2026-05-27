@@ -121,7 +121,8 @@ export type QuizQuestion = typeof quizQuestions.$inferSelect;
 
 export const diagnosticQuestions = mysqlTable("diagnosticQuestions", {
   id: int("id").autoincrement().primaryKey(),
-  questionId: varchar("questionId", { length: 16 }).notNull().unique(), // DIAG-001
+  courseId: int("courseId").notNull().default(1), // FK → courses.id
+  questionId: varchar("questionId", { length: 32 }).notNull().unique(), // DIAG-001, ENG1-D-001
   questionText: text("questionText").notNull(),
   questionType: mysqlEnum("questionType", ["multiple_choice", "short_answer"]).notNull(),
   choices: json("choices").$type<{ label: string; text: string }[] | null>(),
@@ -405,6 +406,9 @@ export const userProfiles = mysqlTable("userProfiles", {
   parentSignupReason: text("parentSignupReason"),         // free-text "why are you signing up?"
   parentGoalCategory: varchar("parentGoalCategory", { length: 64 }), // "grade_improvement" | "test_prep" | "enrichment" | "remediation" | "homeschool_supplement" | "other"
   parentGoalDetail: text("parentGoalDetail"),             // AI-generated personalised goal statement
+  // Personalization
+  colorPalette: varchar("colorPalette", { length: 32 }).default("indigo"),
+  displayName: varchar("displayName", { length: 128 }),
   // Onboarding state
   onboardingCompleted: boolean("onboardingCompleted").notNull().default(false),
   onboardingStep: int("onboardingStep").notNull().default(0),
