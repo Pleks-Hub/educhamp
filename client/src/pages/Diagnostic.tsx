@@ -537,12 +537,29 @@ export default function Diagnostic() {
           </CardContent>
         </Card>
 
-        {/* Unit Breakdown */}
+        {/* Unit Breakdown — student-driven learning path: every unit is clickable */}
         <div className="space-y-3">
-          <h2 className="text-base font-semibold">Unit Breakdown</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold">Unit Breakdown</h2>
+            <p className="text-xs text-muted-foreground">Click any unit to start there</p>
+          </div>
           <div className="space-y-2">
             {result.unitResults.map((ur) => (
-              <div key={ur.unitNumber} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+              <div
+                key={ur.unitNumber}
+                className={`flex items-center gap-3 p-3 rounded-lg border bg-card transition-all duration-150 cursor-pointer group ${
+                  ur.status === "likely_mastered" ? "hover:border-green-300 hover:bg-green-50/30" :
+                  ur.status === "partial_understanding" ? "hover:border-yellow-300 hover:bg-yellow-50/30" :
+                  "hover:border-red-300 hover:bg-red-50/30"
+                }`}
+                onClick={() => {
+                  if (ur.status === "likely_mastered") {
+                    setLocation(`/curriculum/unit/${ur.unitNumber}/quiz`);
+                  } else {
+                    setLocation(`/curriculum/unit/${ur.unitNumber}`);
+                  }
+                }}
+              >
                 <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
                   ur.status === "likely_mastered" ? "bg-green-100 text-green-700" :
                   ur.status === "partial_understanding" ? "bg-yellow-100 text-yellow-700" :
@@ -554,14 +571,39 @@ export default function Diagnostic() {
                   <p className="text-sm font-medium text-foreground truncate">{ur.unitTitle}</p>
                   <p className="text-xs text-muted-foreground">{ur.correct}/{ur.total} correct · {ur.recommendation}</p>
                 </div>
-                <Badge className={`text-xs shrink-0 ${
-                  ur.status === "likely_mastered" ? "bg-green-100 text-green-700 border-green-200" :
-                  ur.status === "partial_understanding" ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
-                  "bg-red-100 text-red-700 border-red-200"
-                }`}>
-                  {ur.status === "likely_mastered" ? "Likely Mastered" :
-                   ur.status === "partial_understanding" ? "Partial" : "Needs Work"}
-                </Badge>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge className={`text-xs ${
+                    ur.status === "likely_mastered" ? "bg-green-100 text-green-700 border-green-200" :
+                    ur.status === "partial_understanding" ? "bg-yellow-100 text-yellow-700 border-yellow-200" :
+                    "bg-red-100 text-red-700 border-red-200"
+                  }`}>
+                    {ur.status === "likely_mastered" ? "Mastered" :
+                     ur.status === "partial_understanding" ? "Partial" : "Needs Work"}
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant={ur.status === "likely_mastered" ? "outline" : "default"}
+                    className={`text-xs h-7 px-2.5 gap-1 opacity-0 group-hover:opacity-100 transition-opacity ${
+                      ur.status === "likely_mastered" ? "" :
+                      ur.status === "partial_understanding" ? "bg-yellow-600 hover:bg-yellow-700 text-white" :
+                      "bg-red-600 hover:bg-red-700 text-white"
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (ur.status === "likely_mastered") {
+                        setLocation(`/curriculum/unit/${ur.unitNumber}/quiz`);
+                      } else {
+                        setLocation(`/curriculum/unit/${ur.unitNumber}`);
+                      }
+                    }}
+                  >
+                    {ur.status === "likely_mastered" ? (
+                      <><BookOpen className="h-3 w-3" />Review</>
+                    ) : (
+                      <><ArrowRight className="h-3 w-3" />Start Here</>
+                    )}
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

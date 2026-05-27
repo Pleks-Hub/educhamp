@@ -7,6 +7,7 @@ import { referralRouter } from "./routers/referral";
 import { onboardingRouter } from "./routers/onboarding";
 import { landingRouter } from "./routers/landing";
 import { adminRouter } from "./routers/admin";
+import { newsletterRouter } from "./routers/newsletter";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
@@ -58,6 +59,7 @@ export const appRouter = router({
   referral: referralRouter,
   onboarding: onboardingRouter,
   landing: landingRouter,
+  newsletter: newsletterRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
@@ -601,14 +603,19 @@ export const appRouter = router({
           resolvedCourseId
         );
 
-        // Initialize unit progress for all units
+        // Initialize unit progress for all units based on diagnostic results.
+        // - likely_mastered → quiz_unlocked (can skip straight to quiz)
+        // - partial_understanding → in_progress (unlock to study)
+        // - needs_instruction → in_progress (unlock to study)
+        // All units are unlocked so students can choose their own starting point.
         for (const unit of allUnits) {
           const unitResult = unitResults.find((r) => r.unitNumber === unit.unitNumber);
           if (unitResult?.status === "likely_mastered") {
             await upsertUnitProgress(ctx.user.id, unit.id, unit.unitNumber, {
               status: "quiz_unlocked",
             });
-          } else if (unit.unitNumber === 1) {
+          } else {
+            // Unlock all other units so the student can choose where to start
             await upsertUnitProgress(ctx.user.id, unit.id, unit.unitNumber, {
               status: "in_progress",
             });

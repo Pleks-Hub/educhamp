@@ -595,3 +595,59 @@ export const newsletterSubscriptions = mysqlTable("newsletterSubscriptions", {
   isActive: boolean("isActive").notNull().default(true),
 });
 export type NewsletterSubscription = typeof newsletterSubscriptions.$inferSelect;
+
+// ─── Newsletter Campaigns ─────────────────────────────────────────────────────
+/**
+ * Newsletter campaigns created and managed by admins.
+ * Supports AI-drafted content, scheduling, audience segmentation, and analytics.
+ */
+export const newsletterCampaigns = mysqlTable("newsletterCampaigns", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 256 }).notNull(),
+  subject: varchar("subject", { length: 512 }).notNull(),
+  bodyHtml: text("bodyHtml").notNull(),
+  bodyText: text("bodyText"),
+  segment: mysqlEnum("segment", ["all", "students", "parents", "landing_page"]).notNull().default("all"),
+  status: mysqlEnum("status", ["draft", "scheduled", "sent", "cancelled"]).notNull().default("draft"),
+  scheduledAt: timestamp("scheduledAt"),
+  sentAt: timestamp("sentAt"),
+  recipientCount: int("recipientCount").default(0),
+  openCount: int("openCount").default(0),
+  clickCount: int("clickCount").default(0),
+  aiGenerated: boolean("aiGenerated").notNull().default(false),
+  createdBy: int("createdBy"),   // FK → users.id
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+export type NewsletterCampaign = typeof newsletterCampaigns.$inferSelect;
+export type InsertNewsletterCampaign = typeof newsletterCampaigns.$inferInsert;
+
+// ─── Landing Chat Sessions ────────────────────────────────────────────────────
+/**
+ * Stores anonymous visitor chat sessions from the landing page chatbot.
+ * Used for lead capture and admin review.
+ */
+export const chatSessions = mysqlTable("chatSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionToken: varchar("sessionToken", { length: 64 }).notNull().unique(),
+  visitorEmail: varchar("visitorEmail", { length: 256 }),
+  visitorName: varchar("visitorName", { length: 256 }),
+  visitorPhone: varchar("visitorPhone", { length: 32 }),
+  source: varchar("source", { length: 64 }).default("landing_page"),
+  status: mysqlEnum("status", ["active", "converted", "archived"]).notNull().default("active"),
+  messageCount: int("messageCount").notNull().default(0),
+  lastMessageAt: timestamp("lastMessageAt"),
+  adminNotes: text("adminNotes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+export type ChatSession = typeof chatSessions.$inferSelect;
+
+export const chatMessages = mysqlTable("chatMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("sessionId").notNull(),
+  role: mysqlEnum("role", ["user", "assistant"]).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ChatMessage = typeof chatMessages.$inferSelect;

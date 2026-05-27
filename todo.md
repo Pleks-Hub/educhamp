@@ -377,3 +377,66 @@
 - [x] Landing Page: animations and micro-interactions
 - [x] DashboardLayout: replace simple sign-in screen with redirect to landing page /landing
 - [x] ParentOnboarding: handle parentInvite token from URL, accept on finish
+
+## Sprint 13 — Newsletter Console, AP Diagnostics Fix, Flexible Learning & Chat Lead Capture
+
+### AP/SAT Diagnostic Questions Fix
+- [x] Fix AP Chemistry — 30 questions with valid choices, correct answers, explanations
+- [x] Fix AP Statistics — 30 questions with valid choices, correct answers, explanations
+- [x] Fix AP Calculus BC — 30 questions with valid choices, correct answers, explanations
+- [x] Fix AP Literature — 30 questions with valid choices, correct answers, explanations
+- [x] Fix AP Business with Personal Finance — 30 questions with valid choices, correct answers, explanations
+- [x] Fix SAT Prep — 30 questions with valid choices, correct answers, explanations
+
+### Flexible Unit Navigation (Post-Diagnostic)
+- [x] Server: after diagnostic, unlock all non-mastered units (flexible mode)
+- [x] UI: Post-diagnostic results — clickable unit rows with Start Here / Take Quiz / Review buttons
+- [x] UI: Post-diagnostic results — student chooses starting unit from results page
+
+### Live Landing Page Stats
+- [x] Server: landing.getStats — live counts from DB (courses, students, questions, AI sessions)
+- [x] UI: LandingPage — wire stats section to trpc.landing.getStats.useQuery()
+- [x] UI: LandingPage — animate counters from 0 to actual value on scroll
+
+### Email Delivery for Parent Invites
+- [x] Server: inviteParent — send invite email via notifyOwner with parent email + invite link
+- [x] Server: inviteParent — include student name and invite URL in notification body
+
+### Newsletter Management Console
+- [x] DB: newsletterCampaigns table (title, subject, htmlContent, status, scheduledAt, sentAt, audienceSegment, createdBy)
+- [x] Server: newsletter.listCampaigns, createCampaign, updateCampaign, deleteCampaign
+- [x] Server: newsletter.getSubscribers — paginated with segment filter
+- [x] Server: newsletter.exportSubscribers — CSV export
+- [x] Server: newsletter.sendCampaign — mark as sent
+- [x] Server: newsletter.aiNewsBotSearch — AI scans education news topics, returns curated articles
+- [x] Server: newsletter.generateDraft — AI generates full newsletter HTML from selected articles
+- [x] UI: /admin/newsletter — full Newsletter Management Console page
+- [x] UI: Newsletter Subscribers tab — table with segment filter, export CSV button
+- [x] UI: Newsletter Compose tab — rich text editor, audience selector, schedule picker, send/save draft
+- [x] UI: AI News Bot tab — topic search, curated article cards, "Add to Newsletter" action
+- [x] UI: Newsletter Analytics tab — per-campaign stats (sent, subscribers, status)
+- [x] Admin Dashboard: Newsletter button in header
+
+### Landing Chatbot Lead Capture & Session Persistence
+- [x] DB: chatSessions table (sessionToken, visitorName, visitorEmail, visitorRole, status, adminNotes, createdAt)
+- [x] DB: chatMessages table (sessionId, role, content, createdAt)
+- [x] Server: landing.startSession — create chat session, return token
+- [x] Server: landing.chat — persist messages to DB, return AI response, auto-extract email from messages
+- [x] Server: landing.updateSessionInfo — update visitor name/email/role
+- [x] UI: LandingPage chatbot — session token persisted in localStorage
+- [x] UI: LandingPage chatbot — lead capture prompt after 3 exchanges
+- [x] UI: LandingPage chatbot — email/name/role capture form inline in chat
+
+### Admin Chat Management Module
+- [x] Server: landing.admin.listSessions — paginated with search/filter/status
+- [x] Server: landing.admin.getSession — full session with messages
+- [x] Server: landing.admin.updateSession — update status and admin notes
+- [x] Server: landing.admin.exportSessions — CSV export
+- [x] Server: landing.admin.getLeadStats — total, with email, converted, archived
+- [x] UI: /admin/chat — Chat Management Console page
+- [x] UI: Chat Management — session list with search/filter by status/role/date
+- [x] UI: Chat Management — conversation detail view with full message history
+- [x] UI: Chat Management — lead stats cards (total, with email, converted)
+- [x] UI: Chat Management — admin notes and status management per session
+- [x] UI: Chat Management — export CSV button
+- [x] Admin Dashboard: Chat Leads button in header

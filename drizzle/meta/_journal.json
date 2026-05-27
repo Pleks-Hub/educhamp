@@ -78,6 +78,20 @@
       "when": 1779853890895,
       "tag": "0010_flat_liz_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1779857912479,
+      "tag": "0011_medical_smasher",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1779858286647,
+      "tag": "0012_acoustic_meltdown",
+      "breakpoints": true
     }
   ]
 }

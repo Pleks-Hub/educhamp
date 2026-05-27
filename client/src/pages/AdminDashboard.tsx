@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   Users, BookOpen, BarChart3, Settings, Shield, ClipboardList,
-  GraduationCap, Brain, Activity, RefreshCw, ChevronRight, Clock,
+  GraduationCap, Brain, Activity, RefreshCw, ChevronRight, Clock, Mail, MessageCircle,
 } from "lucide-react";
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
@@ -733,6 +733,12 @@ export default function AdminDashboard() {
               <Activity className="h-3 w-3 mr-1 text-emerald-500" />
               System Online
             </Badge>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/admin/newsletter")} className="gap-1">
+              <Mail className="h-4 w-4" /> Newsletter
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/admin/chat")} className="gap-1">
+              <MessageCircle className="h-4 w-4" /> Chat Leads
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
               <ChevronRight className="h-4 w-4 mr-1" /> Back to App
             </Button>

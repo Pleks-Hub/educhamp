@@ -27,6 +27,8 @@ import StudentOnboarding from "./pages/StudentOnboarding";
 import Referrals from "./pages/Referrals";
 import CourseWelcome from "./pages/CourseWelcome";
 import AdminDashboard from "./pages/AdminDashboard";
+import NewsletterConsole from "./pages/NewsletterConsole";
+import ChatManagement from "./pages/ChatManagement";
 
 function Router() {
   return (
@@ -41,6 +43,8 @@ function Router() {
       <Route path="/onboarding/student" component={StudentOnboarding} />
       {/* Admin console — standalone, no sidebar */}
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/newsletter" component={NewsletterConsole} />
+      <Route path="/admin/chat" component={ChatManagement} />
 
       {/* App routes — wrapped in DashboardLayout */}
       <Route>

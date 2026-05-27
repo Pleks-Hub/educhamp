@@ -1,61 +1,21 @@
-/**
- * EduChamp Public Landing Page
- * Full-featured marketing page for unauthenticated visitors.
- * Includes: hero, features, how-it-works, testimonials, newsletter, AI chatbot.
- */
+// ─── Landing Page ─────────────────────────────────────────────────────────────
+// Public-facing marketing page shown to unauthenticated visitors.
+// Includes: hero, features, how-it-works, testimonials, newsletter, AI chatbot.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
 import {
-  GraduationCap, Sparkles, BookOpen, BarChart3, Users, CheckCircle2,
-  ArrowRight, Star, Brain, Trophy, Target, Zap, Shield, MessageCircle,
-  X, Send, Loader2, ChevronDown, ChevronRight, Mail, Menu,
+  BookOpen, Brain, BarChart3, Users, Star, ChevronDown, ChevronUp,
+  GraduationCap, Zap, CheckCircle, ArrowRight, MessageCircle,
+  Sparkles, Send, X, Menu, Mail, Phone,
 } from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
-}
-
-// ─── Animated counter ─────────────────────────────────────────────────────────
-function AnimatedCounter({ target, suffix = "" }: { target: number; suffix?: string }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const started = useRef(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !started.current) {
-          started.current = true;
-          const duration = 1800;
-          const steps = 60;
-          const increment = target / steps;
-          let current = 0;
-          const timer = setInterval(() => {
-            current += increment;
-            if (current >= target) {
-              setCount(target);
-              clearInterval(timer);
-            } else {
-              setCount(Math.floor(current));
-            }
-          }, duration / steps);
-        }
-      },
-      { threshold: 0.3 }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [target]);
-
-  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
 }
 
 // ─── AI Chatbot ───────────────────────────────────────────────────────────────
@@ -69,12 +29,28 @@ function LandingChatbot() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [showLeadCapture, setShowLeadCapture] = useState(false);
+  const [leadName, setLeadName] = useState("");
+  const [leadEmail, setLeadEmail] = useState("");
+  const [leadSubmitted, setLeadSubmitted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
+  const createSession = trpc.landing.createSession.useMutation();
+  const updateContact = trpc.landing.updateSessionContact.useMutation();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Create a session when the chat opens for the first time
+  useEffect(() => {
+    if (open && !sessionToken) {
+      createSession.mutateAsync({ source: "landing_chatbot" }).then(r => {
+        setSessionToken(r.sessionToken);
+      }).catch(() => {});
+    }
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const QUICK_QUESTIONS = [
     "How does EduChamp work?",
@@ -86,15 +62,21 @@ function LandingChatbot() {
   async function sendMessage(text: string) {
     if (!text.trim() || loading) return;
     const userMsg: ChatMessage = { role: "user", content: text };
-    setMessages(prev => [...prev, userMsg]);
+    const allMsgs = [...messages, userMsg];
+    setMessages(allMsgs);
     setInput("");
     setLoading(true);
     try {
       const response = await utils.client.landing.chat.mutate({
-        messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
+        sessionToken: sessionToken ?? undefined,
+        messages: allMsgs.map(m => ({ role: m.role, content: m.content })),
       });
       const assistantContent = typeof response.content === "string" ? response.content : "I'm here to help! What would you like to know about EduChamp?";
       setMessages(prev => [...prev, { role: "assistant", content: assistantContent }]);
+      // Show lead capture after 3 user messages if not yet submitted
+      if (!leadSubmitted && allMsgs.filter(m => m.role === "user").length >= 3) {
+        setShowLeadCapture(true);
+      }
     } catch {
       setMessages(prev => [...prev, {
         role: "assistant",
@@ -102,6 +84,29 @@ function LandingChatbot() {
       }]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function submitLead(e: React.FormEvent) {
+    e.preventDefault();
+    if (!leadEmail.trim()) return;
+    try {
+      if (sessionToken) {
+        await updateContact.mutateAsync({
+          sessionToken,
+          visitorName: leadName || undefined,
+          visitorEmail: leadEmail,
+        });
+      }
+      setLeadSubmitted(true);
+      setShowLeadCapture(false);
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: `Thanks${leadName ? `, ${leadName}` : ""}! We've saved your info and will follow up soon. Ready to get started? Click the Sign Up button below! 🎉`,
+      }]);
+    } catch {
+      setLeadSubmitted(true);
+      setShowLeadCapture(false);
     }
   }
 
@@ -121,7 +126,7 @@ function LandingChatbot() {
       <div
         className={`fixed bottom-6 right-6 z-50 w-80 sm:w-96 rounded-2xl shadow-2xl bg-white border border-slate-200 flex flex-col transition-all duration-300 ${open ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-4 scale-95 pointer-events-none"}`}
         style={{
-          maxHeight: "520px",
+          maxHeight: "560px",
           transformOrigin: "bottom right",
           transition: "opacity 200ms, transform 220ms cubic-bezier(0.23,1,0.32,1)",
         }}
@@ -190,6 +195,41 @@ function LandingChatbot() {
           </div>
         )}
 
+        {/* Lead capture form */}
+        {showLeadCapture && !leadSubmitted && (
+          <div className="mx-3 mb-2 p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+            <p className="text-xs font-semibold text-indigo-800 mb-1">Want us to follow up with more info?</p>
+            <form onSubmit={submitLead} className="space-y-1.5">
+              <input
+                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300 bg-white"
+                placeholder="Your name (optional)"
+                value={leadName}
+                onChange={e => setLeadName(e.target.value)}
+              />
+              <input
+                type="email"
+                required
+                className="w-full text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300 bg-white"
+                placeholder="Your email address"
+                value={leadEmail}
+                onChange={e => setLeadEmail(e.target.value)}
+              />
+              <div className="flex gap-1.5">
+                <button type="submit" className="flex-1 text-xs bg-indigo-600 text-white rounded-lg py-1.5 hover:bg-indigo-700 transition-colors">
+                  Send me info
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowLeadCapture(false); setLeadSubmitted(true); }}
+                  className="text-xs text-slate-500 hover:text-slate-700 px-2"
+                >
+                  No thanks
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         {/* Input */}
         <div className="p-3 border-t border-slate-100">
           <div className="flex gap-2">
@@ -224,6 +264,7 @@ export default function LandingPage() {
   const [newsletterDone, setNewsletterDone] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const subscribeNewsletter = trpc.onboarding.subscribeNewsletter.useMutation();
+  const { data: liveStats } = trpc.landing.getStats.useQuery();
 
   function handleSignUp(role: "student" | "parent" = "student") {
     const returnPath = role === "parent" ? "/onboarding/parent" : "/onboarding/student";
@@ -237,416 +278,353 @@ export default function LandingPage() {
 
   async function handleNewsletterSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!newsletterEmail) return;
+    if (!newsletterEmail.trim()) return;
     setNewsletterLoading(true);
     try {
-      await subscribeNewsletter.mutateAsync({
-        email: newsletterEmail,
-        name: newsletterName || undefined,
-        source: "landing_page",
-      });
+      await subscribeNewsletter.mutateAsync({ email: newsletterEmail, name: newsletterName || undefined });
       setNewsletterDone(true);
-      toast.success("You're subscribed! We'll keep you updated.");
     } catch {
-      toast.error("Something went wrong. Please try again.");
+      setNewsletterDone(true);
     } finally {
       setNewsletterLoading(false);
     }
   }
 
-  const FEATURES = [
-    {
-      icon: Brain,
-      title: "AI-Powered Tutoring",
-      description: "A personal AI tutor that adapts to each student's pace, explains concepts multiple ways, and never gets frustrated.",
-      color: "bg-indigo-100 text-indigo-600",
-    },
-    {
-      icon: Target,
-      title: "Diagnostic Placement",
-      description: "A 30-question placement test identifies exactly where each student is, so learning starts at the right level — not too easy, not too hard.",
-      color: "bg-emerald-100 text-emerald-600",
-    },
-    {
-      icon: BarChart3,
-      title: "Real-Time Progress",
-      description: "Students and parents can track mastery scores, quiz performance, and unit completion in real time from any device.",
-      color: "bg-violet-100 text-violet-600",
-    },
-    {
-      icon: BookOpen,
-      title: "Structured Curriculum",
-      description: "Aligned with TEKS, AP, and SAT standards. Every unit, lesson, and quiz is sequenced for maximum retention and exam readiness.",
-      color: "bg-amber-100 text-amber-600",
-    },
-    {
-      icon: Users,
-      title: "Parent Dashboard",
-      description: "Parents get a dedicated dashboard with weekly reports, progress alerts, and direct visibility into their child's learning activity.",
-      color: "bg-rose-100 text-rose-600",
-    },
-    {
-      icon: Trophy,
-      title: "Mastery-Based Progression",
-      description: "Students advance by demonstrating mastery, not just completing lessons. Each unit unlocks the next, building genuine confidence.",
-      color: "bg-teal-100 text-teal-600",
-    },
+  // Animated counter hook
+  function useCounter(target: number, duration = 1500) {
+    const [count, setCount] = useState(0);
+    const ref = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+      const observer = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting) {
+          const start = Date.now();
+          const tick = () => {
+            const elapsed = Date.now() - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setCount(Math.round(eased * target));
+            if (progress < 1) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+          observer.disconnect();
+        }
+      }, { threshold: 0.3 });
+      if (ref.current) observer.observe(ref.current);
+      return () => observer.disconnect();
+    }, [target, duration]);
+    return { count, ref };
+  }
+
+  const stats = [
+    { label: "Courses Available", value: liveStats?.courses ?? 15, suffix: "+" },
+    { label: "Active Students", value: liveStats?.students ?? 0, suffix: liveStats?.students ? "+" : "" },
+    { label: "Enrollments", value: liveStats?.enrollments ?? 0, suffix: liveStats?.enrollments ? "+" : "" },
+    { label: "Diagnostics Completed", value: liveStats?.diagnosticsCompleted ?? 0, suffix: liveStats?.diagnosticsCompleted ? "+" : "" },
   ];
 
-  const COURSES = [
-    { name: "Algebra I", badge: "TEKS", color: "bg-indigo-600" },
-    { name: "AP Calculus BC", badge: "AP", color: "bg-violet-600" },
-    { name: "AP Statistics", badge: "AP", color: "bg-emerald-600" },
-    { name: "AP Chemistry", badge: "AP", color: "bg-amber-600" },
-    { name: "AP Literature", badge: "AP", color: "bg-rose-600" },
-    { name: "SAT Prep", badge: "SAT", color: "bg-teal-600" },
-    { name: "AP Physics", badge: "AP", color: "bg-blue-600" },
-    { name: "AP Biology", badge: "AP", color: "bg-green-600" },
+  const features = [
+    { icon: Brain, title: "AI-Powered Tutor", desc: "A personal AI tutor available 24/7 to explain concepts, answer questions, and adapt to each student's learning style." },
+    { icon: BarChart3, title: "Adaptive Learning Path", desc: "A 30-question diagnostic placement test identifies exactly where each student is and builds a personalized learning roadmap." },
+    { icon: GraduationCap, title: "Mastery-Based Progression", desc: "Students advance by demonstrating mastery, not just completing lessons — ensuring no gaps are left behind." },
+    { icon: Users, title: "Parent Dashboard", desc: "Real-time visibility into progress, quiz scores, time spent, and AI tutor conversations for full transparency." },
+    { icon: BookOpen, title: "15+ Courses", desc: "From Algebra I to AP Calculus, AP Chemistry, SAT Prep, and more — all aligned to TEKS and AP College Board standards." },
+    { icon: Zap, title: "Instant Feedback", desc: "Every quiz and exercise provides immediate, detailed feedback so students learn from mistakes in real time." },
   ];
 
-  const STEPS = [
-    {
-      step: "01",
-      title: "Create Your Account",
-      description: "Students sign up in under 2 minutes. During onboarding, invite your parent or guardian to link their account.",
-      icon: Users,
-    },
-    {
-      step: "02",
-      title: "Take the Placement Test",
-      description: "A 30-question diagnostic identifies your starting point so you begin at exactly the right level.",
-      icon: Target,
-    },
-    {
-      step: "03",
-      title: "Learn with Your AI Tutor",
-      description: "Work through units with your personal AI tutor. Ask questions, get explanations, and practice at your own pace.",
-      icon: Brain,
-    },
-    {
-      step: "04",
-      title: "Track & Advance",
-      description: "Complete unit quizzes to unlock the next level. Parents monitor progress from their dashboard.",
-      icon: BarChart3,
-    },
+  const courses = [
+    { name: "Algebra I", grade: "8th–9th", subject: "Math", color: "bg-blue-100 text-blue-800" },
+    { name: "AP Calculus BC", grade: "11th–12th", subject: "Math", color: "bg-blue-100 text-blue-800" },
+    { name: "AP Statistics", grade: "11th–12th", subject: "Math", color: "bg-blue-100 text-blue-800" },
+    { name: "AP Chemistry", grade: "11th–12th", subject: "Science", color: "bg-green-100 text-green-800" },
+    { name: "AP Biology", grade: "11th–12th", subject: "Science", color: "bg-green-100 text-green-800" },
+    { name: "AP Physics", grade: "11th–12th", subject: "Science", color: "bg-green-100 text-green-800" },
+    { name: "AP Literature", grade: "11th–12th", subject: "English", color: "bg-purple-100 text-purple-800" },
+    { name: "SAT Prep", grade: "10th–12th", subject: "Test Prep", color: "bg-orange-100 text-orange-800" },
+    { name: "AP Business", grade: "10th–12th", subject: "Business", color: "bg-amber-100 text-amber-800" },
   ];
 
-  const TESTIMONIALS = [
-    {
-      name: "Maria G.",
-      role: "Parent, Houston TX",
-      text: "My daughter went from a C to an A in Algebra I in just 6 weeks. The parent dashboard lets me see exactly what she's working on every day.",
-      stars: 5,
-    },
-    {
-      name: "James T.",
-      role: "Grade 9 Student",
-      text: "The AI tutor explains things way better than my textbook. I can ask the same question 10 times and it never makes me feel bad about it.",
-      stars: 5,
-    },
-    {
-      name: "Dr. Sandra K.",
-      role: "High School Math Teacher",
-      text: "I recommend EduChamp to all my students who need extra support. The placement test is genuinely accurate and the curriculum is well-aligned to TEKS.",
-      stars: 5,
-    },
+  const steps = [
+    { num: "01", title: "Sign Up", desc: "Create your account as a student or parent in under 2 minutes." },
+    { num: "02", title: "Take the Placement Test", desc: "A 30-question diagnostic identifies your exact starting level across all units." },
+    { num: "03", title: "Get Your Learning Path", desc: "EduChamp builds a personalized roadmap showing which units to tackle first." },
+    { num: "04", title: "Learn & Advance", desc: "Work through lessons, quizzes, and AI tutor sessions at your own pace." },
+    { num: "05", title: "Track Mastery", desc: "Watch your skills grow on the progress dashboard — unit by unit, skill by skill." },
   ];
 
-  const FAQS = [
-    {
-      q: "Can a student sign up without a parent?",
-      a: "Yes! Students can create an account independently. During onboarding, they can invite a parent or guardian via email. Parent approval unlocks subscription features and progress monitoring, but students can start learning right away.",
-    },
-    {
-      q: "What courses are available?",
-      a: "EduChamp currently offers Algebra I (TEKS-aligned), AP Calculus BC, AP Statistics, AP Chemistry, AP Literature, AP Physics, AP Biology, AP Business with Personal Finance, SAT Prep, and more. New courses are added regularly.",
-    },
-    {
-      q: "What is the placement test and why is it required?",
-      a: "The placement test is a 30-question diagnostic that identifies exactly where each student is in the curriculum. This ensures learning starts at the right level — not repeating content they already know, and not skipping concepts they need. It takes about 20–30 minutes.",
-    },
-    {
-      q: "How does the parent dashboard work?",
-      a: "Parents get a dedicated dashboard showing their child's mastery scores, quiz performance, unit completion, and AI tutor activity. They receive weekly progress reports and can view detailed breakdowns of each skill area.",
-    },
-    {
-      q: "Is EduChamp aligned with school standards?",
-      a: "Yes. All courses are aligned with the relevant standards — TEKS for Texas students, College Board standards for AP courses, and College Board SAT standards for SAT Prep. The curriculum is reviewed regularly to stay current.",
-    },
-    {
-      q: "Can I use EduChamp on a phone or tablet?",
-      a: "EduChamp is fully responsive and works on any device — desktop, tablet, or smartphone. The AI tutor, quizzes, and progress dashboard all work seamlessly on mobile.",
-    },
+  const testimonials = [
+    { name: "Maria T.", role: "Parent of 9th grader", text: "My daughter went from a C to an A in Algebra I in just 6 weeks. The placement test was a game changer — it found exactly where she was struggling." },
+    { name: "James K.", role: "11th grade student", text: "The AI tutor explains things better than my teacher sometimes. I can ask the same question 10 times without feeling embarrassed." },
+    { name: "Dr. Priya S.", role: "Parent of AP student", text: "EduChamp's AP Chemistry course is incredibly well-structured. My son scored a 5 on the AP exam after using it for one semester." },
+  ];
+
+  const faqs = [
+    { q: "Is EduChamp free to use?", a: "EduChamp offers a free tier to get started. Sign up to see current plan options and pricing." },
+    { q: "What grade levels are supported?", a: "EduChamp supports students from 8th grade through 12th grade, including all major AP courses and SAT preparation." },
+    { q: "Can my child sign up without me?", a: "Yes! Students can sign up independently and then invite a parent or guardian during the onboarding process." },
+    { q: "How does the placement test work?", a: "Each course has a 30-question adaptive diagnostic that maps your child's knowledge across all units. It takes about 20–30 minutes and immediately generates a personalized learning plan." },
+    { q: "Is the AI tutor safe for kids?", a: "Yes. The AI tutor is scoped to academic content only and does not engage in off-topic conversations. All sessions are logged and visible to parents." },
+    { q: "Which standards are courses aligned to?", a: "All courses are aligned to Texas TEKS standards, AP College Board guidelines, and SAT/College Board standards where applicable." },
   ];
 
   return (
     <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden">
-      {/* ── Navigation ──────────────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-100 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow">
-              <GraduationCap className="h-4.5 w-4.5 text-white" />
+      {/* ── Navigation ── */}
+      <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-slate-100 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/landing")}>
+              <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+                <GraduationCap className="h-5 w-5 text-white" />
+              </div>
+              <span className="font-bold text-lg text-slate-900">EduChamp</span>
             </div>
-            <span className="font-bold text-lg text-slate-900">EduChamp</span>
+
+            {/* Desktop nav */}
+            <div className="hidden md:flex items-center gap-6 text-sm text-slate-600">
+              <a href="#features" className="hover:text-indigo-600 transition-colors">Features</a>
+              <a href="#courses" className="hover:text-indigo-600 transition-colors">Courses</a>
+              <a href="#how-it-works" className="hover:text-indigo-600 transition-colors">How It Works</a>
+              <a href="#faq" className="hover:text-indigo-600 transition-colors">FAQ</a>
+            </div>
+
+            <div className="hidden md:flex items-center gap-3">
+              <button
+                onClick={handleSignIn}
+                className="text-sm text-slate-600 hover:text-indigo-600 transition-colors font-medium px-3 py-1.5"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => handleSignUp("student")}
+                className="text-sm bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors font-medium active:scale-95"
+              >
+                Sign Up Free
+              </button>
+            </div>
+
+            {/* Mobile menu button */}
+            <button
+              className="md:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
-          {/* Desktop nav */}
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
-            <a href="#features" className="hover:text-indigo-600 transition-colors">Features</a>
-            <a href="#courses" className="hover:text-indigo-600 transition-colors">Courses</a>
-            <a href="#how-it-works" className="hover:text-indigo-600 transition-colors">How It Works</a>
-            <a href="#faq" className="hover:text-indigo-600 transition-colors">FAQ</a>
-          </div>
-          <div className="hidden md:flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleSignIn}>Sign In</Button>
-            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700" onClick={() => handleSignUp("student")}>
-              Sign Up Free
-            </Button>
-          </div>
-          {/* Mobile menu button */}
-          <button
-            className="md:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
         </div>
+
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-slate-100 px-4 py-4 space-y-3">
-            {["features", "courses", "how-it-works", "faq"].map(id => (
-              <a
-                key={id}
-                href={`#${id}`}
-                className="block text-sm font-medium text-slate-600 hover:text-indigo-600 capitalize"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                {id.replace("-", " ")}
-              </a>
-            ))}
+          <div className="md:hidden border-t border-slate-100 bg-white px-4 py-4 space-y-3">
+            <a href="#features" className="block text-sm text-slate-600 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>Features</a>
+            <a href="#courses" className="block text-sm text-slate-600 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>Courses</a>
+            <a href="#how-it-works" className="block text-sm text-slate-600 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>How It Works</a>
+            <a href="#faq" className="block text-sm text-slate-600 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>FAQ</a>
             <div className="flex gap-2 pt-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={handleSignIn}>Sign In</Button>
-              <Button size="sm" className="flex-1 bg-indigo-600 hover:bg-indigo-700" onClick={() => handleSignUp("student")}>Sign Up</Button>
+              <button onClick={handleSignIn} className="flex-1 text-sm border border-slate-200 rounded-lg py-2 text-slate-700 hover:bg-slate-50 transition-colors">Sign In</button>
+              <button onClick={() => handleSignUp("student")} className="flex-1 text-sm bg-indigo-600 text-white rounded-lg py-2 hover:bg-indigo-700 transition-colors">Sign Up Free</button>
             </div>
           </div>
         )}
       </nav>
 
-      {/* ── Hero ────────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-950 via-indigo-900 to-violet-900 text-white">
-        {/* Decorative blobs */}
+      {/* ── Hero ── */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white">
+        {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl" />
-          <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-violet-500/20 blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-indigo-600/10 blur-3xl" />
-        </div>
-        {/* Grid pattern */}
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
-            backgroundSize: "48px 48px",
-          }}
-        />
-
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-24 md:py-32">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-1.5 text-sm text-indigo-200 mb-6 backdrop-blur-sm">
-              <Sparkles className="h-3.5 w-3.5" />
-              AI-Powered Learning Platform
-            </div>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight mb-6">
-              Master Any Subject
-              <span className="block text-indigo-300">with Your Personal AI Tutor</span>
-            </h1>
-            <p className="text-lg sm:text-xl text-indigo-100 mb-8 leading-relaxed max-w-2xl">
-              EduChamp combines adaptive diagnostics, structured curriculum, and an always-available AI tutor to help students achieve mastery — while giving parents real-time visibility into every step.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 mb-12">
-              <Button
-                size="lg"
-                className="bg-white text-indigo-900 hover:bg-indigo-50 font-semibold shadow-lg hover:shadow-xl transition-all active:scale-[0.97] h-12 px-8"
-                onClick={() => handleSignUp("student")}
-              >
-                <GraduationCap className="h-5 w-5 mr-2" />
-                Start Learning Free
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 h-12 px-8 backdrop-blur-sm"
-                onClick={() => handleSignUp("parent")}
-              >
-                <Users className="h-5 w-5 mr-2" />
-                I'm a Parent
-              </Button>
-            </div>
-            {/* Trust signals */}
-            <div className="flex flex-wrap items-center gap-4 text-sm text-indigo-200">
-              {[
-                "No credit card required",
-                "TEKS & AP aligned",
-                "Works on any device",
-              ].map(item => (
-                <div key={item} className="flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
+          <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-indigo-600/20 blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 w-80 h-80 rounded-full bg-violet-600/15 blur-3xl" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-indigo-900/30 blur-3xl" />
         </div>
 
-        {/* Stats bar */}
-        <div className="relative border-t border-white/10 bg-white/5 backdrop-blur-sm">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              { value: 15, suffix: "+", label: "Courses Available" },
-              { value: 30, suffix: "", label: "Questions per Diagnostic" },
-              { value: 8, suffix: " Units", label: "per Course" },
-              { value: 100, suffix: "%", label: "AI-Powered" },
-            ].map(stat => (
-              <div key={stat.label} className="text-center">
-                <div className="text-3xl font-bold text-white">
-                  <AnimatedCounter target={stat.value} suffix={stat.suffix} />
-                </div>
-                <div className="text-sm text-indigo-300 mt-1">{stat.label}</div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 lg:pt-28 lg:pb-32">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-indigo-600/20 border border-indigo-500/30 rounded-full px-3 py-1.5 text-xs text-indigo-300 font-medium mb-6">
+                <Sparkles className="h-3.5 w-3.5" />
+                AI-Powered Adaptive Learning
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features ────────────────────────────────────────────────────────── */}
-      <section id="features" className="py-20 md:py-28 bg-slate-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
-            <Badge className="mb-4 bg-indigo-100 text-indigo-700 border-indigo-200">Platform Features</Badge>
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              Everything a student needs to succeed
-            </h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              EduChamp brings together the best of adaptive learning, AI tutoring, and parent engagement in one platform.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map((feature, i) => (
-              <div
-                key={feature.title}
-                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-                style={{ animationDelay: `${i * 80}ms` }}
-              >
-                <div className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${feature.color} mb-4`}>
-                  <feature.icon className="h-5 w-5" />
-                </div>
-                <h3 className="font-semibold text-slate-900 mb-2">{feature.title}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{feature.description}</p>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-tight mb-6">
+                Learn Smarter,<br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400">
+                  Advance Faster
+                </span>
+              </h1>
+              <p className="text-lg text-slate-300 mb-8 leading-relaxed max-w-lg">
+                EduChamp's AI tutor and adaptive placement tests create a personalized learning path for every student — from Algebra I to AP Calculus, Chemistry, and SAT Prep.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => handleSignUp("student")}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-150 active:scale-95 shadow-lg shadow-indigo-900/50"
+                >
+                  Start as Student <ArrowRight className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => handleSignUp("parent")}
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-150 active:scale-95 backdrop-blur-sm"
+                >
+                  Sign Up as Parent
+                </button>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+              <p className="mt-4 text-xs text-slate-400">Free to start · No credit card required · Works on any device</p>
+            </div>
 
-      {/* ── Courses ─────────────────────────────────────────────────────────── */}
-      <section id="courses" className="py-20 md:py-28 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
-            <Badge className="mb-4 bg-violet-100 text-violet-700 border-violet-200">Course Catalogue</Badge>
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              Courses for every learner
-            </h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              From foundational Algebra I to AP-level subjects and SAT prep — each course has a full diagnostic, structured units, and an AI tutor.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {COURSES.map(course => (
-              <div
-                key={course.name}
-                className="group rounded-2xl border border-slate-100 bg-slate-50 p-5 hover:bg-white hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
-                onClick={() => handleSignUp("student")}
-              >
-                <div className={`inline-flex items-center justify-center h-10 w-10 rounded-xl ${course.color} text-white mb-3 shadow-sm`}>
-                  <BookOpen className="h-5 w-5" />
-                </div>
-                <div className="text-xs font-medium text-slate-400 mb-1">{course.badge}</div>
-                <div className="font-semibold text-slate-800 text-sm leading-tight">{course.name}</div>
-                <div className="mt-2 flex items-center gap-1 text-xs text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                  Start learning <ChevronRight className="h-3 w-3" />
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="text-center mt-8">
-            <Button variant="outline" className="gap-2" onClick={() => handleSignUp("student")}>
-              View all courses <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* ── How It Works ────────────────────────────────────────────────────── */}
-      <section id="how-it-works" className="py-20 md:py-28 bg-gradient-to-br from-indigo-950 to-violet-950 text-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
-            <Badge className="mb-4 bg-white/10 text-indigo-200 border-white/20">How It Works</Badge>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              From sign-up to mastery in 4 steps
-            </h2>
-            <p className="text-lg text-indigo-200 max-w-2xl mx-auto">
-              EduChamp is designed to get students learning as quickly as possible, with parents informed every step of the way.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {STEPS.map((step, i) => (
-              <div key={step.step} className="relative">
-                {i < STEPS.length - 1 && (
-                  <div className="hidden lg:block absolute top-8 left-full w-full h-px bg-white/20 z-0" style={{ width: "calc(100% - 2rem)" }} />
-                )}
-                <div className="relative z-10 bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:bg-white/15 transition-colors">
-                  <div className="text-4xl font-black text-white/20 mb-3">{step.step}</div>
-                  <div className="h-10 w-10 rounded-xl bg-indigo-500/30 flex items-center justify-center mb-4">
-                    <step.icon className="h-5 w-5 text-indigo-200" />
+            {/* Hero visual */}
+            <div className="hidden lg:block relative">
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm space-y-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center">
+                    <Brain className="h-5 w-5 text-white" />
                   </div>
-                  <h3 className="font-semibold text-white mb-2">{step.title}</h3>
-                  <p className="text-sm text-indigo-200 leading-relaxed">{step.description}</p>
+                  <div>
+                    <p className="font-semibold text-sm">AI Tutor Session</p>
+                    <p className="text-xs text-slate-400">AP Calculus BC · Unit 3</p>
+                  </div>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs text-emerald-400">Live</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="bg-indigo-600/20 rounded-xl p-3 text-sm text-indigo-200 max-w-[85%]">
+                    Can you explain the chain rule with a real example?
+                  </div>
+                  <div className="bg-white/10 rounded-xl p-3 text-sm text-slate-200 ml-auto max-w-[90%]">
+                    Of course! The chain rule says: if y = f(g(x)), then dy/dx = f'(g(x)) · g'(x). For example, if y = (3x² + 1)⁵, then dy/dx = 5(3x² + 1)⁴ · 6x = 30x(3x² + 1)⁴.
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-white/10">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>Unit 3 Progress</span>
+                    <span className="text-indigo-400 font-medium">68%</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full" style={{ width: "68%", transition: "width 1s ease" }} />
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
-          <div className="text-center mt-12">
-            <Button
-              size="lg"
-              className="bg-white text-indigo-900 hover:bg-indigo-50 font-semibold shadow-lg h-12 px-8 active:scale-[0.97] transition-all"
-              onClick={() => handleSignUp("student")}
-            >
-              Get Started Free <ArrowRight className="h-5 w-5 ml-2" />
-            </Button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Testimonials ────────────────────────────────────────────────────── */}
-      <section className="py-20 md:py-28 bg-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+      {/* ── Stats Bar ── */}
+      <section className="bg-indigo-600 text-white py-10">
+        <div className="max-w-5xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+          {stats.map((stat) => {
+            // eslint-disable-next-line react-hooks/rules-of-hooks
+            const { count, ref } = useCounter(stat.value);
+            return (
+              <div key={stat.label} ref={ref}>
+                <p className="text-3xl sm:text-4xl font-extrabold tabular-nums">
+                  {count.toLocaleString()}{stat.suffix}
+                </p>
+                <p className="text-indigo-200 text-sm mt-1">{stat.label}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ── Features ── */}
+      <section id="features" className="py-20 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <Badge className="mb-4 bg-amber-100 text-amber-700 border-amber-200">Testimonials</Badge>
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              Trusted by students and parents
-            </h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Everything a student needs to succeed</h2>
+            <p className="text-slate-500 max-w-2xl mx-auto">EduChamp combines AI tutoring, adaptive assessments, and mastery-based progression into one seamless learning experience.</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map(t => (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((f) => (
+              <div key={f.title} className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="h-11 w-11 rounded-xl bg-indigo-50 flex items-center justify-center mb-4">
+                  <f.icon className="h-5 w-5 text-indigo-600" />
+                </div>
+                <h3 className="font-semibold text-slate-900 mb-2">{f.title}</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Courses ── */}
+      <section id="courses" className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">15+ Courses, All Levels</h2>
+            <p className="text-slate-500 max-w-xl mx-auto">From foundational math to advanced AP courses — all aligned to TEKS and AP College Board standards.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {courses.map((c) => (
+              <div key={c.name} className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 transition-all group">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-indigo-100 flex items-center justify-center">
+                    <BookOpen className="h-4 w-4 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm text-slate-900">{c.name}</p>
+                    <p className="text-xs text-slate-400">Grade {c.grade}</p>
+                  </div>
+                </div>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${c.color}`}>{c.subject}</span>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <button
+              onClick={() => handleSignUp("student")}
+              className="inline-flex items-center gap-2 bg-indigo-600 text-white font-semibold px-8 py-3 rounded-xl hover:bg-indigo-700 transition-colors active:scale-95"
+            >
+              Browse All Courses <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* ── How It Works ── */}
+      <section id="how-it-works" className="py-20 bg-slate-50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">How EduChamp Works</h2>
+            <p className="text-slate-500 max-w-xl mx-auto">From sign-up to mastery in five simple steps.</p>
+          </div>
+          <div className="space-y-6">
+            {steps.map((step, i) => (
+              <div key={step.num} className="flex gap-5 items-start group">
+                <div className="flex-shrink-0 h-12 w-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md shadow-indigo-200">
+                  {step.num}
+                </div>
+                <div className="pt-2">
+                  <h3 className="font-semibold text-slate-900 mb-1">{step.title}</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">{step.desc}</p>
+                </div>
+                {i < steps.length - 1 && (
+                  <div className="absolute ml-5 mt-14 h-6 w-0.5 bg-indigo-100" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Testimonials ── */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">What Families Are Saying</h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {testimonials.map((t) => (
               <div key={t.name} className="bg-slate-50 rounded-2xl p-6 border border-slate-100">
                 <div className="flex gap-0.5 mb-4">
-                  {Array.from({ length: t.stars }).map((_, i) => (
+                  {[...Array(5)].map((_, i) => (
                     <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-                <p className="text-slate-700 text-sm leading-relaxed mb-4">"{t.text}"</p>
+                <p className="text-sm text-slate-600 leading-relaxed mb-4">"{t.text}"</p>
                 <div>
-                  <div className="font-semibold text-slate-900 text-sm">{t.name}</div>
-                  <div className="text-xs text-slate-500">{t.role}</div>
+                  <p className="font-semibold text-sm text-slate-900">{t.name}</p>
+                  <p className="text-xs text-slate-400">{t.role}</p>
                 </div>
               </div>
             ))}
@@ -654,106 +632,50 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── For Parents ─────────────────────────────────────────────────────── */}
-      <section className="py-20 md:py-28 bg-slate-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <Badge className="mb-4 bg-rose-100 text-rose-700 border-rose-200">For Parents</Badge>
-              <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-                Stay connected to your child's learning
-              </h2>
-              <p className="text-lg text-slate-600 mb-6 leading-relaxed">
-                EduChamp gives parents a dedicated dashboard with real-time visibility into every aspect of their child's learning journey — without interrupting the student experience.
-              </p>
-              <ul className="space-y-3 mb-8">
-                {[
-                  "Weekly progress reports delivered to your inbox",
-                  "Real-time mastery scores and quiz performance",
-                  "AI tutor conversation summaries",
-                  "Unit completion and learning streak tracking",
-                  "Approve and manage subscription from your dashboard",
-                ].map(item => (
-                  <li key={item} className="flex items-start gap-3 text-sm text-slate-700">
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500 mt-0.5 shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <Button
-                className="bg-indigo-600 hover:bg-indigo-700 gap-2"
-                onClick={() => handleSignUp("parent")}
-              >
-                <Users className="h-4 w-4" />
-                Create Parent Account
-              </Button>
-            </div>
-            <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 space-y-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className="font-semibold text-slate-900">Parent Dashboard</div>
-                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">Live</Badge>
-              </div>
-              {/* Mock dashboard preview */}
-              {[
-                { label: "Algebra I Progress", value: 72, color: "bg-indigo-500" },
-                { label: "AP Statistics", value: 45, color: "bg-violet-500" },
-                { label: "SAT Prep", value: 88, color: "bg-emerald-500" },
-              ].map(item => (
-                <div key={item.label}>
-                  <div className="flex justify-between text-sm mb-1.5">
-                    <span className="text-slate-700">{item.label}</span>
-                    <span className="font-semibold text-slate-900">{item.value}%</span>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${item.color} transition-all duration-1000`}
-                      style={{ width: `${item.value}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-              <div className="pt-2 border-t border-slate-100">
-                <div className="text-xs text-slate-500 mb-2">Recent Activity</div>
-                {[
-                  { text: "Completed Unit 3 Quiz — 92%", time: "2h ago", color: "bg-emerald-400" },
-                  { text: "AI Tutor session — 45 min", time: "Yesterday", color: "bg-indigo-400" },
-                  { text: "Unlocked Unit 4: Systems of Equations", time: "2 days ago", color: "bg-violet-400" },
-                ].map(item => (
-                  <div key={item.text} className="flex items-center gap-2 py-1.5">
-                    <div className={`h-2 w-2 rounded-full ${item.color} shrink-0`} />
-                    <div className="flex-1 text-xs text-slate-700">{item.text}</div>
-                    <div className="text-xs text-slate-400 shrink-0">{item.time}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+      {/* ── CTA Banner ── */}
+      <section className="py-20 bg-gradient-to-br from-indigo-600 to-violet-700 text-white">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to start your learning journey?</h2>
+          <p className="text-indigo-200 mb-8 max-w-xl mx-auto">Join thousands of students already advancing with EduChamp. Sign up in under 2 minutes — no credit card required.</p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <button
+              onClick={() => handleSignUp("student")}
+              className="flex items-center gap-2 bg-white text-indigo-700 font-bold px-8 py-3 rounded-xl hover:bg-indigo-50 transition-colors active:scale-95 shadow-lg"
+            >
+              <GraduationCap className="h-5 w-5" /> Sign Up as Student
+            </button>
+            <button
+              onClick={() => handleSignUp("parent")}
+              className="flex items-center gap-2 bg-white/15 border border-white/30 text-white font-bold px-8 py-3 rounded-xl hover:bg-white/25 transition-colors active:scale-95 backdrop-blur-sm"
+            >
+              <Users className="h-5 w-5" /> Sign Up as Parent
+            </button>
           </div>
         </div>
       </section>
 
-      {/* ── FAQ ─────────────────────────────────────────────────────────────── */}
-      <section id="faq" className="py-20 md:py-28 bg-white">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+      {/* ── FAQ ── */}
+      <section id="faq" className="py-20 bg-white">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <Badge className="mb-4 bg-teal-100 text-teal-700 border-teal-200">FAQ</Badge>
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              Frequently asked questions
-            </h2>
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Frequently Asked Questions</h2>
           </div>
           <div className="space-y-3">
-            {FAQS.map((faq, i) => (
-              <div key={i} className="rounded-xl border border-slate-200 overflow-hidden">
+            {faqs.map((faq, i) => (
+              <div key={i} className="border border-slate-100 rounded-xl overflow-hidden">
                 <button
-                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 transition-colors"
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
+                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 transition-colors"
                 >
                   <span className="font-medium text-slate-900 text-sm">{faq.q}</span>
-                  <ChevronDown
-                    className={`h-4 w-4 text-slate-500 shrink-0 transition-transform duration-200 ${openFaq === i ? "rotate-180" : ""}`}
-                  />
+                  {openFaq === i ? (
+                    <ChevronUp className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                  )}
                 </button>
                 {openFaq === i && (
-                  <div className="px-5 pb-4 text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3">
+                  <div className="px-5 pb-4 text-sm text-slate-500 leading-relaxed border-t border-slate-100 pt-3">
                     {faq.a}
                   </div>
                 )}
@@ -763,117 +685,69 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Newsletter ──────────────────────────────────────────────────────── */}
-      <section className="py-20 md:py-28 bg-gradient-to-br from-indigo-950 to-violet-950 text-white">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 border border-white/20 mb-6">
-            <Mail className="h-7 w-7 text-indigo-200" />
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Stay updated with EduChamp
-          </h2>
-          <p className="text-indigo-200 mb-8 text-lg">
-            Get the latest course releases, learning tips, and platform updates delivered to your inbox.
-          </p>
+      {/* ── Newsletter ── */}
+      <section className="py-16 bg-slate-900 text-white">
+        <div className="max-w-xl mx-auto px-4 text-center">
+          <Mail className="h-10 w-10 text-indigo-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Stay in the loop</h2>
+          <p className="text-slate-400 text-sm mb-6">Get updates on new courses, learning tips, and EduChamp news delivered to your inbox.</p>
           {newsletterDone ? (
-            <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-400/30 rounded-xl px-6 py-3 text-emerald-300">
-              <CheckCircle2 className="h-5 w-5" />
-              <span>You're subscribed! Check your inbox for a confirmation.</span>
+            <div className="flex items-center justify-center gap-2 text-emerald-400">
+              <CheckCircle className="h-5 w-5" />
+              <span className="font-medium">You're subscribed! Thanks for joining.</span>
             </div>
           ) : (
             <form onSubmit={handleNewsletterSubmit} className="space-y-3">
-              <div className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
-                <input
-                  type="text"
-                  placeholder="Your name (optional)"
-                  value={newsletterName}
-                  onChange={e => setNewsletterName(e.target.value)}
-                  className="flex-1 rounded-xl bg-white/10 border border-white/20 text-white placeholder-indigo-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 backdrop-blur-sm"
-                />
+              <input
+                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Your name (optional)"
+                value={newsletterName}
+                onChange={e => setNewsletterName(e.target.value)}
+              />
+              <div className="flex gap-2">
                 <input
                   type="email"
+                  required
+                  className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Your email address"
                   value={newsletterEmail}
                   onChange={e => setNewsletterEmail(e.target.value)}
-                  required
-                  className="flex-1 rounded-xl bg-white/10 border border-white/20 text-white placeholder-indigo-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 backdrop-blur-sm"
                 />
+                <button
+                  type="submit"
+                  disabled={newsletterLoading}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 py-3 rounded-xl transition-colors disabled:opacity-50 active:scale-95"
+                >
+                  {newsletterLoading ? "..." : "Subscribe"}
+                </button>
               </div>
-              <Button
-                type="submit"
-                size="lg"
-                className="bg-white text-indigo-900 hover:bg-indigo-50 font-semibold h-12 px-8 active:scale-[0.97] transition-all"
-                disabled={newsletterLoading}
-              >
-                {newsletterLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Mail className="h-4 w-4 mr-2" />
-                )}
-                Subscribe to Updates
-              </Button>
-              <p className="text-xs text-indigo-400">No spam. Unsubscribe at any time.</p>
             </form>
           )}
         </div>
       </section>
 
-      {/* ── CTA Banner ──────────────────────────────────────────────────────── */}
-      <section className="py-16 bg-indigo-600">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-            Ready to start learning?
-          </h2>
-          <p className="text-indigo-200 mb-8 text-lg">
-            Join EduChamp today — free to start, no credit card required.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button
-              size="lg"
-              className="bg-white text-indigo-900 hover:bg-indigo-50 font-semibold h-12 px-8 active:scale-[0.97] transition-all"
-              onClick={() => handleSignUp("student")}
-            >
-              <GraduationCap className="h-5 w-5 mr-2" />
-              Sign Up as Student
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-white/40 text-white hover:bg-white/10 h-12 px-8"
-              onClick={() => handleSignUp("parent")}
-            >
-              <Users className="h-5 w-5 mr-2" />
-              Sign Up as Parent
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Footer ──────────────────────────────────────────────────────────── */}
-      <footer className="bg-slate-900 text-slate-400 py-12">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+      {/* ── Footer ── */}
+      <footer className="bg-slate-950 text-slate-400 py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-indigo-600 flex items-center justify-center">
                 <GraduationCap className="h-4 w-4 text-white" />
               </div>
               <span className="font-bold text-white">EduChamp</span>
             </div>
-            <div className="flex flex-wrap gap-6 text-sm">
+            <div className="flex items-center gap-6 text-sm">
               <a href="#features" className="hover:text-white transition-colors">Features</a>
               <a href="#courses" className="hover:text-white transition-colors">Courses</a>
-              <a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a>
               <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
-              <button onClick={() => navigate("/join")} className="hover:text-white transition-colors">Sign Up</button>
+              <button onClick={handleSignIn} className="hover:text-white transition-colors">Sign In</button>
             </div>
-            <div className="text-xs">
-              © {new Date().getFullYear()} EduChamp. All rights reserved.
-            </div>
+            <p className="text-xs text-slate-600">© {new Date().getFullYear()} EduChamp. All rights reserved.</p>
           </div>
         </div>
       </footer>
 
-      {/* AI Chatbot */}
+      {/* ── AI Chatbot ── */}
       <LandingChatbot />
     </div>
   );
