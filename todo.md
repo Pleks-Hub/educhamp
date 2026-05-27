@@ -341,3 +341,18 @@
 - [x] UI: Dashboard greeting — use preferredName when set, fall back to first name
 - [x] UI: AI Tutor — show customised welcome message when student opens chat
 - [x] UI: AI Tutor — address student by preferredName in all AI responses (injected into system prompt)
+
+## Sprint 11 — Course Welcome Gate & Diagnostic Question Banks
+
+- [x] Audit: count diagnostic questions per course in the DB
+- [x] Seed: AP Chemistry — 30 diagnostic questions
+- [x] Seed: AP Statistics — 30 diagnostic questions
+- [x] Seed: AP Calculus BC — 30 diagnostic questions
+- [x] Seed: AP Literature — 30 diagnostic questions
+- [x] Seed: AP Business with Personal Finance — 30 diagnostic questions
+- [x] Seed: SAT Prep — 30 diagnostic questions
+- [x] Top-up: all existing courses to exactly 30 diagnostic questions
+- [x] UI: CourseWelcome page — course description, why placement test is required, single CTA "Take Placement Test Now"
+- [x] Server: getDashboard hasDiagnosticForActiveCourse used as needsWelcome signal (no separate flag needed)
+- [x] Wire: CourseSwitcher and Home redirect to /course-welcome when hasDiagnosticForActiveCourse is false
+- [x] Wire: clicking anywhere on CourseWelcome navigates to /diagnostic

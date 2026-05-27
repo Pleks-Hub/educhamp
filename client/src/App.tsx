@@ -24,6 +24,7 @@ import JoinPage from "./pages/JoinPage";
 import ParentOnboarding from "./pages/ParentOnboarding";
 import StudentOnboarding from "./pages/StudentOnboarding";
 import Referrals from "./pages/Referrals";
+import CourseWelcome from "./pages/CourseWelcome";
 import AdminDashboard from "./pages/AdminDashboard";
 
 function Router() {
@@ -50,6 +51,7 @@ function Router() {
             <Route path="/curriculum/unit/:unitNumber/quiz" component={Quiz} />
             <Route path="/tutor" component={Tutor} />
             <Route path="/diagnostic" component={Diagnostic} />
+            <Route path="/course-welcome" component={CourseWelcome} />
             <Route path="/progress" component={Progress} />
             <Route path="/skills" component={Skills} />
             <Route path="/parent" component={ParentDashboard} />

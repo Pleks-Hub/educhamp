@@ -241,11 +241,25 @@ export default function Home() {
 
   function handleOpenCourse(courseId: number) {
     if (courseId !== dashboard?.activeCourseId) {
+      // Switching to a different course — wait for the switch, then check diagnostic
       setActiveCourse.mutate({ courseId }, {
-        onSuccess: () => setLocation("/curriculum"),
+        onSuccess: async () => {
+          // Re-fetch dashboard to get hasDiagnosticForActiveCourse for the new course
+          const freshDashboard = await utils.progress.getDashboard.fetch();
+          if (!freshDashboard?.hasDiagnosticForActiveCourse) {
+            setLocation("/course-welcome");
+          } else {
+            setLocation("/curriculum");
+          }
+        },
       });
     } else {
-      setLocation("/curriculum");
+      // Already on this course — check if diagnostic has been taken
+      if (!hasDiagnosticForActiveCourse) {
+        setLocation("/course-welcome");
+      } else {
+        setLocation("/curriculum");
+      }
     }
   }
 
@@ -298,7 +312,7 @@ export default function Home() {
         <div className="flex items-center gap-2">
           {!hasDiagnosticForActiveCourse && enrolledCount > 0 && (
             <Button
-              onClick={() => setLocation("/diagnostic")}
+              onClick={() => setLocation("/course-welcome")}
               variant="outline"
               className="gap-2 border-primary/30 text-primary hover:bg-primary/5"
             >
@@ -485,7 +499,7 @@ export default function Home() {
                         The diagnostic assessment places you at the right starting point in {dashboard?.courseTitle ?? "this course"}.
                       </p>
                     </div>
-                    <Button onClick={() => setLocation("/diagnostic")} className="gap-2 bg-amber-500 hover:bg-amber-600">
+                    <Button onClick={() => setLocation("/course-welcome")} className="gap-2 bg-amber-500 hover:bg-amber-600">
                       <ClipboardList className="h-4 w-4" />
                       Start Placement Test
                     </Button>
@@ -545,7 +559,7 @@ export default function Home() {
                 variant="outline"
                 size="sm"
                 className="w-full justify-start gap-2 text-xs"
-                onClick={() => setLocation("/diagnostic")}
+                onClick={() => hasDiagnosticForActiveCourse ? setLocation("/diagnostic") : setLocation("/course-welcome")}
               >
                 <ClipboardList className="h-3.5 w-3.5 text-amber-500" />
                 {hasDiagnosticForActiveCourse ? "Retest Placement" : "Take Placement Test"}

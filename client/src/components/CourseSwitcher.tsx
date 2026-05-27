@@ -95,13 +95,15 @@ export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
       toast.success(`Switched to ${course?.title ?? "course"}`);
       onClose();
       // After switching, check if the new course has a diagnostic attempt.
-      // We do this by re-fetching getDashboard (already invalidated above) and
-      // redirecting to /diagnostic if hasDiagnosticForActiveCourse is false.
+      // Redirect to /course-welcome (first-time welcome page) if no diagnostic exists,
+      // otherwise go straight to /curriculum.
       // We use a short delay to let the cache update settle.
       setTimeout(async () => {
         const freshDashboard = await utils.progress.getDashboard.fetch();
         if (!freshDashboard?.hasDiagnosticForActiveCourse) {
-          setLocation("/diagnostic");
+          setLocation("/course-welcome");
+        } else {
+          setLocation("/curriculum");
         }
       }, 300);
     },
