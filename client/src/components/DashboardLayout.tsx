@@ -31,6 +31,7 @@ import {
   ClipboardList,
   GraduationCap,
   LayoutDashboard,
+  Library,
   LogOut,
   PanelLeft,
   Settings,
@@ -46,9 +47,9 @@ import { useLocation, Redirect } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import CourseSwitcher from "./CourseSwitcher";
-
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: Library, label: "Course Catalog", path: "/courses" },
   { icon: BookOpen, label: "Curriculum", path: "/curriculum" },
   { icon: Brain, label: "AI Tutor", path: "/tutor" },
   { icon: ClipboardList, label: "Diagnostic", path: "/diagnostic" },

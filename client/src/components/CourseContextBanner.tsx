@@ -48,7 +48,7 @@ export function CourseContextBanner() {
 
   if (isLoading || !dashboard) return null;
 
-  const courseTitle = dashboard.courseTitle ?? "Algebra I";
+  const courseTitle = dashboard.courseTitle ?? "Your Course";
   const activeCourseId = dashboard.activeCourseId;
   const otherCourses = (allProgress ?? []).filter(
     (c: any) => c.courseId !== activeCourseId

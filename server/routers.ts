@@ -19,6 +19,7 @@ import {
   getActiveCourseIdForUser,
   getAllDiagnosticAttempts,
   getAllSkills,
+  getSkillsForCourse,
   getAllUnits,
   getLessonById,
   getLessonProgressForUser,
@@ -101,8 +102,11 @@ export const appRouter = router({
         return getSkillsByUnit(input.unitNumber);
       }),
 
-    getAllSkills: publicProcedure.query(async () => {
-      return getAllSkills();
+    getAllSkills: protectedProcedure.query(async ({ ctx }) => {
+      const courseId = await getActiveCourseIdForUser(ctx.user.id);
+      const rows = await getSkillsForCourse(courseId);
+      // Flatten to the shape the frontend expects (same as the old Skill type)
+      return rows.map((r) => r.skill);
     }),
   }),
 

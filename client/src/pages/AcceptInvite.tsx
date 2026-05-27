@@ -204,7 +204,7 @@ export default function AcceptInvite() {
           </div>
           <CardTitle className="text-2xl">Co-Parent Invitation</CardTitle>
           <CardDescription>
-            You've been invited to monitor a student's Algebra I progress on EduChamp.
+            You've been invited to monitor a student's progress on EduChamp.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5 pt-4">

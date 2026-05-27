@@ -27,6 +27,7 @@ import {
   setStudentGradeLevel,
   bulkPromoteStudentGrade,
   getStudentsByGrade,
+  getUserProfile,
 } from "../db";
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
@@ -160,6 +161,45 @@ export const adminRouter = router({
   getPublicCourses: protectedProcedure.query(async () => {
     const all = await getAllCourses();
     return all.filter((c) => c.isActive);
+  }),
+
+  // ── Grade-filtered course catalog for self-enrollment ────────────────────
+  // Returns all active courses annotated with enrollment status and grade fit.
+  getCourseCatalog: protectedProcedure.query(async ({ ctx }) => {
+    const all = await getAllCourses();
+    const enrollments = await getUserCourseEnrollments(ctx.user.id);
+    const profile = await getUserProfile(ctx.user.id);
+    const enrolledIds = new Set(enrollments.map((e) => e.enrollment.courseId));
+    const studentGrade = profile?.gradeLevel ?? null;
+
+    function gradeToNum(g: string | null): number | null {
+      if (!g) return null;
+      if (g === "Kindergarten") return 0;
+      const m = g.match(/(\d+)/);
+      return m ? parseInt(m[1]) : null;
+    }
+    const studentGradeNum = gradeToNum(studentGrade);
+
+    return all
+      .filter((c) => c.isActive)
+      .map((c) => {
+        const courseGradeNum = gradeToNum(c.gradeLevel);
+        const isRecommended =
+          studentGrade !== null &&
+          c.gradeLevel === studentGrade;
+        const isGradeAppropriate =
+          studentGradeNum === null ||
+          courseGradeNum === null ||
+          c.gradeLevel === "AP" ||
+          c.gradeLevel === "SAT" ||
+          Math.abs(courseGradeNum - studentGradeNum) <= 2;
+        return {
+          ...c,
+          isEnrolled: enrolledIds.has(c.id),
+          isRecommended,
+          isGradeAppropriate,
+        };
+      });
   }),
 
   // ── My enrollments ─────────────────────────────────────────────────────────

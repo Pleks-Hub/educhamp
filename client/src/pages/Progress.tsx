@@ -127,7 +127,7 @@ export default function ProgressPage() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Progress & Mastery</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          {user.name}'s Algebra I learning journey
+          {user.name}'s {dashboard?.courseTitle ?? ""} learning journey
         </p>
       </div>
 
@@ -326,7 +326,7 @@ export default function ProgressPage() {
                     icon: Trophy,
                     color: "text-amber-600",
                     bg: "bg-amber-50",
-                    text: "Great work! Start Unit 1 to begin your Algebra I journey.",
+                    text: `Great work! Start Unit 1 to begin your ${dashboard?.courseTitle ?? "course"} journey.`,
                     action: () => setLocation("/curriculum"),
                     cta: "Start Now",
                   });

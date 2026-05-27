@@ -26,6 +26,7 @@ import ParentOnboarding from "./pages/ParentOnboarding";
 import StudentOnboarding from "./pages/StudentOnboarding";
 import Referrals from "./pages/Referrals";
 import CourseWelcome from "./pages/CourseWelcome";
+import CourseCatalog from "./pages/CourseCatalog";
 import AdminDashboard from "./pages/AdminDashboard";
 import NewsletterConsole from "./pages/NewsletterConsole";
 import ChatManagement from "./pages/ChatManagement";
@@ -51,6 +52,7 @@ function Router() {
         <DashboardLayout>
           <Switch>
             <Route path="/" component={Home} />
+            <Route path="/courses" component={CourseCatalog} />
             <Route path="/curriculum" component={Curriculum} />
             <Route path="/curriculum/unit/:unitNumber" component={UnitDetail} />
             <Route path="/curriculum/unit/:unitNumber/lesson/:lessonId" component={LessonDetail} />

@@ -120,7 +120,7 @@ function PageShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="text-center">
             <h1 className="text-xl font-bold">EduChamp</h1>
-            <p className="text-xs text-muted-foreground">Algebra I · Katy ISD</p>
+            <p className="text-xs text-muted-foreground">Adaptive Learning · Katy ISD</p>
           </div>
         </div>
         <Card>

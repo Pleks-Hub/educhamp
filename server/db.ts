@@ -126,6 +126,17 @@ export async function getAllSkills() {
   if (!db) return [];
   return db.select().from(skills).orderBy(skills.sortOrder);
 }
+export async function getSkillsForCourse(courseId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Join skills → units to filter by courseId
+  return db
+    .select({ skill: skills, unit: units })
+    .from(skills)
+    .innerJoin(units, eq(skills.unitId, units.id))
+    .where(eq(units.courseId, courseId))
+    .orderBy(skills.sortOrder);
+}
 
 export async function getSkillsByUnit(unitNumber: number) {
   const db = await getDb();

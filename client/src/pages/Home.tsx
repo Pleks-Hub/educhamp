@@ -192,7 +192,7 @@ function EmptyEnrollmentState({ onBrowse }: { onBrowse: () => void }) {
           Browse &amp; Enrol in Courses
         </Button>
         <p className="text-xs text-muted-foreground">
-          Courses available: Algebra I, English I, Biology I, AP Courses, SAT Prep, and more
+          56+ courses available: Grades 3–12, AP, and SAT Prep — ACA and KAP pathways
         </p>
       </CardContent>
     </Card>

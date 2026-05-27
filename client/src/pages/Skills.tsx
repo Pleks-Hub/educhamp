@@ -41,9 +41,11 @@ export default function Skills() {
   const [search, setSearch] = useState("");
   const [unitFilter, setUnitFilter] = useState("all");
 
-  const { data: skills, isLoading } = trpc.curriculum.getAllSkills.useQuery();
+  const { data: skills, isLoading } = trpc.curriculum.getAllSkills.useQuery(undefined, { enabled: !!user });
   const { data: masteryData } = trpc.progress.getMastery.useQuery(undefined, { enabled: !!user });
   const { data: units } = trpc.curriculum.getUnits.useQuery();
+  const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!user });
+  const courseTitle = dashboard?.courseTitle ?? "";
 
   const masteryMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -60,7 +62,7 @@ export default function Skills() {
         false;
       const matchesUnit =
         unitFilter === "all" ||
-        skill.skillId.startsWith(`ALG1-U${unitFilter}-`);
+        skill.skillId.includes(`-U${unitFilter}-`);
       return matchesSearch && matchesUnit;
     });
   }, [skills, search, unitFilter]);
@@ -95,7 +97,7 @@ export default function Skills() {
           Skill Index
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
-          All {(skills ?? []).length} Algebra I skills with mastery tracking
+          All {(skills ?? []).length} {courseTitle ? `${courseTitle} ` : ""}skills with mastery tracking
         </p>
       </div>
 

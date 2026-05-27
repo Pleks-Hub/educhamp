@@ -44,8 +44,8 @@ export default function Referrals() {
     const url = getReferralUrl(code);
     if (navigator.share) {
       await navigator.share({
-        title: "Join EduChamp — Algebra I Mastery",
-        text: "I'm using EduChamp to master Algebra I. Join me!",
+        title: "Join EduChamp — Adaptive Learning Platform",
+        text: "I'm using EduChamp to learn smarter with AI tutoring. Join me!",
         url,
       });
     } else {

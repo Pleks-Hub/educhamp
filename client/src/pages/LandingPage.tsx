@@ -323,47 +323,59 @@ export default function LandingPage() {
   ];
 
   const features = [
-    { icon: Brain, title: "AI-Powered Tutor", desc: "A personal AI tutor available 24/7 to explain concepts, answer questions, and adapt to each student's learning style." },
-    { icon: BarChart3, title: "Adaptive Learning Path", desc: "A 30-question diagnostic placement test identifies exactly where each student is and builds a personalized learning roadmap." },
-    { icon: GraduationCap, title: "Mastery-Based Progression", desc: "Students advance by demonstrating mastery, not just completing lessons — ensuring no gaps are left behind." },
-    { icon: Users, title: "Parent Dashboard", desc: "Real-time visibility into progress, quiz scores, time spent, and AI tutor conversations for full transparency." },
-    { icon: BookOpen, title: "15+ Courses", desc: "From Algebra I to AP Calculus, AP Chemistry, SAT Prep, and more — all aligned to TEKS and AP College Board standards." },
-    { icon: Zap, title: "Instant Feedback", desc: "Every quiz and exercise provides immediate, detailed feedback so students learn from mistakes in real time." },
+    { icon: Brain, title: "EduBot AI Tutor", desc: "Meet EduBot — your personal AI learning coach, available 24/7. EduBot explains concepts, answers questions, and stays scoped to your active course to keep learning focused and effective." },
+    { icon: BarChart3, title: "Adaptive Placement Tests", desc: "A 57-question diagnostic placement test identifies exactly where each student stands across all units and builds a fully personalized learning roadmap from day one." },
+    { icon: GraduationCap, title: "Mastery-Based Progression", desc: "Students advance by demonstrating mastery, not just completing lessons — ensuring no knowledge gaps are left behind at any grade level." },
+    { icon: Users, title: "Parent & Guardian Dashboard", desc: "Real-time visibility into progress, quiz scores, AI tutor sessions, skill gaps, and learning goals — with co-parent sharing and detailed performance reports." },
+    { icon: BookOpen, title: "56+ Courses, Grades 3–12", desc: "From Grade 3 Math to AP Calculus BC, AP Chemistry, SAT Prep, and beyond — all aligned to Katy ISD TEKS and AP College Board standards." },
+    { icon: Zap, title: "Instant Feedback & Insights", desc: "Every quiz and exercise provides immediate, detailed feedback. AI-driven skill gap analysis highlights exactly where to focus next." },
   ];
 
   const courses = [
-    { name: "Algebra I", grade: "8th–9th", subject: "Math", color: "bg-blue-100 text-blue-800" },
-    { name: "AP Calculus BC", grade: "11th–12th", subject: "Math", color: "bg-blue-100 text-blue-800" },
-    { name: "AP Statistics", grade: "11th–12th", subject: "Math", color: "bg-blue-100 text-blue-800" },
-    { name: "AP Chemistry", grade: "11th–12th", subject: "Science", color: "bg-green-100 text-green-800" },
-    { name: "AP Biology", grade: "11th–12th", subject: "Science", color: "bg-green-100 text-green-800" },
-    { name: "AP Physics", grade: "11th–12th", subject: "Science", color: "bg-green-100 text-green-800" },
-    { name: "AP Literature", grade: "11th–12th", subject: "English", color: "bg-purple-100 text-purple-800" },
+    { name: "Grade 3–5 Math (ACA & KAP)", grade: "3rd–5th", subject: "Math", color: "bg-blue-100 text-blue-800" },
+    { name: "Grade 3–5 ELA (ACA & KAP)", grade: "3rd–5th", subject: "English", color: "bg-purple-100 text-purple-800" },
+    { name: "Grade 3–5 Science", grade: "3rd–5th", subject: "Science", color: "bg-green-100 text-green-800" },
+    { name: "Grade 6–8 Math (ACA & KAP)", grade: "6th–8th", subject: "Math", color: "bg-blue-100 text-blue-800" },
+    { name: "Grade 6–8 Science (ACA & KAP)", grade: "6th–8th", subject: "Science", color: "bg-green-100 text-green-800" },
+    { name: "Grade 6–8 Social Studies (ACA & KAP)", grade: "6th–8th", subject: "Social Studies", color: "bg-amber-100 text-amber-800" },
+    { name: "Grade 9 Algebra I & English I", grade: "9th", subject: "Core", color: "bg-indigo-100 text-indigo-800" },
+    { name: "AP Calculus BC", grade: "11th–12th", subject: "AP Math", color: "bg-blue-100 text-blue-800" },
+    { name: "AP Chemistry / AP Statistics", grade: "11th–12th", subject: "AP Science", color: "bg-green-100 text-green-800" },
+    { name: "AP Literature / AP Business", grade: "11th–12th", subject: "AP Elective", color: "bg-purple-100 text-purple-800" },
+    { name: "AP Human Geography", grade: "9th–10th", subject: "AP Social Studies", color: "bg-amber-100 text-amber-800" },
     { name: "SAT Prep", grade: "10th–12th", subject: "Test Prep", color: "bg-orange-100 text-orange-800" },
-    { name: "AP Business", grade: "10th–12th", subject: "Business", color: "bg-amber-100 text-amber-800" },
   ];
 
   const steps = [
-    { num: "01", title: "Sign Up", desc: "Create your account as a student or parent in under 2 minutes." },
-    { num: "02", title: "Take the Placement Test", desc: "A 30-question diagnostic identifies your exact starting level across all units." },
-    { num: "03", title: "Get Your Learning Path", desc: "EduChamp builds a personalized roadmap showing which units to tackle first." },
-    { num: "04", title: "Learn & Advance", desc: "Work through lessons, quizzes, and AI tutor sessions at your own pace." },
-    { num: "05", title: "Track Mastery", desc: "Watch your skills grow on the progress dashboard — unit by unit, skill by skill." },
+    { num: "01", title: "Sign Up", desc: "Create your account as a student or parent in under 2 minutes. Parents can enrol children and manage multiple students from one dashboard." },
+    { num: "02", title: "Choose Your Grade & Courses", desc: "Select your grade level and the system automatically recommends the right core courses. Browse and self-enrol in additional subjects at any time." },
+    { num: "03", title: "Take the Placement Test", desc: "A 57-question adaptive diagnostic identifies your exact starting level across all units and builds a fully personalised learning roadmap." },
+    { num: "04", title: "Learn with EduBot", desc: "Work through lessons, guided practice, and quizzes at your own pace — with EduBot, your AI learning coach, available at every step." },
+    { num: "05", title: "Track Mastery & Progress", desc: "Watch skills grow on the progress dashboard — unit by unit, skill by skill — with parent-visible reports and AI-driven next-step recommendations." },
   ];
 
   const testimonials = [
     { name: "Maria T.", role: "Parent of 9th grader", text: "My daughter went from a C to an A in Algebra I in just 6 weeks. The placement test was a game changer — it found exactly where she was struggling." },
-    { name: "James K.", role: "11th grade student", text: "The AI tutor explains things better than my teacher sometimes. I can ask the same question 10 times without feeling embarrassed." },
+    { name: "James K.", role: "11th grade student", text: "EduBot explains things better than my teacher sometimes. I can ask the same question 10 times without feeling embarrassed, and it always stays on topic." },
     { name: "Dr. Priya S.", role: "Parent of AP student", text: "EduChamp's AP Chemistry course is incredibly well-structured. My son scored a 5 on the AP exam after using it for one semester." },
+    { name: "Linda R.", role: "Parent of 6th grader", text: "I love that I can see exactly what my son is learning in Grade 6 Science. The parent dashboard shows his quiz scores and skill gaps in real time." },
+    { name: "Carlos M.", role: "8th grade student", text: "I'm in the KAP Math track and EduChamp keeps me challenged. The adaptive path pushed me into harder problems once I mastered the basics." },
+    { name: "Aisha W.", role: "Parent of 4th grader", text: "Starting EduChamp in Grade 4 was the best decision. My daughter's reading comprehension improved dramatically after just one month on the ELA course." },
   ];
 
   const faqs = [
-    { q: "Is EduChamp free to use?", a: "EduChamp offers a free tier to get started. Sign up to see current plan options and pricing." },
-    { q: "What grade levels are supported?", a: "EduChamp supports students from 8th grade through 12th grade, including all major AP courses and SAT preparation." },
-    { q: "Can my child sign up without me?", a: "Yes! Students can sign up independently and then invite a parent or guardian during the onboarding process." },
-    { q: "How does the placement test work?", a: "Each course has a 30-question adaptive diagnostic that maps your child's knowledge across all units. It takes about 20–30 minutes and immediately generates a personalized learning plan." },
-    { q: "Is the AI tutor safe for kids?", a: "Yes. The AI tutor is scoped to academic content only and does not engage in off-topic conversations. All sessions are logged and visible to parents." },
-    { q: "Which standards are courses aligned to?", a: "All courses are aligned to Texas TEKS standards, AP College Board guidelines, and SAT/College Board standards where applicable." },
+    { q: "Is EduChamp free to use?", a: "EduChamp offers a free tier to get started. Sign up to explore the platform — no credit card required." },
+    { q: "What grade levels are supported?", a: "EduChamp supports students from Grade 3 through Grade 12, including all major AP courses and SAT preparation. The catalogue covers elementary (Grades 3–5), middle school (Grades 6–8), high school (Grades 9–12), and advanced AP/SAT tracks — over 56 courses in total." },
+    { q: "What is the difference between ACA and KAP courses?", a: "ACA (Academic) courses follow the standard Katy ISD grade-level curriculum. KAP (Katy Advanced Program) courses are accelerated, enriched variants for students who are ready for a more challenging academic pathway. Both are available for Grades 3–8 in core subjects." },
+    { q: "How does course enrollment work?", a: "During onboarding, parents select the student's grade level and the system automatically recommends and enrols the student in the appropriate core courses. Students can also browse the full catalogue and self-enrol in additional subjects, subject to grade and prerequisite validation." },
+    { q: "What is EduBot?", a: "EduBot is EduChamp's AI learning coach — a friendly, named AI tutor that introduces itself at the start of every session, explains its role, and guides students through lessons, practice, quizzes, and exam review. EduBot is scoped to the student's active course and will politely redirect any off-topic questions back to the current subject." },
+    { q: "Can my child sign up without me?", a: "Students aged 16 and over can sign up independently and optionally invite a parent or guardian. Students under 16 are required to have a parent or guardian complete or approve the registration before course access is granted — ensuring appropriate oversight for younger learners." },
+    { q: "How does the placement test work?", a: "Each course has a 57-question adaptive diagnostic that maps your child's knowledge across all units. It takes about 25–35 minutes and immediately generates a personalised learning plan showing which units to tackle first, which to review, and which are already mastered." },
+    { q: "Is the AI tutor safe for kids?", a: "Yes. EduBot is scoped to academic content only and will not engage in off-topic conversations. All sessions are logged and visible to parents in the Parent Dashboard. EduBot will redirect any questions about other subjects back to the active course." },
+    { q: "Can parents monitor multiple children?", a: "Yes. The Parent Dashboard supports multiple children, with per-child progress cards, mastery breakdowns, quiz history, skill gap analysis, study goals, and co-parent sharing. Parents can also invite a co-parent or guardian to view a child's progress." },
+    { q: "Which standards are courses aligned to?", a: "All courses are aligned to Katy ISD TEKS (Texas Essential Knowledge and Skills) standards. AP courses additionally follow AP College Board guidelines, and SAT Prep is aligned to College Board SAT standards." },
+    { q: "Can students take multiple courses at once?", a: "Yes. Students can be enrolled in multiple courses simultaneously and switch between them from the Course Switcher. Each course has its own independent placement test, learning path, mastery tracking, and AI tutor context." },
+    { q: "What happens after a student completes all units in a course?", a: "Once a student achieves a passing quiz score across all units, the course is marked complete. The student can then enrol in the next grade-level course or an advanced variant, guided by the course recommendation engine." },
   ];
 
   return (
@@ -450,7 +462,7 @@ export default function LandingPage() {
                 </span>
               </h1>
               <p className="text-lg text-slate-300 mb-8 leading-relaxed max-w-lg">
-                EduChamp's AI tutor and adaptive placement tests create a personalized learning path for every student — from Algebra I to AP Calculus, Chemistry, and SAT Prep.
+                EduChamp's AI tutor EduBot and adaptive placement tests create a personalized learning path for every student — from Grade 3 Math to AP Calculus, AP Chemistry, and SAT Prep. Supporting Grades 3–12 with 56+ courses aligned to Katy ISD TEKS.
               </p>
               <div className="flex flex-wrap gap-3">
                 <button
@@ -551,8 +563,8 @@ export default function LandingPage() {
       <section id="courses" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">15+ Courses, All Levels</h2>
-            <p className="text-slate-500 max-w-xl mx-auto">From foundational math to advanced AP courses — all aligned to TEKS and AP College Board standards.</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">56+ Courses, Grades 3–12 & AP</h2>
+            <p className="text-slate-500 max-w-xl mx-auto">From Grade 3 foundational skills to AP Calculus, AP Chemistry, and SAT Prep — all aligned to Katy ISD TEKS and AP College Board standards. Both ACA (standard) and KAP (advanced) pathways available.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {courses.map((c) => (

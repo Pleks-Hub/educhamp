@@ -97,7 +97,7 @@ export default function JoinPage() {
             <GraduationCap className="h-8 w-8" />
           </div>
           <h1 className="text-3xl font-bold text-slate-900">EduChamp</h1>
-          <p className="text-slate-600 mt-2 text-lg">Algebra I Mastery Platform</p>
+          <p className="text-slate-600 mt-2 text-lg">Adaptive Learning Platform — Grades 3–12 &amp; AP</p>
         </div>
 
         {/* Student invite banner (parent → student) */}
@@ -159,14 +159,14 @@ export default function JoinPage() {
             <CardDescription>
               {isInviteFlow
                 ? "Sign in with your Manus account to link to your parent and start learning."
-                : "Create your free account to start mastering Algebra I with AI-powered tutoring."}
+                : "Create your free account and start learning with your AI-powered tutor."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Features */}
             <div className="space-y-2">
               {[
-                { icon: BookOpen, text: "Adaptive Algebra I curriculum (8 units)" },
+                { icon: BookOpen, text: "56+ adaptive courses across Grades 3–12 & AP" },
                 { icon: Star, text: "AI tutor that adapts to your learning pace" },
                 { icon: CheckCircle2, text: "Placement test to find your starting point" },
                 { icon: Users, text: "Parent dashboard for real-time progress tracking" },

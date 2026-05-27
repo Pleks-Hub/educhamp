@@ -1461,7 +1461,7 @@ export default function ParentDashboard() {
             Parent Dashboard
           </h1>
           <p className="text-muted-foreground mt-1">
-            Monitor your children's Algebra I progress, mastery levels, and learning paths.
+            Monitor your children's progress, mastery levels, and learning paths across all enrolled courses.
           </p>
         </div>
         <Button onClick={() => setEnrolOpen(true)} className="gap-2">
@@ -1499,7 +1499,7 @@ export default function ParentDashboard() {
             <div>
               <h3 className="text-lg font-semibold">No students enrolled yet</h3>
               <p className="text-muted-foreground text-sm mt-1 max-w-sm mx-auto">
-                Enrol your children to monitor their Algebra I progress, mastery scores, quiz results, and adaptive learning path.
+                Enrol your children to monitor their progress, mastery scores, quiz results, and adaptive learning path across all courses.
               </p>
             </div>
             <Button onClick={() => setEnrolOpen(true)} className="gap-2">

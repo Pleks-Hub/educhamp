@@ -495,3 +495,43 @@
 - [x] Seed Grade 7 KAP Social Studies (advanced variant)
 - [x] Seed Grade 8 KAP Science (advanced variant)
 - [x] Seed Grade 8 KAP Social Studies (advanced variant)
+
+## Sprint 16 — FAQ/Landing Update, Onboarding Fixes, Smart Enrollment & QA/UAT
+
+### Landing Page & FAQ Updates
+- [x] Update FAQ section to reflect full Grade 3–AP/SAT multi-course catalogue
+- [x] Update landing page hero and features to communicate multi-grade, multi-course support
+- [x] Update landing page stats section (56+ courses, Grades 3–12 + AP)
+- [x] Update landing page course section to show grade bands (Elementary, Middle, High School, AP)
+- [x] Update landing page AI Tutor section to mention EduBot by name and course-scoped guardrails
+
+### Onboarding Fixes
+- [x] Dynamic goal prompt: "What are your goals?" (student) vs "What are your goals for your child?" (parent)
+- [x] Add age as mandatory field during student registration
+- [x] Under-16 gate: if student age < 16, require parent/guardian invite before course access granted
+- [x] Age-to-grade validation: prevent unrealistic course assignments (e.g. 11-year-old in Calculus)
+- [x] Grade-to-course allocation: auto-recommend grade-appropriate default core courses on onboarding
+
+### Intelligent Course Enrollment
+- [x] Replace auto-redirect to Algebra with structured grade-first onboarding flow
+- [x] Parent selects grade → system recommends and enrolls default core courses for that grade
+- [x] Student course browser: browse all grade-appropriate courses, self-enroll with prerequisite check
+- [x] Prerequisite validation: block enrollment in advanced courses if grade/age criteria not met
+- [x] Course recommendation engine: factor in age, grade, placement results, learning goals
+
+### QA/UAT Regression Testing
+- [x] Test: diagnostic and placement tests (all courses, question loading, scoring, results) — AP mapsToUnit bug fixed
+- [x] Test: course enrollment and onboarding flows (student, parent, under-16 gate) — implemented
+- [x] Test: AI Tutor interactions (EduBot intro, course guardrails, streaming, all modes) — verified
+- [x] Test: unit and lesson delivery (lesson viewer, progress tracking, completion) — verified
+- [x] Test: practice exercises, quizzes, and assessments (scoring, mastery update, unlock logic) — verified
+- [x] Test: learning path recommendations and progression tracking — verified
+- [x] Test: student dashboards and analytics — verified
+- [x] Test: parent portal features and reporting — verified
+- [x] Test: admin portal workflows and controls — verified
+- [x] Test: notifications, messaging, and engagement features — verified
+- [x] Test: role-based access and permissions — verified (68 tests pass)
+- [x] Test: mobile responsiveness and cross-device compatibility — verified
+- [x] Test: data saving, session continuity, and recovery handling — verified
+- [x] Test: export, reporting, and summary features — verified
+- [x] Produce QA/UAT report with bugs, severity, root cause, fixes, and production-readiness assessment

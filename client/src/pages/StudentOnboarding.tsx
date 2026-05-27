@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import {
   GraduationCap, School, CheckCircle2, Mail, Phone,
   ArrowRight, ArrowLeft, Loader2, UserCheck, AlertCircle,
-  Users, Copy, Share2,
+  Users, Copy, Share2, ShieldAlert, Target,
 } from "lucide-react";
 
 const US_STATES = [
@@ -31,20 +31,65 @@ const SCHOOL_TYPES = [
 ];
 
 const GRADE_LEVELS = [
-  { value: "Kindergarten", label: "Kindergarten" },
-  { value: "Grade 1", label: "Grade 1" },
-  { value: "Grade 2", label: "Grade 2" },
-  { value: "Grade 3", label: "Grade 3" },
-  { value: "Grade 4", label: "Grade 4" },
-  { value: "Grade 5", label: "Grade 5" },
-  { value: "Grade 6", label: "Grade 6" },
-  { value: "Grade 7", label: "Grade 7" },
-  { value: "Grade 8", label: "Grade 8" },
-  { value: "Grade 9", label: "Grade 9" },
-  { value: "Grade 10", label: "Grade 10" },
-  { value: "Grade 11", label: "Grade 11" },
-  { value: "Grade 12", label: "Grade 12" },
+  { value: "Kindergarten", label: "Kindergarten", minAge: 5, maxAge: 7 },
+  { value: "Grade 1", label: "Grade 1", minAge: 6, maxAge: 8 },
+  { value: "Grade 2", label: "Grade 2", minAge: 7, maxAge: 9 },
+  { value: "Grade 3", label: "Grade 3", minAge: 8, maxAge: 10 },
+  { value: "Grade 4", label: "Grade 4", minAge: 9, maxAge: 11 },
+  { value: "Grade 5", label: "Grade 5", minAge: 10, maxAge: 12 },
+  { value: "Grade 6", label: "Grade 6", minAge: 11, maxAge: 13 },
+  { value: "Grade 7", label: "Grade 7", minAge: 12, maxAge: 14 },
+  { value: "Grade 8", label: "Grade 8", minAge: 13, maxAge: 15 },
+  { value: "Grade 9", label: "Grade 9", minAge: 14, maxAge: 16 },
+  { value: "Grade 10", label: "Grade 10", minAge: 15, maxAge: 17 },
+  { value: "Grade 11", label: "Grade 11", minAge: 16, maxAge: 18 },
+  { value: "Grade 12", label: "Grade 12", minAge: 17, maxAge: 19 },
 ];
+
+const STUDENT_GOALS = [
+  { value: "improve_grades", label: "Improve my grades", desc: "I want to raise my GPA and perform better in class." },
+  { value: "catch_up", label: "Catch up on missed content", desc: "I need to fill gaps from previous grades or missed lessons." },
+  { value: "get_ahead", label: "Get ahead of my class", desc: "I want to learn content before it's taught in school." },
+  { value: "exam_prep", label: "Prepare for exams", desc: "STAAR, AP exams, SAT, or other standardised tests." },
+  { value: "enrichment", label: "Explore new subjects", desc: "I'm curious and want to learn beyond my current curriculum." },
+  { value: "other", label: "Other", desc: "Something else — I'll describe it." },
+];
+
+/** Calculate age in years from a date-of-birth string (YYYY-MM-DD) */
+function calcAge(dob: string): number | null {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
+/** Suggest a grade level from age */
+function suggestGradeFromAge(age: number): string {
+  if (age <= 5) return "Kindergarten";
+  if (age === 6) return "Grade 1";
+  if (age === 7) return "Grade 2";
+  if (age === 8) return "Grade 3";
+  if (age === 9) return "Grade 4";
+  if (age === 10) return "Grade 5";
+  if (age === 11) return "Grade 6";
+  if (age === 12) return "Grade 7";
+  if (age === 13) return "Grade 8";
+  if (age === 14) return "Grade 9";
+  if (age === 15) return "Grade 10";
+  if (age === 16) return "Grade 11";
+  return "Grade 12";
+}
+
+/** Check if a grade is age-appropriate (with ±2 year tolerance) */
+function isGradeAgeAppropriate(grade: string, age: number): boolean {
+  const entry = GRADE_LEVELS.find(g => g.value === grade);
+  if (!entry) return true;
+  return age >= entry.minAge - 2 && age <= entry.maxAge + 2;
+}
 
 export default function StudentOnboarding() {
   const [, navigate] = useLocation();
@@ -73,6 +118,20 @@ export default function StudentOnboarding() {
   const [state, setState] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState("");
+  const [studentGoal, setStudentGoal] = useState("");
+  const [goalDetail, setGoalDetail] = useState("");
+
+  // Derived age and under-16 gate
+  const studentAge = useMemo(() => calcAge(dateOfBirth), [dateOfBirth]);
+  const isUnder16 = studentAge !== null && studentAge < 16;
+  const gradeSuggestion = useMemo(() => {
+    if (studentAge !== null && !gradeLevel) return suggestGradeFromAge(studentAge);
+    return null;
+  }, [studentAge, gradeLevel]);
+  const gradeAgeMismatch = useMemo(() => {
+    if (!gradeLevel || studentAge === null) return false;
+    return !isGradeAgeAppropriate(gradeLevel, studentAge);
+  }, [gradeLevel, studentAge]);
 
   // Invite lookup
   const inviteLookup = trpc.onboarding.lookupStudentInvite.useQuery(
@@ -88,12 +147,32 @@ export default function StudentOnboarding() {
     }
   }, [inviteLookup.data]);
 
+  // Auto-suggest grade from age
+  useEffect(() => {
+    if (gradeSuggestion && !gradeLevel) {
+      setGradeLevel(gradeSuggestion);
+    }
+  }, [gradeSuggestion]);
+
   const saveProfile = trpc.onboarding.saveStudentProfile.useMutation();
   const acceptInvite = trpc.onboarding.acceptStudentInvite.useMutation();
   const completeOnboarding = trpc.onboarding.completeOnboarding.useMutation();
   const inviteParent = trpc.onboarding.inviteParent.useMutation();
 
   async function handleStep1() {
+    // Mandatory: date of birth
+    if (!dateOfBirth) {
+      toast.error("Date of birth is required to personalise your learning path.");
+      return;
+    }
+    if (!gradeLevel) {
+      toast.error("Please select your grade level.");
+      return;
+    }
+    if (gradeAgeMismatch) {
+      toast.error("The selected grade level doesn't match your age. Please choose an age-appropriate grade.");
+      return;
+    }
     await saveProfile.mutateAsync({
       schoolType: schoolType as any,
       schoolName: schoolName || undefined,
@@ -148,7 +227,6 @@ export default function StudentOnboarding() {
   }
 
   const inviteInfo = inviteLookup.data?.invite;
-
   const progress = ((step - 1) / totalSteps) * 100;
 
   return (
@@ -214,9 +292,73 @@ export default function StudentOnboarding() {
                 <School className="h-5 w-5 text-indigo-600" />
                 <CardTitle>Your School Info</CardTitle>
               </div>
-              <CardDescription>Help us personalise your Algebra I experience.</CardDescription>
+              <CardDescription>Help us personalise your learning experience across all your courses.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Date of Birth — mandatory */}
+              <div>
+                <Label>
+                  Date of Birth <span className="text-red-500">*</span>
+                  <span className="text-muted-foreground text-xs ml-1">(required to personalise your path)</span>
+                </Label>
+                <Input
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={e => setDateOfBirth(e.target.value)}
+                  max={new Date().toISOString().split("T")[0]}
+                  className={!dateOfBirth ? "border-amber-300" : ""}
+                />
+                {studentAge !== null && (
+                  <p className="text-xs text-slate-500 mt-1">Age: {studentAge} years old</p>
+                )}
+              </div>
+
+              {/* Under-16 warning */}
+              {isUnder16 && (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">
+                  <ShieldAlert className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div className="text-sm text-amber-800">
+                    <span className="font-medium">Parental consent required. </span>
+                    Students under 16 must have a parent or guardian complete or approve their registration before accessing courses. You'll be asked to invite your parent in the next step.
+                  </div>
+                </div>
+              )}
+
+              {/* Grade Level */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>
+                    Grade Level <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={gradeLevel} onValueChange={setGradeLevel}>
+                    <SelectTrigger className={gradeAgeMismatch ? "border-red-400" : ""}>
+                      <SelectValue placeholder="Select grade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GRADE_LEVELS.map(g => (
+                        <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {gradeSuggestion && !gradeLevel && (
+                    <p className="text-xs text-indigo-600 mt-1">Suggested: {gradeSuggestion} based on your age</p>
+                  )}
+                  {gradeAgeMismatch && (
+                    <p className="text-xs text-red-500 mt-1">This grade doesn't match your age. Please select an age-appropriate grade.</p>
+                  )}
+                </div>
+                <div>
+                  <Label>State</Label>
+                  <Select value={state} onValueChange={setState}>
+                    <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+                    <SelectContent>
+                      {US_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* School Type */}
               <div>
                 <Label>School Type</Label>
                 <div className="grid grid-cols-2 gap-2 mt-2 sm:grid-cols-3">
@@ -253,57 +395,59 @@ export default function StudentOnboarding() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Grade Level</Label>
-                  <Select value={gradeLevel} onValueChange={setGradeLevel}>
-                    <SelectTrigger><SelectValue placeholder="Select grade" /></SelectTrigger>
-                    <SelectContent>
-                      {GRADE_LEVELS.map(g => (
-                        <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>State</Label>
-                  <Select value={state} onValueChange={setState}>
-                    <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
-                    <SelectContent>
-                      {US_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
                   <Label>City <span className="text-muted-foreground text-xs">(optional)</span></Label>
                   <Input placeholder="e.g. Katy" value={city} onChange={e => setCity(e.target.value)} />
                 </div>
                 <div>
-                  <Label>Date of Birth <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
+                  <Label>Gender <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Select value={gender} onValueChange={setGender}>
+                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="non_binary">Non-binary</SelectItem>
+                      <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
+              {/* Student Goals — dynamic prompt */}
               <div>
-                <Label>Gender <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                <Select value={gender} onValueChange={setGender}>
-                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="non_binary">Non-binary</SelectItem>
-                    <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="flex items-center gap-1.5">
+                  <Target className="h-3.5 w-3.5 text-indigo-600" />
+                  What are your goals?
+                </Label>
+                <div className="grid grid-cols-1 gap-2 mt-2">
+                  {STUDENT_GOALS.map(g => (
+                    <button
+                      key={g.value}
+                      type="button"
+                      onClick={() => setStudentGoal(g.value)}
+                      className={`text-left p-3 rounded-lg border-2 transition-all ${
+                        studentGoal === g.value
+                          ? "border-indigo-500 bg-indigo-50"
+                          : "border-border hover:border-indigo-300"
+                      }`}
+                    >
+                      <div className="font-medium text-sm">{g.label}</div>
+                      <div className="text-xs text-muted-foreground">{g.desc}</div>
+                    </button>
+                  ))}
+                </div>
+                {studentGoal === "other" && (
+                  <Input
+                    className="mt-2"
+                    placeholder="Describe your goal…"
+                    value={goalDetail}
+                    onChange={e => setGoalDetail(e.target.value)}
+                  />
+                )}
               </div>
 
               <Button className="w-full bg-indigo-600 hover:bg-indigo-700" onClick={handleStep1} disabled={saveProfile.isPending}>
                 {saveProfile.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Continue <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-              <Button variant="ghost" className="w-full text-sm" onClick={() => setStep(2)}>
-                Skip for now
               </Button>
             </CardContent>
           </Card>
@@ -318,30 +462,44 @@ export default function StudentOnboarding() {
                 <CardTitle>Invite Your Parent or Guardian</CardTitle>
               </div>
               <CardDescription>
-                Connect a parent or guardian so they can track your progress, approve your subscription, and support your learning journey.
+                {isUnder16
+                  ? "Because you are under 16, a parent or guardian must approve your registration before you can access courses."
+                  : "Connect a parent or guardian so they can track your progress, approve your subscription, and support your learning journey."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-4 space-y-2">
-                <p className="text-sm font-semibold text-indigo-900">Why connect a parent?</p>
-                <ul className="text-sm text-indigo-800 space-y-1.5">
-                  {[
-                    "They can monitor your progress and quiz scores",
-                    "They can approve and manage your subscription",
-                    "They receive weekly progress reports",
-                    "They can communicate with your AI tutor for parent-level insights",
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {isUnder16 && (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 flex items-start gap-2">
+                  <ShieldAlert className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                  <div className="text-sm text-amber-800">
+                    <span className="font-medium">Required for under-16 students. </span>
+                    Please invite your parent or guardian below. They will receive a link to approve your account. You will not be able to access courses until they confirm.
+                  </div>
+                </div>
+              )}
+
+              {!isUnder16 && (
+                <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-4 space-y-2">
+                  <p className="text-sm font-semibold text-indigo-900">Why connect a parent?</p>
+                  <ul className="text-sm text-indigo-800 space-y-1.5">
+                    {[
+                      "They can monitor your progress and quiz scores",
+                      "They can approve and manage your subscription",
+                      "They receive weekly progress reports",
+                      "They can communicate with your AI tutor for parent-level insights",
+                    ].map((item, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {inviteInfo && (
                 <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 flex items-center gap-2">
-                  <UserCheck className="h-4 w-4 shrink-0" />
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
                   <span>Your parent has already invited you — your accounts will be linked automatically.</span>
                 </div>
               )}
@@ -359,7 +517,7 @@ export default function StudentOnboarding() {
                   </div>
                   <div>
                     <label className="text-sm font-medium flex items-center gap-1.5">
-                      <Mail className="h-3.5 w-3.5" /> Parent's Email
+                      <Mail className="h-3.5 w-3.5" /> Parent's Email {isUnder16 && <span className="text-red-500">*</span>}
                     </label>
                     <input
                       type="email"
@@ -431,9 +589,16 @@ export default function StudentOnboarding() {
                 </Button>
                 <Button
                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 gap-1"
-                  onClick={() => setStep(3)}
+                  onClick={() => {
+                    // Under-16 students must invite a parent before proceeding
+                    if (isUnder16 && !parentInviteSent && !inviteInfo) {
+                      toast.error("You must invite a parent or guardian before continuing. This is required for students under 16.");
+                      return;
+                    }
+                    setStep(3);
+                  }}
                 >
-                  {parentInviteSent || inviteInfo ? "Continue" : "Skip for now"}
+                  {parentInviteSent || inviteInfo ? "Continue" : isUnder16 ? "Invite Required" : "Skip for now"}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -456,9 +621,10 @@ export default function StudentOnboarding() {
                 <h3 className="text-sm font-semibold text-indigo-900">Getting started with EduChamp</h3>
                 <ul className="text-sm text-indigo-800 space-y-1.5">
                   {[
-                    "Take the placement diagnostic to find your starting point",
-                    "Work through units at your own pace with the AI tutor",
-                    "Take unit quizzes to unlock the next level",
+                    "Browse your grade-appropriate courses and enrol in the ones that match your goals",
+                    "Take the placement diagnostic to find your exact starting point in each course",
+                    "Work through units at your own pace with EduBot, your AI learning coach",
+                    "Take unit quizzes to unlock the next level and track your mastery",
                     "Your parent can track your progress from their dashboard",
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-2">
