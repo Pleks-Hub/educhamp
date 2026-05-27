@@ -29,6 +29,7 @@ import {
   Brain,
   ChevronRight,
   ClipboardList,
+  CreditCard,
   GraduationCap,
   LayoutDashboard,
   Library,
@@ -60,6 +61,7 @@ const menuItems = [
 // Parent Dashboard is shown to all authenticated users — any user can enrol children
 const parentMenuItem = { icon: Users, label: "Parent Dashboard", path: "/parent" };
 const referralMenuItem = { icon: Share2, label: "Refer & Invite", path: "/referrals" };
+const billingMenuItem = { icon: CreditCard, label: "Billing", path: "/billing" };
 
 const SIDEBAR_WIDTH_KEY = "educhamp-sidebar-width";
 const DEFAULT_WIDTH = 256;
@@ -224,7 +226,7 @@ function DashboardLayoutContent({
                   <div className="h-px bg-sidebar-border" />
                 </div>
               )}
-              {[parentMenuItem, referralMenuItem].map((item) => {
+              {[parentMenuItem, referralMenuItem, billingMenuItem].map((item) => {
                 const isActive = location.startsWith(item.path);
                 return (
                   <SidebarMenuItem key={item.path}>

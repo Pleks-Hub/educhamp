@@ -31,6 +31,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import NewsletterConsole from "./pages/NewsletterConsole";
 import ChatManagement from "./pages/ChatManagement";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
+import Billing from "./pages/Billing";
 
 function Router() {
   return (
@@ -67,6 +68,7 @@ function Router() {
             <Route path="/parent" component={ParentDashboard} />
             <Route path="/profile" component={Profile} />
             <Route path="/referrals" component={Referrals} />
+            <Route path="/billing" component={Billing} />
             <Route path="/404" component={NotFound} />
             <Route component={NotFound} />
           </Switch>

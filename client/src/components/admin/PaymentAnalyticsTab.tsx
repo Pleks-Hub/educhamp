@@ -13,6 +13,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { Button } from "@/components/ui/button";
 import {
   DollarSign,
   Users,
@@ -21,6 +22,7 @@ import {
   Tag,
   RefreshCw,
   AlertTriangle,
+  Download,
 } from "lucide-react";
 
 const COLORS = ["#6366f1", "#8b5cf6", "#06b6d4", "#10b981", "#f59e0b", "#ef4444"];
@@ -56,6 +58,33 @@ function StatCard({
       </CardContent>
     </Card>
   );
+}
+
+function exportCsv(rows: any[], filename: string) {
+  if (!rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const csvContent = [
+    headers.join(","),
+    ...rows.map((r) =>
+      headers
+        .map((h) => {
+          const v = r[h];
+          if (v === null || v === undefined) return "";
+          const s = String(v);
+          return s.includes(",") || s.includes('"') || s.includes("\n")
+            ? `"${s.replace(/"/g, '""')}"`
+            : s;
+        })
+        .join(",")
+    ),
+  ].join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function PaymentAnalyticsTab() {
@@ -94,8 +123,44 @@ export function PaymentAnalyticsTab() {
 
   const recentEvents = (data.recentEvents ?? []).slice(0, 10);
 
+  const handleExportPaymentEvents = () => {
+    const rows = (data.recentEvents ?? []).map((e: any) => ({
+      id: e.id,
+      event: e.event,
+      stripeObjectId: e.stripeObjectId ?? "",
+      amountCents: e.amountCents ?? "",
+      currency: e.currency ?? "usd",
+      status: e.status ?? "",
+      createdAt: new Date(e.createdAt).toISOString(),
+    }));
+    exportCsv(rows, `payment-events-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
+  const handleExportPlanBreakdown = () => {
+    const rows = Object.entries(data.planBreakdown ?? {}).map(([plan, count]) => ({
+      plan,
+      activeSubscriptions: count,
+    }));
+    exportCsv(rows, `plan-breakdown-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header with export buttons */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Payment Analytics</h2>
+          <p className="text-sm text-muted-foreground">Revenue, subscription, and coupon metrics</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-1" onClick={handleExportPlanBreakdown}>
+            <Download className="h-3.5 w-3.5" /> Plan CSV
+          </Button>
+          <Button variant="outline" size="sm" className="gap-1" onClick={handleExportPaymentEvents}>
+            <Download className="h-3.5 w-3.5" /> Events CSV
+          </Button>
+        </div>
+      </div>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard

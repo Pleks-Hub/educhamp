@@ -854,8 +854,8 @@
 - [x] Wire pricing CTA buttons to CheckoutModal for logged-in users; RoleSelectModal for new users
 - [x] Show original price, discount amount, final price, coupon validity in CheckoutModal
 - [x] Create /checkout/success page (post-Stripe redirect landing)
-- [ ] Create /billing page (subscription status, payment history, billing portal link) — deferred to Sprint 26
-- [ ] Add Billing nav item to student/parent dashboard — deferred to Sprint 26
+- [x] Create /billing page (subscription status, payment history, billing portal link)
+- [x] Add Billing nav item to sidebar (DashboardLayout)
 
 ### Admin Console — Coupon Manager
 - [x] Create CouponManagerTab in AdminDashboard
@@ -872,7 +872,7 @@
 - [x] Create PaymentAnalyticsTab in AdminDashboard
 - [x] KPI cards: MRR, active subscriptions, coupon redemptions, failed payments
 - [x] Charts: billing period split (bar), plan distribution (pie), recent payment events
-- [ ] Export CSV for coupon usage and payment reports — deferred to Sprint 26
+- [x] Export CSV for payment events and plan breakdown (two Download buttons in PaymentAnalyticsTab)
 
 ### Vitest
 - [x] 36 tests in server/payment.test.ts: calculateDiscount, getPlanByKey, coupon validation logic, billing period persistence, subscription upsert, payment event logging, admin coupon CRUD, enum validation
