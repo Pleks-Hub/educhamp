@@ -251,7 +251,7 @@
 - [x] DB: add gradeLevel to userProfiles onboarding (parent sets at child profile creation)
 - [x] DB: admin can assign/change student gradeLevel in userProfiles
 - [x] DB: end-of-year grade promotion — increment gradeLevel for all active students (scheduled job)
-- [ ] Server: onboarding.saveStudentProfile accepts gradeLevel set by parent during invite flow
+- [x] Server: onboarding.saveStudentProfile accepts gradeLevel set by parent during invite flow
 - [x] Server: admin.setStudentGrade — admin sets/overrides gradeLevel for a specific user
 - [x] Server: admin.bulkPromoteGrade — increment gradeLevel for all students in a grade cohort
 - [x] Server: progress.getAllCourseProgress — returns progress summary for ALL enrolled courses (not just active)
@@ -260,12 +260,12 @@
 - [x] UI: Tour shows on first login only (stored in userProfiles.onboardingCompleted)
 - [x] UI: Multi-course Dashboard — course cards grid showing all enrolled courses with per-course progress bars
 - [x] UI: Multi-course Dashboard — "Active" badge on current course, "Switch" button on each card
-- [ ] UI: Sidebar — course switcher pill shows active course name; click opens full course switcher
+- [x] UI: Sidebar — course switcher pill shows active course name; click opens full course switcher
 - [x] UI: Curriculum/Quiz/Tutor pages — course context banner at top showing which course is active
 - [x] UI: StudentOnboarding — parent sets child's grade level during invite/onboarding flow
 - [x] UI: Parent Dashboard — per-child course progress cards (one card per enrolled course)
 - [x] UI: Parent Dashboard — course switcher in child detail panel to view progress per course
-- [ ] UI: Parent Dashboard — cross-course summary table (all courses, mastery %, last active)
+- [x] UI: Parent Dashboard — cross-course summary table (all courses, mastery %, last active)
 - [x] UI: Admin Console — student grade assignment field in user management tab
 - [x] UI: Admin Console — bulk grade promotion tool (select grade cohort, promote all)
 - [x] UI: Admin Console — end-of-year promotion scheduler (set date, auto-promote)
