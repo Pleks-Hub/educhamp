@@ -132,7 +132,7 @@ function UsersTab() {
   const [showEnrollDialog, setShowEnrollDialog] = useState<number | null>(null);
   const [newUser, setNewUser] = useState({ name: "", email: "", accountType: "student" as const, role: "user" as const });
 
-  const { data: users, isLoading, refetch } = trpc.admin.listUsers.useQuery({ limit: 500, offset: 0 });
+  const { data: users, isLoading, refetch } = trpc.admin.listUsers.useQuery({ limit: 1000, offset: 0 });
   const { data: courses } = trpc.admin.listCourses.useQuery();
   const updateRole = trpc.admin.updateUserRole.useMutation({ onSuccess: () => { toast.success("Role updated"); refetch(); } });
   const updateAccountType = trpc.admin.updateUserAccountType.useMutation({ onSuccess: () => { toast.success("Account type updated"); refetch(); } });
@@ -723,7 +723,7 @@ function RbacTab() {
   const [assignUserId, setAssignUserId] = useState<string>("");
 
   const { data: roles, isLoading, refetch } = trpc.admin.rbac.listRoles.useQuery();
-  const { data: users } = trpc.admin.listUsers.useQuery({ limit: 500, offset: 0 });
+  const { data: users } = trpc.admin.listUsers.useQuery({ limit: 1000, offset: 0 });
   const createRole = trpc.admin.rbac.createRole.useMutation({
     onSuccess: () => { toast.success("Role created"); setShowCreateDialog(false); setNewRole({ name: "", description: "", permissions: [] }); refetch(); },
     onError: (e) => toast.error(e.message),
@@ -1121,7 +1121,7 @@ function SettingsTab() {
 // ─── Audit Log Tab ────────────────────────────────────────────────────────────
 
 function AuditLogTab() {
-  const { data: log, isLoading } = trpc.admin.getAuditLog.useQuery({ limit: 200 });
+  const { data: log, isLoading } = trpc.admin.getAuditLog.useQuery({ limit: 500 });
 
   const actionColors: Record<string, string> = {
     "user.role_change": "text-blue-600", "user.account_type_change": "text-violet-600",
@@ -1197,7 +1197,7 @@ function GradeManagementTab() {
   const [bulkFromGrade, setBulkFromGrade] = useState<string>("");
   const [confirmBulk, setConfirmBulk] = useState(false);
 
-  const { data: users, isLoading, refetch } = trpc.admin.listUsers.useQuery({ limit: 500, offset: 0 });
+  const { data: users, isLoading, refetch } = trpc.admin.listUsers.useQuery({ limit: 1000, offset: 0 });
   const setGrade = trpc.admin.setStudentGrade.useMutation({ onSuccess: () => { toast.success("Grade updated"); refetch(); }, onError: (err) => toast.error(err.message) });
   const bulkPromote = trpc.admin.bulkPromoteGrade.useMutation({
     onSuccess: (data: any) => {
@@ -1385,7 +1385,7 @@ export default function AdminDashboard() {
       {/* Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Tabs defaultValue="overview">
-          <TabsList className="mb-6 flex-wrap h-auto gap-1">
+          <TabsList className="mb-6 flex-wrap gap-1 h-auto overflow-x-auto">
             <TabsTrigger value="overview" className="gap-2"><BarChart3 className="h-4 w-4" /> Overview</TabsTrigger>
             <TabsTrigger value="users" className="gap-2"><Users className="h-4 w-4" /> Users</TabsTrigger>
             <TabsTrigger value="courses" className="gap-2"><BookOpen className="h-4 w-4" /> Courses</TabsTrigger>

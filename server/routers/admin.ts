@@ -76,7 +76,7 @@ export const adminRouter = router({
   // ── User Management ────────────────────────────────────────────────────────
   listUsers: adminProcedure
     .input(z.object({
-      limit: z.number().min(1).max(200).default(100),
+      limit: z.number().min(1).max(1000).default(100),
       offset: z.number().min(0).default(0),
       search: z.string().optional(),
     }))
@@ -255,7 +255,7 @@ export const adminRouter = router({
 
   // ── Audit Log ──────────────────────────────────────────────────────────────
   getAuditLog: adminProcedure
-    .input(z.object({ limit: z.number().min(1).max(200).default(50) }))
+    .input(z.object({ limit: z.number().min(1).max(500).default(50) }))
     .query(async ({ input }) => {
       return getAdminAuditLog(input.limit);
     }),
