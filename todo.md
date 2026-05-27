@@ -751,3 +751,9 @@
 - [x] Landing page: replace static AI tutor image with animated interactive demo
 - [x] Landing page: four rotating learning modes (Tutor, Quiz, Practice, Exam)
 - [x] QA: full end-to-end content, quiz, progression, navigation validation (72/72 tests, 0 TS errors)
+
+## Sprint: Pagination, Quiz Bank Expansion, Demo CTA
+
+- [ ] Admin Users tab: server-side pagination with Previous/Next controls (offset-based, page size 50)
+- [ ] Algebra I Units 1 & 2: seed 20 additional questions each (total 30/unit)
+- [ ] EduChampDemoWidget: show "Try it free" CTA after demo session auto-completes

@@ -10,7 +10,8 @@
  * Users can also manually switch modes via the tab bar.
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { getLoginUrl } from "@/const";
 import {
   Brain, BookOpen, Pencil, Trophy,
   CheckCircle2, XCircle, Lightbulb, ChevronRight,
@@ -117,6 +118,11 @@ export function EduChampDemoWidget({ variant = "full", initialMode, hideTabs = f
   const [visibleFrames, setVisibleFrames] = useState<DemoFrame[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [demoComplete, setDemoComplete] = useState(false);
+  const ctaHref = useMemo(() => {
+    try { sessionStorage.setItem("educhamp_post_login_redirect", "/onboarding/student"); } catch {}
+    return getLoginUrl();
+  }, []);
   const scrollRef = useRef<HTMLDivElement>(null);
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
@@ -130,6 +136,7 @@ export function EduChampDemoWidget({ variant = "full", initialMode, hideTabs = f
     setVisibleFrames([]);
     setIsTyping(false);
     setProgress(0);
+    setDemoComplete(false);
 
     const frames = SCRIPTS[mode];
     let cumulative = 400;
@@ -153,9 +160,11 @@ export function EduChampDemoWidget({ variant = "full", initialMode, hideTabs = f
       }, cumulative);
       timeoutsRef.current.push(t2);
 
-      // After last frame, restart after a pause
+      // After last frame, show CTA for 5s then restart
       if (idx === frames.length - 1) {
-        const t3 = setTimeout(() => playScript(mode), cumulative + 4000);
+        const tCta = setTimeout(() => setDemoComplete(true), cumulative + 600);
+        timeoutsRef.current.push(tCta);
+        const t3 = setTimeout(() => { setDemoComplete(false); playScript(mode); }, cumulative + 5500);
         timeoutsRef.current.push(t3);
       }
     });
@@ -373,18 +382,31 @@ export function EduChampDemoWidget({ variant = "full", initialMode, hideTabs = f
           )}
         </div>
 
-        {/* Footer input bar (decorative) */}
-        <div className="px-4 py-3 border-t border-white/10 flex items-center gap-2">
-          <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-500">
-            {activeMode === "tutor"    ? "Ask EduBot anything about this lesson..." :
-             activeMode === "quiz"     ? "Select your answer above..." :
-             activeMode === "practice" ? "Type your answer or ask for a hint..." :
-             "Select the best answer..."}
+        {/* Try it free CTA — shown after demo completes */}
+        {demoComplete && !isMini ? (
+          <div className="px-4 py-3 border-t border-white/10 animate-in slide-in-from-bottom-2 duration-300">
+            <a
+              href={ctaHref}
+              className={`flex items-center justify-center gap-2 w-full py-2.5 rounded-xl font-semibold text-sm text-white ${mode.bg} hover:opacity-90 transition-opacity`}
+            >
+              <span>Start your free lesson</span>
+              <ChevronRight className="h-4 w-4" />
+            </a>
+            <p className="text-center text-xs text-slate-500 mt-1.5">No credit card required · Free to start</p>
           </div>
-          <div className={`h-8 w-8 rounded-xl ${mode.bg} flex items-center justify-center flex-shrink-0`}>
-            <ChevronRight className="h-4 w-4 text-white" />
+        ) : (
+          <div className="px-4 py-3 border-t border-white/10 flex items-center gap-2">
+            <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-500">
+              {activeMode === "tutor"    ? "Ask EduBot anything about this lesson..." :
+               activeMode === "quiz"     ? "Select your answer above..." :
+               activeMode === "practice" ? "Type your answer or ask for a hint..." :
+               "Select the best answer..."}
+            </div>
+            <div className={`h-8 w-8 rounded-xl ${mode.bg} flex items-center justify-center flex-shrink-0`}>
+              <ChevronRight className="h-4 w-4 text-white" />
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Mode description pills — only shown in full variant */}

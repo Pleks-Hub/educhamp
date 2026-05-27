@@ -126,25 +126,31 @@ function OverviewTab() {
 // ─── Users Tab ────────────────────────────────────────────────────────────────
 
 function UsersTab() {
+  const PAGE_SIZE = 50;
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [page, setPage] = useState(0);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEnrollDialog, setShowEnrollDialog] = useState<number | null>(null);
   const [newUser, setNewUser] = useState({ name: "", email: "", accountType: "student" as const, role: "user" as const });
 
-  // Debounce search to avoid a DB query on every keystroke
+  // Reset to page 0 when search changes
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    const t = setTimeout(() => { setDebouncedSearch(search); setPage(0); }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  const { data: users, isLoading, refetch } = trpc.admin.listUsers.useQuery({
-    limit: 200,
-    offset: 0,
+  const { data: pageData, isLoading, refetch } = trpc.admin.listUsers.useQuery({
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
     search: debouncedSearch || undefined,
   });
+  const users = pageData?.rows ?? [];
+  const totalUsers = pageData?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalUsers / PAGE_SIZE));
+
   const { data: courses } = trpc.admin.listCourses.useQuery();
   const updateRole = trpc.admin.updateUserRole.useMutation({ onSuccess: () => { toast.success("Role updated"); refetch(); } });
   const updateAccountType = trpc.admin.updateUserAccountType.useMutation({ onSuccess: () => { toast.success("Account type updated"); refetch(); } });
@@ -160,13 +166,12 @@ function UsersTab() {
   });
 
   const filtered = useMemo(() => {
-    return (users ?? []).filter((u: any) => {
-      const matchSearch = !search || u.name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase());
+    return users.filter((u: any) => {
       const matchStatus = statusFilter === "all" || (u.status ?? "active") === statusFilter;
       const matchType = typeFilter === "all" || u.accountType === typeFilter;
-      return matchSearch && matchStatus && matchType;
+      return matchStatus && matchType;
     });
-  }, [users, search, statusFilter, typeFilter]);
+  }, [users, statusFilter, typeFilter]);
 
   return (
     <div className="space-y-4">
@@ -194,7 +199,7 @@ function UsersTab() {
             <SelectItem value="teacher">Teachers</SelectItem>
           </SelectContent>
         </Select>
-        <Badge variant="secondary">{filtered.length} users</Badge>
+        <Badge variant="secondary">{totalUsers} total · showing {filtered.length}</Badge>
         <Button size="sm" onClick={() => setShowCreateDialog(true)} className="ml-auto gap-1">
           <Plus className="h-4 w-4" /> Create User
         </Button>
@@ -278,6 +283,31 @@ function UsersTab() {
               ))}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-sm text-muted-foreground">
+            Page {page + 1} of {totalPages} &mdash; {totalUsers} users total
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline" size="sm"
+              disabled={page === 0 || isLoading}
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+            >
+              ← Previous
+            </Button>
+            <Button
+              variant="outline" size="sm"
+              disabled={page >= totalPages - 1 || isLoading}
+              onClick={() => setPage(p => p + 1)}
+            >
+              Next →
+            </Button>
+          </div>
         </div>
       )}
 
@@ -735,7 +765,8 @@ function RbacTab() {
   const [assignUserId, setAssignUserId] = useState<string>("");
 
   const { data: roles, isLoading, refetch } = trpc.admin.rbac.listRoles.useQuery();
-  const { data: users } = trpc.admin.listUsers.useQuery({ limit: 200, offset: 0 });
+  const { data: usersPage } = trpc.admin.listUsers.useQuery({ limit: 200, offset: 0 });
+  const users = usersPage?.rows ?? [];
   const createRole = trpc.admin.rbac.createRole.useMutation({
     onSuccess: () => { toast.success("Role created"); setShowCreateDialog(false); setNewRole({ name: "", description: "", permissions: [] }); refetch(); },
     onError: (e) => toast.error(e.message),
@@ -1349,7 +1380,8 @@ function GradeManagementTab() {
   const [bulkFromGrade, setBulkFromGrade] = useState<string>("");
   const [confirmBulk, setConfirmBulk] = useState(false);
 
-  const { data: users, isLoading, refetch } = trpc.admin.listUsers.useQuery({ limit: 200, offset: 0 });
+  const { data: usersPage, isLoading, refetch } = trpc.admin.listUsers.useQuery({ limit: 200, offset: 0 });
+  const users = usersPage?.rows ?? [];
   const setGrade = trpc.admin.setStudentGrade.useMutation({ onSuccess: () => { toast.success("Grade updated"); refetch(); }, onError: (err) => toast.error(err.message) });
   const bulkPromote = trpc.admin.bulkPromoteGrade.useMutation({
     onSuccess: (data: any) => {

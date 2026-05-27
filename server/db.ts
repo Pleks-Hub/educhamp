@@ -1099,17 +1099,19 @@ export async function getAdminStats() {
 
 export async function getAllUsers(limit = 100, offset = 0, search?: string) {
   const db = await getDb();
-  if (!db) return [];
-  const q = db.select().from(users);
-  if (search && search.trim()) {
-    const pattern = `%${search.trim()}%`;
-    return q
-      .where(or(like(users.name, pattern), like(users.email, pattern)))
+  if (!db) return { rows: [], total: 0 };
+  const whereClause = search && search.trim()
+    ? or(like(users.name, `%${search.trim()}%`), like(users.email, `%${search.trim()}%`))
+    : undefined;
+  const [rows, [countRow]] = await Promise.all([
+    db.select().from(users)
+      .where(whereClause)
       .limit(limit)
       .offset(offset)
-      .orderBy(desc(users.createdAt));
-  }
-  return q.limit(limit).offset(offset).orderBy(desc(users.createdAt));
+      .orderBy(desc(users.createdAt)),
+    db.select({ total: sqlCount() }).from(users).where(whereClause),
+  ]);
+  return { rows, total: Number(countRow?.total ?? 0) };
 }
 
 export async function updateUserRole(userId: number, role: "admin" | "user") {
