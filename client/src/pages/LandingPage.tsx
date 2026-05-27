@@ -535,10 +535,15 @@ export default function LandingPage() {
               <p className="mt-4 text-xs text-slate-400">Free to start · No credit card required · Works on any device</p>
             </div>
 
-            {/* Hero visual — Animated Demo Widget */}
+            {/* Hero visual — Animated Demo Widget (desktop) */}
             <div className="hidden lg:block relative">
               <EduChampDemoWidget />
             </div>
+          </div>
+
+          {/* Mobile demo widget — shown below hero text on small screens */}
+          <div className="lg:hidden mt-10 pb-4">
+            <EduChampDemoWidget variant="compact" />
           </div>
         </div>
       </section>
@@ -687,14 +692,16 @@ export default function LandingPage() {
 
       {/* ── How It Works ── */}
       <section id="how-it-works" className="py-20 bg-slate-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">How EduChamp Works</h2>
             <p className="text-slate-500 max-w-xl mx-auto">From sign-up to mastery in five simple steps.</p>
           </div>
-          <div className="space-y-6">
-            {steps.map((step, i) => (
-              <div key={step.num} className="flex gap-5 items-start group">
+
+          {/* Steps 1 & 2 — simple list (no demo) */}
+          <div className="space-y-5 mb-12">
+            {steps.slice(0, 2).map((step, i) => (
+              <div key={step.num} className="flex gap-5 items-start">
                 <div className="flex-shrink-0 h-12 w-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md shadow-indigo-200">
                   {step.num}
                 </div>
@@ -702,11 +709,59 @@ export default function LandingPage() {
                   <h3 className="font-semibold text-slate-900 mb-1">{step.title}</h3>
                   <p className="text-sm text-slate-500 leading-relaxed">{step.desc}</p>
                 </div>
-                {i < steps.length - 1 && (
-                  <div className="absolute ml-5 mt-14 h-6 w-0.5 bg-indigo-100" />
-                )}
               </div>
             ))}
+          </div>
+
+          {/* Steps 3–5 — two-column layout with contextual demo panels */}
+          <div className="space-y-16">
+            {/* Step 3 — Placement Test */}
+            <div className="grid lg:grid-cols-2 gap-10 items-center">
+              <div className="flex gap-5 items-start">
+                <div className="flex-shrink-0 h-12 w-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md shadow-indigo-200">
+                  03
+                </div>
+                <div className="pt-2">
+                  <h3 className="font-semibold text-slate-900 mb-1">{steps[2].title}</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">{steps[2].desc}</p>
+                </div>
+              </div>
+              <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-4 shadow-xl">
+                <EduChampDemoWidget variant="mini" initialMode="quiz" hideTabs />
+              </div>
+            </div>
+
+            {/* Step 4 — Learn with EduBot */}
+            <div className="grid lg:grid-cols-2 gap-10 items-center">
+              <div className="lg:order-2 flex gap-5 items-start">
+                <div className="flex-shrink-0 h-12 w-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md shadow-indigo-200">
+                  04
+                </div>
+                <div className="pt-2">
+                  <h3 className="font-semibold text-slate-900 mb-1">{steps[3].title}</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">{steps[3].desc}</p>
+                </div>
+              </div>
+              <div className="lg:order-1 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-4 shadow-xl">
+                <EduChampDemoWidget variant="mini" initialMode="tutor" hideTabs />
+              </div>
+            </div>
+
+            {/* Step 5 — Track Mastery */}
+            <div className="grid lg:grid-cols-2 gap-10 items-center">
+              <div className="flex gap-5 items-start">
+                <div className="flex-shrink-0 h-12 w-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-md shadow-indigo-200">
+                  05
+                </div>
+                <div className="pt-2">
+                  <h3 className="font-semibold text-slate-900 mb-1">{steps[4].title}</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">{steps[4].desc}</p>
+                </div>
+              </div>
+              <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-4 shadow-xl">
+                <EduChampDemoWidget variant="mini" initialMode="exam" hideTabs />
+              </div>
+            </div>
           </div>
         </div>
       </section>

@@ -103,8 +103,17 @@ function renderText(text: string) {
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export function EduChampDemoWidget() {
-  const [activeMode, setActiveMode] = useState<ModeId>("tutor");
+interface EduChampDemoWidgetProps {
+  /** "full" = full-size hero widget (default), "compact" = mobile hero, "mini" = How-It-Works inline */
+  variant?: "full" | "compact" | "mini";
+  /** Lock the widget to a single mode (mini variant) */
+  initialMode?: ModeId;
+  /** Hide the mode tab bar */
+  hideTabs?: boolean;
+}
+
+export function EduChampDemoWidget({ variant = "full", initialMode, hideTabs = false }: EduChampDemoWidgetProps = {}) {
+  const [activeMode, setActiveMode] = useState<ModeId>(initialMode ?? "tutor");
   const [visibleFrames, setVisibleFrames] = useState<DemoFrame[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -167,9 +176,15 @@ export function EduChampDemoWidget() {
   const mode = MODES.find((m) => m.id === activeMode)!;
   const ModeIcon = mode.icon;
 
+  const isCompact = variant === "compact";
+  const isMini = variant === "mini";
+  const chatHeight = isMini ? "h-40" : isCompact ? "h-48" : "h-64";
+  const maxW = isMini ? "max-w-sm" : "max-w-md";
+
   return (
-    <div className="w-full max-w-md mx-auto select-none">
+    <div className={`w-full ${maxW} mx-auto select-none`}>
       {/* Mode Tabs */}
+      {!hideTabs && (
       <div className="flex gap-1 mb-3 bg-white/5 rounded-xl p-1 border border-white/10">
         {MODES.map((m) => {
           const Icon = m.icon;
@@ -185,11 +200,12 @@ export function EduChampDemoWidget() {
               }`}
             >
               <Icon className="h-3 w-3" />
-              <span className="hidden sm:inline">{m.label}</span>
+              <span className={isMini ? "hidden" : "hidden sm:inline"}>{m.label}</span>
             </button>
           );
         })}
       </div>
+      )}
 
       {/* Chat Window */}
       <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden backdrop-blur-sm">
@@ -216,7 +232,7 @@ export function EduChampDemoWidget() {
         {/* Messages */}
         <div
           ref={scrollRef}
-          className="h-64 overflow-y-auto px-4 py-3 space-y-2 scroll-smooth"
+          className={`${chatHeight} overflow-y-auto px-4 py-3 space-y-2 scroll-smooth`}
           style={{ scrollbarWidth: "none" }}
         >
           {visibleFrames.map((frame, i) => {
@@ -371,7 +387,8 @@ export function EduChampDemoWidget() {
         </div>
       </div>
 
-      {/* Mode description pills */}
+      {/* Mode description pills — only shown in full variant */}
+      {!isCompact && !isMini && (
       <div className="mt-3 flex flex-wrap gap-2 justify-center">
         {[
           { icon: Brain,       text: "Real-time AI explanations" },
@@ -389,6 +406,7 @@ export function EduChampDemoWidget() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }
