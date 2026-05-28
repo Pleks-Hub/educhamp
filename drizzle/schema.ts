@@ -1007,3 +1007,26 @@ export const emailSuppression = mysqlTable("emailSuppression", {
 }));
 
 export type EmailSuppressionEntry = typeof emailSuppression.$inferSelect;
+
+// ─── Suppression Audit Log ────────────────────────────────────────────────────
+/**
+ * Records every admin action taken on the emailSuppression table.
+ * Provides a full audit trail for compliance and debugging.
+ */
+export const suppressionAuditLog = mysqlTable("suppressionAuditLog", {
+  id: int("id").autoincrement().primaryKey(),
+  suppressionId: int("suppressionId").notNull(),   // FK → emailSuppression.id
+  email: varchar("email", { length: 320 }).notNull(),
+  action: mysqlEnum("action", ["suppressed", "unsuppressed", "updated"]).notNull(),
+  reason: mysqlEnum("reason", ["bounced", "complained", "manual"]),
+  adminId: int("adminId"),                          // FK → users.id (null = system/webhook)
+  adminName: varchar("adminName", { length: 256 }),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  suppressionIdIdx: index("suppressionAuditLog_suppressionId_idx").on(t.suppressionId),
+  emailIdx: index("suppressionAuditLog_email_idx").on(t.email),
+  adminIdIdx: index("suppressionAuditLog_adminId_idx").on(t.adminId),
+}));
+
+export type SuppressionAuditLogEntry = typeof suppressionAuditLog.$inferSelect;

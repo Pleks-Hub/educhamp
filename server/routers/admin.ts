@@ -722,6 +722,157 @@ export const adminRouter = router({
     };
   }),
 
+  // ─── Email Suppression Management ──────────────────────────────────────────
+
+  listSuppressions: adminProcedure
+    .input(z.object({
+      limit: z.number().int().min(1).max(100).default(50),
+      offset: z.number().int().nonnegative().default(0),
+      search: z.string().optional(),
+      reason: z.enum(["all", "bounced", "complained", "manual"]).default("all"),
+      status: z.enum(["all", "active", "inactive"]).default("all"),
+    }))
+    .query(async ({ input }) => {
+      const db = await (await import("../db")).getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { emailSuppression } = await import("../../drizzle/schema");
+      const { desc, eq, like, and, sql } = await import("drizzle-orm");
+
+      const conditions: Parameters<typeof and>[0][] = [];
+      if (input.reason !== "all") conditions.push(eq(emailSuppression.reason, input.reason));
+      if (input.status === "active") conditions.push(eq(emailSuppression.isActive, true));
+      if (input.status === "inactive") conditions.push(eq(emailSuppression.isActive, false));
+      if (input.search) conditions.push(like(emailSuppression.email, `%${input.search}%`));
+
+      const where = conditions.length > 0
+        ? and(...(conditions as [Parameters<typeof and>[0], ...Parameters<typeof and>[0][]]))
+        : undefined;
+
+      const rows = await db
+        .select()
+        .from(emailSuppression)
+        .where(where)
+        .orderBy(desc(emailSuppression.suppressedAt))
+        .limit(input.limit)
+        .offset(input.offset);
+
+      const [countRow] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(emailSuppression)
+        .where(where);
+
+      return { suppressions: rows, total: Number(countRow?.count ?? 0) };
+    }),
+
+  unsuppressEmail: adminProcedure
+    .input(z.object({
+      suppressionId: z.number().int(),
+      notes: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await (await import("../db")).getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { emailSuppression, suppressionAuditLog } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const [entry] = await db.select().from(emailSuppression).where(eq(emailSuppression.id, input.suppressionId)).limit(1);
+      if (!entry) throw new TRPCError({ code: "NOT_FOUND", message: "Suppression entry not found" });
+
+      await db.update(emailSuppression)
+        .set({ isActive: false, unsuppressedAt: new Date() })
+        .where(eq(emailSuppression.id, input.suppressionId));
+
+      await db.insert(suppressionAuditLog).values({
+        suppressionId: input.suppressionId,
+        email: entry.email,
+        action: "unsuppressed",
+        reason: entry.reason,
+        adminId: ctx.user.id,
+        adminName: ctx.user.name ?? undefined,
+        notes: input.notes ?? `Manually unsuppressed by admin ${ctx.user.name ?? ctx.user.id}`,
+      });
+
+      await logAdminAction(ctx.user.id, "suppression.unsuppress", "emailSuppression", input.suppressionId, { email: entry.email, reason: entry.reason });
+      return { ok: true, email: entry.email };
+    }),
+
+  suppressEmailManual: adminProcedure
+    .input(z.object({
+      email: z.string().email(),
+      notes: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { suppressEmail } = await import("../emailService");
+      await suppressEmail(input.email, "manual", undefined, input.notes ?? `Manually suppressed by admin ${ctx.user.name ?? ctx.user.id}`);
+
+      // Write audit log entry
+      const db = await (await import("../db")).getDb();
+      if (db) {
+        const { emailSuppression, suppressionAuditLog } = await import("../../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const [entry] = await db.select({ id: emailSuppression.id }).from(emailSuppression).where(eq(emailSuppression.email, input.email.toLowerCase())).limit(1);
+        if (entry) {
+          await db.insert(suppressionAuditLog).values({
+            suppressionId: entry.id,
+            email: input.email.toLowerCase(),
+            action: "suppressed",
+            reason: "manual",
+            adminId: ctx.user.id,
+            adminName: ctx.user.name ?? undefined,
+            notes: input.notes ?? `Manually suppressed by admin ${ctx.user.name ?? ctx.user.id}`,
+          });
+        }
+      }
+
+      await logAdminAction(ctx.user.id, "suppression.suppress", "emailSuppression", null, { email: input.email });
+      return { ok: true };
+    }),
+
+  getSuppressionAuditLog: adminProcedure
+    .input(z.object({
+      email: z.string().email().optional(),
+      limit: z.number().int().min(1).max(100).default(50),
+      offset: z.number().int().nonnegative().default(0),
+    }))
+    .query(async ({ input }) => {
+      const db = await (await import("../db")).getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { suppressionAuditLog } = await import("../../drizzle/schema");
+      const { desc, eq, sql } = await import("drizzle-orm");
+
+      const where = input.email ? eq(suppressionAuditLog.email, input.email.toLowerCase()) : undefined;
+
+      const rows = await db
+        .select()
+        .from(suppressionAuditLog)
+        .where(where)
+        .orderBy(desc(suppressionAuditLog.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+
+      const [countRow] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(suppressionAuditLog)
+        .where(where);
+
+      return { entries: rows, total: Number(countRow?.count ?? 0) };
+    }),
+
+  getSuppressionStatus: adminProcedure
+    .input(z.object({ email: z.string().email() }))
+    .query(async ({ input }) => {
+      const db = await (await import("../db")).getDb();
+      if (!db) return null;
+      const { emailSuppression } = await import("../../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const [row] = await db
+        .select()
+        .from(emailSuppression)
+        .where(and(eq(emailSuppression.email, input.email.toLowerCase()), eq(emailSuppression.isActive, true)))
+        .limit(1);
+      return row ?? null;
+    }),
+
   scheduleGradePromotion: adminProcedure
     .input(z.object({
       cron: z.string().default("0 0 2 15 6 *"),

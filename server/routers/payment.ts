@@ -300,7 +300,7 @@ export const paymentRouter = router({
       }
       const session = await stripe.billingPortal.sessions.create({
         customer: sub.stripeCustomerId,
-        return_url: `${input.origin}/dashboard`,
+        return_url: `${input.origin}/billing`,
       });
       return { url: session.url };
     }),

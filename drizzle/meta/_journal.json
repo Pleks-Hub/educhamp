@@ -162,6 +162,13 @@
       "when": 1779939840427,
       "tag": "0022_chief_vanisher",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1779940992343,
+      "tag": "0023_numerous_the_fury",
+      "breakpoints": true
     }
   ]
 }

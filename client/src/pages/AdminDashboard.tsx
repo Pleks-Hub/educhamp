@@ -28,6 +28,7 @@ import {
   UserPlus, UserMinus, Copy, MoreHorizontal, Search,
   Inbox, Send, XCircle, Filter, Building2, Phone, Calendar, Sparkles,
   ChevronLeft, ChevronDown, ChevronUp, Star, Tag, CreditCard,
+  MailX, ShieldOff, ShieldCheck, RotateCcw,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -53,6 +54,38 @@ const STATUS_COLORS: Record<string, string> = {
   archived: "bg-gray-100 text-gray-600",
   deleted: "bg-red-100 text-red-800",
 };
+
+// ─── Suppression Badge (used in UsersTab rows) ───────────────────────────────
+
+function SuppressionBadge({ email, onUnsuppress }: { email: string; onUnsuppress?: () => void }) {
+  const { data: suppression, refetch } = trpc.admin.getSuppressionStatus.useQuery(
+    { email },
+    { enabled: !!email, staleTime: 60_000 }
+  );
+  const unsuppress = trpc.admin.unsuppressEmail.useMutation({
+    onSuccess: () => { toast.success(`${email} unsuppressed — emails will resume`); refetch(); onUnsuppress?.(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (!suppression) return null;
+
+  return (
+    <div className="flex items-center gap-1 mt-0.5">
+      <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px] px-1.5 py-0 h-4 gap-0.5 cursor-default" title={`Suppressed: ${suppression.reason} on ${new Date(suppression.suppressedAt).toLocaleDateString()}`}>
+        <MailX className="h-2.5 w-2.5" />
+        {suppression.reason}
+      </Badge>
+      <button
+        className="h-4 w-4 rounded hover:bg-emerald-100 flex items-center justify-center transition-colors"
+        title="Unsuppress email"
+        onClick={(e) => { e.stopPropagation(); if (confirm(`Unsuppress ${email} and resume email delivery?`)) unsuppress.mutate({ suppressionId: suppression.id }); }}
+        disabled={unsuppress.isPending}
+      >
+        <RotateCcw className="h-2.5 w-2.5 text-emerald-600" />
+      </button>
+    </div>
+  );
+}
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -235,6 +268,7 @@ function UsersTab() {
                     <div>
                       <p className="font-medium text-sm">{user.name ?? "—"}</p>
                       <p className="text-xs text-muted-foreground">{user.email ?? user.openId}</p>
+                      {user.email && <SuppressionBadge email={user.email} onUnsuppress={refetch} />}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -1511,6 +1545,204 @@ function GradeManagementTab() {
   );
 }
 
+// ─── Suppression Management Tab ─────────────────────────────────────────────
+
+function SuppressionManagementTab() {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [reasonFilter, setReasonFilter] = useState<"all" | "bounced" | "complained" | "manual">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("active");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
+  const [showManualDialog, setShowManualDialog] = useState(false);
+  const [manualEmail, setManualEmail] = useState("");
+  const [manualNotes, setManualNotes] = useState("");
+  const [auditEmail, setAuditEmail] = useState<string | null>(null);
+
+  const handleSearch = (val: string) => {
+    setSearch(val);
+    clearTimeout((handleSearch as any)._t);
+    (handleSearch as any)._t = setTimeout(() => { setDebouncedSearch(val); setPage(0); }, 400);
+  };
+
+  const { data, isLoading, refetch } = trpc.admin.listSuppressions.useQuery({
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
+    search: debouncedSearch || undefined,
+    reason: reasonFilter,
+    status: statusFilter,
+  });
+
+  const { data: auditData } = trpc.admin.getSuppressionAuditLog.useQuery(
+    { email: auditEmail!, limit: 20, offset: 0 },
+    { enabled: !!auditEmail }
+  );
+
+  const unsuppress = trpc.admin.unsuppressEmail.useMutation({
+    onSuccess: (d) => { toast.success(`${d.email} unsuppressed — emails will resume`); refetch(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const suppressManual = trpc.admin.suppressEmailManual.useMutation({
+    onSuccess: () => { toast.success(`${manualEmail} manually suppressed`); setShowManualDialog(false); setManualEmail(""); setManualNotes(""); refetch(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const totalPages = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
+
+  const reasonBadge = (reason: string | null) => {
+    if (reason === "bounced") return <Badge className="bg-red-100 text-red-700 border-red-200 text-xs"><XCircle className="h-3 w-3 mr-1" />Bounced</Badge>;
+    if (reason === "complained") return <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-xs"><AlertTriangle className="h-3 w-3 mr-1" />Complained</Badge>;
+    return <Badge className="bg-slate-100 text-slate-700 border-slate-200 text-xs"><ShieldOff className="h-3 w-3 mr-1" />Manual</Badge>;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Email Suppression Management</h2>
+          <p className="text-sm text-muted-foreground">Manage suppressed addresses to protect sender reputation</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </Button>
+          <Button size="sm" onClick={() => setShowManualDialog(true)} className="gap-2">
+            <ShieldOff className="h-4 w-4" /> Suppress Address
+          </Button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search by email…" value={search} onChange={(e) => handleSearch(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={reasonFilter} onValueChange={(v) => { setReasonFilter(v as typeof reasonFilter); setPage(0); }}>
+          <SelectTrigger className="w-36"><Filter className="h-4 w-4 mr-2" /><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Reasons</SelectItem>
+            <SelectItem value="bounced">Bounced</SelectItem>
+            <SelectItem value="complained">Complained</SelectItem>
+            <SelectItem value="manual">Manual</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as typeof statusFilter); setPage(0); }}>
+          <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Unsuppressed</SelectItem>
+          </SelectContent>
+        </Select>
+        <Badge variant="secondary">{data?.total ?? 0} records</Badge>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-lg border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Email</TableHead>
+              <TableHead>Reason</TableHead>
+              <TableHead>Resend Event ID</TableHead>
+              <TableHead>Suppressed At</TableHead>
+              <TableHead>Unsuppressed At</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-8" /></TableCell></TableRow>
+              ))
+            ) : (data?.suppressions ?? []).length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
+                  <ShieldCheck className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  No suppressed addresses found.
+                </TableCell>
+              </TableRow>
+            ) : (data?.suppressions ?? []).map((s: any) => (
+              <TableRow key={s.id} className={!s.isActive ? "opacity-50" : ""}>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm">{s.email}</span>
+                    <button className="text-xs text-muted-foreground underline hover:text-foreground" onClick={() => setAuditEmail(auditEmail === s.email ? null : s.email)}>history</button>
+                  </div>
+                  {auditEmail === s.email && auditData && (
+                    <div className="mt-2 space-y-1 text-xs text-muted-foreground border-l-2 border-muted pl-3">
+                      {auditData.entries.map((e: any) => (
+                        <div key={e.id} className="flex gap-2">
+                          <span className={e.action === "unsuppressed" ? "text-emerald-600 font-medium" : "text-red-600 font-medium"}>{e.action}</span>
+                          <span>by {e.adminName ?? "system"}</span>
+                          <span>{new Date(e.createdAt).toLocaleString()}</span>
+                          {e.notes && <span className="italic">— {e.notes}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>{reasonBadge(s.reason)}</TableCell>
+                <TableCell className="text-xs font-mono text-muted-foreground">{s.resendEventId ? s.resendEventId.slice(0, 16) + "…" : "—"}</TableCell>
+                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(s.suppressedAt).toLocaleString()}</TableCell>
+                <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{s.unsuppressedAt ? new Date(s.unsuppressedAt).toLocaleString() : "—"}</TableCell>
+                <TableCell>
+                  {s.isActive && (
+                    <Button
+                      variant="ghost" size="sm" className="h-7 text-xs gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                      disabled={unsuppress.isPending}
+                      onClick={() => { if (confirm(`Unsuppress ${s.email} and resume email delivery?`)) unsuppress.mutate({ suppressionId: s.id }); }}
+                    >
+                      <RotateCcw className="h-3 w-3" /> Unsuppress
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-sm text-muted-foreground">Page {page + 1} of {totalPages}</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>← Previous</Button>
+            <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Next →</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Suppress Dialog */}
+      <Dialog open={showManualDialog} onOpenChange={setShowManualDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="flex items-center gap-2"><ShieldOff className="h-5 w-5 text-red-500" /> Manually Suppress Email</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Email Address</Label>
+              <Input type="email" value={manualEmail} onChange={(e) => setManualEmail(e.target.value)} placeholder="user@example.com" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notes (optional)</Label>
+              <Textarea value={manualNotes} onChange={(e) => setManualNotes(e.target.value)} placeholder="Reason for manual suppression…" rows={3} />
+            </div>
+            <p className="text-xs text-muted-foreground">This will immediately block all transactional emails to this address. The action is logged in the audit trail.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowManualDialog(false)}>Cancel</Button>
+            <Button variant="destructive" disabled={suppressManual.isPending || !manualEmail} onClick={() => suppressManual.mutate({ email: manualEmail, notes: manualNotes || undefined })}>
+              {suppressManual.isPending ? "Suppressing…" : "Suppress Address"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ─── Main AdminDashboard ──────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -1584,6 +1816,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="grades" className="gap-2"><GraduationCap className="h-4 w-4" /> Grades</TabsTrigger>
             <TabsTrigger value="audit" className="gap-2"><ClipboardList className="h-4 w-4" /> Audit Log</TabsTrigger>
             <TabsTrigger value="emaillogs" className="gap-2"><Inbox className="h-4 w-4" /> Email Logs</TabsTrigger>
+            <TabsTrigger value="suppression" className="gap-2"><MailX className="h-4 w-4" /> Suppression</TabsTrigger>
             <TabsTrigger value="demorequests" className="gap-2"><Building2 className="h-4 w-4" /> Demo Requests</TabsTrigger>
             <TabsTrigger value="coupons" className="gap-2"><Tag className="h-4 w-4" /> Coupons</TabsTrigger>
             <TabsTrigger value="subscriptions" className="gap-2"><CreditCard className="h-4 w-4" /> Subscriptions</TabsTrigger>
@@ -1599,6 +1832,7 @@ export default function AdminDashboard() {
           <TabsContent value="settings"><SettingsTab /></TabsContent>
           <TabsContent value="audit"><AuditLogTab /></TabsContent>
           <TabsContent value="emaillogs"><EmailLogsTab /></TabsContent>
+          <TabsContent value="suppression"><SuppressionManagementTab /></TabsContent>
           <TabsContent value="demorequests"><DemoRequestsTab /></TabsContent>
           <TabsContent value="coupons"><CouponManagerTab /></TabsContent>
           <TabsContent value="subscriptions"><SubscriptionCRMTab /></TabsContent>

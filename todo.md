@@ -1023,3 +1023,29 @@
 ### GA4 Funnel Exploration Guide
 - [x] Write step-by-step GA4 Funnel Exploration setup guide (4-step funnel)
 - [x] Covers: event verification, Explorations setup, 4 funnel steps, elapsed time, interpretation, sharing
+
+## Sprint 34 — Portal URL, Suppression Admin, User Badge & Skill
+
+### Stripe Portal Return URL
+- [x] Updated createPortalSession return_url from /dashboard to /billing
+- [x] Origin is taken dynamically from request headers (env-aware)
+
+### Admin Suppression Management
+- [x] DB: suppressionAuditLog table created and migrated
+- [x] Server: admin.listSuppressions tRPC query (paginated, search by email, filter by reason/status)
+- [x] Server: admin.unsuppressEmail tRPC mutation (sets isActive=false, writes audit log)
+- [x] Server: admin.suppressEmailManual tRPC mutation (manual suppress with notes, writes audit log)
+- [x] Server: admin.getSuppressionAuditLog tRPC query (paginated audit entries by email)
+- [x] Server: admin.getSuppressionStatus tRPC query (returns active suppression for a given email)
+- [x] UI: SuppressionManagementTab with search, filters, paginated table, inline audit history
+- [x] UI: Manual suppress dialog with email + notes fields
+- [x] UI: SuppressionManagementTab wired into AdminDashboard as new "Suppression" tab
+
+### Suppression Badge on Admin User Profiles
+- [x] UI: SuppressionBadge component (shows reason badge + quick unsuppress button)
+- [x] UI: SuppressionBadge wired into UsersTab Name/Email cell (visible only when isActive=true)
+
+### Reusable Skill
+- [x] saas-email-suppression skill created at /home/ubuntu/skills/saas-email-suppression/
+- [x] Skill covers: DB schema, webhook handler, send guard, admin tRPC procedures, React UI components
+- [x] Skill validated successfully (quick_validate.py passed)
