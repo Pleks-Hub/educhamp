@@ -570,7 +570,7 @@ const CMS_SECTIONS = [
   { key: "homepage.features.title", section: "homepage", label: "Features Section Title", contentType: "text" as const, defaultValue: "Everything a student needs to succeed" },
   { key: "homepage.announcement", section: "homepage", label: "Announcement Banner", contentType: "richtext" as const, defaultValue: "" },
   { key: "homepage.faq.1.q", section: "faq", label: "FAQ 1 — Question", contentType: "text" as const, defaultValue: "What is EduChamp?" },
-  { key: "homepage.faq.1.a", section: "faq", label: "FAQ 1 — Answer", contentType: "richtext" as const, defaultValue: "EduChamp is an adaptive learning platform for Algebra I." },
+  { key: "homepage.faq.1.a", section: "faq", label: "FAQ 1 — Answer", contentType: "richtext" as const, defaultValue: "EduChamp is an AI-powered adaptive learning platform for Grades 3–12, covering Math, ELA, Science, Social Studies, and more." },
   { key: "homepage.faq.2.q", section: "faq", label: "FAQ 2 — Question", contentType: "text" as const, defaultValue: "How does the AI Tutor work?" },
   { key: "homepage.faq.2.a", section: "faq", label: "FAQ 2 — Answer", contentType: "richtext" as const, defaultValue: "Our AI Tutor analyses your answers and provides step-by-step explanations." },
   { key: "onboarding.welcome.title", section: "onboarding", label: "Onboarding Welcome Title", contentType: "text" as const, defaultValue: "Welcome to EduChamp!" },

@@ -910,3 +910,25 @@
 - [x] Check current DNS status for educhamp.app via Resend API (status: NOT VERIFIED)
 - [x] Provide exact DNS records (SPF, DKIM, DMARC) for the domain owner to add
 - [-] DNS records to be added by domain owner in DNS provider (BLOCKED — requires manual DNS step)
+
+## Sprint 28 — Branding, Favicon & SEO Metadata
+
+### VITE_APP_TITLE
+- [-] Update VITE_APP_TITLE to "EduChamp — AI-Powered Learning Solution" (BLOCKED — requires manual update in Settings → General; browser tab title already updated in index.html)
+- [x] Audit codebase for hardcoded "Algebra I" references: fixed in authEnhancements.ts, onboarding.ts, AdminDashboard.tsx, EduChampDemoWidget.tsx
+- [x] Verify title propagates to PWA manifest, OG tags, browser tab
+
+### Custom Favicon
+- [x] Generate purpose-built 32×32 favicon (bold white "E" on indigo #4338CA, rounded corners)
+- [x] Generate 192×192 and 512×512 PNG variants for PWA manifest
+- [x] Generate apple-touch-icon (180×180)
+- [x] Convert to .ico with 16, 32, 48px sizes via Pillow
+- [x] Upload all assets via manus-upload-file --webdev (CDN URLs in index.html)
+- [x] Update index.html favicon links (ico, 32px PNG, 192px PNG, apple-touch-icon)
+- [x] Create manifest.json with new icons and updated app name
+
+### SEO Metadata
+- [x] Update meta description: "EduChamp — AI-powered adaptive learning for Grades 3–12. Personalized tutoring, mastery tracking, assessments, and TEKS-aligned curriculum for schools, districts, parents, and students." (155 chars)
+- [x] Update OG title, description, image (512px favicon), url, locale, site_name
+- [x] Add Twitter/X card meta tags (card, site, title, description, image)
+- [x] TypeScript: 0 errors | Tests: 141/141 passing

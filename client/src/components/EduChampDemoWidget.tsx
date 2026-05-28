@@ -39,7 +39,7 @@ const MODES: { id: ModeId; label: string; icon: React.ElementType; color: string
 // ─── Demo Scripts ─────────────────────────────────────────────────────────────
 const SCRIPTS: Record<ModeId, DemoFrame[]> = {
   tutor: [
-    { type: "bot",      text: "Hi! I'm EduBot 👋 — your AI tutor for Algebra I. What would you like to learn today?", delay: 0 },
+    { type: "bot",      text: "Hi! I'm EduBot 👋 — your AI tutor. What would you like to learn today?", delay: 0 },
     { type: "user",     text: "Can you explain slope-intercept form?", delay: 1400 },
     { type: "bot",      text: "Great question! Slope-intercept form is written as **y = mx + b**, where:", delay: 1200 },
     { type: "bot",      text: "• **m** is the slope (how steep the line is)\n• **b** is the y-intercept (where it crosses the y-axis)", delay: 800 },
@@ -228,8 +228,8 @@ export function EduChampDemoWidget({ variant = "full", initialMode, hideTabs = f
             <p className="text-xs text-slate-400 truncate">
               {activeMode === "tutor" ? "Algebra I · Unit 5: Linear Functions" :
                activeMode === "quiz"  ? "Algebra I · Unit 2: Equations" :
-               activeMode === "practice" ? "Algebra I · Unit 9: Factoring" :
-               "Algebra I · STAAR/EOC Review"}
+               activeMode === "practice" ? "3rd Grade Math · Unit 4: Fractions" :
+               "STAAR/EOC Review · Multi-Subject"}
             </p>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">

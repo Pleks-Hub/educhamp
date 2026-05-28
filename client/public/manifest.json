@@ -1,0 +1,33 @@
+{
+  "name": "EduChamp — AI-Powered Learning Solution",
+  "short_name": "EduChamp",
+  "description": "AI-powered adaptive learning for Grades 3–12. Personalized tutoring, mastery tracking, assessments, and TEKS-aligned curriculum for schools, districts, parents, and students.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1d4ed8",
+  "theme_color": "#1d4ed8",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663050137747/bGgBz5qKButMMCqjwC5rTw/educhamp-favicon-32-ctv6U8mbwUrAsVD7RXQj4Q.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663050137747/bGgBz5qKButMMCqjwC5rTw/educhamp-favicon-192-RCJzKWMHgzeJhmTEtN4iig.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663050137747/bGgBz5qKButMMCqjwC5rTw/educhamp-favicon-512-LgxxdRcp4nNuknktjTfqwj.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education"],
+  "lang": "en-US",
+  "dir": "ltr"
+}

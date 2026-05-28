@@ -33,7 +33,7 @@ export async function sendWelcomeNotification(user: {
   const roleLabel = user.accountType === "parent" ? "Parent/Guardian" : "Student";
   await notifyOwner({
     title: `🎉 New ${roleLabel} Joined EduChamp: ${user.name ?? user.email ?? "Unknown"}`,
-    content: `A new ${roleLabel.toLowerCase()} has signed up for EduChamp Algebra I.\n\n**Name:** ${user.name ?? "Not provided"}\n**Email:** ${user.email ?? "Not provided"}\n**Account Type:** ${roleLabel}\n\nWelcome them to the platform!`,
+    content: `A new ${roleLabel.toLowerCase()} has signed up for EduChamp.\n\n**Name:** ${user.name ?? "Not provided"}\n**Email:** ${user.email ?? "Not provided"}\n**Account Type:** ${roleLabel}\n\nWelcome them to the platform!`,
   });
 }
 

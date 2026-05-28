@@ -130,8 +130,8 @@ export const onboardingRouter = router({
         grade_improvement: "improving their child's grades",
         test_prep: "preparing for standardized tests (STAAR, SAT, ACT)",
         enrichment: "enriching their child's math skills beyond the classroom",
-        remediation: "addressing learning gaps and catching up in Algebra I",
-        homeschool_supplement: "supplementing their homeschool curriculum with structured Algebra I content",
+        remediation: "addressing learning gaps and catching up across subjects",
+        homeschool_supplement: "supplementing their homeschool curriculum with structured EduChamp content",
         other: "supporting their child's math education",
       };
 
@@ -142,7 +142,7 @@ export const onboardingRouter = router({
         ? ` (${input.schoolType === "homeschool" ? "homeschooled" : `attending a ${input.schoolType} school`})`
         : "";
 
-      const systemPrompt = `You are EduChamp's onboarding advisor. Your job is to create a personalised, actionable learning goal statement for a parent who has just enrolled their child in EduChamp Algebra I. Be warm, specific, and encouraging. Keep the response to 3-4 sentences maximum.`;
+      const systemPrompt = `You are EduChamp's onboarding advisor. Your job is to create a personalised, actionable learning goal statement for a parent who has just enrolled their child in EduChamp — an AI-powered adaptive learning platform for Grades 3–12. Be warm, specific, and encouraging. Keep the response to 3-4 sentences maximum.`;
 
       const userPrompt = `A parent has signed up for EduChamp with the following goal: "${input.parentSignupReason}"
 
