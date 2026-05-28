@@ -170,8 +170,11 @@ const pwaPlugin = VitePWA({
     ],
   },
   workbox: {
-    // Cache the app shell (HTML, JS, CSS, fonts)
-    globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+    // Raise the precache file size limit to 15 MB to accommodate large vendor chunks
+    // (vendor-misc includes KaTeX fonts and other large assets)
+    maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
+    // Cache the app shell (HTML, JS, CSS, fonts) — exclude very large chunks from precache
+    globPatterns: ["**/*.{css,html,ico,png,svg,woff2}", "assets/vendor-react-*.js", "assets/vendor-trpc-*.js", "assets/vendor-radix-*.js", "assets/index-*.js"],
     // Network-first for API calls, cache-first for static assets
     runtimeCaching: [
       {
