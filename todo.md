@@ -1093,3 +1093,38 @@
 - [x] UI: "Delivery" column added to Email Logs table with colour-coded badges (pending=grey, delivered=blue, opened=green, bounced=red, complained=orange, failed=red)
 - [x] UI: badge tooltip shows deliveryUpdatedAt timestamp
 - [x] UI: "Delivery Status" filter dropdown added to Email Logs toolbar (All Delivery / Pending / Delivered / Opened / Bounced / Complained / Failed)
+
+## Sprint 37 — Contextual Tooltips & Navigation Annotations
+
+### Tooltip Infrastructure
+- [x] Created client/src/lib/tooltipContent.ts — central registry with typed tooltip objects (title + description) for NAV, ADMIN_TAB, ADMIN_ACTION, BILLING, TUTOR, DIAGNOSTIC namespaces
+- [x] Created client/src/components/NavTooltip.tsx — reusable wrapper using shadcn Tooltip with configurable side, align, delayDuration props
+- [x] Keyboard accessible (focus triggers tooltip), screen-reader friendly via aria-label on wrapped elements
+
+### DashboardLayout Sidebar
+- [x] All sidebar nav items enriched with tooltipKey from NAV_TOOLTIPS registry
+- [x] NavTooltip wraps each SidebarMenuButton showing title + description on hover
+- [x] Sidebar toggle button tooltip added
+- [x] User avatar dropdown trigger tooltip added
+
+### Header / Top Bar Icons
+- [x] Sidebar collapse/expand toggle tooltip added
+- [x] User avatar menu trigger tooltip added
+
+### Admin Dashboard Tabs
+- [x] All tab triggers (Overview, Users, Email Logs, Suppression) wrapped with NavTooltip
+- [x] Refresh buttons across all tabs wrapped with NavTooltip
+- [x] Export CSV, Suppress Address buttons wrapped with NavTooltip
+
+### Billing Page
+- [x] Manage Billing & Invoices button wrapped with NavTooltip
+- [x] View Plans (upgrade) button wrapped with NavTooltip
+
+### AI Tutor / EduBot
+- [x] All mode buttons (Teach, Practice, Quiz, Exam Review, Remediation, Parent Summary) wrapped with NavTooltip (side=right, delay=700ms)
+- [x] Clear Conversation button wrapped with NavTooltip
+- [x] Send message button wrapped with NavTooltip + aria-label
+
+### Diagnostic Test
+- [x] Begin Diagnostic button wrapped with NavTooltip
+- [x] Next/Submit button wrapped with NavTooltip (dynamic content based on question position)

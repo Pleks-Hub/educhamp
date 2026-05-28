@@ -21,6 +21,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
+import { NavTooltip, SidebarNavTooltip } from "@/components/NavTooltip";
+import { NAV_TOOLTIPS, HEADER_TOOLTIPS } from "@/lib/tooltipContent";
 import { trpc } from "@/lib/trpc";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
@@ -51,19 +53,19 @@ import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import CourseSwitcher from "./CourseSwitcher";
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-  { icon: Library, label: "Course Catalog", path: "/courses" },
-  { icon: BookOpen, label: "Curriculum", path: "/curriculum" },
-  { icon: Brain, label: "AI Tutor", path: "/tutor" },
-  { icon: ClipboardList, label: "Diagnostic", path: "/diagnostic" },
-  { icon: BarChart3, label: "Progress", path: "/progress" },
-  { icon: Sigma, label: "Skill Index", path: "/skills" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/", tooltipKey: "dashboard" },
+  { icon: Library, label: "Course Catalog", path: "/courses", tooltipKey: "courses" },
+  { icon: BookOpen, label: "Curriculum", path: "/curriculum", tooltipKey: "curriculum" },
+  { icon: Brain, label: "AI Tutor", path: "/tutor", tooltipKey: "aiTutor" },
+  { icon: ClipboardList, label: "Diagnostic", path: "/diagnostic", tooltipKey: "diagnostic" },
+  { icon: BarChart3, label: "Progress", path: "/progress", tooltipKey: "progress" },
+  { icon: Sigma, label: "Skill Index", path: "/skills", tooltipKey: "skillIndex" },
 ];
 
 // Parent Dashboard is shown to all authenticated users — any user can enrol children
-const parentMenuItem = { icon: Users, label: "Parent Dashboard", path: "/parent" };
-const referralMenuItem = { icon: Share2, label: "Refer & Invite", path: "/referrals" };
-const billingMenuItem = { icon: CreditCard, label: "Billing", path: "/billing" };
+const parentMenuItem = { icon: Users, label: "Parent Dashboard", path: "/parent", tooltipKey: "parent" };
+const referralMenuItem = { icon: Share2, label: "Refer & Invite", path: "/referrals", tooltipKey: "referrals" };
+const billingMenuItem = { icon: CreditCard, label: "Billing", path: "/billing", tooltipKey: "billing" };
 
 const SIDEBAR_WIDTH_KEY = "educhamp-sidebar-width";
 const DEFAULT_WIDTH = 256;
@@ -221,13 +223,15 @@ function DashboardLayoutContent({
           {/* Header */}
           <SidebarHeader className="h-16 border-b border-sidebar-border">
             <div className="flex items-center gap-3 px-3 h-full">
-              <button
-                onClick={toggleSidebar}
-                className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-sidebar-accent transition-colors shrink-0"
-                aria-label="Toggle sidebar"
-              >
-                <PanelLeft className="h-4 w-4 text-sidebar-foreground/70" />
-              </button>
+              <NavTooltip content={HEADER_TOOLTIPS.sidebarToggle} side="right">
+                <button
+                  onClick={toggleSidebar}
+                  className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-sidebar-accent transition-colors shrink-0"
+                  aria-label={HEADER_TOOLTIPS.sidebarToggle.description}
+                >
+                  <PanelLeft className="h-4 w-4 text-sidebar-foreground/70" />
+                </button>
+              </NavTooltip>
               {!isCollapsed && (
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="h-7 w-7 rounded-lg overflow-hidden shrink-0 bg-white flex items-center justify-center">
@@ -264,24 +268,32 @@ function DashboardLayoutContent({
             <SidebarMenu className="px-2 gap-0.5">
               {menuItems.map((item) => {
                 const isActive = item.path === location || (item.path !== "/" && location.startsWith(item.path));
+                const tooltipEntry = NAV_TOOLTIPS[item.tooltipKey];
                 return (
                   <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`h-9 rounded-lg transition-all duration-150 ${
-                        isActive
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      }`}
+                    <SidebarNavTooltip
+                      content={tooltipEntry}
+                      sidebarExpanded={!isCollapsed}
+                      side="right"
                     >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="text-sm">{item.label}</span>
-                      {isActive && !isCollapsed && (
-                        <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
-                      )}
-                    </SidebarMenuButton>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        onClick={() => setLocation(item.path)}
+                        tooltip={isCollapsed ? undefined : item.label}
+                        className={`h-9 rounded-lg transition-all duration-150 ${
+                          isActive
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
+                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                        aria-label={tooltipEntry?.description ?? item.label}
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span className="text-sm">{item.label}</span>
+                        {isActive && !isCollapsed && (
+                          <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
+                        )}
+                      </SidebarMenuButton>
+                    </SidebarNavTooltip>
                   </SidebarMenuItem>
                 );
               })}
@@ -294,24 +306,32 @@ function DashboardLayoutContent({
               )}
               {[parentMenuItem, referralMenuItem, billingMenuItem].map((item) => {
                 const isActive = location.startsWith(item.path);
+                const tooltipEntry = NAV_TOOLTIPS[item.tooltipKey];
                 return (
                   <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`h-9 rounded-lg transition-all duration-150 ${
-                        isActive
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      }`}
+                    <SidebarNavTooltip
+                      content={tooltipEntry}
+                      sidebarExpanded={!isCollapsed}
+                      side="right"
                     >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="text-sm">{item.label}</span>
-                      {isActive && !isCollapsed && (
-                        <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
-                      )}
-                    </SidebarMenuButton>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        onClick={() => setLocation(item.path)}
+                        tooltip={isCollapsed ? undefined : item.label}
+                        className={`h-9 rounded-lg transition-all duration-150 ${
+                          isActive
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
+                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                        aria-label={tooltipEntry?.description ?? item.label}
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span className="text-sm">{item.label}</span>
+                        {isActive && !isCollapsed && (
+                          <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
+                        )}
+                      </SidebarMenuButton>
+                    </SidebarNavTooltip>
                   </SidebarMenuItem>
                 );
               })}
@@ -322,7 +342,11 @@ function DashboardLayoutContent({
           <SidebarFooter className="p-3 border-t border-sidebar-border">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-sidebar-accent transition-colors w-full text-left focus:outline-none">
+                <button
+                  className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-sidebar-accent transition-colors w-full text-left focus:outline-none"
+                  aria-label={HEADER_TOOLTIPS.userMenu.description}
+                  title={isCollapsed ? HEADER_TOOLTIPS.userMenu.title : undefined}
+                >
                   <Avatar className="h-8 w-8 shrink-0 border border-sidebar-border">
                     <AvatarFallback className="text-xs font-semibold bg-sidebar-primary text-sidebar-primary-foreground">
                       {initials}
@@ -341,21 +365,21 @@ function DashboardLayoutContent({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem onClick={() => setLocation("/profile")} className="cursor-pointer">
+                <DropdownMenuItem onClick={() => setLocation("/profile")} className="cursor-pointer" title={NAV_TOOLTIPS.settings.description}>
                   <User className="mr-2 h-4 w-4" />
                   Profile &amp; Settings
                 </DropdownMenuItem>
                 {user?.role === "admin" && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setLocation("/admin")} className="cursor-pointer">
+                    <DropdownMenuItem onClick={() => setLocation("/admin")} className="cursor-pointer" title={NAV_TOOLTIPS.admin.description}>
                       <Shield className="mr-2 h-4 w-4" />
                       Admin Console
                     </DropdownMenuItem>
                   </>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
+                <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive" title={NAV_TOOLTIPS.logout.description}>
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out
                 </DropdownMenuItem>

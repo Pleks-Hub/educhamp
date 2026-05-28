@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { DemoRequestsTab } from "@/components/DemoRequestsTab";
+import { NavTooltip } from "@/components/NavTooltip";
+import { ADMIN_TAB_TOOLTIPS, ADMIN_ACTION_TOOLTIPS } from "@/lib/tooltipContent";
 import { CouponManagerTab } from "@/components/admin/CouponManagerTab";
 import { SubscriptionCRMTab } from "@/components/admin/SubscriptionCRMTab";
 import { PaymentAnalyticsTab } from "@/components/admin/PaymentAnalyticsTab";
@@ -165,9 +167,11 @@ function OverviewTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Platform Overview</h2>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" /> Refresh
-        </Button>
+        <NavTooltip content={ADMIN_ACTION_TOOLTIPS.refresh} side="bottom">
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+          </Button>
+        </NavTooltip>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <StatCard icon={Users} label="Total Users" value={stats.totalUsers} color="bg-blue-500" />
@@ -1351,9 +1355,11 @@ function EmailLogsTab() {
           <h2 className="text-lg font-semibold">Email Delivery Logs</h2>
           <p className="text-sm text-muted-foreground">Monitor all transactional emails sent by the platform</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
-          <RefreshCw className="h-4 w-4" /> Refresh
-        </Button>
+        <NavTooltip content={ADMIN_ACTION_TOOLTIPS.refresh} side="bottom">
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </Button>
+        </NavTooltip>
       </div>
 
       {/* Stats Cards */}
@@ -1720,15 +1726,21 @@ function SuppressionManagementTab() {
           <p className="text-sm text-muted-foreground">Manage suppressed addresses to protect sender reputation</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
-            <RefreshCw className="h-4 w-4" /> Refresh
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={isExporting} className="gap-2">
-            <Download className="h-4 w-4" /> {isExporting ? "Exporting…" : "Export CSV"}
-          </Button>
-          <Button size="sm" onClick={() => setShowManualDialog(true)} className="gap-2">
-            <ShieldOff className="h-4 w-4" /> Suppress Address
-          </Button>
+          <NavTooltip content={ADMIN_ACTION_TOOLTIPS.refresh} side="bottom">
+            <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+              <RefreshCw className="h-4 w-4" /> Refresh
+            </Button>
+          </NavTooltip>
+          <NavTooltip content={ADMIN_ACTION_TOOLTIPS.exportCsv} side="bottom">
+            <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={isExporting} className="gap-2">
+              <Download className="h-4 w-4" /> {isExporting ? "Exporting…" : "Export CSV"}
+            </Button>
+          </NavTooltip>
+          <NavTooltip content={ADMIN_ACTION_TOOLTIPS.suppressAddress} side="bottom">
+            <Button size="sm" onClick={() => setShowManualDialog(true)} className="gap-2">
+              <ShieldOff className="h-4 w-4" /> Suppress Address
+            </Button>
+          </NavTooltip>
         </div>
       </div>
 
@@ -1959,20 +1971,48 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Tabs defaultValue="overview">
           <TabsList className="mb-6 flex-wrap gap-1 h-auto overflow-x-auto">
-            <TabsTrigger value="overview" className="gap-2"><BarChart3 className="h-4 w-4" /> Overview</TabsTrigger>
-            <TabsTrigger value="users" className="gap-2"><Users className="h-4 w-4" /> Users</TabsTrigger>
-            <TabsTrigger value="courses" className="gap-2"><BookOpen className="h-4 w-4" /> Courses</TabsTrigger>
-            <TabsTrigger value="cms" className="gap-2"><FileText className="h-4 w-4" /> CMS</TabsTrigger>
-            <TabsTrigger value="rbac" className="gap-2"><Lock className="h-4 w-4" /> RBAC</TabsTrigger>
-            <TabsTrigger value="settings" className="gap-2"><Settings className="h-4 w-4" /> Settings</TabsTrigger>
-            <TabsTrigger value="grades" className="gap-2"><GraduationCap className="h-4 w-4" /> Grades</TabsTrigger>
-            <TabsTrigger value="audit" className="gap-2"><ClipboardList className="h-4 w-4" /> Audit Log</TabsTrigger>
-            <TabsTrigger value="emaillogs" className="gap-2"><Inbox className="h-4 w-4" /> Email Logs</TabsTrigger>
-            <TabsTrigger value="suppression" className="gap-2"><MailX className="h-4 w-4" /> Suppression</TabsTrigger>
-            <TabsTrigger value="demorequests" className="gap-2"><Building2 className="h-4 w-4" /> Demo Requests</TabsTrigger>
-            <TabsTrigger value="coupons" className="gap-2"><Tag className="h-4 w-4" /> Coupons</TabsTrigger>
-            <TabsTrigger value="subscriptions" className="gap-2"><CreditCard className="h-4 w-4" /> Subscriptions</TabsTrigger>
-            <TabsTrigger value="paymentanalytics" className="gap-2"><BarChart3 className="h-4 w-4" /> Payment Analytics</TabsTrigger>
+            <NavTooltip content={ADMIN_TAB_TOOLTIPS.overview} side="bottom" delayDuration={700}>
+              <TabsTrigger value="overview" className="gap-2"><BarChart3 className="h-4 w-4" /> Overview</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content={ADMIN_TAB_TOOLTIPS.users} side="bottom" delayDuration={700}>
+              <TabsTrigger value="users" className="gap-2"><Users className="h-4 w-4" /> Users</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content={ADMIN_TAB_TOOLTIPS.courses} side="bottom" delayDuration={700}>
+              <TabsTrigger value="courses" className="gap-2"><BookOpen className="h-4 w-4" /> Courses</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content={{ title: "CMS", description: "Manage platform content — announcements, help articles, and onboarding copy." }} side="bottom" delayDuration={700}>
+              <TabsTrigger value="cms" className="gap-2"><FileText className="h-4 w-4" /> CMS</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content={{ title: "RBAC", description: "Role-Based Access Control — assign and manage admin roles and permissions." }} side="bottom" delayDuration={700}>
+              <TabsTrigger value="rbac" className="gap-2"><Lock className="h-4 w-4" /> RBAC</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content={ADMIN_TAB_TOOLTIPS.settings} side="bottom" delayDuration={700}>
+              <TabsTrigger value="settings" className="gap-2"><Settings className="h-4 w-4" /> Settings</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content={{ title: "Grades", description: "View and manage student grade levels and academic year progression." }} side="bottom" delayDuration={700}>
+              <TabsTrigger value="grades" className="gap-2"><GraduationCap className="h-4 w-4" /> Grades</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content={ADMIN_TAB_TOOLTIPS.auditLog} side="bottom" delayDuration={700}>
+              <TabsTrigger value="audit" className="gap-2"><ClipboardList className="h-4 w-4" /> Audit Log</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content={ADMIN_TAB_TOOLTIPS.emailLogs} side="bottom" delayDuration={700}>
+              <TabsTrigger value="emaillogs" className="gap-2"><Inbox className="h-4 w-4" /> Email Logs</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content={ADMIN_TAB_TOOLTIPS.suppression} side="bottom" delayDuration={700}>
+              <TabsTrigger value="suppression" className="gap-2"><MailX className="h-4 w-4" /> Suppression</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content={{ title: "Demo Requests", description: "Review and respond to inbound demo or trial requests from prospective school customers." }} side="bottom" delayDuration={700}>
+              <TabsTrigger value="demorequests" className="gap-2"><Building2 className="h-4 w-4" /> Demo Requests</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content={{ title: "Coupons", description: "Create and manage promotional discount codes for trials and paid plans." }} side="bottom" delayDuration={700}>
+              <TabsTrigger value="coupons" className="gap-2"><Tag className="h-4 w-4" /> Coupons</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content={ADMIN_TAB_TOOLTIPS.subscriptions} side="bottom" delayDuration={700}>
+              <TabsTrigger value="subscriptions" className="gap-2"><CreditCard className="h-4 w-4" /> Subscriptions</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content={{ title: "Payment Analytics", description: "Revenue charts, MRR trends, churn rates, and trial conversion metrics." }} side="bottom" delayDuration={700}>
+              <TabsTrigger value="paymentanalytics" className="gap-2"><BarChart3 className="h-4 w-4" /> Payment Analytics</TabsTrigger>
+            </NavTooltip>
           </TabsList>
 
           <TabsContent value="overview"><OverviewTab /></TabsContent>

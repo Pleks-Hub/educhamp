@@ -18,6 +18,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { NavTooltip } from "@/components/NavTooltip";
+import { BILLING_TOOLTIPS } from "@/lib/tooltipContent";
 
 const STATUS_BADGE: Record<string, { label: string; class: string; icon: React.ElementType }> = {
   active: { label: "Active", class: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
@@ -162,18 +164,20 @@ export default function Billing() {
             <Separator />
 
             <div className="flex flex-col sm:flex-row gap-2">
-              <Button
-                onClick={handleOpenPortal}
-                disabled={portalLoading || !sub.stripeCustomerId}
-                className="flex-1 gap-2"
-              >
-                {portalLoading ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <ExternalLink className="h-4 w-4" />
-                )}
-                Manage Billing & Invoices
-              </Button>
+              <NavTooltip content={BILLING_TOOLTIPS.manageSubscription} side="top">
+                <Button
+                  onClick={handleOpenPortal}
+                  disabled={portalLoading || !sub.stripeCustomerId}
+                  className="flex-1 gap-2"
+                >
+                  {portalLoading ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ExternalLink className="h-4 w-4" />
+                  )}
+                  Manage Billing & Invoices
+                </Button>
+              </NavTooltip>
               {(!sub.stripeCustomerId) && (
                 <p className="text-xs text-muted-foreground self-center">
                   Stripe portal not available for this subscription.
@@ -198,9 +202,11 @@ export default function Billing() {
                 You are currently on the free plan. Upgrade to unlock all features.
               </p>
             </div>
-            <Button onClick={() => navigate("/#pricing")} className="gap-2">
-              View Plans <ArrowRight className="h-4 w-4" />
-            </Button>
+            <NavTooltip content={BILLING_TOOLTIPS.upgrade} side="top">
+              <Button onClick={() => navigate("/#pricing")} className="gap-2">
+                View Plans <ArrowRight className="h-4 w-4" />
+              </Button>
+            </NavTooltip>
           </CardContent>
         </Card>
       )}

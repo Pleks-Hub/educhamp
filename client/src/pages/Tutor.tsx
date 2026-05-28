@@ -26,6 +26,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 import { CourseContextBanner } from "@/components/CourseContextBanner";
+import { NavTooltip } from "@/components/NavTooltip";
+import { TUTOR_TOOLTIPS } from "@/lib/tooltipContent";
 
 // parent_summary is a parent-only mode; students see only the 5 learning modes
 type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary";
@@ -355,19 +357,22 @@ export default function Tutor() {
             {visibleModes.map((m) => {
               const Icon = m.icon;
               const isActive = mode === m.id;
+              const modeTooltipKey = `mode${m.id.charAt(0).toUpperCase()}${m.id.slice(1).replace(/_([a-z])/g, (_, c) => c.toUpperCase())}` as keyof typeof TUTOR_TOOLTIPS;
+              const modeTooltip = TUTOR_TOOLTIPS[modeTooltipKey];
               return (
-                <button
-                  key={m.id}
-                  onClick={() => handleModeChange(m.id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all text-sm ${
-                    isActive
-                      ? "bg-primary text-primary-foreground font-medium shadow-sm"
-                      : "hover:bg-muted text-foreground"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                  <span className="truncate">{m.label}</span>
-                </button>
+                <NavTooltip key={m.id} content={modeTooltip ?? { title: m.label, description: m.description }} side="right" delayDuration={700}>
+                  <button
+                    onClick={() => handleModeChange(m.id)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all text-sm ${
+                      isActive
+                        ? "bg-primary text-primary-foreground font-medium shadow-sm"
+                        : "hover:bg-muted text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{m.label}</span>
+                  </button>
+                </NavTooltip>
               );
             })}
           </div>
@@ -406,18 +411,20 @@ export default function Tutor() {
         {/* Clear */}
         {messages.length > 0 && (
           <div className="p-3 border-t shrink-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full gap-2 text-xs text-muted-foreground"
-              onClick={() => {
-                if (sessionId) clearMutation.mutate({ sessionId });
-                else { setMessages([]); setSessionId(null); }
-              }}
-            >
-              <RefreshCw className="h-3 w-3" />
-              Clear Conversation
-            </Button>
+            <NavTooltip content={TUTOR_TOOLTIPS.clearChat} side="right">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full gap-2 text-xs text-muted-foreground"
+                onClick={() => {
+                  if (sessionId) clearMutation.mutate({ sessionId });
+                  else { setMessages([]); setSessionId(null); }
+                }}
+              >
+                <RefreshCw className="h-3 w-3" />
+                Clear Conversation
+              </Button>
+            </NavTooltip>
           </div>
         )}
       </aside>
@@ -583,18 +590,21 @@ export default function Tutor() {
                 rows={1}
                 disabled={isStreaming}
               />
-              <Button
-                onClick={() => sendMessage()}
-                disabled={!input.trim() || isStreaming}
-                size="sm"
-                className="h-9 w-9 p-0 shrink-0 rounded-xl"
-              >
-                {isStreaming ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </Button>
+              <NavTooltip content={TUTOR_TOOLTIPS.sendMessage} side="top">
+                <Button
+                  onClick={() => sendMessage()}
+                  disabled={!input.trim() || isStreaming}
+                  size="sm"
+                  className="h-9 w-9 p-0 shrink-0 rounded-xl"
+                  aria-label={TUTOR_TOOLTIPS.sendMessage.description}
+                >
+                  {isStreaming ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </NavTooltip>
             </div>
             <p className="text-[10px] text-muted-foreground text-center mt-1.5">
               Enter to send · Shift+Enter for new line

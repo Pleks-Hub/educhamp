@@ -36,6 +36,8 @@ import {
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
+import { NavTooltip } from "@/components/NavTooltip";
+import { DIAGNOSTIC_TOOLTIPS } from "@/lib/tooltipContent";
 
 type ChoiceItem = { label: string; text: string };
 
@@ -752,10 +754,12 @@ export default function Diagnostic() {
               <span>You have <strong>60 minutes</strong>. If you need more time when the timer expires, you can request an extension before submitting.</span>
             </div>
 
-            <Button onClick={() => setStarted(true)} className="w-full gap-2" size="lg">
-              <ArrowRight className="h-4 w-4" />
-              Begin Diagnostic
-            </Button>
+            <NavTooltip content={DIAGNOSTIC_TOOLTIPS.startTest} side="top">
+              <Button onClick={() => setStarted(true)} className="w-full gap-2" size="lg">
+                <ArrowRight className="h-4 w-4" />
+                Begin Diagnostic
+              </Button>
+            </NavTooltip>
           </CardContent>
         </Card>
       </div>
@@ -967,19 +971,24 @@ export default function Diagnostic() {
             })}
           </div>
 
-          <Button
-            onClick={handleNext}
-            disabled={!currentAnswer || submitMutation.isPending}
-            className="gap-2"
+          <NavTooltip
+            content={currentIndex === totalQ - 1 ? DIAGNOSTIC_TOOLTIPS.submitAnswer : { title: "Next Question", description: "Move to the next question. Your current answer is saved automatically." }}
+            side="top"
           >
-            {submitMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : currentIndex === totalQ - 1 ? (
-              <>Submit <CheckCircle2 className="h-4 w-4" /></>
-            ) : (
-              <>Next <ArrowRight className="h-4 w-4" /></>
-            )}
-          </Button>
+            <Button
+              onClick={handleNext}
+              disabled={!currentAnswer || submitMutation.isPending}
+              className="gap-2"
+            >
+              {submitMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : currentIndex === totalQ - 1 ? (
+                <>Submit <CheckCircle2 className="h-4 w-4" /></>
+              ) : (
+                <>Next <ArrowRight className="h-4 w-4" /></>
+              )}
+            </Button>
+          </NavTooltip>
         </div>
 
         {/* Answer progress dots */}
