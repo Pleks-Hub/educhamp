@@ -165,7 +165,7 @@ function DashboardLayoutContent({
               {!isCollapsed && (
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="h-7 w-7 rounded-lg overflow-hidden shrink-0 bg-white flex items-center justify-center">
-                    <img src="/manus-storage/educhamp-logo-64_2d79ce04.png" alt="EduChamp" className="h-6 w-6 object-contain" />
+                    <img src="/manus-storage/educhamp-logo-64_28201452.png" alt="EduChamp" className="h-6 w-6 object-contain" />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-sidebar-foreground truncate leading-none">EduChamp</p>
@@ -315,7 +315,7 @@ function DashboardLayoutContent({
               <SidebarTrigger className="h-9 w-9 rounded-lg" />
               <div className="flex items-center gap-1.5">
                 <div className="h-6 w-6 rounded overflow-hidden bg-white flex items-center justify-center">
-                  <img src="/manus-storage/educhamp-logo-64_2d79ce04.png" alt="EduChamp" className="h-5 w-5 object-contain" />
+                  <img src="/manus-storage/educhamp-logo-64_28201452.png" alt="EduChamp" className="h-5 w-5 object-contain" />
                 </div>
                 <span className="font-semibold text-sm truncate max-w-[140px]">{activeItem?.label ?? "EduChamp"}</span>
               </div>
