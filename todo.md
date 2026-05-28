@@ -1049,3 +1049,25 @@
 - [x] saas-email-suppression skill created at /home/ubuntu/skills/saas-email-suppression/
 - [x] Skill covers: DB schema, webhook handler, send guard, admin tRPC procedures, React UI components
 - [x] Skill validated successfully (quick_validate.py passed)
+
+## Sprint 35 — CSV Export, Trial Reminder Email & Unsuppress Modal
+
+### CSV Export for Suppression Management
+- [x] Server: admin.exportSuppressions tRPC query — returns all suppression rows matching current filters (no pagination limit, 10k safety cap)
+- [x] Server: CSV generation on server side — UTF-8 BOM, columns: email, reason, source, suppressedAt, unsuppressedAt, status
+- [x] UI: "Export CSV" button in SuppressionManagementTab toolbar — respects active search/reason/status filters
+- [x] UI: Client-side Blob download with date-stamped filename (suppression-list-YYYY-MM-DD.csv)
+
+### Trial Expiry Reminder Email
+- [x] Server: emailTemplates/trialExpiry.ts — branded HTML + plain-text template (trial end date, billing date, plan, amount, CTA, "what you keep" section)
+- [x] Server: Wire into stripeWebhook.ts — replaced trialReminder with trialExpiry in trial_will_end handler
+- [x] Server: Suppression check occurs via sendEmail() guard before delivery
+- [x] Server: Extracts billing amount from Stripe price (unit_amount / 100 → Intl.NumberFormat), billing interval, and trial end date
+
+### Unsuppress Confirmation Modal & Feedback
+- [x] UI: SuppressionBadge — replaced window.confirm() with Dialog confirmation modal
+- [x] UI: Modal shows email, reason, and suppression date before confirming
+- [x] UI: Success toast after unsuppress with email address
+- [x] UI: Error toast with message if operation fails
+- [x] UI: SuppressionManagementTab inline Unsuppress button also uses Dialog modal (not window.confirm)
+- [x] UI: Both dialogs have loading state on confirm button and dismiss on success/error

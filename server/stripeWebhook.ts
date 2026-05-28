@@ -15,6 +15,7 @@ import { users, subscriptions } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { sendEmail } from "./emailService";
 import { buildTrialReminderEmail } from "./emailTemplates/trialReminder";
+import { buildTrialExpiryEmail } from "./emailTemplates/trialExpiry";
 import { buildTrialWelcomeEmail } from "./emailTemplates/trialWelcome";
 
 export function registerStripeWebhook(app: Express) {
@@ -341,13 +342,28 @@ async function handleStripeEvent(event: any) {
             console.warn("[Webhook] Could not create billing portal session:", err);
           }
 
-          const emailData = buildTrialReminderEmail({
+          // Compute billing amount from Stripe price (cents → formatted string)
+          const unitAmount = item?.price?.unit_amount ?? 0;
+          const currency = item?.price?.currency ?? "usd";
+          const billingAmount = new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: currency.toUpperCase(),
+          }).format(unitAmount / 100);
+          const billingInterval = item?.price?.recurring?.interval ?? "month";
+
+          // Billing date = trial end date for Stripe trials
+          const billingDate = trialEndDate;
+
+          const emailData = buildTrialExpiryEmail({
             userName: user.name ?? user.email,
             userEmail: user.email,
             planName,
-            planPrice: monthlyPrice,
             trialEndDate,
-            billingPortalUrl,
+            billingDate,
+            billingAmount,
+            billingInterval,
+            dashboardUrl: "https://educhamp.app/dashboard",
+            billingUrl: billingPortalUrl,
           });
 
           await sendEmail({
@@ -355,11 +371,11 @@ async function handleStripeEvent(event: any) {
             subject: emailData.subject,
             html: emailData.html,
             text: emailData.text,
-            templateName: "trial_reminder",
+            templateName: "trial_expiry_reminder",
             referenceId: `sub_${sub.id}`,
           });
 
-          console.log(`[Webhook] Trial reminder email sent to ${user.email} (trial ends ${trialEndDate.toISOString()})`);
+          console.log(`[Webhook] Trial expiry reminder email sent to ${user.email} (trial ends ${trialEndDate.toISOString()}, billing ${billingAmount})`);
         }
       }
 

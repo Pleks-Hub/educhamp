@@ -28,7 +28,7 @@ import {
   UserPlus, UserMinus, Copy, MoreHorizontal, Search,
   Inbox, Send, XCircle, Filter, Building2, Phone, Calendar, Sparkles,
   ChevronLeft, ChevronDown, ChevronUp, Star, Tag, CreditCard,
-  MailX, ShieldOff, ShieldCheck, RotateCcw,
+  MailX, ShieldOff, ShieldCheck, RotateCcw, Download,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -58,32 +58,73 @@ const STATUS_COLORS: Record<string, string> = {
 // ─── Suppression Badge (used in UsersTab rows) ───────────────────────────────
 
 function SuppressionBadge({ email, onUnsuppress }: { email: string; onUnsuppress?: () => void }) {
+  const [open, setOpen] = useState(false);
   const { data: suppression, refetch } = trpc.admin.getSuppressionStatus.useQuery(
     { email },
     { enabled: !!email, staleTime: 60_000 }
   );
   const unsuppress = trpc.admin.unsuppressEmail.useMutation({
-    onSuccess: () => { toast.success(`${email} unsuppressed — emails will resume`); refetch(); onUnsuppress?.(); },
-    onError: (err) => toast.error(err.message),
+    onSuccess: () => {
+      toast.success(`${email} unsuppressed — emails will resume`);
+      setOpen(false);
+      refetch();
+      onUnsuppress?.();
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Failed to unsuppress email");
+      setOpen(false);
+    },
   });
 
   if (!suppression) return null;
 
+  const suppressedDate = new Date(suppression.suppressedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
   return (
-    <div className="flex items-center gap-1 mt-0.5">
-      <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px] px-1.5 py-0 h-4 gap-0.5 cursor-default" title={`Suppressed: ${suppression.reason} on ${new Date(suppression.suppressedAt).toLocaleDateString()}`}>
-        <MailX className="h-2.5 w-2.5" />
-        {suppression.reason}
-      </Badge>
-      <button
-        className="h-4 w-4 rounded hover:bg-emerald-100 flex items-center justify-center transition-colors"
-        title="Unsuppress email"
-        onClick={(e) => { e.stopPropagation(); if (confirm(`Unsuppress ${email} and resume email delivery?`)) unsuppress.mutate({ suppressionId: suppression.id }); }}
-        disabled={unsuppress.isPending}
-      >
-        <RotateCcw className="h-2.5 w-2.5 text-emerald-600" />
-      </button>
-    </div>
+    <>
+      <div className="flex items-center gap-1 mt-0.5">
+        <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px] px-1.5 py-0 h-4 gap-0.5 cursor-default" title={`Suppressed: ${suppression.reason} on ${suppressedDate}`}>
+          <MailX className="h-2.5 w-2.5" />
+          {suppression.reason}
+        </Badge>
+        <button
+          className="h-4 w-4 rounded hover:bg-emerald-100 flex items-center justify-center transition-colors"
+          title="Unsuppress email"
+          onClick={(e) => { e.stopPropagation(); setOpen(true); }}
+          disabled={unsuppress.isPending}
+        >
+          <RotateCcw className="h-2.5 w-2.5 text-emerald-600" />
+        </button>
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Unsuppress Email Address?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="rounded-lg bg-muted px-4 py-3 text-sm space-y-1">
+              <div><span className="text-muted-foreground">Email:</span> <span className="font-medium font-mono">{email}</span></div>
+              <div><span className="text-muted-foreground">Reason:</span> <span className="font-medium capitalize">{suppression.reason}</span></div>
+              <div><span className="text-muted-foreground">Suppressed on:</span> <span className="font-medium">{suppressedDate}</span></div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              This will re-enable transactional email delivery to this address. Only unsuppress if you are confident the issue has been resolved.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={unsuppress.isPending}>Cancel</Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => unsuppress.mutate({ suppressionId: suppression.id })}
+              disabled={unsuppress.isPending}
+            >
+              {unsuppress.isPending ? "Unsuppressing…" : "Confirm Unsuppress"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -1558,6 +1599,36 @@ function SuppressionManagementTab() {
   const [manualEmail, setManualEmail] = useState("");
   const [manualNotes, setManualNotes] = useState("");
   const [auditEmail, setAuditEmail] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [unsuppressTarget, setUnsuppressTarget] = useState<{ id: number; email: string; reason: string | null; suppressedAt: Date } | null>(null);
+
+  const utils = trpc.useUtils();
+
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    try {
+      const result = await utils.admin.exportSuppressions.fetch({
+        search: debouncedSearch || undefined,
+        reason: reasonFilter,
+        status: statusFilter,
+      });
+      const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const date = new Date().toISOString().slice(0, 10);
+      a.download = `suppression-list-${date}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${result.total} suppression records`);
+    } catch (err: any) {
+      toast.error(err?.message ?? "Export failed");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleSearch = (val: string) => {
     setSearch(val);
@@ -1579,8 +1650,15 @@ function SuppressionManagementTab() {
   );
 
   const unsuppress = trpc.admin.unsuppressEmail.useMutation({
-    onSuccess: (d) => { toast.success(`${d.email} unsuppressed — emails will resume`); refetch(); },
-    onError: (err) => toast.error(err.message),
+    onSuccess: (d) => {
+      toast.success(`${d.email} unsuppressed — emails will resume`);
+      setUnsuppressTarget(null);
+      refetch();
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Failed to unsuppress email");
+      setUnsuppressTarget(null);
+    },
   });
 
   const suppressManual = trpc.admin.suppressEmailManual.useMutation({
@@ -1606,6 +1684,9 @@ function SuppressionManagementTab() {
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
             <RefreshCw className="h-4 w-4" /> Refresh
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={isExporting} className="gap-2">
+            <Download className="h-4 w-4" /> {isExporting ? "Exporting…" : "Export CSV"}
           </Button>
           <Button size="sm" onClick={() => setShowManualDialog(true)} className="gap-2">
             <ShieldOff className="h-4 w-4" /> Suppress Address
@@ -1693,7 +1774,7 @@ function SuppressionManagementTab() {
                     <Button
                       variant="ghost" size="sm" className="h-7 text-xs gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                       disabled={unsuppress.isPending}
-                      onClick={() => { if (confirm(`Unsuppress ${s.email} and resume email delivery?`)) unsuppress.mutate({ suppressionId: s.id }); }}
+                      onClick={() => setUnsuppressTarget({ id: s.id, email: s.email, reason: s.reason, suppressedAt: new Date(s.suppressedAt) })}
                     >
                       <RotateCcw className="h-3 w-3" /> Unsuppress
                     </Button>
@@ -1739,11 +1820,44 @@ function SuppressionManagementTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Unsuppress Confirmation Dialog */}
+      <Dialog open={!!unsuppressTarget} onOpenChange={(o) => { if (!o) setUnsuppressTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-emerald-600" /> Confirm Unsuppress
+            </DialogTitle>
+          </DialogHeader>
+          {unsuppressTarget && (
+            <div className="space-y-3 py-2">
+              <div className="rounded-lg bg-muted px-4 py-3 text-sm space-y-1">
+                <div><span className="text-muted-foreground">Email:</span> <span className="font-medium font-mono break-all">{unsuppressTarget.email}</span></div>
+                <div><span className="text-muted-foreground">Reason:</span> <span className="font-medium capitalize">{unsuppressTarget.reason ?? "manual"}</span></div>
+                <div><span className="text-muted-foreground">Suppressed on:</span> <span className="font-medium">{unsuppressTarget.suppressedAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span></div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This will re-enable transactional email delivery to this address. The action will be recorded in the audit trail.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUnsuppressTarget(null)} disabled={unsuppress.isPending}>Cancel</Button>
+            <Button
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => unsuppressTarget && unsuppress.mutate({ suppressionId: unsuppressTarget.id })}
+              disabled={unsuppress.isPending}
+            >
+              {unsuppress.isPending ? "Unsuppressing…" : "Confirm Unsuppress"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-// ─── Main AdminDashboard ──────────────────────────────────────────────────────
+// ─── Main AdminDashboard ─────────────────────────────────────────────
 
 export default function AdminDashboard() {
   const { user, loading } = useAuth();

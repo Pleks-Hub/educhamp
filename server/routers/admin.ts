@@ -900,4 +900,53 @@ export const adminRouter = router({
 
       return { success: true, taskUid: job.taskUid, nextExecutionAt: job.nextExecutionAt };
     }),
+
+  exportSuppressions: adminProcedure
+    .input(z.object({
+      search: z.string().optional(),
+      reason: z.enum(["all", "bounced", "complained", "manual"]).default("all"),
+      status: z.enum(["all", "active", "inactive"]).default("all"),
+    }))
+    .query(async ({ input }) => {
+      const db = await (await import("../db")).getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { emailSuppression } = await import("../../drizzle/schema");
+      const { desc, eq, like, and } = await import("drizzle-orm");
+
+      const conditions: Parameters<typeof and>[0][] = [];
+      if (input.reason !== "all") conditions.push(eq(emailSuppression.reason, input.reason));
+      if (input.status === "active") conditions.push(eq(emailSuppression.isActive, true));
+      if (input.status === "inactive") conditions.push(eq(emailSuppression.isActive, false));
+      if (input.search) conditions.push(like(emailSuppression.email, `%${input.search}%`));
+
+      const where = conditions.length > 0
+        ? and(...(conditions as [Parameters<typeof and>[0], ...Parameters<typeof and>[0][]]))
+        : undefined;
+
+      const rows = await db
+        .select()
+        .from(emailSuppression)
+        .where(where)
+        .orderBy(desc(emailSuppression.suppressedAt))
+        .limit(10000); // safety cap
+
+      // Build CSV with UTF-8 BOM
+      const header = "email,reason,source,suppressedAt,unsuppressedAt,status";
+      const escape = (v: string | null | undefined) => {
+        if (v == null) return "";
+        const s = String(v);
+        return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const lines = rows.map(r => [
+        escape(r.email),
+        escape(r.reason),
+        escape(r.resendEventId ? "resend" : "manual"),
+        escape(r.suppressedAt ? new Date(r.suppressedAt).toISOString() : ""),
+        escape(r.unsuppressedAt ? new Date(r.unsuppressedAt).toISOString() : ""),
+        escape(r.isActive ? "active" : "inactive"),
+      ].join(","));
+
+      const csv = "\uFEFF" + [header, ...lines].join("\n");
+      return { csv, total: rows.length };
+    }),
 });
