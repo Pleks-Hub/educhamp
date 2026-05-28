@@ -33,6 +33,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { getLoginUrl } from "@/const";
+import { WelcomeBackBanner } from "@/components/WelcomeBackBanner";
 
 function getMasteryColor(score: number): string {
   if (score < 60) return "#ef4444";
@@ -124,6 +125,8 @@ export default function ProgressPage() {
 
   return (
     <div className="p-6 space-y-6 page-enter max-w-6xl">
+      {/* Welcome back banner — shown when student has been inactive 7+ days */}
+      <WelcomeBackBanner />
       <div>
         <h1 className="text-2xl font-bold text-foreground">Progress & Mastery</h1>
         <p className="text-muted-foreground text-sm mt-1">

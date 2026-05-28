@@ -1319,3 +1319,38 @@
 - [x] Write cross-browser compatibility unit tests (server/sprint41.test.ts, 20 tests)
 - [x] Verify TypeScript 0 errors
 - [x] Run full test suite: 193 tests passing (10 test files)
+
+## Sprint 42 — Student Re-Engagement, Admin Bulk Actions & PWA [COMPLETE]
+
+### 1. Student Inactivity Re-Engagement Flow
+- [x] Server: student.getReEngagementContext — return lastActiveAt, daysSinceActive, lastLesson (id, title, unitTitle), lastCompletedActivity
+- [x] Client: WelcomeBackBanner component — dismissible banner/modal shown on Dashboard when inactive 7+ days
+- [x] Client: Show days-since-active, last lesson name, last completed activity
+- [x] Client: "Pick Up Where You Left Off" CTA deep-links to last incomplete lesson/unit/assessment
+- [x] Client: Store dismissal in sessionStorage so banner only shows once per session
+- [x] Client: Track analytics events (banner_shown, banner_dismissed, resume_cta_clicked, session_resumed)
+- [x] Client: Mobile-responsive, Safari/iOS/Android compatible
+- [x] Wire into Progress.tsx (student dashboard) — check on mount, show banner if threshold met
+
+### 2. Admin Bulk Management Actions
+- [x] Server: admin.bulkUpdateUserStatus — bulk set status for up to 500 users, audit log each
+- [x] Server: admin.bulkAssignCourse — assign a course to N users with per-user success/fail result
+- [x] Server: admin.bulkRemoveCourse — remove a course from N users with per-user success/fail result
+- [x] Server: return partial success/failure summary for all bulk operations
+- [x] Client: Add checkbox column to AdminDashboard Users table (single, multi, select-all-on-page)
+- [x] Client: Contextual bulk action toolbar appears when 1+ users selected
+- [x] Client: Bulk actions: Activate, Suspend, Deactivate, Delete, Assign Course, Remove Course
+- [x] Client: Confirmation AlertDialog before destructive actions (suspend/deactivate/delete)
+- [x] Client: Progress/loading state during bulk operations
+- [x] Client: Partial success/failure summary toast after bulk operation
+
+### 3. PWA / Offline App Shell
+- [x] Install vite-plugin-pwa + workbox-window
+- [x] Configure PWA manifest (name: EduChamp, icons, theme_color, display: standalone)
+- [x] Configure service worker: CacheFirst for static assets, NetworkFirst for API calls, StaleWhileRevalidate for fonts
+- [x] Configure workbox navigateFallbackDenylist to exclude /api/ routes
+- [x] Ensure API/auth routes are NOT cached by service worker
+- [x] Add PWAUpdatePrompt component — toast notification when new version is available with "Update" CTA
+- [x] Service worker disabled in dev mode (devOptions: { enabled: false })
+- [x] PWAUpdatePrompt registered in main.tsx
+- [x] Safari/iOS compatible (no caching of authenticated responses via NetworkFirst for API)

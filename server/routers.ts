@@ -921,6 +921,60 @@ export const appRouter = router({
       }),
   }),
 
+  // ─── Student Re-Engagement ─────────────────────────────────────────────────
+  student: router({
+    /**
+     * Returns re-engagement context for a student inactive 7+ days.
+     * Used by the WelcomeBackBanner component on the Dashboard.
+     */
+    getReEngagementContext: protectedProcedure.query(async ({ ctx }) => {
+      const user = ctx.user;
+      const lastActiveAt = user.lastActiveAt ?? user.lastSignedIn;
+      const now = Date.now();
+      const daysSinceActive = lastActiveAt
+        ? Math.floor((now - new Date(lastActiveAt).getTime()) / 86_400_000)
+        : 0;
+      if (daysSinceActive < 7) {
+        return { isInactive: false, daysSinceActive, lastLesson: null, lastCompletedActivity: null };
+      }
+      const db = await getDb();
+      if (!db) return { isInactive: true, daysSinceActive, lastLesson: null, lastCompletedActivity: null };
+      const { lessonProgress: lpTable, lessons: lessonsTable, units } = await import("../drizzle/schema");
+      const { desc: descOp, eq: eqOp } = await import("drizzle-orm");
+      const recentProgress = await db
+        .select()
+        .from(lpTable)
+        .where(eqOp(lpTable.userId, user.id))
+        .orderBy(descOp(lpTable.updatedAt))
+        .limit(1);
+      let lastLesson: { id: number; title: string; unitTitle: string; unitId: number } | null = null;
+      let lastCompletedActivity: string | null = null;
+      if (recentProgress.length > 0) {
+        const lp = recentProgress[0];
+        const lessonRows = await db
+          .select({ id: lessonsTable.id, title: lessonsTable.title, unitId: lessonsTable.unitId })
+          .from(lessonsTable)
+          .where(eqOp(lessonsTable.id, lp.lessonId))
+          .limit(1);
+        if (lessonRows.length > 0) {
+          const lesson = lessonRows[0];
+          const unitRows = await db
+            .select({ id: units.id, title: units.title })
+            .from(units)
+            .where(eqOp(units.id, lesson.unitId))
+            .limit(1);
+          const unitTitle = unitRows[0]?.title ?? "Unit";
+          lastLesson = { id: lesson.id, title: lesson.title, unitTitle, unitId: lesson.unitId };
+          if (lp.completed) lastCompletedActivity = `Completed: ${lesson.title}`;
+          else if (lp.independentCompleted) lastCompletedActivity = `Independent practice: ${lesson.title}`;
+          else if (lp.guidedCompleted) lastCompletedActivity = `Guided practice: ${lesson.title}`;
+          else lastCompletedActivity = `Started: ${lesson.title}`;
+        }
+      }
+      return { isInactive: true, daysSinceActive, lastLesson, lastCompletedActivity };
+    }),
+  }),
+
   // ─── In-App Notifications ────────────────────────────────────────────────────
   notifications: router({
     getMyNotifications: protectedProcedure

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -262,6 +263,67 @@ function UsersTab() {
 
   const [showUserDetailDialog, setShowUserDetailDialog] = useState<number | null>(null);
 
+  // Bulk selection state
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
+  const [bulkAction, setBulkAction] = useState<"status" | "assign-course" | "remove-course" | null>(null);
+  const [bulkStatusTarget, setBulkStatusTarget] = useState<"active" | "suspended" | "deactivated" | "deleted">("suspended");
+  const [bulkCourseId, setBulkCourseId] = useState<number | null>(null);
+  const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+
+  const bulkUpdateStatus = trpc.admin.bulkUpdateUserStatus.useMutation({
+    onSuccess: (r) => {
+      toast.success(`Bulk update: ${r.successCount} succeeded, ${r.failCount} failed.`);
+      setSelectedUserIds(new Set());
+      setBulkAction(null);
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const bulkAssignCourse = trpc.admin.bulkAssignCourse.useMutation({
+    onSuccess: (r) => {
+      toast.success(`Bulk assign: ${r.successCount} enrolled, ${r.failCount} failed.`);
+      setSelectedUserIds(new Set());
+      setBulkAction(null);
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const bulkRemoveCourse = trpc.admin.bulkRemoveCourse.useMutation({
+    onSuccess: (r) => {
+      toast.success(`Bulk remove: ${r.successCount} removed, ${r.failCount} failed.`);
+      setSelectedUserIds(new Set());
+      setBulkAction(null);
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  function toggleSelectUser(id: number) {
+    setSelectedUserIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  function toggleSelectAll() {
+    if (selectedUserIds.size === filtered.length) {
+      setSelectedUserIds(new Set());
+    } else {
+      setSelectedUserIds(new Set(filtered.map((u: any) => u.id)));
+    }
+  }
+  function executeBulkAction() {
+    const ids = Array.from(selectedUserIds);
+    if (bulkAction === "status") {
+      bulkUpdateStatus.mutate({ userIds: ids, status: bulkStatusTarget });
+    } else if (bulkAction === "assign-course" && bulkCourseId) {
+      bulkAssignCourse.mutate({ userIds: ids, courseId: bulkCourseId });
+    } else if (bulkAction === "remove-course" && bulkCourseId) {
+      bulkRemoveCourse.mutate({ userIds: ids, courseId: bulkCourseId });
+    }
+    setShowBulkConfirm(false);
+  }
+
   const filtered = useMemo(() => {
     return users.filter((u: any) => {
       const matchStatus = statusFilter === "all" || (u.status ?? "active") === statusFilter;
@@ -302,6 +364,54 @@ function UsersTab() {
         </Button>
       </div>
 
+      {/* Bulk Action Toolbar — shown when rows are selected */}
+      {selectedUserIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 px-3 py-2 bg-primary/5 border border-primary/20 rounded-lg">
+          <span className="text-sm font-medium text-primary">{selectedUserIds.size} selected</span>
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
+            {/* Bulk status change */}
+            <div className="flex items-center gap-1.5">
+              <Select value={bulkStatusTarget} onValueChange={(v: any) => setBulkStatusTarget(v)}>
+                <SelectTrigger className="h-7 w-36 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Set Active</SelectItem>
+                  <SelectItem value="suspended">Set Suspended</SelectItem>
+                  <SelectItem value="deactivated">Set Deactivated</SelectItem>
+                  <SelectItem value="deleted">Set Deleted</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button size="sm" className="h-7 text-xs" variant="outline"
+                onClick={() => { setBulkAction("status"); setShowBulkConfirm(true); }}>
+                Apply Status
+              </Button>
+            </div>
+            {/* Bulk course assign */}
+            <div className="flex items-center gap-1.5">
+              <Select value={bulkCourseId?.toString() ?? ""} onValueChange={(v) => setBulkCourseId(Number(v))}>
+                <SelectTrigger className="h-7 w-40 text-xs"><SelectValue placeholder="Select course…" /></SelectTrigger>
+                <SelectContent>
+                  {(courses ?? []).map((c: any) => (
+                    <SelectItem key={c.id} value={c.id.toString()}>{c.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" className="h-7 text-xs" variant="outline" disabled={!bulkCourseId}
+                onClick={() => { setBulkAction("assign-course"); setShowBulkConfirm(true); }}>
+                Assign
+              </Button>
+              <Button size="sm" className="h-7 text-xs" variant="outline" disabled={!bulkCourseId}
+                onClick={() => { setBulkAction("remove-course"); setShowBulkConfirm(true); }}>
+                Remove
+              </Button>
+            </div>
+            <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground"
+              onClick={() => setSelectedUserIds(new Set())}>
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       {isLoading ? (
         <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12" />)}</div>
@@ -310,6 +420,13 @@ function UsersTab() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={filtered.length > 0 && selectedUserIds.size === filtered.length}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Select all"
+                  />
+                </TableHead>
                 <TableHead>Name / Email</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Role</TableHead>
@@ -320,9 +437,16 @@ function UsersTab() {
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No users found.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No users found.</TableCell></TableRow>
               ) : filtered.map((user: any) => (
-                <TableRow key={user.id}>
+                <TableRow key={user.id} data-selected={selectedUserIds.has(user.id)} className="data-[selected=true]:bg-primary/5">
+                  <TableCell className="w-10">
+                    <Checkbox
+                      checked={selectedUserIds.has(user.id)}
+                      onCheckedChange={() => toggleSelectUser(user.id)}
+                      aria-label={`Select ${user.name ?? user.email}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div>
                       <p className="font-medium text-sm">{user.name ?? "—"}</p>
@@ -527,6 +651,35 @@ function UsersTab() {
           courses={courses ?? []}
         />
       )}
+
+      {/* Bulk Action Confirmation Dialog */}
+      <AlertDialog open={showBulkConfirm} onOpenChange={setShowBulkConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Bulk Action</AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkAction === "status" && (
+                <>You are about to set <strong>{selectedUserIds.size}</strong> user{selectedUserIds.size !== 1 ? "s" : ""} to <strong>{bulkStatusTarget}</strong>. This action is logged and can be reversed individually.</>
+              )}
+              {bulkAction === "assign-course" && (
+                <>You are about to assign a course to <strong>{selectedUserIds.size}</strong> user{selectedUserIds.size !== 1 ? "s" : ""}. This bypasses parent approval. Each enrollment is logged.</>
+              )}
+              {bulkAction === "remove-course" && (
+                <>You are about to remove a course from <strong>{selectedUserIds.size}</strong> user{selectedUserIds.size !== 1 ? "s" : ""}. This action is logged and cannot be automatically undone.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeBulkAction}
+              className={bulkAction === "remove-course" || bulkAction === "status" && bulkStatusTarget === "deleted" ? "bg-destructive hover:bg-destructive/90" : ""}
+            >
+              {bulkUpdateStatus.isPending || bulkAssignCourse.isPending || bulkRemoveCourse.isPending ? "Processing…" : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

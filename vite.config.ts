@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
+import { VitePWA } from "vite-plugin-pwa";
 
 // =============================================================================
 // Manus Debug Collector - Vite Plugin
@@ -150,7 +151,68 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+const pwaPlugin = VitePWA({
+  registerType: "prompt",
+  // Only generate SW in production to avoid dev-mode caching issues
+  devOptions: { enabled: false },
+  includeAssets: ["favicon.ico", "robots.txt"],
+  manifest: {
+    name: "EduChamp",
+    short_name: "EduChamp",
+    description: "AI-Powered Adaptive Algebra Learning",
+    theme_color: "#4f46e5",
+    background_color: "#0f0a1e",
+    display: "standalone",
+    orientation: "portrait-primary",
+    start_url: "/",
+    icons: [
+      { src: "/favicon.ico", sizes: "64x64", type: "image/x-icon" },
+    ],
+  },
+  workbox: {
+    // Cache the app shell (HTML, JS, CSS, fonts)
+    globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+    // Network-first for API calls, cache-first for static assets
+    runtimeCaching: [
+      {
+        // API calls: network-first, fall back to cache
+        urlPattern: /^\/api\//,
+        handler: "NetworkFirst",
+        options: {
+          cacheName: "api-cache",
+          networkTimeoutSeconds: 10,
+          expiration: { maxEntries: 50, maxAgeSeconds: 5 * 60 },
+          cacheableResponse: { statuses: [0, 200] },
+        },
+      },
+      {
+        // Google Fonts: stale-while-revalidate
+        urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\//,
+        handler: "StaleWhileRevalidate",
+        options: {
+          cacheName: "google-fonts",
+          expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
+          cacheableResponse: { statuses: [0, 200] },
+        },
+      },
+      {
+        // Manus storage assets: cache-first
+        urlPattern: /^\/manus-storage\//,
+        handler: "CacheFirst",
+        options: {
+          cacheName: "manus-storage",
+          expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 * 30 },
+          cacheableResponse: { statuses: [0, 200] },
+        },
+      },
+    ],
+    // Offline fallback: serve / for navigation requests when offline
+    navigateFallback: "/index.html",
+    navigateFallbackDenylist: [/^\/api\//],
+  },
+});
+
+const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), pwaPlugin];
 
 export default defineConfig({
   plugins,

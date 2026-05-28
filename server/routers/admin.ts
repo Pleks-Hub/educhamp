@@ -1047,4 +1047,102 @@ export const adminRouter = router({
     .query(async ({ input }) => {
       return getStudentInactivityNotifications(input.userId);
     }),
+
+  // ─── Bulk Management ──────────────────────────────────────────────────
+  /**
+   * Bulk update status for multiple users.
+   * Applies the same status change to all provided user IDs and logs each action.
+   */
+  bulkUpdateUserStatus: adminProcedure
+    .input(
+      z.object({
+        userIds: z.array(z.number()).min(1).max(200),
+        status: z.enum(["active", "suspended", "deactivated", "pending_verification", "deleted"]),
+        reason: z.string().max(500).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const results: { userId: number; success: boolean; error?: string }[] = [];
+      for (const userId of input.userIds) {
+        try {
+          await updateUserStatus(userId, input.status);
+          await logAdminAction(ctx.user.id, "user.bulk_status_change", "user", userId, {
+            newStatus: input.status,
+            reason: input.reason ?? null,
+            bulkOperation: true,
+            totalInBatch: input.userIds.length,
+          });
+          results.push({ userId, success: true });
+        } catch (err) {
+          results.push({ userId, success: false, error: String(err) });
+        }
+      }
+      const successCount = results.filter((r) => r.success).length;
+      return { successCount, failCount: results.length - successCount, results };
+    }),
+
+  /**
+   * Bulk assign a course to multiple users.
+   * Bypasses parent approval (admin action). Logs each enrollment.
+   */
+  bulkAssignCourse: adminProcedure
+    .input(
+      z.object({
+        userIds: z.array(z.number()).min(1).max(200),
+        courseId: z.number(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const course = await getCourseById(input.courseId);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
+      const results: { userId: number; success: boolean; error?: string }[] = [];
+      for (const userId of input.userIds) {
+        try {
+          await enrollUserInCourse(userId, input.courseId);
+          await logAdminAction(ctx.user.id, "course.bulk_assign", "user", userId, {
+            courseId: input.courseId,
+            courseTitle: course.title,
+            bulkOperation: true,
+            totalInBatch: input.userIds.length,
+          });
+          results.push({ userId, success: true });
+        } catch (err) {
+          results.push({ userId, success: false, error: String(err) });
+        }
+      }
+      const successCount = results.filter((r) => r.success).length;
+      return { successCount, failCount: results.length - successCount, results };
+    }),
+
+  /**
+   * Bulk remove a course from multiple users.
+   */
+  bulkRemoveCourse: adminProcedure
+    .input(
+      z.object({
+        userIds: z.array(z.number()).min(1).max(200),
+        courseId: z.number(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const course = await getCourseById(input.courseId);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
+      const results: { userId: number; success: boolean; error?: string }[] = [];
+      for (const userId of input.userIds) {
+        try {
+          await removeStudentFromCourse(userId, input.courseId);
+          await logAdminAction(ctx.user.id, "course.bulk_remove", "user", userId, {
+            courseId: input.courseId,
+            courseTitle: course.title,
+            bulkOperation: true,
+            totalInBatch: input.userIds.length,
+          });
+          results.push({ userId, success: true });
+        } catch (err) {
+          results.push({ userId, success: false, error: String(err) });
+        }
+      }
+      const successCount = results.filter((r) => r.success).length;
+      return { successCount, failCount: results.length - successCount, results };
+    }),
 });
