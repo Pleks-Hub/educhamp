@@ -43,7 +43,8 @@ import {
   User,
   Users,
 } from "lucide-react";
-import { CSSProperties, useEffect, useRef, useState } from "react";
+import { CSSProperties, useEffect, useRef, useState, useCallback } from "react";
+import { X, AlertTriangle } from "lucide-react";
 import { useLocation, Redirect } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
@@ -147,6 +148,26 @@ function DashboardLayoutContent({
     staleTime: 60_000,
   });
   const activeCourseTitle = dashboardQuery.data?.courseTitle;
+
+  // Trial banner state
+  const TRIAL_BANNER_KEY = "educhamp-trial-banner-dismissed";
+  const [trialBannerDismissed, setTrialBannerDismissed] = useState(() =>
+    sessionStorage.getItem(TRIAL_BANNER_KEY) === "1"
+  );
+  const dismissTrialBanner = useCallback(() => {
+    sessionStorage.setItem(TRIAL_BANNER_KEY, "1");
+    setTrialBannerDismissed(true);
+  }, []);
+  const subscriptionQuery = trpc.payment.getMySubscription.useQuery(undefined, {
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const sub = subscriptionQuery.data;
+  const isTrialing = sub?.status === "trialing" && sub?.trialEnd != null;
+  const trialDaysLeft = isTrialing
+    ? Math.max(0, Math.ceil((new Date(sub!.trialEnd!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
+  const showTrialBanner = isTrialing && !trialBannerDismissed;
 
   return (
     <>
@@ -308,6 +329,39 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset className="bg-background">
+        {/* Trial active banner */}
+        {showTrialBanner && (
+          <div className="sticky top-0 z-50 flex items-center justify-between gap-3 bg-amber-500/10 border-b border-amber-500/30 px-4 py-2.5 text-sm">
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>
+                <strong>Free trial active</strong> — your trial{" "}
+                {trialDaysLeft === 0
+                  ? "expires today"
+                  : trialDaysLeft === 1
+                  ? "ends tomorrow"
+                  : `ends in ${trialDaysLeft} days`}.
+                {" "}Upgrade to keep full access.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setLocation("/billing")}
+                className="rounded-md bg-amber-500 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-600 transition-colors"
+              >
+                Upgrade now
+              </button>
+              <button
+                onClick={dismissTrialBanner}
+                aria-label="Dismiss trial banner"
+                className="rounded p-1 text-amber-600 hover:bg-amber-500/20 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Mobile top bar */}
         {isMobile && (
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-4 backdrop-blur sticky top-0 z-40">

@@ -951,3 +951,21 @@
 - [x] Create /api/sitemap.xml server endpoint returning dynamic XML sitemap (7 URLs, 1hr cache)
 - [x] Sitemap includes: homepage, #features, #courses, #how-it-works, #pricing, #schools, #faq
 - [x] TypeScript: 0 errors | Tests: 141/141 passing
+
+## Sprint 30 — Webhook Event, Trial Banner & Search Console
+
+### Stripe Webhook — trial_will_end event
+- [x] Add customer.subscription.trial_will_end to webhook endpoint we_1Tbsm17Mcfd3gqtz5pnFYasy via Stripe API (7 events total)
+- [x] Verified event appears in Stripe dashboard webhook event list
+
+### Trial Active Banner
+- [x] Add payment.getMySubscription query to DashboardLayout
+- [x] Show dismissible top banner when subscription is in trial (status === "trialing")
+- [x] Banner shows days remaining with smart copy ("expires today" / "ends tomorrow" / "ends in N days")
+- [x] Banner dismissed state persisted in sessionStorage per session
+- [x] Banner hidden for non-trialing or no-subscription users
+- [x] "Upgrade now" button links to /billing
+
+### Google Search Console
+- [x] Step-by-step setup guide provided in delivery message
+- [x] TypeScript: 0 errors | Tests: 141/141 passing
