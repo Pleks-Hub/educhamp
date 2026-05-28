@@ -155,6 +155,13 @@
       "when": 1779910233640,
       "tag": "0021_nappy_photon",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1779939840427,
+      "tag": "0022_chief_vanisher",
+      "breakpoints": true
     }
   ]
 }

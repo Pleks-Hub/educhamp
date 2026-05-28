@@ -9,6 +9,7 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "EduChamp <invites@educhamp.app>",
+  resendWebhookSecret: process.env.RESEND_WEBHOOK_SECRET ?? "",
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   stripePublishableKey: process.env.VITE_STRIPE_PUBLISHABLE_KEY ?? "",

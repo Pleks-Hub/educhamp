@@ -985,3 +985,25 @@ export const paymentAuditLog = mysqlTable("paymentAuditLog", {
 }));
 
 export type PaymentAuditLogEntry = typeof paymentAuditLog.$inferSelect;
+
+// ─── Email Suppression List ───────────────────────────────────────────────────
+/**
+ * Tracks email addresses that should never receive transactional emails.
+ * Populated automatically by the Resend bounce/complaint webhook.
+ * sendEmail() checks this table before every send.
+ */
+export const emailSuppression = mysqlTable("emailSuppression", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  reason: mysqlEnum("reason", ["bounced", "complained", "manual"]).notNull(),
+  resendEventId: varchar("resendEventId", { length: 256 }),
+  suppressedAt: timestamp("suppressedAt").defaultNow().notNull(),
+  unsuppressedAt: timestamp("unsuppressedAt"),
+  isActive: boolean("isActive").notNull().default(true),
+  notes: text("notes"),
+}, (t) => ({
+  emailIdx: uniqueIndex("emailSuppression_email_idx").on(t.email),
+  activeIdx: index("emailSuppression_isActive_idx").on(t.isActive),
+}));
+
+export type EmailSuppressionEntry = typeof emailSuppression.$inferSelect;

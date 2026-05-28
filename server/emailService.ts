@@ -44,6 +44,69 @@ export interface SendEmailResult {
   error?: string;
 }
 
+// ─── Suppression check ───────────────────────────────────────────────────────
+
+/**
+ * Returns true if the given email address is on the active suppression list.
+ * Called before every send to avoid delivering to bounced/complained addresses.
+ */
+export async function isEmailSuppressed(email: string): Promise<boolean> {
+  try {
+    const db = await getDb();
+    if (!db) return false;
+    const { emailSuppression } = await import("../drizzle/schema");
+    const { eq, and } = await import("drizzle-orm");
+    const rows = await db
+      .select({ id: emailSuppression.id })
+      .from(emailSuppression)
+      .where(and(eq(emailSuppression.email, email.toLowerCase()), eq(emailSuppression.isActive, true)))
+      .limit(1);
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Adds an email address to the suppression list (or reactivates an existing entry).
+ */
+export async function suppressEmail(
+  email: string,
+  reason: "bounced" | "complained" | "manual",
+  resendEventId?: string,
+  notes?: string
+): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const { emailSuppression } = await import("../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+    const normalised = email.toLowerCase();
+    // Upsert: if already exists, reactivate and update reason
+    const existing = await db
+      .select({ id: emailSuppression.id })
+      .from(emailSuppression)
+      .where(eq(emailSuppression.email, normalised))
+      .limit(1);
+    if (existing.length > 0) {
+      await db
+        .update(emailSuppression)
+        .set({ reason, isActive: true, unsuppressedAt: null, resendEventId: resendEventId ?? null, notes: notes ?? null })
+        .where(eq(emailSuppression.email, normalised));
+    } else {
+      await db.insert(emailSuppression).values({
+        email: normalised,
+        reason,
+        resendEventId: resendEventId ?? null,
+        notes: notes ?? null,
+      });
+    }
+    console.log(`[EmailService] Suppressed ${normalised} (reason: ${reason})`);
+  } catch (err) {
+    console.error("[EmailService] Failed to suppress email:", err);
+  }
+}
+
 // ─── Core send function ───────────────────────────────────────────────────────
 
 // From address is configurable via RESEND_FROM_EMAIL env var
@@ -63,6 +126,21 @@ async function sleep(ms: number) {
  */
 export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult> {
   const resend = getResend();
+
+  // ── Suppression check ──────────────────────────────────────────────────────
+  const suppressed = await isEmailSuppressed(opts.to);
+  if (suppressed) {
+    console.log(`[EmailService] Skipping suppressed address: ${opts.to}`);
+    await logEmail({
+      toEmail: opts.to,
+      subject: opts.subject,
+      templateName: opts.templateName,
+      status: "skipped",
+      messageId: null,
+      errorMessage: "Address is on suppression list",
+    });
+    return { success: false, error: "Address is on suppression list" };
+  }
 
   // ── No API key → dev/test fallback ──────────────────────────────────────────
   if (!resend) {

@@ -1005,3 +1005,21 @@
 ### GTM / GA4 Conversion Goals
 - [x] Step-by-step GTM container + GA4 conversion event setup guide written
 - [x] Covers: GTM container creation, GA4 Configuration tag, 5 event tags, trial_started conversion toggle, Google Ads import
+
+## Sprint 33 — Bounce Suppression, Billing Portal & GA4 Funnel Guide
+
+### Resend Bounce Webhook
+- [x] DB: add emailSuppression table (email, reason: bounced|complained, suppressedAt, resendEventId)
+- [x] Server: POST /api/resend/webhook endpoint — verify Svix signature, handle email.bounced and email.complained events
+- [x] Server: suppress email before sending — check emailSuppression table in sendEmail()
+- [x] Server: isEmailSuppressed() and suppressEmail() helpers exported from emailService.ts
+- [x] RESEND_WEBHOOK_SECRET added to env.ts
+
+### Stripe Billing Portal Direct Link
+- [x] Server: payment.createPortalSession already existed — no new procedure needed
+- [x] UI: locked-access overlay — replaced /billing link with direct Stripe Customer Portal button (PortalButton component)
+- [x] UI: PortalButton opens Stripe portal in new tab, shows loading state, falls back to toast on error
+
+### GA4 Funnel Exploration Guide
+- [x] Write step-by-step GA4 Funnel Exploration setup guide (4-step funnel)
+- [x] Covers: event verification, Explorations setup, 4 funnel steps, elapsed time, interpretation, sharing

@@ -44,8 +44,9 @@ import {
   Users,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState, useCallback } from "react";
-import { X, AlertTriangle, Lock } from "lucide-react";
+import { X, AlertTriangle, Lock, ExternalLink } from "lucide-react";
 import { useLocation, Redirect } from "wouter";
+import { toast } from "sonner";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import CourseSwitcher from "./CourseSwitcher";
@@ -92,6 +93,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {children}
       </DashboardLayoutContent>
     </SidebarProvider>
+  );
+}
+
+/**
+ * A button that opens the Stripe Customer Portal directly.
+ * Used in the locked-access overlay so lapsed users can reactivate in one click.
+ */
+function PortalButton({ className }: { className?: string }) {
+  const portalMutation = trpc.payment.createPortalSession.useMutation({
+    onSuccess: ({ url }) => {
+      window.open(url, "_blank", "noopener,noreferrer");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Could not open billing portal. Please try again.");
+    },
+  });
+
+  return (
+    <Button
+      className={className}
+      onClick={() => portalMutation.mutate({ origin: window.location.origin })}
+      disabled={portalMutation.isPending}
+    >
+      {portalMutation.isPending ? (
+        "Opening portal..."
+      ) : (
+        <>
+          <ExternalLink className="mr-2 h-4 w-4" />
+          Reactivate your plan
+        </>
+      )}
+    </Button>
   );
 }
 
@@ -415,12 +448,13 @@ function DashboardLayoutContent({
                     : "Your subscription has ended. Reactivate to continue learning."}
                 </p>
               )}
-              <Button
-                className="w-full mb-3"
+              <PortalButton className="w-full mb-3" />
+              <button
+                className="text-xs text-muted-foreground underline hover:text-foreground mb-4 block w-full text-center"
                 onClick={() => setLocation("/billing")}
               >
-                Reactivate your plan
-              </Button>
+                View billing details
+              </button>
               <p className="text-xs text-muted-foreground">
                 Need help?{" "}
                 <a href="mailto:support@educhamp.app" className="underline hover:text-foreground">
