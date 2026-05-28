@@ -88,6 +88,36 @@ async function startServer() {
   // Scheduled Heartbeat handlers
   app.post("/api/scheduled/grade-promotion", gradePromotionHandler);
   app.post("/api/scheduled/invite-expiry", inviteExpiryHandler);
+
+  // ── Dynamic sitemap.xml ──────────────────────────────────────────────────────────────
+  app.get("/api/sitemap.xml", (_req, res) => {
+    const BASE = "https://educhamp.app";
+    const now = new Date().toISOString().split("T")[0];
+
+    // Static public pages and landing-page anchor sections
+    const staticUrls = [
+      { loc: BASE, priority: "1.0", changefreq: "weekly" },
+      { loc: `${BASE}/#features`, priority: "0.8", changefreq: "monthly" },
+      { loc: `${BASE}/#courses`, priority: "0.8", changefreq: "weekly" },
+      { loc: `${BASE}/#how-it-works`, priority: "0.7", changefreq: "monthly" },
+      { loc: `${BASE}/#pricing`, priority: "0.9", changefreq: "weekly" },
+      { loc: `${BASE}/#schools`, priority: "0.9", changefreq: "monthly" },
+      { loc: `${BASE}/#faq`, priority: "0.6", changefreq: "monthly" },
+    ];
+
+    const urlEntries = staticUrls
+      .map(
+        ({ loc, priority, changefreq }) =>
+          `  <url>\n    <loc>${loc}</loc>\n    <lastmod>${now}</lastmod>\n    <changefreq>${changefreq}</changefreq>\n    <priority>${priority}</priority>\n  </url>`
+      )
+      .join("\n");
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urlEntries}\n</urlset>`;
+
+    res.set("Content-Type", "application/xml");
+    res.set("Cache-Control", "public, max-age=3600"); // cache for 1 hour
+    res.send(xml);
+  });
   // tRPC API
   app.use(
     "/api/trpc",

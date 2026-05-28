@@ -1020,7 +1020,12 @@ export default function LandingPage() {
             {/* ── Plan 1: Family ── */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow p-8 flex flex-col">
               <div className="mb-6">
-                <p className="text-xs font-bold uppercase tracking-widest text-indigo-600 mb-2">Family Plan</p>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-indigo-600">Family Plan</p>
+                  <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                    ✓ 14-day free trial
+                  </span>
+                </div>
                 <div className="flex items-end gap-1 mb-1">
                   {annualBilling && <span className="text-2xl font-bold text-slate-300 line-through mr-1">$19.99</span>}
                   <span className="text-5xl font-extrabold text-slate-900">{annualBilling ? '$15' : '$19'}</span>
@@ -1049,8 +1054,9 @@ export default function LandingPage() {
                 onClick={() => openSignUp("Family Plan")}
                 className="w-full py-3 rounded-xl border-2 border-indigo-600 text-indigo-700 font-semibold hover:bg-indigo-50 transition-colors active:scale-[0.98] text-sm"
               >
-                Get Started — {annualBilling ? '$15.99/mo' : '$19.99/mo'}
+                Start Free Trial
               </button>
+              <p className="text-center text-xs text-slate-400 mt-2">14 days free · then {annualBilling ? '$15.99/mo' : '$19.99/mo'} · Cancel anytime</p>
             </div>
 
             {/* ── Plan 2: Premium Family (highlighted) ── */}
@@ -1059,7 +1065,12 @@ export default function LandingPage() {
                 <span className="bg-amber-400 text-amber-900 text-xs font-bold px-3 py-1 rounded-full shadow-sm whitespace-nowrap">⭐ Most Popular</span>
               </div>
               <div className="mb-6">
-                <p className="text-xs font-bold uppercase tracking-widest text-indigo-200 mb-2">Premium Family</p>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-indigo-200">Premium Family</p>
+                  <span className="inline-flex items-center gap-1 bg-white/20 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                    ✓ 14-day free trial
+                  </span>
+                </div>
                 <div className="flex items-end gap-1 mb-1">
                   {annualBilling && <span className="text-2xl font-bold text-indigo-300 line-through mr-1">$29.99</span>}
                   <span className="text-5xl font-extrabold">{annualBilling ? '$23' : '$29'}</span>
@@ -1088,8 +1099,9 @@ export default function LandingPage() {
                 onClick={() => openSignUp("Premium Family")}
                 className="w-full py-3 rounded-xl bg-white text-indigo-700 font-bold hover:bg-indigo-50 transition-colors active:scale-[0.98] text-sm shadow-lg"
               >
-                Get Started — {annualBilling ? '$23.99/mo' : '$29.99/mo'}
+                Start Free Trial
               </button>
+              <p className="text-center text-xs text-indigo-300 mt-2">14 days free · then {annualBilling ? '$23.99/mo' : '$29.99/mo'} · Cancel anytime</p>
             </div>
 
             {/* ── Plan 3: ISD / School License ── */}

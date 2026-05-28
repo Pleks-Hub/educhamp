@@ -9,9 +9,12 @@ import {
   incrementCouponUsage,
   recordCouponRedemption,
   getDb,
+  getUserById,
 } from "./db";
 import { users, subscriptions } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
+import { sendEmail } from "./emailService";
+import { buildTrialReminderEmail } from "./emailTemplates/trialReminder";
 
 export function registerStripeWebhook(app: Express) {
   // MUST use express.raw BEFORE express.json for webhook signature verification
@@ -263,6 +266,75 @@ async function handleStripeEvent(event: any) {
           customerId: invoice.customer,
           nextPaymentAttempt: invoice.next_payment_attempt,
         },
+      });
+      break;
+    }
+
+    // ── Trial ending reminder ──────────────────────────────────────────────────
+    case "customer.subscription.trial_will_end": {
+      const sub = obj;
+      const userId = sub.customer
+        ? await getUserIdFromStripeCustomer(sub.customer)
+        : null;
+
+      if (userId) {
+        const user = await getUserById(userId);
+        if (user?.email) {
+          // Determine plan details for the email
+          const item = sub.items?.data?.[0];
+          const interval = item?.price?.recurring?.interval;
+          const isAnnual = interval === "year";
+          const planKey = sub.metadata?.plan_key ?? "family";
+          const planName = planKey === "premium_family" ? "Premium Family" : "Family Plan";
+          const monthlyPrice = planKey === "premium_family"
+            ? (isAnnual ? "$23.99/mo" : "$29.99/mo")
+            : (isAnnual ? "$15.99/mo" : "$19.99/mo");
+
+          const trialEndDate = sub.trial_end
+            ? new Date(sub.trial_end * 1000)
+            : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+
+          // Generate Stripe billing portal URL for cancellation
+          let billingPortalUrl = "https://educhamp.app/billing";
+          try {
+            const portal = await stripe.billingPortal.sessions.create({
+              customer: sub.customer,
+              return_url: "https://educhamp.app/billing",
+            });
+            billingPortalUrl = portal.url;
+          } catch (err) {
+            console.warn("[Webhook] Could not create billing portal session:", err);
+          }
+
+          const emailData = buildTrialReminderEmail({
+            userName: user.name ?? user.email,
+            userEmail: user.email,
+            planName,
+            planPrice: monthlyPrice,
+            trialEndDate,
+            billingPortalUrl,
+          });
+
+          await sendEmail({
+            to: user.email,
+            subject: emailData.subject,
+            html: emailData.html,
+            text: emailData.text,
+            templateName: "trial_reminder",
+            referenceId: `sub_${sub.id}`,
+          });
+
+          console.log(`[Webhook] Trial reminder email sent to ${user.email} (trial ends ${trialEndDate.toISOString()})`);
+        }
+      }
+
+      await logPaymentEvent({
+        userId: userId ?? undefined,
+        event: event.type,
+        stripeEventId: event.id,
+        stripeObjectId: sub.id,
+        status: "trial_ending",
+        metadata: { customerId: sub.customer, trialEnd: sub.trial_end },
       });
       break;
     }

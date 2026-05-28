@@ -932,3 +932,22 @@
 - [x] Update OG title, description, image (512px favicon), url, locale, site_name
 - [x] Add Twitter/X card meta tags (card, site, title, description, image)
 - [x] TypeScript: 0 errors | Tests: 141/141 passing
+
+## Sprint 29 — Trial Labels, Trial Reminder Webhook, robots.txt & Sitemap (COMPLETE)
+
+### Pricing Card Trial Labels
+- [x] Add "14-day free trial" badge/label to Family and Premium Family pricing cards
+- [x] Update CTA button text on paid plan cards to "Start Free Trial"
+- [x] Add "No credit card required during trial" sub-label under CTA buttons
+
+### Trial Reminder Webhook
+- [x] Handle customer.subscription.trial_will_end Stripe webhook event
+- [x] Send branded reminder email to user 3 days before trial expires
+- [x] Email shows: plan name, trial end date, first charge date, amount, cancel link
+- [x] Add trial_will_end to the list of subscribed webhook events in Stripe
+
+### robots.txt & Sitemap
+- [x] Update client/public/robots.txt with proper Allow/Disallow rules
+- [x] Create /api/sitemap.xml server endpoint returning dynamic XML sitemap (7 URLs, 1hr cache)
+- [x] Sitemap includes: homepage, #features, #courses, #how-it-works, #pricing, #schools, #faq
+- [x] TypeScript: 0 errors | Tests: 141/141 passing
