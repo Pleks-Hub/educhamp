@@ -14,6 +14,7 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
@@ -184,6 +185,13 @@ function DashboardLayoutContent({
   });
   const activeCourseTitle = dashboardQuery.data?.courseTitle;
 
+  // Pending course request count for the Parent Dashboard badge
+  const pendingRequestsQuery = trpc.parent.getPendingCourseRequests.useQuery(undefined, {
+    staleTime: 30_000,
+    retry: false,
+  });
+  const pendingRequestCount = pendingRequestsQuery.data?.length ?? 0;
+
   // Trial banner state
   const TRIAL_BANNER_KEY = "educhamp-trial-banner-dismissed";
   const [trialBannerDismissed, setTrialBannerDismissed] = useState(() =>
@@ -307,6 +315,7 @@ function DashboardLayoutContent({
               {[parentMenuItem, referralMenuItem, billingMenuItem].map((item) => {
                 const isActive = location.startsWith(item.path);
                 const tooltipEntry = NAV_TOOLTIPS[item.tooltipKey];
+                const showPendingBadge = item.path === "/parent" && pendingRequestCount > 0;
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarNavTooltip
@@ -332,6 +341,14 @@ function DashboardLayoutContent({
                         )}
                       </SidebarMenuButton>
                     </SidebarNavTooltip>
+                    {showPendingBadge && (
+                      <SidebarMenuBadge
+                        className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1"
+                        aria-label={`${pendingRequestCount} pending course request${pendingRequestCount !== 1 ? 's' : ''}`}
+                      >
+                        {pendingRequestCount > 99 ? "99+" : pendingRequestCount}
+                      </SidebarMenuBadge>
+                    )}
                   </SidebarMenuItem>
                 );
               })}

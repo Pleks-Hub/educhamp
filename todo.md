@@ -1175,3 +1175,33 @@
 - [x] Students cannot enroll in courses directly — all paths go through request or parent assignment
 - [x] approveByToken validates token expiry and single-use (processCourseRequestToken in db.ts)
 - [x] protectedProcedure checks role for all parent/admin procedures
+
+## Sprint 39 — Course Request Workflow Enhancements
+
+### Student Notification Emails
+- [x] Read courseRequestApproved.ts and courseRequestRejected.ts templates (found combined in courseRequestNotification.ts)
+- [x] Wire courseRequestApproved email into parent.approveCourseRequest tRPC procedure (after DB update)
+- [x] Wire courseRequestRejected email into parent.rejectCourseRequest tRPC procedure (after DB update)
+- [x] Add error handling + logging for failed email delivery in both procedures
+- [x] Ensure email is suppression-checked via isEmailSuppressed() before sending (sendEmail() handles this internally)
+
+### Token Action Confirmation Page
+- [x] Create client/src/pages/CourseRequestResult.tsx — branded result page for approve/reject token actions
+- [x] Support states: success-approved, success-rejected, expired, already_actioned, not_found, loading
+- [x] Add CTAs: "Go to Parent Dashboard", "View Student Courses", "Return to Login"
+- [x] Update GET /api/course-request/token endpoint to redirect to /course-request/result?status=...
+- [x] Register /course-request/result route in App.tsx
+
+### Pending Request Badge on Parent Nav
+- [x] Add live pending request count badge to "Parent Dashboard" nav item in DashboardLayout
+- [x] Use getPendingCourseRequests tRPC query (wraps getPendingRequestsForParentStudents)
+- [x] Hide badge when count is 0; show red badge with count when > 0
+- [x] Handle loading and error states gracefully (retry: false, defaults to 0)
+
+### App Title Fix
+- [x] Remove "Algebra I" from VITE_APP_TITLE — updated to "EduChamp" in .project-config.json
+
+### Tests
+- [x] Add tests for email trigger behavior (approveCourseRequest, rejectCourseRequest) — server/sprint39.test.ts
+- [x] Add tests for token redirect behavior (processCourseRequestToken result states) — server/sprint39.test.ts
+- [x] Add tests for pending request badge rendering logic — server/sprint39.test.ts

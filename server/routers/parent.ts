@@ -28,9 +28,11 @@ import {
   approveCourseRequest,
   rejectCourseRequest,
   getCourseRequestById,
+  getUserById,
 } from "../db";
 import { getMasteryLabel, getAdaptivePath } from "../educhamp-helpers";
 import { sendEmail } from "../emailService";
+import { buildCourseRequestOutcomeEmail } from "../emailTemplates/courseRequestNotification";
 
 export const parentRouter = router({
   /**
@@ -381,6 +383,7 @@ export const parentRouter = router({
 
   /**
    * Parent: approve a pending course request and enroll the student.
+   * Sends a branded confirmation email to the student after a successful DB update.
    */
   approveCourseRequest: protectedProcedure
     .input(z.object({ requestId: z.number(), origin: z.string().optional() }))
@@ -395,14 +398,43 @@ export const parentRouter = router({
 
       await approveCourseRequest(input.requestId, ctx.user.id);
       await enrollUserInCourse(request.studentId, request.courseId);
+
+      // Send student notification email (fire-and-forget — don't block the response)
+      try {
+        const [course, student] = await Promise.all([
+          getCourseById(request.courseId),
+          getUserById(request.studentId),
+        ]);
+        if (student?.email && course) {
+          const origin = input.origin ?? "https://educhamp.app";
+          const emailContent = buildCourseRequestOutcomeEmail({
+            studentName: student.name ?? "Student",
+            courseName: course.title,
+            approved: true,
+            dashboardUrl: `${origin}/courses`,
+          });
+          await sendEmail({
+            to: student.email,
+            subject: emailContent.subject,
+            html: emailContent.html,
+            text: emailContent.text,
+            templateName: "courseRequestApproved",
+            referenceId: String(request.id),
+          });
+        }
+      } catch (emailErr) {
+        console.error("[approveCourseRequest] Failed to send student notification email:", emailErr);
+      }
+
       return { success: true };
     }),
 
   /**
    * Parent: reject a pending course request.
+   * Sends a branded notification email to the student after a successful DB update.
    */
   rejectCourseRequest: protectedProcedure
-    .input(z.object({ requestId: z.number(), rejectionReason: z.string().optional() }))
+    .input(z.object({ requestId: z.number(), rejectionReason: z.string().optional(), origin: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       const request = await getCourseRequestById(input.requestId);
       if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Request not found." });
@@ -412,6 +444,35 @@ export const parentRouter = router({
       if (!link || !link.isActive) throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this student." });
 
       await rejectCourseRequest(input.requestId, ctx.user.id, input.rejectionReason);
+
+      // Send student notification email (fire-and-forget — don't block the response)
+      try {
+        const [course, student] = await Promise.all([
+          getCourseById(request.courseId),
+          getUserById(request.studentId),
+        ]);
+        if (student?.email && course) {
+          const origin = input.origin ?? "https://educhamp.app";
+          const emailContent = buildCourseRequestOutcomeEmail({
+            studentName: student.name ?? "Student",
+            courseName: course.title,
+            approved: false,
+            rejectionReason: input.rejectionReason,
+            dashboardUrl: `${origin}/courses`,
+          });
+          await sendEmail({
+            to: student.email,
+            subject: emailContent.subject,
+            html: emailContent.html,
+            text: emailContent.text,
+            templateName: "courseRequestRejected",
+            referenceId: String(request.id),
+          });
+        }
+      } catch (emailErr) {
+        console.error("[rejectCourseRequest] Failed to send student notification email:", emailErr);
+      }
+
       return { success: true };
     }),
 

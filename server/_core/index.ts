@@ -95,23 +95,24 @@ async function startServer() {
   // ── Course request email approve/reject token handler ─────────────────────
   app.get("/api/course-request/token", async (req, res) => {
     const { token, action } = req.query as { token?: string; action?: string };
+    const resultBase = "/course-request/result";
     if (!token || !action || !['approve', 'reject'].includes(action)) {
-      return res.status(400).send("<html><body><h2>Invalid link. Please log in to manage course requests.</h2></body></html>");
+      return res.redirect(`${resultBase}?status=not_found&action=${action ?? ''}`);
     }
     try {
       const { processCourseRequestToken } = await import("../db");
       const result = await processCourseRequestToken(token, action as 'approve' | 'reject');
       if (!result.success) {
-        const msg = result.reason === 'expired' ? 'This link has expired.' :
-                    result.reason === 'already_actioned' ? 'This request has already been actioned.' :
-                    'Invalid or unknown link.';
-        return res.status(400).send(`<html><head><title>EduChamp</title></head><body style="font-family:sans-serif;max-width:480px;margin:80px auto;text-align:center"><h2>${msg}</h2><p><a href="/parent">Go to Parent Dashboard</a></p></body></html>`);
+        const status = result.reason === 'expired' ? 'expired' :
+                       result.reason === 'already_actioned' ? 'already_actioned' :
+                       'not_found';
+        return res.redirect(`${resultBase}?status=${status}&action=${action}`);
       }
-      const verb = action === 'approve' ? 'approved' : 'rejected';
-      return res.send(`<html><head><title>EduChamp</title></head><body style="font-family:sans-serif;max-width:480px;margin:80px auto;text-align:center"><h2>Course request ${verb}.</h2><p>The student's course request has been ${verb}.</p><p><a href="/parent">Go to Parent Dashboard</a></p></body></html>`);
+      const status = action === 'approve' ? 'approved' : 'rejected';
+      return res.redirect(`${resultBase}?status=${status}&action=${action}`);
     } catch (err) {
       console.error('[CourseRequestToken]', err);
-      return res.status(500).send("<html><body><h2>An error occurred. Please try again or log in to your dashboard.</h2></body></html>");
+      return res.redirect(`${resultBase}?status=error&action=${action}`);
     }
   });
 
