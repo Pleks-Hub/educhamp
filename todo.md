@@ -1071,3 +1071,25 @@
 - [x] UI: Error toast with message if operation fails
 - [x] UI: SuppressionManagementTab inline Unsuppress button also uses Dialog modal (not window.confirm)
 - [x] UI: Both dialogs have loading state on confirm button and dismiss on success/error
+
+## Sprint 36 — Email Delivery Status Column
+
+### Schema & Migration
+- [x] DB: add deliveryStatus column to emailLogs (enum: sent | delivered | opened | bounced | complained | failed, default: sent)
+- [x] DB: add deliveryUpdatedAt timestamp column to emailLogs
+- [x] DB: add referenceId column to emailLogs (for audit trail linkage)
+- [x] Migration generated and applied via webdev_execute_sql
+
+### Resend Webhook — Delivery Status Updates
+- [x] Server: handle email.delivered event — updates emailLogs.deliveryStatus to "delivered"
+- [x] Server: handle email.opened event — updates emailLogs.deliveryStatus to "opened"
+- [x] Server: handle email.bounced event — suppresses address AND updates deliveryStatus to "bounced"
+- [x] Server: handle email.complained event — suppresses address AND updates deliveryStatus to "complained"
+- [x] Server: handle email.delivery_delayed and email.failed — updates deliveryStatus to "failed"
+- [x] Server: matches Resend event to emailLogs row by messageId (emailLogs.messageId = Resend email_id)
+- [x] Server: getEmailLogs procedure now accepts deliveryStatus filter
+
+### Admin Email Logs UI
+- [x] UI: "Delivery" column added to Email Logs table with colour-coded badges (pending=grey, delivered=blue, opened=green, bounced=red, complained=orange, failed=red)
+- [x] UI: badge tooltip shows deliveryUpdatedAt timestamp
+- [x] UI: "Delivery Status" filter dropdown added to Email Logs toolbar (All Delivery / Pending / Delivered / Opened / Bounced / Complained / Failed)

@@ -1299,6 +1299,7 @@ function AuditLogTab() {
 
 function EmailLogsTab() {
   const [statusFilter, setStatusFilter] = useState<"all" | "sent" | "failed" | "skipped">("all");
+  const [deliveryFilter, setDeliveryFilter] = useState<"all" | "sent" | "delivered" | "opened" | "bounced" | "complained" | "failed">("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -1314,6 +1315,7 @@ function EmailLogsTab() {
     limit: 100,
     offset: 0,
     status: statusFilter,
+    deliveryStatus: deliveryFilter,
     search: debouncedSearch || undefined,
   });
 
@@ -1321,6 +1323,25 @@ function EmailLogsTab() {
     if (status === "sent") return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200"><Send className="h-3 w-3 mr-1" />Sent</Badge>;
     if (status === "failed") return <Badge className="bg-red-100 text-red-700 border-red-200"><XCircle className="h-3 w-3 mr-1" />Failed</Badge>;
     return <Badge className="bg-amber-100 text-amber-700 border-amber-200"><Clock className="h-3 w-3 mr-1" />Skipped</Badge>;
+  };
+
+  const deliveryBadge = (deliveryStatus: string | null | undefined, deliveryUpdatedAt: string | Date | null | undefined) => {
+    const updatedLabel = deliveryUpdatedAt ? new Date(deliveryUpdatedAt).toLocaleString() : undefined;
+    const title = updatedLabel ? `Updated: ${updatedLabel}` : undefined;
+    switch (deliveryStatus) {
+      case "delivered":
+        return <Badge className="bg-blue-100 text-blue-700 border-blue-200 gap-1" title={title}><CheckCircle2 className="h-3 w-3" />Delivered</Badge>;
+      case "opened":
+        return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 gap-1" title={title}><Eye className="h-3 w-3" />Opened</Badge>;
+      case "bounced":
+        return <Badge className="bg-red-100 text-red-700 border-red-200 gap-1" title={title}><XCircle className="h-3 w-3" />Bounced</Badge>;
+      case "complained":
+        return <Badge className="bg-orange-100 text-orange-700 border-orange-200 gap-1" title={title}><AlertTriangle className="h-3 w-3" />Complained</Badge>;
+      case "failed":
+        return <Badge className="bg-red-100 text-red-700 border-red-200 gap-1" title={title}><XCircle className="h-3 w-3" />Failed</Badge>;
+      default:
+        return <Badge className="bg-gray-100 text-gray-500 border-gray-200 gap-1" title="Awaiting delivery event from Resend"><Clock className="h-3 w-3" />Pending</Badge>;
+    }
   };
 
   return (
@@ -1380,6 +1401,21 @@ function EmailLogsTab() {
             <SelectItem value="skipped">Skipped</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={deliveryFilter} onValueChange={(v) => setDeliveryFilter(v as typeof deliveryFilter)}>
+          <SelectTrigger className="w-40">
+            <CheckCircle2 className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Delivery" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Delivery</SelectItem>
+            <SelectItem value="sent">Pending</SelectItem>
+            <SelectItem value="delivered">Delivered</SelectItem>
+            <SelectItem value="opened">Opened</SelectItem>
+            <SelectItem value="bounced">Bounced</SelectItem>
+            <SelectItem value="complained">Complained</SelectItem>
+            <SelectItem value="failed">Failed</SelectItem>
+          </SelectContent>
+        </Select>
         <Badge variant="secondary">{data?.total ?? 0} records</Badge>
       </div>
 
@@ -1392,6 +1428,7 @@ function EmailLogsTab() {
               <TableHead>Subject</TableHead>
               <TableHead>Template</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Delivery</TableHead>
               <TableHead>Message ID</TableHead>
               <TableHead>Sent At</TableHead>
               <TableHead>Error</TableHead>
@@ -1400,11 +1437,11 @@ function EmailLogsTab() {
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-8" /></TableCell></TableRow>
+                <TableRow key={i}><TableCell colSpan={8}><Skeleton className="h-8" /></TableCell></TableRow>
               ))
             ) : (data?.logs ?? []).length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-12">
                   <Inbox className="h-8 w-8 mx-auto mb-2 opacity-30" />
                   No email logs found.
                 </TableCell>
@@ -1415,6 +1452,7 @@ function EmailLogsTab() {
                 <TableCell className="text-sm max-w-[200px] truncate">{log.subject}</TableCell>
                 <TableCell><Badge variant="outline" className="text-xs">{log.templateName}</Badge></TableCell>
                 <TableCell>{statusBadge(log.status)}</TableCell>
+                <TableCell>{deliveryBadge(log.deliveryStatus, log.deliveryUpdatedAt)}</TableCell>
                 <TableCell className="text-xs font-mono text-muted-foreground">
                   {log.messageId ? (
                     <span className="truncate max-w-[120px] block" title={log.messageId}>{log.messageId.slice(0, 16)}…</span>

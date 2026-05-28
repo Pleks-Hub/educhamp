@@ -499,6 +499,7 @@ export const adminRouter = router({
       limit: z.number().min(1).max(500).default(100),
       offset: z.number().min(0).default(0),
       status: z.enum(["all", "sent", "failed", "skipped"]).default("all"),
+      deliveryStatus: z.enum(["all", "sent", "delivered", "opened", "bounced", "complained", "failed"]).default("all"),
       search: z.string().optional(),
       dateFrom: z.string().optional(), // ISO date string
       dateTo: z.string().optional(),
@@ -512,6 +513,9 @@ export const adminRouter = router({
       const conditions: Parameters<typeof and>[0][] = [];
       if (input.status !== "all") {
         conditions.push(eq(emailLogs.status, input.status));
+      }
+      if (input.deliveryStatus !== "all") {
+        conditions.push(eq(emailLogs.deliveryStatus, input.deliveryStatus));
       }
       if (input.search) {
         conditions.push(like(emailLogs.toEmail, `%${input.search}%`));

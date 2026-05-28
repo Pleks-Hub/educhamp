@@ -777,7 +777,11 @@ export const emailLogs = mysqlTable("emailLogs", {
   templateName: varchar("templateName", { length: 128 }).notNull(),
   status: mysqlEnum("status", ["sent", "failed", "skipped"]).notNull(),
   messageId: varchar("messageId", { length: 256 }),   // Resend message ID
+  referenceId: varchar("referenceId", { length: 256 }), // e.g. checkout_xxx or sub_xxx
   errorMessage: text("errorMessage"),
+  /** Delivery status updated by Resend webhook events */
+  deliveryStatus: mysqlEnum("deliveryStatus", ["sent", "delivered", "opened", "bounced", "complained", "failed"]).default("sent"),
+  deliveryUpdatedAt: timestamp("deliveryUpdatedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type EmailLog = typeof emailLogs.$inferSelect;

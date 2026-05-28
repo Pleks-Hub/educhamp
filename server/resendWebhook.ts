@@ -16,6 +16,7 @@
 import express, { type Express } from "express";
 import { suppressEmail } from "./emailService";
 import { ENV } from "./_core/env";
+import { getDb } from "./db";
 
 // ─── Signature verification ───────────────────────────────────────────────────
 
@@ -80,6 +81,31 @@ interface ResendWebhookEvent {
   };
 }
 
+// ─── Delivery status update helper ───────────────────────────────────────────
+
+type DeliveryStatus = "delivered" | "opened" | "bounced" | "complained" | "failed";
+
+async function updateDeliveryStatus(emailId: string, status: DeliveryStatus): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const { emailLogs } = await import("../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+    const result = await db
+      .update(emailLogs)
+      .set({ deliveryStatus: status, deliveryUpdatedAt: new Date() })
+      .where(eq(emailLogs.messageId, emailId));
+    if ((result as any).affectedRows === 0) {
+      // No matching log row — Resend may fire events for emails sent before logging was added
+      console.log(`[ResendWebhook] No emailLog row found for messageId ${emailId} — skipping status update`);
+    } else {
+      console.log(`[ResendWebhook] Updated deliveryStatus to "${status}" for messageId ${emailId}`);
+    }
+  } catch (err) {
+    console.error("[ResendWebhook] Failed to update delivery status:", err);
+  }
+}
+
 async function handleResendEvent(event: ResendWebhookEvent): Promise<void> {
   const { type, data } = event;
   const emailId = data.email_id ?? "unknown";
@@ -88,19 +114,40 @@ async function handleResendEvent(event: ResendWebhookEvent): Promise<void> {
   console.log(`[ResendWebhook] Processing event: ${type} (email_id: ${emailId})`);
 
   switch (type) {
+    case "email.delivered": {
+      await updateDeliveryStatus(emailId, "delivered");
+      break;
+    }
+
+    case "email.opened": {
+      // Only upgrade status if not already at a higher state
+      await updateDeliveryStatus(emailId, "opened");
+      break;
+    }
+
     case "email.bounced": {
+      // Suppress address AND update delivery status
       for (const email of recipients) {
         await suppressEmail(email, "bounced", emailId, `Bounce detected via Resend webhook`);
       }
+      await updateDeliveryStatus(emailId, "bounced");
       console.log(`[ResendWebhook] Suppressed ${recipients.length} bounced address(es)`);
       break;
     }
 
     case "email.complained": {
+      // Suppress address AND update delivery status
       for (const email of recipients) {
         await suppressEmail(email, "complained", emailId, `Spam complaint via Resend webhook`);
       }
+      await updateDeliveryStatus(emailId, "complained");
       console.log(`[ResendWebhook] Suppressed ${recipients.length} complained address(es)`);
+      break;
+    }
+
+    case "email.delivery_delayed":
+    case "email.failed": {
+      await updateDeliveryStatus(emailId, "failed");
       break;
     }
 
