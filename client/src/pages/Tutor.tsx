@@ -23,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useIsMobile } from "@/hooks/useMobile";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 import { CourseContextBanner } from "@/components/CourseContextBanner";
@@ -143,14 +144,20 @@ export default function Tutor() {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
-  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  // Use useMobile hook for reactive mobile detection (avoids SSR issues and Safari quirks)
+  const isMobile = useIsMobile();
+  const [sidebarOpen, setSidebarOpen] = useState(false); // default closed; updated in effect below
 
   // The key fix: use a plain div ref, not ScrollArea, so we control scrolling directly
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const streamingAbortRef = useRef<AbortController | null>(null);
+
+  // Initialize sidebar state based on screen size after mount (avoids hydration mismatch)
+  useEffect(() => {
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
 
   // Use active-course units from dashboard instead of global getAllUnits
   const { data: dashboard } = trpc.progress.getDashboard.useQuery();

@@ -3,107 +3,182 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─── Cross-browser oklch fallbacks ─────────────────────────────────────────
+   Safari < 15.4 and older browsers do not support oklch().
+   We declare HSL values first, then override with oklch() for modern browsers.
+   Browsers that don't understand oklch() will silently use the HSL fallback.
+─────────────────────────────────────────────────────────────────────────── */
 :root {
   /* EduChamp Brand Palette — Deep Navy + Warm Gold */
   --radius: 0.625rem;
 
-  /* Core backgrounds */
+  /* Core backgrounds — HSL fallback then oklch */
+  --background: hsl(220, 30%, 97%);
   --background: oklch(0.98 0.005 240);
+  --foreground: hsl(225, 30%, 15%);
   --foreground: oklch(0.15 0.02 240);
 
   /* Card surfaces */
+  --card: hsl(0, 0%, 100%);
   --card: oklch(1 0 0);
+  --card-foreground: hsl(225, 30%, 15%);
   --card-foreground: oklch(0.15 0.02 240);
 
   /* Popover */
+  --popover: hsl(0, 0%, 100%);
   --popover: oklch(1 0 0);
+  --popover-foreground: hsl(225, 30%, 15%);
   --popover-foreground: oklch(0.15 0.02 240);
 
   /* Primary — Deep Navy */
+  --primary: hsl(228, 40%, 22%);
   --primary: oklch(0.28 0.08 250);
+  --primary-foreground: hsl(220, 30%, 97%);
   --primary-foreground: oklch(0.98 0.005 240);
 
   /* Secondary — Soft Slate */
+  --secondary: hsl(220, 20%, 93%);
   --secondary: oklch(0.94 0.01 240);
+  --secondary-foreground: hsl(228, 40%, 22%);
   --secondary-foreground: oklch(0.28 0.08 250);
 
   /* Muted */
+  --muted: hsl(220, 20%, 94%);
   --muted: oklch(0.95 0.008 240);
+  --muted-foreground: hsl(222, 15%, 48%);
   --muted-foreground: oklch(0.52 0.025 240);
 
   /* Accent — Warm Gold */
+  --accent: hsl(42, 85%, 58%);
   --accent: oklch(0.78 0.14 75);
+  --accent-foreground: hsl(225, 30%, 15%);
   --accent-foreground: oklch(0.15 0.02 240);
 
   /* Destructive */
+  --destructive: hsl(10, 70%, 48%);
   --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: hsl(220, 30%, 97%);
   --destructive-foreground: oklch(0.98 0.005 240);
 
   /* Borders & inputs */
+  --border: hsl(220, 15%, 87%);
   --border: oklch(0.88 0.01 240);
+  --input: hsl(220, 15%, 87%);
   --input: oklch(0.88 0.01 240);
+  --ring: hsl(228, 40%, 22%);
   --ring: oklch(0.28 0.08 250);
 
   /* Chart colors */
+  --chart-1: hsl(228, 40%, 22%);
   --chart-1: oklch(0.28 0.08 250);
+  --chart-2: hsl(42, 85%, 58%);
   --chart-2: oklch(0.78 0.14 75);
+  --chart-3: hsl(152, 40%, 42%);
   --chart-3: oklch(0.55 0.15 160);
+  --chart-4: hsl(22, 70%, 52%);
   --chart-4: oklch(0.65 0.18 30);
+  --chart-5: hsl(270, 55%, 48%);
   --chart-5: oklch(0.60 0.20 290);
 
   /* Sidebar */
+  --sidebar: hsl(228, 38%, 14%);
   --sidebar: oklch(0.18 0.05 250);
+  --sidebar-foreground: hsl(220, 15%, 89%);
   --sidebar-foreground: oklch(0.90 0.01 240);
+  --sidebar-primary: hsl(42, 85%, 58%);
   --sidebar-primary: oklch(0.78 0.14 75);
+  --sidebar-primary-foreground: hsl(225, 30%, 15%);
   --sidebar-primary-foreground: oklch(0.15 0.02 240);
+  --sidebar-accent: hsl(228, 38%, 19%);
   --sidebar-accent: oklch(0.25 0.06 250);
+  --sidebar-accent-foreground: hsl(220, 15%, 89%);
   --sidebar-accent-foreground: oklch(0.90 0.01 240);
+  --sidebar-border: hsl(228, 30%, 22%);
   --sidebar-border: oklch(0.28 0.05 250);
+  --sidebar-ring: hsl(42, 85%, 58%);
   --sidebar-ring: oklch(0.78 0.14 75);
 
   /* EduChamp custom tokens */
+  --educhamp-navy: hsl(228, 42%, 18%);
   --educhamp-navy: oklch(0.22 0.07 250);
+  --educhamp-gold: hsl(42, 85%, 58%);
   --educhamp-gold: oklch(0.78 0.14 75);
+  --educhamp-gold-light: hsl(42, 60%, 88%);
   --educhamp-gold-light: oklch(0.92 0.08 75);
+  --educhamp-success: hsl(145, 40%, 42%);
   --educhamp-success: oklch(0.55 0.15 145);
+  --educhamp-warning: hsl(48, 70%, 55%);
   --educhamp-warning: oklch(0.72 0.16 65);
+  --educhamp-error: hsl(10, 70%, 48%);
   --educhamp-error: oklch(0.55 0.22 25);
 
   /* Mastery level colors */
+  --mastery-beginner: hsl(10, 70%, 48%);
   --mastery-beginner: oklch(0.55 0.22 25);
+  --mastery-developing: hsl(30, 65%, 52%);
   --mastery-developing: oklch(0.65 0.18 50);
+  --mastery-approaching: hsl(48, 70%, 55%);
   --mastery-approaching: oklch(0.72 0.16 65);
+  --mastery-mastered: hsl(145, 40%, 42%);
   --mastery-mastered: oklch(0.55 0.15 145);
+  --mastery-advanced: hsl(228, 40%, 35%);
   --mastery-advanced: oklch(0.45 0.18 250);
 }
 
 .dark {
+  --background: hsl(228, 35%, 9%);
   --background: oklch(0.12 0.03 250);
+  --foreground: hsl(220, 12%, 92%);
   --foreground: oklch(0.93 0.01 240);
+  --card: hsl(228, 35%, 12%);
   --card: oklch(0.16 0.04 250);
+  --card-foreground: hsl(220, 12%, 92%);
   --card-foreground: oklch(0.93 0.01 240);
+  --popover: hsl(228, 35%, 12%);
   --popover: oklch(0.16 0.04 250);
+  --popover-foreground: hsl(220, 12%, 92%);
   --popover-foreground: oklch(0.93 0.01 240);
+  --primary: hsl(42, 85%, 58%);
   --primary: oklch(0.78 0.14 75);
+  --primary-foreground: hsl(225, 30%, 15%);
   --primary-foreground: oklch(0.15 0.02 240);
+  --secondary: hsl(228, 30%, 17%);
   --secondary: oklch(0.22 0.05 250);
+  --secondary-foreground: hsl(220, 12%, 92%);
   --secondary-foreground: oklch(0.93 0.01 240);
+  --muted: hsl(228, 30%, 17%);
   --muted: oklch(0.22 0.05 250);
+  --muted-foreground: hsl(222, 10%, 58%);
   --muted-foreground: oklch(0.62 0.025 240);
+  --accent: hsl(42, 85%, 58%);
   --accent: oklch(0.78 0.14 75);
+  --accent-foreground: hsl(225, 30%, 15%);
   --accent-foreground: oklch(0.15 0.02 240);
+  --destructive: hsl(10, 70%, 48%);
   --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: hsl(220, 30%, 97%);
   --destructive-foreground: oklch(0.98 0.005 240);
+  --border: hsl(228, 30%, 22%);
   --border: oklch(0.28 0.05 250);
+  --input: hsl(228, 30%, 22%);
   --input: oklch(0.28 0.05 250);
+  --ring: hsl(42, 85%, 58%);
   --ring: oklch(0.78 0.14 75);
+  --sidebar: hsl(228, 38%, 8%);
   --sidebar: oklch(0.10 0.04 250);
+  --sidebar-foreground: hsl(220, 15%, 89%);
   --sidebar-foreground: oklch(0.90 0.01 240);
+  --sidebar-primary: hsl(42, 85%, 58%);
   --sidebar-primary: oklch(0.78 0.14 75);
+  --sidebar-primary-foreground: hsl(225, 30%, 15%);
   --sidebar-primary-foreground: oklch(0.15 0.02 240);
+  --sidebar-accent: hsl(228, 35%, 14%);
   --sidebar-accent: oklch(0.18 0.05 250);
+  --sidebar-accent-foreground: hsl(220, 15%, 89%);
   --sidebar-accent-foreground: oklch(0.90 0.01 240);
+  --sidebar-border: hsl(228, 30%, 17%);
   --sidebar-border: oklch(0.22 0.05 250);
+  --sidebar-ring: hsl(42, 85%, 58%);
   --sidebar-ring: oklch(0.78 0.14 75);
 }
 
@@ -177,13 +252,15 @@
   * {
     @apply border-border outline-ring/50;
   }
-
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-feature-settings: "cv11", "ss01";
+    /* Prevent iOS font size inflation */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
-  /* Custom scrollbar */
+  /* Custom scrollbar — webkit only (Chrome, Safari, Edge) */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -201,48 +278,71 @@
 
 /* ─── EduChamp Utility Classes ─────────────────────────────────────────────── */
 
-/* Mastery level badges */
+/* Mastery level badges — HSL fallback + oklch */
 .mastery-beginner {
+  background-color: hsl(10, 80%, 93%);
   background-color: oklch(0.95 0.05 25);
+  color: hsl(10, 65%, 38%);
   color: oklch(0.45 0.22 25);
-  border: 1px solid oklch(0.85 0.10 25);
+  border: 1px solid hsl(10, 60%, 80%);
+  border-color: oklch(0.85 0.10 25);
 }
 .mastery-developing {
+  background-color: hsl(30, 80%, 93%);
   background-color: oklch(0.95 0.05 50);
+  color: hsl(30, 60%, 40%);
   color: oklch(0.50 0.18 50);
-  border: 1px solid oklch(0.85 0.10 50);
+  border: 1px solid hsl(30, 60%, 80%);
+  border-color: oklch(0.85 0.10 50);
 }
 .mastery-approaching {
+  background-color: hsl(48, 80%, 93%);
   background-color: oklch(0.95 0.06 65);
+  color: hsl(48, 55%, 42%);
   color: oklch(0.52 0.16 65);
-  border: 1px solid oklch(0.85 0.12 65);
+  border: 1px solid hsl(48, 60%, 78%);
+  border-color: oklch(0.85 0.12 65);
 }
 .mastery-mastered {
+  background-color: hsl(145, 60%, 90%);
   background-color: oklch(0.93 0.07 145);
+  color: hsl(145, 45%, 32%);
   color: oklch(0.40 0.15 145);
-  border: 1px solid oklch(0.80 0.12 145);
+  border: 1px solid hsl(145, 45%, 72%);
+  border-color: oklch(0.80 0.12 145);
 }
 .mastery-advanced {
+  background-color: hsl(228, 50%, 90%);
   background-color: oklch(0.92 0.06 250);
+  color: hsl(228, 45%, 24%);
   color: oklch(0.30 0.12 250);
-  border: 1px solid oklch(0.75 0.10 250);
+  border: 1px solid hsl(228, 35%, 68%);
+  border-color: oklch(0.75 0.10 250);
 }
 
 /* Difficulty badges */
 .difficulty-easy {
+  background-color: hsl(145, 60%, 90%);
   background-color: oklch(0.93 0.07 145);
+  color: hsl(145, 45%, 32%);
   color: oklch(0.40 0.15 145);
 }
 .difficulty-medium {
+  background-color: hsl(48, 80%, 93%);
   background-color: oklch(0.95 0.06 65);
+  color: hsl(48, 55%, 42%);
   color: oklch(0.52 0.16 65);
 }
 .difficulty-hard {
+  background-color: hsl(30, 80%, 93%);
   background-color: oklch(0.95 0.05 50);
+  color: hsl(30, 60%, 40%);
   color: oklch(0.50 0.18 50);
 }
 .difficulty-challenge {
+  background-color: hsl(228, 50%, 90%);
   background-color: oklch(0.92 0.06 250);
+  color: hsl(228, 45%, 24%);
   color: oklch(0.30 0.12 250);
 }
 
@@ -259,6 +359,18 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter {
+    animation: none;
+  }
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
@@ -312,10 +424,18 @@ button:active:not(:disabled) {
   transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* Focus ring */
+/* Focus ring — visible for keyboard users */
 :focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+
+/* Ensure minimum touch target size on mobile (WCAG 2.5.5) */
+@media (pointer: coarse) {
+  button, a, [role="button"], input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
 /* ─── Colour Palettes ────────────────────────────────────────────────────────
@@ -326,54 +446,100 @@ button:active:not(:disabled) {
 
 /* Indigo (default — Deep Navy) */
 .palette-indigo {
+  --primary: hsl(228, 40%, 22%);
   --primary: oklch(0.28 0.08 250);
+  --primary-foreground: hsl(220, 30%, 97%);
   --primary-foreground: oklch(0.98 0.005 240);
+  --ring: hsl(228, 40%, 22%);
   --ring: oklch(0.28 0.08 250);
+  --sidebar-primary: hsl(42, 85%, 58%);
   --sidebar-primary: oklch(0.78 0.14 75);
+  --accent: hsl(42, 85%, 58%);
   --accent: oklch(0.78 0.14 75);
 }
 
 /* Emerald — Forest Green */
 .palette-emerald {
+  --primary: hsl(152, 50%, 30%);
   --primary: oklch(0.38 0.14 155);
+  --primary-foreground: hsl(152, 30%, 97%);
   --primary-foreground: oklch(0.98 0.005 155);
+  --ring: hsl(152, 50%, 30%);
   --ring: oklch(0.38 0.14 155);
+  --sidebar-primary: hsl(48, 70%, 55%);
   --sidebar-primary: oklch(0.72 0.16 65);
+  --accent: hsl(48, 70%, 55%);
   --accent: oklch(0.72 0.16 65);
 }
 
 /* Rose — Warm Pink */
 .palette-rose {
+  --primary: hsl(355, 60%, 38%);
   --primary: oklch(0.45 0.20 10);
+  --primary-foreground: hsl(355, 30%, 97%);
   --primary-foreground: oklch(0.98 0.005 10);
+  --ring: hsl(355, 60%, 38%);
   --ring: oklch(0.45 0.20 10);
+  --sidebar-primary: hsl(42, 85%, 58%);
   --sidebar-primary: oklch(0.78 0.14 75);
+  --accent: hsl(42, 85%, 58%);
   --accent: oklch(0.78 0.14 75);
 }
 
 /* Violet — Purple */
 .palette-violet {
+  --primary: hsl(272, 60%, 33%);
   --primary: oklch(0.40 0.20 290);
+  --primary-foreground: hsl(272, 30%, 97%);
   --primary-foreground: oklch(0.98 0.005 290);
+  --ring: hsl(272, 60%, 33%);
   --ring: oklch(0.40 0.20 290);
+  --sidebar-primary: hsl(48, 70%, 55%);
   --sidebar-primary: oklch(0.72 0.16 65);
+  --accent: hsl(48, 70%, 55%);
   --accent: oklch(0.72 0.16 65);
 }
 
 /* Amber — Warm Gold */
 .palette-amber {
+  --primary: hsl(42, 65%, 44%);
   --primary: oklch(0.55 0.18 65);
+  --primary-foreground: hsl(42, 30%, 12%);
   --primary-foreground: oklch(0.15 0.02 65);
+  --ring: hsl(42, 65%, 44%);
   --ring: oklch(0.55 0.18 65);
+  --sidebar-primary: hsl(42, 85%, 58%);
   --sidebar-primary: oklch(0.78 0.14 75);
+  --accent: hsl(42, 85%, 58%);
   --accent: oklch(0.78 0.14 75);
 }
 
 /* Teal — Cyan-Green */
 .palette-teal {
+  --primary: hsl(185, 45%, 34%);
   --primary: oklch(0.42 0.14 195);
+  --primary-foreground: hsl(185, 30%, 97%);
   --primary-foreground: oklch(0.98 0.005 195);
+  --ring: hsl(185, 45%, 34%);
   --ring: oklch(0.42 0.14 195);
+  --sidebar-primary: hsl(48, 70%, 55%);
   --sidebar-primary: oklch(0.72 0.16 65);
+  --accent: hsl(48, 70%, 55%);
   --accent: oklch(0.72 0.16 65);
+}
+
+/* ─── Safari -webkit-backdrop-filter polyfill ────────────────────────────────
+   Safari requires the -webkit- prefix for backdrop-filter.
+   Tailwind 4 / Lightning CSS adds this automatically in the compiled output,
+   but we also declare it here for any custom CSS that uses backdrop-filter.
+─────────────────────────────────────────────────────────────────────────── */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .safari-backdrop-blur {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  .safari-backdrop-blur-sm {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+  }
 }

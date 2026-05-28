@@ -167,6 +167,52 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    // Target es2019 for broad Safari 14+ / Chrome 79+ / Firefox 67+ compatibility
+    target: ["es2019", "safari14", "chrome79", "firefox67", "edge79"],
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        // Manual chunks to split the 2.7 MB main bundle into smaller pieces
+        manualChunks(id) {
+          // Vendor: React core
+          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom")) {
+            return "vendor-react";
+          }
+          // Vendor: tRPC + TanStack Query
+          if (id.includes("node_modules/@trpc") || id.includes("node_modules/@tanstack")) {
+            return "vendor-trpc";
+          }
+          // Vendor: Radix UI components
+          if (id.includes("node_modules/@radix-ui")) {
+            return "vendor-radix";
+          }
+          // Vendor: Recharts (charting library)
+          if (id.includes("node_modules/recharts") || id.includes("node_modules/d3")) {
+            return "vendor-charts";
+          }
+          // Vendor: Framer Motion
+          if (id.includes("node_modules/framer-motion")) {
+            return "vendor-motion";
+          }
+          // Vendor: Streamdown (markdown renderer)
+          if (id.includes("node_modules/streamdown")) {
+            return "vendor-streamdown";
+          }
+          // Vendor: Mermaid (diagram renderer — very large, isolate it)
+          if (id.includes("node_modules/mermaid") || id.includes("node_modules/cytoscape")) {
+            return "vendor-mermaid";
+          }
+          // Vendor: Stripe
+          if (id.includes("node_modules/@stripe") || id.includes("node_modules/stripe")) {
+            return "vendor-stripe";
+          }
+          // Vendor: all other node_modules
+          if (id.includes("node_modules")) {
+            return "vendor-misc";
+          }
+        },
+      },
+    },
   },
   server: {
     host: true,

@@ -125,10 +125,15 @@ export function registerTutorStreamRoute(app: Express) {
     const mode = VALID_MODES.has(rawMode) ? (rawMode as TutorMode) : "teach";
 
     // ── SSE headers ───────────────────────────────────────────────────────────
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
+    // charset=utf-8 is required by Safari for correct SSE parsing
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
+    // Safari requires explicit transfer-encoding to stream properly
+    res.setHeader("Transfer-Encoding", "chunked");
+    // Prevent proxies from buffering the SSE stream
+    res.setHeader("Access-Control-Allow-Origin", "*");
     res.flushHeaders();
 
     const send = (data: object) => {

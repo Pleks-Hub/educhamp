@@ -1273,3 +1273,49 @@
 - [x] Tests for inactivity detection logic (getInactiveStudents) — server/sprint40.test.ts
 - [x] Tests for duplicate notification prevention — server/sprint40.test.ts
 - [x] Tests for admin course assignment / removal — server/sprint40.test.ts
+
+## Sprint 41 — Cross-Browser Compatibility & Performance [COMPLETE]
+
+### Audit
+- [x] Scan CSS for Safari-incompatible properties (gap on flex, -webkit- prefixes, oklch colors, backdrop-filter)
+- [x] Scan JS/TS for unsupported APIs (structuredClone, crypto.randomUUID, at(), Object.hasOwn, ResizeObserver)
+- [x] Check cookie settings for Safari ITP (SameSite, Secure, Partitioned)
+- [x] Check ES module imports and dynamic imports for Safari compatibility
+- [x] Check SSE (EventSource) usage for Safari compatibility
+- [x] Audit font loading strategy (FOUT/FOIT on Safari)
+- [x] Check Vite build target and browserslist config
+
+### Safari Fixes
+- [x] Fix cookie SameSite/Secure settings for Safari ITP compatibility (lax for Safari UA, none for others on HTTPS)
+- [x] Add -webkit-backdrop-filter prefix in index.css + @supports block
+- [x] Replace oklch() colors with hsl() fallbacks for Safari < 15.4 (dual-declaration pattern in :root and .dark)
+- [x] CSS gap on flex containers: Safari 14.1+ supports gap; Lightning CSS handles prefixes automatically
+- [x] No structuredClone() usage found in client code
+- [x] No crypto.randomUUID() usage found in client code
+- [x] SSE headers: charset=utf-8, Transfer-Encoding: chunked, no-transform already set in tutorStream.ts
+
+### Polyfills & Compatibility
+- [x] Add requestIdleCallback polyfill for Safari < 18 in main.tsx
+- [x] Add queueMicrotask polyfill for Safari < 12.1 in main.tsx
+- [x] Configure Vite build target to es2019 + safari14 for broader compatibility
+- [x] No vite-plugin-legacy needed (target is Safari 14+)
+
+### Responsive Layout
+- [x] Fix touch target sizes (minimum 44x44px) on mobile via @media (pointer: coarse) in index.css
+- [x] Fix horizontal overflow issues on mobile (overflow-x: hidden on html, body)
+- [x] Fix iOS font size inflation (-webkit-text-size-adjust: 100%)
+- [x] Fix Tutor sidebar mobile detection using useIsMobile hook (avoids SSR/hydration issues)
+
+### Performance
+- [x] Enable Vite code splitting for route-based lazy loading (React.lazy + Suspense for all 20+ pages)
+- [x] Main bundle reduced from 2,744 kB to 258 kB (90% reduction)
+- [x] Manual chunks: vendor-react, vendor-trpc, vendor-radix, vendor-charts, vendor-motion, vendor-streamdown, vendor-mermaid
+- [x] Add font-display: swap to Google Fonts imports in index.html
+- [x] Add rel=preconnect for Google Fonts in index.html
+- [x] Add QueryClient staleTime: 30s to reduce redundant refetches on Safari tab focus
+- [x] Remove maximum-scale=1 from viewport meta (accessibility fix)
+
+### Tests & QA
+- [x] Write cross-browser compatibility unit tests (server/sprint41.test.ts, 20 tests)
+- [x] Verify TypeScript 0 errors
+- [x] Run full test suite: 193 tests passing (10 test files)

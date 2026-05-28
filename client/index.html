@@ -3,12 +3,19 @@
 
   <head>
     <meta charset="UTF-8" />
+    <!-- viewport-fit=cover enables full-screen on iPhone notch; removed maximum-scale=1 to allow pinch-zoom (accessibility) -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>EduChamp — AI-Powered Learning Solution</title>
     <meta name="description" content="EduChamp — AI-powered adaptive learning for Grades 3–12. Personalized tutoring, mastery tracking, assessments, and TEKS-aligned curriculum for schools, districts, parents, and students." />
     <meta name="theme-color" content="#1d4ed8" />
+    <!-- iOS Safari web app meta tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="EduChamp" />
+    <!-- Disable automatic phone number detection on iOS -->
+    <meta name="format-detection" content="telephone=no" />
 
     <!-- Favicon & App Icons -->
     <link rel="icon" type="image/x-icon" href="/manus-storage/favicon_105a42f3.ico" />
@@ -47,9 +54,10 @@
     </script>
     <!-- End Google Tag Manager -->
 
-    <!-- Fonts -->
+    <!-- Fonts — preconnect for faster loading on all browsers -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- display=swap prevents FOIT (invisible text) on Safari and all browsers -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..800;1,14..32,300..800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
   </head>
 
