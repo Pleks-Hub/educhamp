@@ -1907,6 +1907,134 @@ function SuppressionManagementTab() {
   );
 }
 
+// ─── Course Requests Audit Tab ──────────────────────────────────────────────
+
+function CourseRequestsAuditTab() {
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 25;
+
+  const { data, isLoading, refetch } = trpc.courses.adminGetAllRequests.useQuery({
+    limit: PAGE_SIZE,
+    offset: page * PAGE_SIZE,
+    status: statusFilter as "all" | "pending" | "approved" | "rejected" | "cancelled",
+  });
+
+  const rows = (data ?? []).filter((r) =>
+    !searchQuery ||
+    r.studentEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.courseName?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const statusBadge = (status: string) => {
+    const map: Record<string, { label: string; className: string }> = {
+      pending: { label: "Pending", className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+      approved: { label: "Approved", className: "bg-green-100 text-green-800 border-green-200" },
+      rejected: { label: "Rejected", className: "bg-red-100 text-red-800 border-red-200" },
+      cancelled: { label: "Cancelled", className: "bg-gray-100 text-gray-600 border-gray-200" },
+    };
+    const s = map[status] ?? { label: status, className: "bg-gray-100 text-gray-600" };
+    return <Badge variant="outline" className={s.className}>{s.label}</Badge>;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Course Request Audit Log</h3>
+          <p className="text-sm text-muted-foreground">All student course requests and parent approval actions.</p>
+        </div>
+        <NavTooltip content={ADMIN_ACTION_TOOLTIPS.refresh}>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </Button>
+        </NavTooltip>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by student email or course name…"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
+            className="pl-9"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
+          <SelectTrigger className="w-44"><SelectValue placeholder="All Statuses" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-md border overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Student</TableHead>
+              <TableHead>Course</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Requested</TableHead>
+              <TableHead>Actioned By</TableHead>
+              <TableHead>Actioned At</TableHead>
+              <TableHead>Rejection Reason</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 7 }).map((__, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}
+                </TableRow>
+              ))
+            ) : rows.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No course requests found.</TableCell></TableRow>
+            ) : (
+              rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium">{r.studentName ?? r.studentEmail ?? `#${r.studentId}`}</TableCell>
+                  <TableCell>{r.courseName}</TableCell>
+                  <TableCell>{statusBadge(r.status)}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "—"}</TableCell>
+                  <TableCell className="text-sm">
+                    {r.approvedBy ? `Admin #${r.approvedBy}` : r.rejectedBy ? `Admin #${r.rejectedBy}` : "—"}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{r.approvedAt ? new Date(r.approvedAt).toLocaleDateString() : r.rejectedAt ? new Date(r.rejectedAt).toLocaleDateString() : "—"}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{r.rejectionReason ?? "—"}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Showing {Math.min(page * PAGE_SIZE + 1, rows.length)}–{Math.min((page + 1) * PAGE_SIZE, rows.length)} of {rows.length} visible
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" disabled={(data ?? []).length < PAGE_SIZE} onClick={() => setPage(p => p + 1)}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main AdminDashboard ─────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -2001,6 +2129,9 @@ export default function AdminDashboard() {
             <NavTooltip content={ADMIN_TAB_TOOLTIPS.suppression} side="bottom" delayDuration={700}>
               <TabsTrigger value="suppression" className="gap-2"><MailX className="h-4 w-4" /> Suppression</TabsTrigger>
             </NavTooltip>
+            <NavTooltip content={{ title: "Course Requests", description: "View all student course requests and parent approval/rejection audit trail." }} side="bottom" delayDuration={700}>
+              <TabsTrigger value="courserequests" className="gap-2"><BookOpen className="h-4 w-4" /> Course Requests</TabsTrigger>
+            </NavTooltip>
             <NavTooltip content={{ title: "Demo Requests", description: "Review and respond to inbound demo or trial requests from prospective school customers." }} side="bottom" delayDuration={700}>
               <TabsTrigger value="demorequests" className="gap-2"><Building2 className="h-4 w-4" /> Demo Requests</TabsTrigger>
             </NavTooltip>
@@ -2025,6 +2156,7 @@ export default function AdminDashboard() {
           <TabsContent value="audit"><AuditLogTab /></TabsContent>
           <TabsContent value="emaillogs"><EmailLogsTab /></TabsContent>
           <TabsContent value="suppression"><SuppressionManagementTab /></TabsContent>
+          <TabsContent value="courserequests"><CourseRequestsAuditTab /></TabsContent>
           <TabsContent value="demorequests"><DemoRequestsTab /></TabsContent>
           <TabsContent value="coupons"><CouponManagerTab /></TabsContent>
           <TabsContent value="subscriptions"><SubscriptionCRMTab /></TabsContent>

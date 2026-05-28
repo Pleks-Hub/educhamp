@@ -1,5 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
-import { parentRouter } from "./routers/parent";
+import { parentRouter, courseRequestTokenRouter } from "./routers/parent";
 import { coParentRouter } from "./routers/coParent";
 import { authEnhancementsRouter } from "./routers/authEnhancements";
 import { parentToolsRouter } from "./routers/parentTools";
@@ -58,6 +58,7 @@ export const appRouter = router({
   system: systemRouter,
   admin: adminRouter,
   parent: parentRouter,
+  courseRequest: courseRequestTokenRouter,
   coParent: coParentRouter,
   authEnhancements: authEnhancementsRouter,
   parentTools: parentToolsRouter,
@@ -800,6 +801,123 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await updateTutorSessionMessages(input.sessionId, []);
         return { success: true };
+      }),
+  }),
+
+  // ─── Course Requests (Student-facing) ──────────────────────────────────────────
+  courses: router({
+    /**
+     * Student: request access to a course. Creates a pending request and emails the parent.
+     */
+    requestCourse: protectedProcedure
+      .input(z.object({ courseId: z.number(), origin: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const { createCourseRequest: doCreate, getParentsByChildId, getCourseById: getCourse } = await import("./db");
+        const { buildCourseRequestNotificationEmail } = await import("./emailTemplates/courseRequestNotification");
+        const { sendEmail } = await import("./emailService");
+
+        const course = await getCourse(input.courseId);
+        if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
+
+        const reqResult = await doCreate(ctx.user.id, input.courseId, ctx.user.id);
+        if (reqResult.alreadyExists) {
+          return { success: true, alreadyExists: true, requestId: reqResult.request.id };
+        }
+
+        // Notify all linked parents
+        const parents = await getParentsByChildId(ctx.user.id);
+        const newReq = reqResult.request as { id: number; approveToken: string; tokenExpiresAt: Date };
+        for (const parent of parents) {
+          if (!parent.parentEmail) continue;
+          const approveUrl = `${input.origin}/api/course-request/token?token=${newReq.approveToken}&action=approve`;
+          const rejectUrl = `${input.origin}/api/course-request/token?token=${newReq.approveToken}&action=reject`;
+          const dashboardUrl = `${input.origin}/parent`;
+          const email = buildCourseRequestNotificationEmail({
+            parentName: parent.parentName ?? "Parent",
+            studentName: ctx.user.name ?? "Your student",
+            courseName: course.title,
+            requestedAt: new Date(),
+            approveUrl,
+            rejectUrl,
+            dashboardUrl,
+          });
+          await sendEmail({
+            to: parent.parentEmail,
+            subject: email.subject,
+            html: email.html,
+            text: email.text,
+            templateName: "courseRequestNotification",
+            referenceId: `course-request-${newReq.id}`,
+          });
+        }
+        return { success: true, alreadyExists: false, requestId: newReq.id };
+      }),
+
+    /**
+     * Student: get all their own course requests with status.
+     */
+    getMyCourseRequests: protectedProcedure.query(async ({ ctx }) => {
+      const { getCourseRequestsForStudent } = await import("./db");
+      const rows = await getCourseRequestsForStudent(ctx.user.id);
+      return rows.map((r) => ({
+        id: r.request.id,
+        courseId: r.request.courseId,
+        courseName: r.course.title,
+        status: r.request.status,
+        rejectionReason: r.request.rejectionReason,
+        approvedAt: r.request.approvedAt,
+        rejectedAt: r.request.rejectedAt,
+        createdAt: r.request.createdAt,
+      }));
+    }),
+
+    /**
+     * Student: cancel their own pending course request.
+     */
+    cancelCourseRequest: protectedProcedure
+      .input(z.object({ requestId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const { getCourseRequestById: getReq, cancelCourseRequest: doCancel } = await import("./db");
+        const request = await getReq(input.requestId);
+        if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Request not found." });
+        if (request.requestedBy !== ctx.user.id && request.studentId !== ctx.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You cannot cancel this request." });
+        }
+        if (request.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "Only pending requests can be cancelled." });
+        await doCancel(input.requestId);
+        return { success: true };
+      }),
+
+    /**
+     * Admin: get all course requests with full audit trail.
+     */
+    adminGetAllRequests: protectedProcedure
+      .input(z.object({
+        limit: z.number().min(1).max(200).default(50),
+        offset: z.number().default(0),
+        status: z.enum(["pending", "approved", "rejected", "cancelled", "all"]).default("all"),
+      }))
+      .query(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+        const { getAllCourseRequestsAdmin } = await import("./db");
+        const statusFilter = input.status === "all" ? undefined : input.status;
+        const rows = await getAllCourseRequestsAdmin(input.limit, input.offset, statusFilter);
+        return rows.map((r) => ({
+          id: r.request.id,
+          studentId: r.request.studentId,
+          studentName: r.student.name,
+          studentEmail: r.student.email,
+          courseId: r.request.courseId,
+          courseName: r.course.title,
+          status: r.request.status,
+          requestedBy: r.request.requestedBy,
+          approvedBy: r.request.approvedBy,
+          rejectedBy: r.request.rejectedBy,
+          rejectionReason: r.request.rejectionReason,
+          approvedAt: r.request.approvedAt,
+          rejectedAt: r.request.rejectedAt,
+          createdAt: r.request.createdAt,
+        }));
       }),
   }),
 

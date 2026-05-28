@@ -1128,3 +1128,50 @@
 ### Diagnostic Test
 - [x] Begin Diagnostic button wrapped with NavTooltip
 - [x] Next/Submit button wrapped with NavTooltip (dynamic content based on question position)
+
+## Sprint 38 — Parent-Approval Course Assignment Workflow
+
+### Database Schema
+- [x] Add courseRequests table: id, studentId, courseId, requestedBy, status (pending|approved|rejected|cancelled), approvedBy, rejectedBy, approvedAt, rejectedAt, rejectionReason, approvalToken, tokenExpiresAt, createdAt, updatedAt
+- [x] Add indexes on courseRequests(studentId, status) and courseRequests(approvalToken)
+- [x] Generate migration and apply via webdev_execute_sql (migration 0025)
+
+### Server — tRPC Procedures
+- [x] courses.requestCourse — student submits course request (creates pending row, sends parent notification email)
+- [x] courses.getMyRequests — student views their own course requests with status
+- [x] courses.cancelRequest — student cancels a pending request
+- [x] parent.getPendingRequests — parent views all pending course requests for their students
+- [x] parent.getAllRequests — parent views full request history for their students
+- [x] parent.approveRequest — parent approves a course request (enrolls student, updates status, sends student email)
+- [x] parent.rejectRequest — parent rejects a course request (updates status, stores reason, sends student email)
+- [x] parent.assignCourse — parent directly assigns a course to a student (no request needed)
+- [x] parent.removeCourse — parent removes a course from a student
+- [x] courses.approveByToken — public procedure for email approve/reject link (token-based, no auth required)
+- [x] admin.getCourseRequestAudit — admin views full request history with actor names and timestamps
+
+### Email Templates
+- [x] emailTemplates/courseRequestNotification.ts — parent notification email with approve/reject buttons
+- [x] emailTemplates/courseRequestApproved.ts — student notification email when approved
+- [x] emailTemplates/courseRequestRejected.ts — student notification email when rejected with reason
+
+### Student UI
+- [x] Courses browse page: show "Request Access" button for courses not yet enrolled or requested
+- [x] Show "Pending Approval" badge for courses with pending requests
+- [x] Show "Rejected" badge with reason for rejected requests
+- [x] My Requests section: list all requests with status badges and cancel button for pending
+
+### Parent Dashboard UI
+- [x] Pending Approvals section: list pending requests with approve/reject buttons
+- [x] Rejection reason input dialog before rejecting
+- [x] Request history tab: full history with status badges
+- [x] Manage Courses section: list enrolled courses per student with remove button
+- [x] Add Course section: parent can directly assign courses to a student
+
+### Admin Dashboard
+- [x] Course Requests tab in Admin Dashboard: full audit table (student, course, parent, status, timestamps, actor)
+- [x] Filter by status, student, date range
+
+### Security
+- [x] Students cannot enroll in courses directly — all paths go through request or parent assignment
+- [x] approveByToken validates token expiry and single-use (processCourseRequestToken in db.ts)
+- [x] protectedProcedure checks role for all parent/admin procedures

@@ -1034,3 +1034,40 @@ export const suppressionAuditLog = mysqlTable("suppressionAuditLog", {
 }));
 
 export type SuppressionAuditLogEntry = typeof suppressionAuditLog.$inferSelect;
+
+// ─── Course Requests ──────────────────────────────────────────────────────────
+/**
+ * Tracks student course access requests that require parent/guardian approval.
+ * Students submit requests; parents approve or reject via dashboard or email link.
+ * Direct parent-initiated assignments bypass this table (they go straight to userCourseEnrollments).
+ */
+export const courseRequests = mysqlTable("courseRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  studentId: int("studentId").notNull(),                     // FK → users.id (the student)
+  courseId: int("courseId").notNull(),                       // FK → courses.id
+  requestedBy: int("requestedBy").notNull(),                 // FK → users.id (always the student)
+  status: mysqlEnum("status", ["pending", "approved", "rejected", "cancelled"]).notNull().default("pending"),
+
+  // Approval / rejection actors
+  approvedBy: int("approvedBy"),                             // FK → users.id (parent who approved)
+  rejectedBy: int("rejectedBy"),                             // FK → users.id (parent who rejected)
+  approvedAt: timestamp("approvedAt"),
+  rejectedAt: timestamp("rejectedAt"),
+  rejectionReason: text("rejectionReason"),                  // optional message from parent
+
+  // Email-link approval token (single-use, 7-day expiry)
+  approvalToken: varchar("approvalToken", { length: 128 }).unique(),
+  tokenAction: mysqlEnum("tokenAction", ["approve", "reject"]),  // which action this token performs
+  tokenExpiresAt: timestamp("tokenExpiresAt"),
+  tokenUsedAt: timestamp("tokenUsedAt"),                     // set when token is consumed
+
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  studentStatusIdx: index("courseRequests_studentId_status_idx").on(t.studentId, t.status),
+  tokenIdx: index("courseRequests_approvalToken_idx").on(t.approvalToken),
+  courseIdIdx: index("courseRequests_courseId_idx").on(t.courseId),
+}));
+
+export type CourseRequest = typeof courseRequests.$inferSelect;
+export type InsertCourseRequest = typeof courseRequests.$inferInsert;

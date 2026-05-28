@@ -17,8 +17,20 @@ import {
   getAllUnits,
   getUserMastery,
   getAllCourseProgressForUser,
+  getCourseById,
+  enrollUserInCourse,
+  removeStudentCourseEnrollment,
+  getUserCourseEnrollments,
+  createCourseRequest,
+  getCourseRequestsForStudent,
+  getPendingRequestsForParentStudents,
+  getAllRequestsForParentStudents,
+  approveCourseRequest,
+  rejectCourseRequest,
+  getCourseRequestById,
 } from "../db";
 import { getMasteryLabel, getAdaptivePath } from "../educhamp-helpers";
+import { sendEmail } from "../emailService";
 
 export const parentRouter = router({
   /**
@@ -322,7 +334,169 @@ export const parentRouter = router({
         await updateUserAccountType(ctx.user.id, "parent");
       }
       const token = await createEnrolmentInvitation(ctx.user.id, input.childEmail, input.childName);
-      // In a full implementation, you'd send an email here with the token link
       return { success: true, token };
+    }),
+
+  // ─── Course Request Procedures ────────────────────────────────────────────
+
+  /**
+   * Parent: list all pending course requests for their linked students.
+   */
+  getPendingCourseRequests: protectedProcedure.query(async ({ ctx }) => {
+    const links = await getChildrenForParent(ctx.user.id);
+    const studentIds = links.map((l) => l.child?.id).filter(Boolean) as number[];
+    if (studentIds.length === 0) return [];
+    const rows = await getPendingRequestsForParentStudents(studentIds);
+    return rows.map((r) => ({
+      id: r.request.id,
+      studentId: r.request.studentId,
+      courseId: r.request.courseId,
+      courseName: r.course.title,
+      courseDescription: r.course.description,
+      status: r.request.status,
+      createdAt: r.request.createdAt,
+    }));
+  }),
+
+  /**
+   * Parent: list all course requests (all statuses) for their linked students.
+   */
+  getAllCourseRequests: protectedProcedure.query(async ({ ctx }) => {
+    const links = await getChildrenForParent(ctx.user.id);
+    const studentIds = links.map((l) => l.child?.id).filter(Boolean) as number[];
+    if (studentIds.length === 0) return [];
+    const rows = await getAllRequestsForParentStudents(studentIds);
+    return rows.map((r) => ({
+      id: r.request.id,
+      studentId: r.request.studentId,
+      courseId: r.request.courseId,
+      courseName: r.course.title,
+      status: r.request.status,
+      approvedAt: r.request.approvedAt,
+      rejectedAt: r.request.rejectedAt,
+      rejectionReason: r.request.rejectionReason,
+      createdAt: r.request.createdAt,
+    }));
+  }),
+
+  /**
+   * Parent: approve a pending course request and enroll the student.
+   */
+  approveCourseRequest: protectedProcedure
+    .input(z.object({ requestId: z.number(), origin: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const request = await getCourseRequestById(input.requestId);
+      if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Request not found." });
+      if (request.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "Request is no longer pending." });
+
+      // Verify the parent owns this student
+      const link = await getParentChildLink(ctx.user.id, request.studentId);
+      if (!link || !link.isActive) throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this student." });
+
+      await approveCourseRequest(input.requestId, ctx.user.id);
+      await enrollUserInCourse(request.studentId, request.courseId);
+      return { success: true };
+    }),
+
+  /**
+   * Parent: reject a pending course request.
+   */
+  rejectCourseRequest: protectedProcedure
+    .input(z.object({ requestId: z.number(), rejectionReason: z.string().optional() }))
+    .mutation(async ({ ctx, input }) => {
+      const request = await getCourseRequestById(input.requestId);
+      if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Request not found." });
+      if (request.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "Request is no longer pending." });
+
+      const link = await getParentChildLink(ctx.user.id, request.studentId);
+      if (!link || !link.isActive) throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this student." });
+
+      await rejectCourseRequest(input.requestId, ctx.user.id, input.rejectionReason);
+      return { success: true };
+    }),
+
+  /**
+   * Parent: directly assign a course to a linked student (no request needed).
+   */
+  assignCourseToStudent: protectedProcedure
+    .input(z.object({ studentId: z.number(), courseId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const link = await getParentChildLink(ctx.user.id, input.studentId);
+      if (!link || !link.isActive) throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this student." });
+      const course = await getCourseById(input.courseId);
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found." });
+      void course; // type-checked
+      await enrollUserInCourse(input.studentId, input.courseId);
+      return { success: true };
+    }),
+
+  /**
+   * Parent: remove a course from a linked student's enrollments.
+   */
+  removeCourseFromStudent: protectedProcedure
+    .input(z.object({ studentId: z.number(), courseId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const link = await getParentChildLink(ctx.user.id, input.studentId);
+      if (!link || !link.isActive) throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this student." });
+      await removeStudentCourseEnrollment(input.studentId, input.courseId);
+      return { success: true };
+    }),
+
+  /**
+   * Parent: get all courses for a linked student (enrolled + available).
+   */
+  getStudentCourses: protectedProcedure
+    .input(z.object({ studentId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const link = await getParentChildLink(ctx.user.id, input.studentId);
+      if (!link || !link.isActive) throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this student." });
+      const enrollments = await getUserCourseEnrollments(input.studentId);
+      return enrollments.map((e) => ({
+        courseId: e.course.id,
+        courseName: e.course.title,
+        description: e.course.description,
+        isActive: e.enrollment.isActive,
+        isCurrent: e.enrollment.isCurrent,
+      }));
+    }),
+
+  /**
+   * Parent: get all available courses (for the Add Course dialog).
+   */
+  getAvailableCourses: protectedProcedure.query(async () => {
+    const { getAllCourses } = await import("../db");
+    const all = await getAllCourses();
+    return all.map((c) => ({ id: c.id, title: c.title, description: c.description }));
+  }),
+});
+
+// ─── Public token-based approve/reject endpoint ───────────────────────────────
+// Exported separately so it can be registered as a publicProcedure in routers.ts
+import { publicProcedure } from "../_core/trpc";
+
+export const courseRequestTokenRouter = router({
+  /**
+   * Public: approve or reject a course request via email token link.
+   * Token encodes the action (approve/reject) and is single-use with 7-day expiry.
+   */
+  handleToken: publicProcedure
+    .input(z.object({ token: z.string(), action: z.enum(["approve", "reject"]) }))
+    .mutation(async ({ input }) => {
+      const { getCourseRequestByToken, approveCourseRequest: doApprove, rejectCourseRequest: doReject, enrollUserInCourse: doEnroll } = await import("../db");
+      const request = await getCourseRequestByToken(input.token);
+      if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Invalid or expired link." });
+      if (request.tokenUsedAt) throw new TRPCError({ code: "BAD_REQUEST", message: "This link has already been used." });
+      if (request.tokenExpiresAt && new Date() > request.tokenExpiresAt) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "This link has expired. Please log in to approve or reject from your dashboard." });
+      }
+      if (request.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "This request has already been actioned." });
+
+      if (input.action === "approve") {
+        await doApprove(request.id, 0); // 0 = system/email action
+        await doEnroll(request.studentId, request.courseId);
+      } else {
+        await doReject(request.id, 0, "Rejected via email link");
+      }
+      return { success: true, action: input.action };
     }),
 });

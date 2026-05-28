@@ -9,15 +9,18 @@ import {
   BookOpen,
   CheckCircle2,
   ChevronRight,
+  Clock,
   FlaskConical,
   Globe,
   Loader2,
   Monitor,
   Search,
+  Send,
   Sparkles,
   Star,
   Languages,
   Calculator,
+  XCircle,
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -72,14 +75,22 @@ export default function CourseCatalog() {
   const [search, setSearch] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [gradeFilter, setGradeFilter] = useState("all");
-  const [enrollingId, setEnrollingId] = useState<number | null>(null);
+  const [requestingId, setRequestingId] = useState<number | null>(null);
 
   const catalogQuery = trpc.admin.getCourseCatalog.useQuery();
+  const myRequestsQuery = trpc.courses.getMyCourseRequests.useQuery();
   const utils = trpc.useUtils();
-  const enrollSelf = trpc.admin.enrollSelf.useMutation({
-    onSuccess: () => {
-      utils.admin.getCourseCatalog.invalidate();
-      utils.admin.myEnrollments.invalidate();
+  const requestCourse = trpc.courses.requestCourse.useMutation({
+    onSuccess: (data) => {
+      utils.courses.getMyCourseRequests.invalidate();
+      if (data.alreadyExists) {
+        toast.info("Request already submitted", { description: "Your parent has been notified. Check back for the status." });
+      } else {
+        toast.success("Course request submitted!", { description: "Your parent or guardian will receive an email to approve or reject this request." });
+      }
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Failed to submit request.");
     },
   });
   const setActiveCourse = trpc.admin.setActiveCourse.useMutation({
@@ -87,6 +98,15 @@ export default function CourseCatalog() {
       utils.admin.myEnrollments.invalidate();
     },
   });
+
+  // Build a map of courseId → request status for quick lookup
+  const requestStatusMap = useMemo(() => {
+    const map = new Map<number, { status: string; rejectionReason: string | null }>();
+    for (const r of myRequestsQuery.data ?? []) {
+      map.set(r.courseId, { status: r.status, rejectionReason: r.rejectionReason ?? null });
+    }
+    return map;
+  }, [myRequestsQuery.data]);
 
   const courses = catalogQuery.data ?? [];
 
@@ -135,18 +155,12 @@ export default function CourseCatalog() {
     return Array.from(map.entries()).sort(([a], [b]) => gradeSort(a, b));
   }, [filtered]);
 
-  async function handleEnroll(courseId: number, title: string) {
-    setEnrollingId(courseId);
+  async function handleRequest(courseId: number) {
+    setRequestingId(courseId);
     try {
-      await enrollSelf.mutateAsync({ courseId });
-      toast.success(`Enrolled in ${title}!`, {
-        description: "Go to your curriculum to start learning.",
-        action: { label: "Open Curriculum", onClick: () => navigate("/curriculum") },
-      });
-    } catch (err: any) {
-      toast.error(err?.message ?? "Enrollment failed. Please try again.");
+      await requestCourse.mutateAsync({ courseId, origin: window.location.origin });
     } finally {
-      setEnrollingId(null);
+      setRequestingId(null);
     }
   }
 
@@ -161,6 +175,7 @@ export default function CourseCatalog() {
   }
 
   const recommendedCount = courses.filter((c) => c.isRecommended && !c.isEnrolled).length;
+  const pendingCount = (myRequestsQuery.data ?? []).filter((r) => r.status === "pending").length;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
@@ -170,12 +185,20 @@ export default function CourseCatalog() {
         <p className="text-slate-500 mt-1">
           Browse all 56+ courses across Grades 3–12 and AP/SAT. Enrol in any course and start learning today.
         </p>
-        {recommendedCount > 0 && (
-          <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-sm text-indigo-800">
-            <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-            <span><strong>{recommendedCount}</strong> course{recommendedCount > 1 ? "s" : ""} recommended for your grade level</span>
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2 mt-3">
+          {recommendedCount > 0 && (
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-sm text-indigo-800">
+              <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
+              <span><strong>{recommendedCount}</strong> course{recommendedCount > 1 ? "s" : ""} recommended for your grade level</span>
+            </div>
+          )}
+          {pendingCount > 0 && (
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-sm text-amber-800">
+              <Clock className="h-3.5 w-3.5 text-amber-500" />
+              <span><strong>{pendingCount}</strong> request{pendingCount > 1 ? "s" : ""} awaiting parent approval</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -249,7 +272,7 @@ export default function CourseCatalog() {
             {gradeCourses.map((course) => {
               const meta = subjectMeta(course.subject);
               const SubjectIcon = meta.icon;
-              const isEnrolling = enrollingId === course.id;
+
               return (
                 <div
                   key={course.id}
@@ -296,32 +319,70 @@ export default function CourseCatalog() {
                   )}
 
                   {/* Action button */}
-                  {course.isEnrolled ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full gap-1 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                      onClick={() => handleSwitch(course.id, course.title)}
-                    >
-                      Switch to this course <ChevronRight className="h-3.5 w-3.5" />
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      className={`w-full gap-1 ${
-                        course.isRecommended
-                          ? "bg-indigo-600 hover:bg-indigo-700"
-                          : "bg-slate-700 hover:bg-slate-800"
-                      }`}
-                      onClick={() => handleEnroll(course.id, course.title)}
-                      disabled={isEnrolling}
-                    >
-                      {isEnrolling ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : null}
-                      Enrol Now
-                    </Button>
-                  )}
+                  {(() => {
+                    const reqStatus = requestStatusMap.get(course.id);
+                    const isRequesting = requestingId === course.id;
+                    if (course.isEnrolled) {
+                      return (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full gap-1 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                          onClick={() => handleSwitch(course.id, course.title)}
+                        >
+                          Switch to this course <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                      );
+                    }
+                    if (reqStatus?.status === "pending") {
+                      return (
+                        <div className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium">
+                          <Clock className="h-3.5 w-3.5" />
+                          Awaiting parent approval
+                        </div>
+                      );
+                    }
+                    if (reqStatus?.status === "approved") {
+                      return (
+                        <div className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Approved — enrolling…
+                        </div>
+                      );
+                    }
+                    if (reqStatus?.status === "rejected") {
+                      return (
+                        <div className="w-full space-y-1.5">
+                          <div className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-red-50 border border-red-200 text-red-600 text-xs font-medium">
+                            <XCircle className="h-3.5 w-3.5" />
+                            Your parent did not approve this request
+                          </div>
+                          {reqStatus.rejectionReason && (
+                            <p className="text-xs text-slate-500 text-center line-clamp-2">"{reqStatus.rejectionReason}"</p>
+                          )}
+                        </div>
+                      );
+                    }
+                    return (
+                      <Button
+                        size="sm"
+                        className={`w-full gap-1 ${
+                          course.isRecommended
+                            ? "bg-indigo-600 hover:bg-indigo-700"
+                            : "bg-slate-700 hover:bg-slate-800"
+                        }`}
+                        onClick={() => handleRequest(course.id)}
+                        disabled={isRequesting}
+                      >
+                        {isRequesting ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Send className="h-3.5 w-3.5" />
+                        )}
+                        Request Access
+                      </Button>
+                    );
+                  })()}
                 </div>
               );
             })}

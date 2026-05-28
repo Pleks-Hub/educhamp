@@ -617,7 +617,7 @@ export async function getUserById(userId: number) {
   return result[0] ?? null;
 }
 
-export async function getParentsByChildId(childId: number): Promise<{ parentId: number; parentName: string | null; nickname: string | null }[]> {
+export async function getParentsByChildId(childId: number): Promise<{ parentId: number; parentName: string | null; nickname: string | null; parentEmail: string | null }[]> {
   const db = await getDb();
   if (!db) return [];
   const rows = await db
@@ -625,6 +625,7 @@ export async function getParentsByChildId(childId: number): Promise<{ parentId: 
       parentId: parentChildren.parentId,
       parentName: users.name,
       nickname: parentChildren.nickname,
+      parentEmail: users.email,
     })
     .from(parentChildren)
     .innerJoin(users, eq(users.id, parentChildren.parentId))
@@ -2342,4 +2343,182 @@ export async function getPaymentAnalytics() {
     annualCount,
     recentEvents,
   };
+}
+
+// ─── Course Requests ──────────────────────────────────────────────────────────
+
+import { courseRequests } from "../drizzle/schema";
+import crypto from "crypto";
+
+export async function createCourseRequest(
+  studentId: number,
+  courseId: number,
+  requestedBy: number
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  // Check for existing pending or approved request
+  const existing = await db.select().from(courseRequests)
+    .where(and(
+      eq(courseRequests.studentId, studentId),
+      eq(courseRequests.courseId, courseId),
+      inArray(courseRequests.status, ["pending", "approved"])
+    ))
+    .limit(1);
+  if (existing.length > 0) return { alreadyExists: true, request: existing[0] };
+
+  // Generate two single-use tokens (one for approve, one for reject)
+  const approveToken = crypto.randomBytes(32).toString("hex");
+  const tokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+  const [result] = await db.insert(courseRequests).values({
+    studentId,
+    courseId,
+    requestedBy,
+    status: "pending",
+    approvalToken: approveToken,
+    tokenAction: "approve",
+    tokenExpiresAt,
+  });
+  const id = (result as { insertId: number }).insertId;
+  return { alreadyExists: false, request: { id, approveToken, tokenExpiresAt } };
+}
+
+export async function getCourseRequestById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(courseRequests).where(eq(courseRequests.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getCourseRequestByToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(courseRequests)
+    .where(eq(courseRequests.approvalToken, token))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getCourseRequestsForStudent(studentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ request: courseRequests, course: courses })
+    .from(courseRequests)
+    .innerJoin(courses, eq(courseRequests.courseId, courses.id))
+    .where(eq(courseRequests.studentId, studentId))
+    .orderBy(courseRequests.createdAt);
+}
+
+export async function getPendingRequestsForParentStudents(studentIds: number[]) {
+  const db = await getDb();
+  if (!db) return [];
+  if (studentIds.length === 0) return [];
+  return db.select({ request: courseRequests, course: courses })
+    .from(courseRequests)
+    .innerJoin(courses, eq(courseRequests.courseId, courses.id))
+    .where(and(
+      inArray(courseRequests.studentId, studentIds),
+      eq(courseRequests.status, "pending")
+    ))
+    .orderBy(courseRequests.createdAt);
+}
+
+export async function getAllRequestsForParentStudents(studentIds: number[]) {
+  const db = await getDb();
+  if (!db) return [];
+  if (studentIds.length === 0) return [];
+  return db.select({ request: courseRequests, course: courses })
+    .from(courseRequests)
+    .innerJoin(courses, eq(courseRequests.courseId, courses.id))
+    .where(inArray(courseRequests.studentId, studentIds))
+    .orderBy(courseRequests.createdAt);
+}
+
+export async function approveCourseRequest(requestId: number, approvedBy: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(courseRequests)
+    .set({ status: "approved", approvedBy, approvedAt: new Date(), tokenUsedAt: new Date() })
+    .where(eq(courseRequests.id, requestId));
+}
+
+export async function rejectCourseRequest(requestId: number, rejectedBy: number, rejectionReason?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(courseRequests)
+    .set({ status: "rejected", rejectedBy, rejectedAt: new Date(), rejectionReason: rejectionReason ?? null, tokenUsedAt: new Date() })
+    .where(eq(courseRequests.id, requestId));
+}
+
+export async function cancelCourseRequest(requestId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(courseRequests)
+    .set({ status: "cancelled" })
+    .where(eq(courseRequests.id, requestId));
+}
+
+export async function getAllCourseRequestsAdmin(limit = 100, offset = 0, statusFilter?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = statusFilter
+    ? [eq(courseRequests.status, statusFilter as "pending" | "approved" | "rejected" | "cancelled")]
+    : [];
+  return db.select({
+    request: courseRequests,
+    course: courses,
+    student: users,
+  })
+    .from(courseRequests)
+    .innerJoin(courses, eq(courseRequests.courseId, courses.id))
+    .innerJoin(users, eq(courseRequests.studentId, users.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(courseRequests.createdAt)
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function removeStudentCourseEnrollment(studentId: number, courseId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(userCourseEnrollments)
+    .set({ isActive: false })
+    .where(and(
+      eq(userCourseEnrollments.userId, studentId),
+      eq(userCourseEnrollments.courseId, courseId)
+    ));
+}
+
+export async function processCourseRequestToken(
+  token: string,
+  action: 'approve' | 'reject'
+): Promise<{ success: boolean; reason?: 'expired' | 'already_actioned' | 'not_found' }> {
+  const db = await getDb();
+  if (!db) return { success: false, reason: 'not_found' };
+
+  const rows = await db.select().from(courseRequests)
+    .where(eq(courseRequests.approvalToken, token))
+    .limit(1);
+
+  const req = rows[0];
+  if (!req) return { success: false, reason: 'not_found' };
+  if (req.status !== 'pending') return { success: false, reason: 'already_actioned' };
+  if (req.tokenExpiresAt && new Date() > new Date(req.tokenExpiresAt)) {
+    return { success: false, reason: 'expired' };
+  }
+
+  if (action === 'approve') {
+    await db.update(courseRequests)
+      .set({ status: 'approved', approvedAt: new Date(), tokenUsedAt: new Date() })
+      .where(eq(courseRequests.id, req.id));
+    // Enroll the student in the course (ignore if already enrolled)
+    await enrollUserInCourse(req.studentId, req.courseId).catch(() => {});
+  } else {
+    await db.update(courseRequests)
+      .set({ status: 'rejected', rejectedAt: new Date(), tokenUsedAt: new Date() })
+      .where(eq(courseRequests.id, req.id));
+  }
+
+  return { success: true };
 }

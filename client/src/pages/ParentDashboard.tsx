@@ -17,7 +17,8 @@ import {
   ChevronRight, GraduationCap, BarChart3, CheckCircle2, Clock,
   Pencil, Trash2, Mail, Plus, X, Star, Target, Brain, ShieldAlert,
   FileText, Download, StickyNote, Flag, TrendingDown, Zap,
-  Loader2, Link2, Copy, Bell, CheckCheck, XCircle, UserCheck, Info
+  Loader2, Link2, Copy, Bell, CheckCheck, XCircle, UserCheck, Info,
+  Send, BookMarked, ThumbsUp, ThumbsDown, AlertCircle
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { Streamdown } from "streamdown";
@@ -675,8 +676,203 @@ const SUBJECT_COLORS_PARENT: Record<string, { bg: string; text: string }> = {
   "World Languages": { bg: "bg-rose-50", text: "text-rose-700" },
 };
 
+// ─── Course Requests Panel (per child) ─────────────────────────────────────
+
+function CourseRequestsPanel({ childId, childName }: { childId: number; childName: string }) {
+  const utils = trpc.useUtils();
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectingRequest, setRejectingRequest] = useState<{ id: number; courseName: string } | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+
+  const { data: requests, isLoading } = trpc.parent.getPendingCourseRequests.useQuery();
+  const { data: allRequests, isLoading: allLoading } = trpc.parent.getAllCourseRequests.useQuery();
+
+  const childRequests = (requests ?? []).filter((r) => r.studentId === childId);
+  const childAllRequests = (allRequests ?? []).filter((r) => r.studentId === childId);
+
+  const approve = trpc.parent.approveCourseRequest.useMutation({
+    onSuccess: () => {
+      toast.success("Course approved!", { description: `${childName} has been enrolled.` });
+      utils.parent.getPendingCourseRequests.invalidate();
+      utils.parent.getAllCourseRequests.invalidate();
+      utils.parent.getChildAllCourses.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const reject = trpc.parent.rejectCourseRequest.useMutation({
+    onSuccess: () => {
+      toast.success("Request rejected.");
+      setRejectDialogOpen(false);
+      setRejectingRequest(null);
+      setRejectionReason("");
+      utils.parent.getPendingCourseRequests.invalidate();
+      utils.parent.getAllCourseRequests.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (isLoading || allLoading) {
+    return <div className="h-24 rounded-xl bg-muted animate-pulse" />;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Pending requests */}
+      {childRequests.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-amber-500" />
+            <h4 className="text-sm font-semibold">Pending Approval ({childRequests.length})</h4>
+          </div>
+          {childRequests.map((req) => (
+            <div key={req.id} className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-amber-900">{req.courseName}</p>
+                  {req.courseDescription && (
+                    <p className="text-xs text-amber-700 line-clamp-2 mt-0.5">{req.courseDescription}</p>
+                  )}
+                  <p className="text-xs text-amber-600 mt-1">
+                    Requested {new Date(req.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => approve.mutate({ requestId: req.id })}
+                  disabled={approve.isPending}
+                >
+                  {approve.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ThumbsUp className="h-3.5 w-3.5" />}
+                  Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 gap-1.5 border-red-200 text-red-600 hover:bg-red-50"
+                  onClick={() => { setRejectingRequest({ id: req.id, courseName: req.courseName }); setRejectDialogOpen(true); }}
+                >
+                  <ThumbsDown className="h-3.5 w-3.5" />
+                  Reject
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Request history */}
+      {childAllRequests.filter((r) => r.status !== "pending").length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide">Request History</p>
+          {childAllRequests.filter((r) => r.status !== "pending").map((req) => (
+            <div key={req.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{req.courseName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {req.status === "approved" ? "Approved" : "Rejected"} ·{" "}
+                  {req.status === "approved" && req.approvedAt
+                    ? new Date(req.approvedAt).toLocaleDateString()
+                    : req.rejectedAt
+                    ? new Date(req.rejectedAt).toLocaleDateString()
+                    : ""}
+                </p>
+                {req.rejectionReason && (
+                  <p className="text-xs text-muted-foreground italic mt-0.5">"{req.rejectionReason}"</p>
+                )}
+              </div>
+              <Badge
+                className={`text-xs shrink-0 ${
+                  req.status === "approved"
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                    : "bg-red-100 text-red-800 border-red-200"
+                }`}
+              >
+                {req.status === "approved" ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
+                {req.status}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {childRequests.length === 0 && childAllRequests.length === 0 && (
+        <div className="text-center py-8 space-y-2">
+          <BookMarked className="h-10 w-10 text-muted-foreground mx-auto" />
+          <p className="text-sm font-medium">{childName} has no course requests yet.</p>
+          <p className="text-xs text-muted-foreground">When {childName} requests a course, it will appear here for your approval.</p>
+        </div>
+      )}
+
+      {/* Reject dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Course Request</DialogTitle>
+            <DialogDescription>
+              Rejecting <strong>{rejectingRequest?.courseName}</strong> for {childName}. You can optionally provide a reason.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label htmlFor="rejection-reason">Reason (optional)</Label>
+            <Input
+              id="rejection-reason"
+              placeholder="e.g. Focus on current courses first"
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => { setRejectDialogOpen(false); setRejectionReason(""); }}>Cancel</Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => rejectingRequest && reject.mutate({ requestId: rejectingRequest.id, rejectionReason: rejectionReason || undefined })}
+              disabled={reject.isPending}
+            >
+              {reject.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Confirm Rejection
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ─── Child Courses Panel ─────────────────────────────────────────────────────
+
 function ChildCoursesPanel({ childId, childName }: { childId: number; childName: string }) {
+  const utils = trpc.useUtils();
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
+  const [removingCourse, setRemovingCourse] = useState<{ id: number; title: string } | null>(null);
+
   const { data: courses, isLoading } = trpc.parent.getChildAllCourses.useQuery({ childId });
+  const { data: allCourses } = trpc.parent.getAvailableCourses.useQuery(undefined, { enabled: addDialogOpen });
+
+  const enrolledCourseIds = new Set((courses ?? []).map((c: { courseId: number }) => c.courseId));
+  const availableCourses = (allCourses ?? []).filter((c: { id: number }) => !enrolledCourseIds.has(c.id));
+
+  const assignCourse = trpc.parent.assignCourseToStudent.useMutation({
+    onSuccess: () => {
+      toast.success("Course assigned!", { description: `${childName} has been enrolled.` });
+      utils.parent.getChildAllCourses.invalidate();
+      setAddDialogOpen(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const removeCourse = trpc.parent.removeCourseFromStudent.useMutation({
+    onSuccess: () => {
+      toast.success("Course removed.");
+      utils.parent.getChildAllCourses.invalidate();
+      setRemoveDialogOpen(false);
+      setRemovingCourse(null);
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   if (isLoading) {
     return (
@@ -688,61 +884,139 @@ function ChildCoursesPanel({ childId, childName }: { childId: number; childName:
     );
   }
 
-  if (!courses || courses.length === 0) {
-    return (
-      <div className="text-center py-8 space-y-2">
-        <BookOpen className="h-10 w-10 text-muted-foreground mx-auto" />
-        <p className="text-sm font-medium text-foreground">{childName} is not enrolled in any courses yet.</p>
-        <p className="text-xs text-muted-foreground">Once they enrol and start learning, their course progress will appear here.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        {childName} is enrolled in <strong>{courses.length}</strong> course{courses.length !== 1 ? "s" : ""}.
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {courses.map((cp) => {
-          const colors = SUBJECT_COLORS_PARENT[cp.subject ?? ""] ?? { bg: "bg-muted/40", text: "text-muted-foreground" };
-          return (
-            <Card key={cp.courseId} className={`border ${cp.isCurrent ? "ring-2 ring-primary" : ""}`}>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                      {cp.isCurrent && <Badge className="text-xs bg-primary text-primary-foreground">Active</Badge>}
-                      {cp.gradeLevel && <Badge variant="outline" className="text-xs">{cp.gradeLevel}</Badge>}
-                      {cp.subject && (
-                        <Badge className={`text-xs ${colors.bg} ${colors.text}`}>{cp.subject}</Badge>
-                      )}
-                    </div>
-                    <h4 className="font-semibold text-sm leading-tight">{cp.courseTitle}</h4>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{cp.completedUnits}/{cp.totalUnits} units complete</span>
-                    <span className="font-medium text-foreground">{cp.progressPercent}%</span>
-                  </div>
-                  <Progress value={cp.progressPercent} className="h-1.5" />
-                </div>
-                {cp.activeUnitTitle && (
-                  <p className="text-xs text-muted-foreground truncate">
-                    <span className="text-foreground font-medium">Unit {cp.activeUnitNumber}:</span> {cp.activeUnitTitle}
-                  </p>
-                )}
-                {cp.lastActivityAt && (
-                  <p className="text-xs text-muted-foreground">
-                    Last studied: {new Date(cp.lastActivityAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {childName} is enrolled in <strong>{courses?.length ?? 0}</strong> course{(courses?.length ?? 0) !== 1 ? "s" : ""}.
+        </p>
+        <Button size="sm" className="gap-1.5" onClick={() => setAddDialogOpen(true)}>
+          <Plus className="h-3.5 w-3.5" />
+          Add Course
+        </Button>
       </div>
+
+      {(!courses || courses.length === 0) ? (
+        <div className="text-center py-8 space-y-2">
+          <BookOpen className="h-10 w-10 text-muted-foreground mx-auto" />
+          <p className="text-sm font-medium text-foreground">{childName} is not enrolled in any courses yet.</p>
+          <p className="text-xs text-muted-foreground">Use the "Add Course" button above to assign a course directly.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {courses.map((cp) => {
+            const colors = SUBJECT_COLORS_PARENT[cp.subject ?? ""] ?? { bg: "bg-muted/40", text: "text-muted-foreground" };
+            return (
+              <Card key={cp.courseId} className={`border ${cp.isCurrent ? "ring-2 ring-primary" : ""}`}>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                        {cp.isCurrent && <Badge className="text-xs bg-primary text-primary-foreground">Active</Badge>}
+                        {cp.gradeLevel && <Badge variant="outline" className="text-xs">{cp.gradeLevel}</Badge>}
+                        {cp.subject && (
+                          <Badge className={`text-xs ${colors.bg} ${colors.text}`}>{cp.subject}</Badge>
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-sm leading-tight">{cp.courseTitle}</h4>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-red-600 shrink-0"
+                      onClick={() => { setRemovingCourse({ id: cp.courseId, title: cp.courseTitle }); setRemoveDialogOpen(true); }}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{cp.completedUnits}/{cp.totalUnits} units complete</span>
+                      <span className="font-medium text-foreground">{cp.progressPercent}%</span>
+                    </div>
+                    <Progress value={cp.progressPercent} className="h-1.5" />
+                  </div>
+                  {cp.activeUnitTitle && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      <span className="text-foreground font-medium">Unit {cp.activeUnitNumber}:</span> {cp.activeUnitTitle}
+                    </p>
+                  )}
+                  {cp.lastActivityAt && (
+                    <p className="text-xs text-muted-foreground">
+                      Last studied: {new Date(cp.lastActivityAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add Course dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add a Course for {childName}</DialogTitle>
+            <DialogDescription>
+              Select a course to assign directly. This bypasses the student request flow and enrols {childName} immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-80 overflow-y-auto py-2">
+            {availableCourses.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                {childName} is already enrolled in all available courses.
+              </p>
+            ) : (
+              availableCourses.map((course) => (
+                <div key={course.id} className="flex items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted/40 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{course.title}</p>
+                    {course.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{course.description}</p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    className="shrink-0 gap-1.5"
+                    onClick={() => assignCourse.mutate({ studentId: childId, courseId: course.id })}
+                    disabled={assignCourse.isPending}
+                  >
+                    {assignCourse.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                    Assign
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Course confirmation dialog */}
+      <Dialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove Course</DialogTitle>
+            <DialogDescription>
+              Remove <strong>{removingCourse?.title}</strong> from {childName}'s enrolled courses? Their progress will be preserved.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => { setRemoveDialogOpen(false); setRemovingCourse(null); }}>Cancel</Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => removingCourse && removeCourse.mutate({ studentId: childId, courseId: removingCourse.id })}
+              disabled={removeCourse.isPending}
+            >
+              {removeCourse.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Remove Course
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1084,8 +1358,9 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
 
       {/* Tabbed detail sections */}
       <Tabs defaultValue="courses">
-        <TabsList className="w-full grid grid-cols-3 sm:grid-cols-6">
+        <TabsList className="w-full grid grid-cols-3 sm:grid-cols-7">
           <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
+          <TabsTrigger value="requests" className="text-xs">Requests</TabsTrigger>
           <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
           <TabsTrigger value="goals" className="text-xs">Goals</TabsTrigger>
           <TabsTrigger value="gaps" className="text-xs">Skill Gaps</TabsTrigger>
@@ -1096,6 +1371,11 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
         {/* Courses tab — multi-course overview */}
         <TabsContent value="courses" className="mt-4">
           <ChildCoursesPanel childId={child.childId} childName={child.name ?? "Student"} />
+        </TabsContent>
+
+        {/* Course Requests tab */}
+        <TabsContent value="requests" className="mt-4">
+          <CourseRequestsPanel childId={child.childId} childName={child.name ?? "Student"} />
         </TabsContent>
 
         {/* Progress tab */}
