@@ -969,3 +969,23 @@
 ### Google Search Console
 - [x] Step-by-step setup guide provided in delivery message
 - [x] TypeScript: 0 errors | Tests: 141/141 passing
+
+## Sprint 31 — Grace Period Screen, Welcome Email & GTM Analytics
+
+### Post-Trial Grace Period Screen
+- [x] Detect past_due / canceled subscription status in DashboardLayout
+- [x] Show full-screen locked-access overlay with "Reactivate your plan" CTA
+- [x] Overlay shows plan name, expiry date, and billing portal link
+- [x] Allow access to /billing page even when locked
+
+### Welcome Email on Trial Start
+- [x] Create server/emailTemplates/trialWelcome.ts branded email template
+- [x] Wire into checkout.session.completed webhook handler
+- [x] Email includes: user name, plan, trial end date, 3 quick-start tips, CTA to dashboard
+
+### Google Tag Manager / GA4
+- [x] Add GTM container snippet to client/index.html (head + body noscript)
+- [x] Request GTM_ID and GA4_MEASUREMENT_ID from user via secrets
+- [x] Add analytics helper in client/src/lib/analytics.ts
+- [x] Track conversion events: page_view, view_pricing, start_checkout, trial_started, signup_complete
+- [x] Fire events from LandingPage (pricing CTA), CheckoutModal (proceed), CheckoutSuccess

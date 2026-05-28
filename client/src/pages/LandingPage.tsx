@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { trackViewPricing, trackBeginCheckout } from "@/lib/analytics";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { getLoginUrl } from "@/const";
@@ -278,6 +279,26 @@ export default function LandingPage() {
 
   const { data: currentUser } = trpc.auth.me.useQuery();
 
+  // Track when pricing section scrolls into view
+  const pricingRef = useRef<HTMLElement>(null);
+  const pricingTracked = useRef(false);
+  useEffect(() => {
+    const el = document.getElementById("pricing");
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !pricingTracked.current) {
+          pricingTracked.current = true;
+          trackViewPricing({ source: "landing_page" });
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   function openSignUp(plan?: string) {
     // Map display plan name to plan key
     const planKeyMap: Record<string, "family" | "premium_family"> = {
@@ -286,6 +307,12 @@ export default function LandingPage() {
     };
     const planKey = plan ? (planKeyMap[plan] ?? "family") : "family";
     const planName = plan ?? "Family Plan";
+
+    // Track conversion event
+    trackBeginCheckout({
+      plan: planKey,
+      billingPeriod: annualBilling ? "annual" : "monthly",
+    });
 
     if (currentUser) {
       // Already logged in — go straight to checkout

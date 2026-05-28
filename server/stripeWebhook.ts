@@ -15,6 +15,7 @@ import { users, subscriptions } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { sendEmail } from "./emailService";
 import { buildTrialReminderEmail } from "./emailTemplates/trialReminder";
+import { buildTrialWelcomeEmail } from "./emailTemplates/trialWelcome";
 
 export function registerStripeWebhook(app: Express) {
   // MUST use express.raw BEFORE express.json for webhook signature verification
@@ -127,6 +128,40 @@ async function handleStripeEvent(event: any) {
               stripeCheckoutSessionId: session.id,
             });
           }
+        }
+      }
+
+      // Send welcome email with quick-start tips
+      if (userId) {
+        const user = await getUserById(userId);
+        if (user?.email) {
+          const planDisplayName = planKey === "premium_family" ? "Premium Family" : "Family Plan";
+          const monthlyPrice = planKey === "premium_family"
+            ? (billingPeriod === "annual" ? "$23.99/mo" : "$29.99/mo")
+            : (billingPeriod === "annual" ? "$15.99/mo" : "$19.99/mo");
+          const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+          const trialEndStr = trialEndDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+
+          const welcomeEmail = buildTrialWelcomeEmail({
+            userName: user.name ?? user.email,
+            userEmail: user.email,
+            planName: planDisplayName,
+            trialEndDate: trialEndStr,
+            firstChargeDate: trialEndStr,
+            firstChargeAmount: monthlyPrice,
+            dashboardUrl: "https://educhamp.app/dashboard",
+          });
+
+          await sendEmail({
+            to: user.email,
+            subject: welcomeEmail.subject,
+            html: welcomeEmail.html,
+            text: welcomeEmail.text,
+            templateName: "trial_welcome",
+            referenceId: `checkout_${session.id}`,
+          }).catch((err) => console.warn("[Webhook] Welcome email failed:", err));
+
+          console.log(`[Webhook] Trial welcome email sent to ${user.email}`);
         }
       }
 

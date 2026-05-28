@@ -35,6 +35,18 @@
     <meta name="twitter:description" content="AI-powered adaptive learning for Grades 3–12. Personalized tutoring, mastery tracking, and TEKS-aligned curriculum." />
     <meta name="twitter:image" content="https://d2xsxph8kpxj0f.cloudfront.net/310519663050137747/bGgBz5qKButMMCqjwC5rTw/educhamp-favicon-512-LgxxdRcp4nNuknktjTfqwj.png" />
 
+    <!-- Google Tag Manager -->
+    <!-- Replace GTM-XXXXXXX with your real GTM Container ID -->
+    <!-- To add your GTM ID, set the VITE_GTM_ID environment variable in Settings → Secrets -->
+    <script>
+      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+      'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+      })(window,document,'script','dataLayer','%VITE_GTM_ID%');
+    </script>
+    <!-- End Google Tag Manager -->
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -42,6 +54,10 @@
   </head>
 
   <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=%VITE_GTM_ID%"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script

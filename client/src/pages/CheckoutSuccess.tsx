@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { CheckCircle, ArrowRight, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
+import { trackTrialStarted } from "@/lib/analytics";
 
 export default function CheckoutSuccess() {
   const [, navigate] = useLocation();
@@ -10,6 +11,18 @@ export default function CheckoutSuccess() {
   const { data: subscription } = trpc.payment.getMySubscription.useQuery(undefined, {
     enabled: !!user,
   });
+
+  // Track trial_started conversion event once subscription data is available
+  const tracked = useRef(false);
+  useEffect(() => {
+    if (!tracked.current && subscription) {
+      tracked.current = true;
+      trackTrialStarted({
+        plan: subscription.planName,
+        billingPeriod: subscription.billingPeriod as "monthly" | "annual",
+      });
+    }
+  }, [subscription]);
 
   // Clear billing period from sessionStorage now that checkout is complete
   useEffect(() => {

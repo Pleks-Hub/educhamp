@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { trackCheckoutRedirect } from "@/lib/analytics";
 import {
   Dialog,
   DialogContent,
@@ -129,6 +130,13 @@ export function CheckoutModal({
       toast.error("Please sign in to continue.");
       return;
     }
+    // Track conversion event before redirecting to Stripe
+    trackCheckoutRedirect({
+      plan: planKey,
+      billingPeriod,
+      couponApplied: !!validCoupon,
+    });
+
     // Persist billing period to server
     await saveBillingPeriod.mutateAsync({ billingPeriod });
 
