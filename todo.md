@@ -989,3 +989,19 @@
 - [x] Add analytics helper in client/src/lib/analytics.ts
 - [x] Track conversion events: page_view, view_pricing, start_checkout, trial_started, signup_complete
 - [x] Fire events from LandingPage (pricing CTA), CheckoutModal (proceed), CheckoutSuccess
+
+## Sprint 32 — DNS Verification, Webhook Secret & GTM Goals
+
+### Resend Domain Verification
+- [x] Resend API key is send-only (correct security posture) — domain management must be done in Resend dashboard
+- [x] Document DNS records (SPF, DKIM, DMARC, MX) for user to add at registrar
+- [x] emailService.ts already uses invites@educhamp.app — no code change needed
+- [x] Full DNS setup guide written in docs/sprint-32-setup-guide.md
+
+### Stripe Webhook Secret
+- [x] STRIPE_WEBHOOK_SECRET is a built-in platform secret — must be updated via Settings → Payment in Management UI
+- [x] Instructions documented: paste whsec_f1YtygORnidWD9MTDUYNpKlNU0alyEhm into Settings → Payment
+
+### GTM / GA4 Conversion Goals
+- [x] Step-by-step GTM container + GA4 conversion event setup guide written
+- [x] Covers: GTM container creation, GA4 Configuration tag, 5 event tags, trial_started conversion toggle, Google Ads import
