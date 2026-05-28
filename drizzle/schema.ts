@@ -24,11 +24,12 @@ export const users = mysqlTable("users", {
   accountType: mysqlEnum("accountType", ["student", "parent", "teacher"]).default("student").notNull(),
     grade: varchar("grade", { length: 16 }).default("9"),
   school: varchar("school", { length: 256 }),
-  status: mysqlEnum("status", ["active", "suspended", "archived", "deleted"]).notNull().default("active"),
+  status: mysqlEnum("status", ["active", "suspended", "deactivated", "pending_verification", "archived", "deleted"]).notNull().default("active"),
   billingPeriod: mysqlEnum("billingPeriod", ["monthly", "annual"]).default("monthly"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  lastActiveAt: timestamp("lastActiveAt"),                  // updated on login + lesson/quiz activity
 });
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -1071,3 +1072,24 @@ export const courseRequests = mysqlTable("courseRequests", {
 
 export type CourseRequest = typeof courseRequests.$inferSelect;
 export type InsertCourseRequest = typeof courseRequests.$inferInsert;
+
+// ─── Inactivity Notifications ─────────────────────────────────────────────────
+/**
+ * Records inactivity notification emails sent to students and parents.
+ * Used to prevent duplicate notifications within the same tier window.
+ */
+export const inactivityNotifications = mysqlTable("inactivityNotifications", {
+  id: int("id").autoincrement().primaryKey(),
+  studentId: int("studentId").notNull(),                       // FK → users.id (student)
+  notificationType: mysqlEnum("notificationType", ["7day", "14day", "30day", "manual"]).notNull(),
+  recipientType: mysqlEnum("recipientType", ["student", "parent"]).notNull(),
+  recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  inactiveDays: int("inactiveDays").notNull(),                 // how many days inactive at time of send
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  studentTypeIdx: index("inactivityNotif_studentId_type_idx").on(t.studentId, t.notificationType),
+}));
+
+export type InactivityNotification = typeof inactivityNotifications.$inferSelect;
+export type InsertInactivityNotification = typeof inactivityNotifications.$inferInsert;

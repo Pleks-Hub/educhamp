@@ -52,7 +52,16 @@ import {
   getUserRoles,
   getUserPermissions,
   seedDefaultRoles,
+  // Sprint 40: Inactivity
+  getInactiveStudents,
+  getInactivityStats,
+  recordInactivityNotification,
+  getStudentInactivityNotifications,
+  hasInactivityNotificationBeenSent,
+  updateLastActiveAt,
 } from "../db";
+import { sendEmail } from "../emailService";
+import { buildInactivityEmail } from "../emailTemplates/inactivityNotification";
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
 
@@ -129,7 +138,7 @@ export const adminRouter = router({
   updateUserStatus: adminProcedure
     .input(z.object({
       userId: z.number(),
-      status: z.enum(["active", "suspended", "archived", "deleted"]),
+      status: z.enum(["active", "suspended", "deactivated", "pending_verification", "archived", "deleted"]),
     }))
     .mutation(async ({ ctx, input }) => {
       await updateUserStatus(input.userId, input.status);
@@ -952,5 +961,90 @@ export const adminRouter = router({
 
       const csv = "\uFEFF" + [header, ...lines].join("\n");
       return { csv, total: rows.length };
+    }),
+
+  // ── Inactivity Monitoring (Sprint 40) ──────────────────────────────────────
+
+  /** List inactive students filtered by minimum inactive days. */
+  getInactiveStudents: adminProcedure
+    .input(z.object({
+      minDays: z.number().min(1).max(365).default(7),
+      maxDays: z.number().min(1).max(365).optional(),
+    }))
+    .query(async ({ input }) => {
+      const rows = await getInactiveStudents(input.minDays, input.maxDays);
+      const now = Date.now();
+      return rows.map((s) => {
+        const lastActive = s.lastActiveAt ?? s.lastSignedIn;
+        const inactiveDays = Math.floor((now - new Date(lastActive).getTime()) / 86_400_000);
+        return { ...s, inactiveDays, lastActive };
+      });
+    }),
+
+  /** Aggregate inactivity counts by tier. */
+  getInactivityStats: adminProcedure.query(async () => {
+    return getInactivityStats();
+  }),
+
+  /** Manually trigger an inactivity follow-up notification for a student. */
+  triggerManualInactivityNotification: adminProcedure
+    .input(z.object({ userId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const { getUserById, getChildrenForParent: _getChildrenForParent } = await import("../db");
+      const student = await getUserById(input.userId);
+      if (!student) throw new TRPCError({ code: "NOT_FOUND", message: "Student not found" });
+      const now = Date.now();
+      const lastActive = student.lastActiveAt ?? student.lastSignedIn;
+      const inactiveDays = Math.floor((now - new Date(lastActive).getTime()) / 86_400_000);
+      const origin = "https://educhamp.app";
+      if (student.email) {
+        const email = buildInactivityEmail({
+          studentName: student.name ?? "Student",
+          inactiveDays,
+          lastActiveDate: new Date(lastActive).toLocaleDateString(),
+          resumeUrl: `${origin}/courses`,
+          recipientType: "student",
+        });
+        await sendEmail({ to: student.email, subject: email.subject, html: email.html, text: email.text, templateName: "inactivityReminder" });
+        await recordInactivityNotification(student.id, "manual", "student", student.email, inactiveDays);
+      }
+      await logAdminAction(ctx.user.id, "user.inactivity_notification", "user", student.id, {
+        inactiveDays,
+        triggeredBy: ctx.user.id,
+      });
+      return { success: true };
+    }),
+
+  /** Export inactive students as CSV. */
+  exportInactivityReport: adminProcedure
+    .input(z.object({ minDays: z.number().min(1).default(7) }))
+    .query(async ({ input }) => {
+      const rows = await getInactiveStudents(input.minDays);
+      const now = Date.now();
+      const header = "Name,Email,Last Active,Inactive Days,Status";
+      const escape = (v: unknown) => {
+        const s = String(v ?? "");
+        return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const lines = rows.map((s) => {
+        const lastActive = s.lastActiveAt ?? s.lastSignedIn;
+        const inactiveDays = Math.floor((now - new Date(lastActive).getTime()) / 86_400_000);
+        return [
+          escape(s.name),
+          escape(s.email),
+          escape(new Date(lastActive).toISOString()),
+          escape(inactiveDays),
+          escape(s.status),
+        ].join(",");
+      });
+      const csv = "\uFEFF" + [header, ...lines].join("\n");
+      return { csv, total: rows.length };
+    }),
+
+  /** Get inactivity notification history for a student. */
+  getStudentInactivityHistory: adminProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      return getStudentInactivityNotifications(input.userId);
     }),
 });

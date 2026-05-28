@@ -1205,3 +1205,71 @@
 - [x] Add tests for email trigger behavior (approveCourseRequest, rejectCourseRequest) — server/sprint39.test.ts
 - [x] Add tests for token redirect behavior (processCourseRequestToken result states) — server/sprint39.test.ts
 - [x] Add tests for pending request badge rendering logic — server/sprint39.test.ts
+
+## Sprint 40 — Admin Console Enhancements & Inactivity Monitoring
+
+### Database Schema
+- [x] Add `status` enum field to users table: active | suspended | deactivated | pending_verification | deleted
+- [x] Add `lastActiveAt` timestamp field to users table for inactivity tracking
+- [x] Create `adminAuditLog` table: already existed from Sprint 38; extended with new action types
+- [x] Create `inactivityNotifications` table: id, studentId, notificationType, recipientType, recipientEmail, inactiveDays, sentAt (migration 0026)
+- [x] Generate migration and apply via webdev_execute_sql
+
+### Server — Admin tRPC Procedures (user status management)
+- [x] admin.updateUserStatus — set user status (active|suspended|deactivated|pending_verification|deleted), log to adminAuditLog
+- [x] admin.getUsersWithStatus — list users with status filter, search, pagination (via existing listUsers)
+- [x] admin.getAuditLog — list adminAuditLog entries with filters (userId, action, date range)
+
+### Server — Admin tRPC Procedures (course management per user)
+- [x] admin.getUserCourses — list all courses assigned to a user with enrollment date, status, progress
+- [x] admin.adminAssignCourse — assign a course to a user (bypass parent approval), log action
+- [x] admin.adminRemoveCourse — remove a course from a user, log action
+- [x] admin.getCourseEnrollmentHistory — full enrollment history for a user
+
+### Server — Inactivity Detection & Notifications
+- [x] Add updateLastActiveAt helper in db.ts — called on login and lesson/quiz activity
+- [x] Add getInactiveStudents helper — query students inactive for N+ days
+- [x] Add getInactivityStats helper — aggregate counts by duration bucket (7/14/30 days)
+- [x] Wire updateLastActiveAt into auth login procedure
+- [x] admin.getInactiveStudents — list inactive students with filter by duration
+- [x] admin.triggerManualInactivityNotification — admin manually sends follow-up notification
+- [x] admin.exportInactivityReport — return CSV-ready data for inactive students
+
+### Server — Heartbeat Scheduled Job
+- [x] Read references/periodic-updates.md before writing any scheduled job code
+- [x] Create inactivity Heartbeat job: daily check, send 7-day / 14-day / 30-day notifications (server/scheduled/inactivityMonitor.ts)
+- [x] Email student + parent for each inactivity tier (using Resend via sendEmail)
+- [x] Record sent notifications in inactivityNotifications table to prevent duplicates
+- [x] Flag 30-day inactive students in adminAuditLog for intervention
+
+### Frontend — Admin Dashboard Users Tab
+- [x] Replace single "Delete" action with dynamic action menu based on user status
+- [x] Active users: Suspend, Deactivate, Delete
+- [x] Suspended users: Reactivate, Delete
+- [x] Deactivated users: Reactivate, Delete
+- [x] Add status badge column to users table (Active/Suspended/Deactivated/Pending/Deleted)
+- [x] Add status filter to users list
+
+### Frontend — Admin Course Management per User
+- [x] Add "Manage Courses" option in user action menu / user detail view
+- [x] Modal/panel: list assigned courses with enrollment date, completion %, progress
+- [x] Add course search + assign button (multi-select, filter by grade/category/status)
+- [x] Remove course button with confirmation
+- [x] Enrollment history tab within the modal
+
+### Frontend — Inactivity Monitoring (Admin)
+- [x] Add "Inactivity" tab to Admin Dashboard
+- [x] Table: inactive students, last active date, inactive days, notification status
+- [x] Filter by duration bucket (7/14/30+ days)
+- [x] "Send Reminder" button per student (triggers admin.triggerManualInactivityNotification)
+- [x] Export CSV button (calls admin.exportInactivityReport)
+
+### Frontend — Parent Dashboard Activity Visibility
+- [x] Add "Activity" tab to Parent Dashboard per linked student (StudentActivityPanel)
+- [x] Show: inactivity notification history, last active date, engagement status
+
+### Tests
+- [x] Tests for updateUserStatus (status transitions, audit log entry) — server/sprint40.test.ts
+- [x] Tests for inactivity detection logic (getInactiveStudents) — server/sprint40.test.ts
+- [x] Tests for duplicate notification prevention — server/sprint40.test.ts
+- [x] Tests for admin course assignment / removal — server/sprint40.test.ts

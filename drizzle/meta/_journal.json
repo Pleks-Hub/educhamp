@@ -183,6 +183,13 @@
       "when": 1779994336066,
       "tag": "0025_yellow_supernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "5",
+      "when": 1779999225451,
+      "tag": "0026_broad_chameleon",
+      "breakpoints": true
     }
   ]
 }

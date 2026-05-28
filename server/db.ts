@@ -1,4 +1,4 @@
-import { and, count as sqlCount, desc, eq, inArray, like, or } from "drizzle-orm";
+import { and, count as sqlCount, desc, eq, gte, inArray, like, lt, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -31,6 +31,7 @@ import {
   userMastery,
   userProfiles,
   users,
+  inactivityNotifications,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -1455,10 +1456,129 @@ export async function subscribeToNewsletter(email: string, name?: string, source
 
 // ─── Sprint 18: User Status Management ───────────────────────────────────────
 
-export async function updateUserStatus(userId: number, status: "active" | "suspended" | "archived" | "deleted") {
+export async function updateUserStatus(userId: number, status: "active" | "suspended" | "deactivated" | "pending_verification" | "archived" | "deleted") {
   const db = await getDb();
   if (!db) return;
   await db.update(users).set({ status }).where(eq(users.id, userId));
+}
+
+// ─── Sprint 40: Inactivity Tracking ──────────────────────────────────────────
+
+/** Update lastActiveAt for a user (called on login, lesson/quiz activity). */
+export async function updateLastActiveAt(userId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ lastActiveAt: new Date() }).where(eq(users.id, userId));
+}
+
+/**
+ * Return students who have been inactive for at least `minDays` days.
+ * Inactivity is measured from lastActiveAt (or lastSignedIn as fallback).
+ */
+export async function getInactiveStudents(minDays: number, maxDays?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - minDays);
+  const conditions = [
+    eq(users.accountType, "student"),
+    or(
+      lt(users.lastActiveAt, cutoff),
+      and(
+        sql`${users.lastActiveAt} IS NULL`,
+        lt(users.lastSignedIn, cutoff)
+      )
+    ),
+  ];
+  if (maxDays !== undefined) {
+    const upperCutoff = new Date();
+    upperCutoff.setDate(upperCutoff.getDate() - maxDays);
+    conditions.push(
+      or(
+        gte(users.lastActiveAt, upperCutoff),
+        and(
+          sql`${users.lastActiveAt} IS NULL`,
+          gte(users.lastSignedIn, upperCutoff)
+        )
+      ) as any
+    );
+  }
+  return db.select({
+    id: users.id,
+    name: users.name,
+    email: users.email,
+    lastActiveAt: users.lastActiveAt,
+    lastSignedIn: users.lastSignedIn,
+    status: users.status,
+  }).from(users).where(and(...conditions as any[]));
+}
+
+/** Return aggregate inactivity counts by tier (7, 14, 30 days). */
+export async function getInactivityStats() {
+  const [s7, s14, s30] = await Promise.all([
+    getInactiveStudents(7),
+    getInactiveStudents(14),
+    getInactiveStudents(30),
+  ]);
+  return {
+    inactive7: s7.length,
+    inactive14: s14.length,
+    inactive30: s30.length,
+  };
+}
+
+/**
+ * Check if an inactivity notification of a given type was already sent
+ * to a student within the last `windowDays` days (default: 7).
+ */
+export async function hasInactivityNotificationBeenSent(
+  studentId: number,
+  notificationType: "7day" | "14day" | "30day" | "manual",
+  windowDays = 7
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const since = new Date();
+  since.setDate(since.getDate() - windowDays);
+  const rows = await db.select({ id: inactivityNotifications.id })
+    .from(inactivityNotifications)
+    .where(
+      and(
+        eq(inactivityNotifications.studentId, studentId),
+        eq(inactivityNotifications.notificationType, notificationType),
+        gte(inactivityNotifications.sentAt, since)
+      )
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
+/** Record that an inactivity notification was sent. */
+export async function recordInactivityNotification(
+  studentId: number,
+  notificationType: "7day" | "14day" | "30day" | "manual",
+  recipientType: "student" | "parent",
+  recipientEmail: string,
+  inactiveDays: number
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(inactivityNotifications).values({
+    studentId,
+    notificationType,
+    recipientType,
+    recipientEmail,
+    inactiveDays,
+  });
+}
+
+/** Get inactivity notification history for a student. */
+export async function getStudentInactivityNotifications(studentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(inactivityNotifications)
+    .where(eq(inactivityNotifications.studentId, studentId))
+    .orderBy(desc(inactivityNotifications.sentAt));
 }
 
 export async function deleteUser(userId: number) {

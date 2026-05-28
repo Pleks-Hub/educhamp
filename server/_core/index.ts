@@ -11,6 +11,7 @@ import { serveStatic, setupVite } from "./vite";
 import { registerTutorStreamRoute } from "../tutorStream";
 import { gradePromotionHandler } from "../scheduledHandlers";
 import { inviteExpiryHandler } from "../scheduled/inviteExpiry";
+import { inactivityMonitorHandler } from "../scheduled/inactivityMonitor";
 import { seedDefaultRoles } from "../db";
 import { registerStripeWebhook } from "../stripeWebhook";
 import { registerResendWebhook } from "../resendWebhook";
@@ -91,6 +92,7 @@ async function startServer() {
   // Scheduled Heartbeat handlers
   app.post("/api/scheduled/grade-promotion", gradePromotionHandler);
   app.post("/api/scheduled/invite-expiry", inviteExpiryHandler);
+  app.post("/api/scheduled/inactivity-monitor", inactivityMonitorHandler);
 
   // ── Course request email approve/reject token handler ─────────────────────
   app.get("/api/course-request/token", async (req, res) => {

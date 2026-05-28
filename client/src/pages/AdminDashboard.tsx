@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -53,8 +54,19 @@ const ALL_ACTIONS = ["view", "create", "edit", "delete", "approve", "export"];
 const STATUS_COLORS: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-800",
   suspended: "bg-amber-100 text-amber-800",
+  deactivated: "bg-orange-100 text-orange-800",
+  pending_verification: "bg-blue-100 text-blue-800",
   archived: "bg-gray-100 text-gray-600",
   deleted: "bg-red-100 text-red-800",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  active: "Active",
+  suspended: "Suspended",
+  deactivated: "Deactivated",
+  pending_verification: "Pending Verification",
+  archived: "Archived",
+  deleted: "Deleted",
 };
 
 // ─── Suppression Badge (used in UsersTab rows) ───────────────────────────────
@@ -248,6 +260,8 @@ function UsersTab() {
     onError: (e) => toast.error(e.message),
   });
 
+  const [showUserDetailDialog, setShowUserDetailDialog] = useState<number | null>(null);
+
   const filtered = useMemo(() => {
     return users.filter((u: any) => {
       const matchStatus = statusFilter === "all" || (u.status ?? "active") === statusFilter;
@@ -336,32 +350,71 @@ function UsersTab() {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Select value={user.status ?? "active"} onValueChange={(v) => updateStatus.mutate({ userId: user.id, status: v as any })}>
-                      <SelectTrigger className="h-7 w-28 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="suspended">Suspended</SelectItem>
-                        <SelectItem value="archived">Archived</SelectItem>
-                        <SelectItem value="deleted">Deleted</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Badge className={`text-xs ${STATUS_COLORS[user.status ?? "active"] ?? "bg-gray-100 text-gray-600"}`}>
+                      {STATUS_LABELS[user.status ?? "active"] ?? user.status}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {new Date(user.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Enroll in course" onClick={() => setShowEnrollDialog(user.id)}>
-                        <UserPlus className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700"
-                        title="Delete user"
-                        onClick={() => { if (confirm(`Delete user ${user.name ?? user.email}? This cannot be undone.`)) deleteUser.mutate({ userId: user.id }); }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-52">
+                        {/* Role */}
+                        <DropdownMenuItem onClick={() => updateRole.mutate({ userId: user.id, role: user.role === "admin" ? "user" : "admin" })}>
+                          <Shield className="h-3.5 w-3.5 mr-2" />
+                          {user.role === "admin" ? "Demote to User" : "Promote to Admin"}
+                        </DropdownMenuItem>
+                        {/* Account type */}
+                        <DropdownMenuItem onClick={() => updateAccountType.mutate({ userId: user.id, accountType: user.accountType === "student" ? "parent" : "student" })}>
+                          <Users className="h-3.5 w-3.5 mr-2" />
+                          Switch to {user.accountType === "student" ? "Parent" : user.accountType === "parent" ? "Teacher" : "Student"}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {/* Status transitions */}
+                        {(user.status ?? "active") !== "active" && (
+                          <DropdownMenuItem onClick={() => updateStatus.mutate({ userId: user.id, status: "active" })}>
+                            <CheckCircle2 className="h-3.5 w-3.5 mr-2 text-emerald-600" /> Activate
+                          </DropdownMenuItem>
+                        )}
+                        {(user.status ?? "active") !== "suspended" && (
+                          <DropdownMenuItem onClick={() => updateStatus.mutate({ userId: user.id, status: "suspended" })}>
+                            <AlertTriangle className="h-3.5 w-3.5 mr-2 text-amber-600" /> Suspend
+                          </DropdownMenuItem>
+                        )}
+                        {(user.status ?? "active") !== "deactivated" && (
+                          <DropdownMenuItem onClick={() => updateStatus.mutate({ userId: user.id, status: "deactivated" })}>
+                            <ShieldOff className="h-3.5 w-3.5 mr-2 text-orange-600" /> Deactivate
+                          </DropdownMenuItem>
+                        )}
+                        {(user.status ?? "active") !== "archived" && (
+                          <DropdownMenuItem onClick={() => updateStatus.mutate({ userId: user.id, status: "archived" })}>
+                            <History className="h-3.5 w-3.5 mr-2 text-gray-500" /> Archive
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
+                        {/* Course management */}
+                        <DropdownMenuItem onClick={() => setShowUserDetailDialog(user.id)}>
+                          <BookOpen className="h-3.5 w-3.5 mr-2" /> Manage Courses
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setShowEnrollDialog(user.id)}>
+                          <UserPlus className="h-3.5 w-3.5 mr-2" /> Quick Enroll
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        {/* Delete */}
+                        <DropdownMenuItem
+                          className="text-red-600 focus:text-red-600"
+                          onClick={() => { if (confirm(`Delete user ${user.name ?? user.email}? This cannot be undone.`)) deleteUser.mutate({ userId: user.id }); }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete User
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))}
@@ -465,7 +518,99 @@ function UsersTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* User Course Management Dialog */}
+      {showUserDetailDialog !== null && (
+        <UserCourseManagementDialog
+          userId={showUserDetailDialog}
+          onClose={() => setShowUserDetailDialog(null)}
+          courses={courses ?? []}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── User Course Management Dialog ───────────────────────────────────────────
+
+function UserCourseManagementDialog({ userId, onClose, courses }: { userId: number; onClose: () => void; courses: any[] }) {
+  const { data: enrollments, isLoading, refetch } = trpc.admin.getUserEnrollments.useQuery({ userId });
+  const enrollUser = trpc.admin.enrollUserInCourse.useMutation({
+    onSuccess: () => { toast.success("Course added"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const removeUser = trpc.admin.removeStudentFromCourse.useMutation({
+    onSuccess: () => { toast.success("Course removed"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const enrolledIds = new Set((enrollments ?? []).map((e: any) => e.courseId));
+  const availableCourses = courses.filter((c: any) => c.isActive && !enrolledIds.has(c.id));
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5" /> Manage Courses for User #{userId}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
+          {/* Current enrollments */}
+          <div>
+            <h4 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Enrolled Courses</h4>
+            {isLoading ? (
+              <div className="space-y-2">{[1,2].map(i => <Skeleton key={i} className="h-10" />)}</div>
+            ) : (enrollments ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">No courses enrolled yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {(enrollments ?? []).map((e: any) => (
+                  <div key={e.courseId} className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/30">
+                    <div>
+                      <p className="text-sm font-medium">{e.courseTitle ?? `Course #${e.courseId}`}</p>
+                      <p className="text-xs text-muted-foreground">Enrolled {new Date(e.enrolledAt).toLocaleDateString()}</p>
+                    </div>
+                    <Button
+                      variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700"
+                      onClick={() => removeUser.mutate({ userId, courseId: e.courseId })}
+                      disabled={removeUser.isPending}
+                    >
+                      <UserMinus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* Add course */}
+          {availableCourses.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Add Course</h4>
+              <div className="space-y-2">
+                {availableCourses.map((c: any) => (
+                  <button
+                    key={c.id}
+                    className="w-full text-left p-2.5 rounded-lg border hover:bg-muted/50 transition-colors flex items-center justify-between"
+                    onClick={() => enrollUser.mutate({ userId, courseId: c.id })}
+                    disabled={enrollUser.isPending}
+                  >
+                    <div>
+                      <p className="text-sm font-medium">{c.title}</p>
+                      <p className="text-xs text-muted-foreground">{c.subject} · Grade {c.gradeLevel}</p>
+                    </div>
+                    <UserPlus className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -2144,6 +2289,9 @@ export default function AdminDashboard() {
             <NavTooltip content={{ title: "Payment Analytics", description: "Revenue charts, MRR trends, churn rates, and trial conversion metrics." }} side="bottom" delayDuration={700}>
               <TabsTrigger value="paymentanalytics" className="gap-2"><BarChart3 className="h-4 w-4" /> Payment Analytics</TabsTrigger>
             </NavTooltip>
+            <NavTooltip content={{ title: "Inactivity", description: "Monitor student inactivity, view notification history, and trigger manual follow-ups." }} side="bottom" delayDuration={700}>
+              <TabsTrigger value="inactivity" className="gap-2"><Activity className="h-4 w-4" /> Inactivity</TabsTrigger>
+            </NavTooltip>
           </TabsList>
 
           <TabsContent value="overview"><OverviewTab /></TabsContent>
@@ -2161,8 +2309,235 @@ export default function AdminDashboard() {
           <TabsContent value="coupons"><CouponManagerTab /></TabsContent>
           <TabsContent value="subscriptions"><SubscriptionCRMTab /></TabsContent>
           <TabsContent value="paymentanalytics"><PaymentAnalyticsTab /></TabsContent>
+          <TabsContent value="inactivity"><InactivityMonitoringTab /></TabsContent>
         </Tabs>
       </div>
+    </div>
+  );
+}
+
+// ─── Inactivity Monitoring Tab ────────────────────────────────────────────────
+
+function InactivityMonitoringTab() {
+  const [minDays, setMinDays] = useState(7);
+  const [maxDays, setMaxDays] = useState<number | undefined>(undefined);
+  const [selectedStudent, setSelectedStudent] = useState<number | null>(null);
+
+  const { data: stats, isLoading: statsLoading } = trpc.admin.getInactivityStats.useQuery();
+  const { data: students, isLoading: studentsLoading, refetch } = trpc.admin.getInactiveStudents.useQuery({ minDays, maxDays });
+  const { data: history, isLoading: historyLoading } = trpc.admin.getStudentInactivityHistory.useQuery(
+    { userId: selectedStudent! },
+    { enabled: selectedStudent !== null }
+  );
+  const trigger = trpc.admin.triggerManualInactivityNotification.useMutation({
+    onSuccess: () => { toast.success("Notification sent"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const { data: exportData } = trpc.admin.exportInactivityReport.useQuery(
+    { minDays },
+    { enabled: false }
+  );
+
+  const handleExport = () => {
+    trpc.useUtils().admin.exportInactivityReport.fetch({ minDays }).then((data) => {
+      const blob = new Blob([data.csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `inactivity-report-${minDays}d-${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${data.total} students`);
+    }).catch((e) => toast.error(e.message));
+  };
+
+  const tierColors: Record<string, string> = {
+    "7day": "bg-amber-100 text-amber-800",
+    "14day": "bg-orange-100 text-orange-800",
+    "30day": "bg-red-100 text-red-800",
+    "manual": "bg-blue-100 text-blue-800",
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Inactivity Monitoring</h2>
+          <p className="text-sm text-muted-foreground">Track student engagement and trigger re-engagement notifications</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport} className="gap-2">
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+        </div>
+      </div>
+
+      {/* Tier Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {statsLoading ? (
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20" />)
+        ) : (
+          [
+            { label: "7+ Days Inactive", value: (stats as any)?.sevenDay ?? 0, color: "text-amber-600", icon: Clock },
+            { label: "14+ Days Inactive", value: (stats as any)?.fourteenDay ?? 0, color: "text-orange-600", icon: AlertTriangle },
+            { label: "30+ Days Inactive", value: (stats as any)?.thirtyDay ?? 0, color: "text-red-600", icon: XCircle },
+            { label: "Total Monitored", value: (stats as any)?.total ?? 0, color: "text-blue-600", icon: Users },
+          ].map(({ label, value, color, icon: Icon }) => (
+            <Card key={label}>
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-3">
+                  <Icon className={`h-8 w-8 ${color}`} />
+                  <div>
+                    <p className="text-2xl font-bold">{value}</p>
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Label className="text-sm whitespace-nowrap">Min inactive days:</Label>
+          <Select value={String(minDays)} onValueChange={(v) => setMinDays(Number(v))}>
+            <SelectTrigger className="w-24 h-8 text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">7 days</SelectItem>
+              <SelectItem value="14">14 days</SelectItem>
+              <SelectItem value="30">30 days</SelectItem>
+              <SelectItem value="60">60 days</SelectItem>
+              <SelectItem value="90">90 days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Label className="text-sm whitespace-nowrap">Max inactive days:</Label>
+          <Select value={maxDays ? String(maxDays) : "none"} onValueChange={(v) => setMaxDays(v === "none" ? undefined : Number(v))}>
+            <SelectTrigger className="w-28 h-8 text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">No limit</SelectItem>
+              <SelectItem value="13">13 days</SelectItem>
+              <SelectItem value="29">29 days</SelectItem>
+              <SelectItem value="59">59 days</SelectItem>
+              <SelectItem value="89">89 days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Students Table */}
+      <div className="rounded-lg border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Student</TableHead>
+              <TableHead>Last Active</TableHead>
+              <TableHead>Inactive Days</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {studentsLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8" /></TableCell></TableRow>
+              ))
+            ) : (students ?? []).length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  No students inactive for {minDays}+ days.
+                </TableCell>
+              </TableRow>
+            ) : (students ?? []).map((s: any) => (
+              <TableRow key={s.id} className={selectedStudent === s.id ? "bg-muted/40" : ""}>
+                <TableCell>
+                  <div>
+                    <p className="font-medium text-sm">{s.name ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground">{s.email}</p>
+                  </div>
+                </TableCell>
+                <TableCell className="text-sm">
+                  {new Date(s.lastActive).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </TableCell>
+                <TableCell>
+                  <Badge className={
+                    s.inactiveDays >= 30 ? "bg-red-100 text-red-800" :
+                    s.inactiveDays >= 14 ? "bg-orange-100 text-orange-800" :
+                    "bg-amber-100 text-amber-800"
+                  }>
+                    {s.inactiveDays} days
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge className={STATUS_COLORS[s.status ?? "active"] ?? "bg-gray-100 text-gray-600"}>
+                    {STATUS_LABELS[s.status ?? "active"] ?? s.status}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline" size="sm" className="h-7 text-xs gap-1"
+                      onClick={() => setSelectedStudent(selectedStudent === s.id ? null : s.id)}
+                    >
+                      <History className="h-3 w-3" /> History
+                    </Button>
+                    <Button
+                      variant="outline" size="sm" className="h-7 text-xs gap-1"
+                      disabled={trigger.isPending}
+                      onClick={() => trigger.mutate({ userId: s.id })}
+                    >
+                      <Send className="h-3 w-3" /> Notify
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Notification History Panel */}
+      {selectedStudent !== null && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <History className="h-4 w-4" /> Notification History for Student #{selectedStudent}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {historyLoading ? (
+              <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-8" />)}</div>
+            ) : (history ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No notifications sent yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {(history ?? []).map((h: any) => (
+                  <div key={h.id} className="flex items-center justify-between p-2.5 rounded-lg border text-sm">
+                    <div className="flex items-center gap-2">
+                      <Badge className={tierColors[h.notificationType] ?? "bg-gray-100 text-gray-600"}>
+                        {h.notificationType}
+                      </Badge>
+                      <span className="text-muted-foreground capitalize">{h.recipientType}</span>
+                      <span className="font-mono text-xs text-muted-foreground">{h.recipientEmail}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>{h.inactiveDays} days inactive at send</span>
+                      <span>{new Date(h.sentAt).toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

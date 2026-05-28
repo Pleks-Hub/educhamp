@@ -1358,10 +1358,11 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
 
       {/* Tabbed detail sections */}
       <Tabs defaultValue="courses">
-        <TabsList className="w-full grid grid-cols-3 sm:grid-cols-7">
+        <TabsList className="w-full grid grid-cols-4 sm:grid-cols-8">
           <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
           <TabsTrigger value="requests" className="text-xs">Requests</TabsTrigger>
           <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
+          <TabsTrigger value="activity" className="text-xs">Activity</TabsTrigger>
           <TabsTrigger value="goals" className="text-xs">Goals</TabsTrigger>
           <TabsTrigger value="gaps" className="text-xs">Skill Gaps</TabsTrigger>
           <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
@@ -1376,6 +1377,11 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
         {/* Course Requests tab */}
         <TabsContent value="requests" className="mt-4">
           <CourseRequestsPanel childId={child.childId} childName={child.name ?? "Student"} />
+        </TabsContent>
+
+        {/* Activity tab — inactivity visibility for parents */}
+        <TabsContent value="activity" className="mt-4">
+          <StudentActivityPanel childId={child.childId} childName={child.name ?? "Student"} />
         </TabsContent>
 
         {/* Progress tab */}
@@ -2255,5 +2261,89 @@ function CoParentStudentDetail({ studentId, studentName }: { studentId: number; 
         </Link>
       </div>
     </Card>
+  );
+}
+
+// ─── Student Activity Panel ───────────────────────────────────────────────────
+
+function StudentActivityPanel({ childId, childName }: { childId: number; childName: string }) {
+  const { data: history, isLoading } = trpc.admin.getStudentInactivityHistory.useQuery(
+    { userId: childId },
+    { retry: false }
+  );
+
+  const tierColors: Record<string, string> = {
+    "7day": "bg-amber-100 text-amber-800 border-amber-200",
+    "14day": "bg-orange-100 text-orange-800 border-orange-200",
+    "30day": "bg-red-100 text-red-800 border-red-200",
+    "manual": "bg-blue-100 text-blue-800 border-blue-200",
+  };
+
+  const tierLabels: Record<string, string> = {
+    "7day": "7-Day Reminder",
+    "14day": "14-Day Follow-up",
+    "30day": "30-Day Escalation",
+    "manual": "Manual Notification",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold mb-1">Activity Notifications</h3>
+        <p className="text-xs text-muted-foreground">
+          Automated re-engagement notifications sent to {childName} and linked guardians.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />
+          ))}
+        </div>
+      ) : !history || history.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
+            <p className="text-sm font-medium text-emerald-700">Great engagement!</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              No inactivity notifications have been sent for {childName}.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {(history as any[]).map((h: any) => (
+            <div
+              key={h.id}
+              className="flex items-center justify-between p-3 rounded-lg border bg-card"
+            >
+              <div className="flex items-center gap-3">
+                <Badge className={`text-xs ${tierColors[h.notificationType] ?? "bg-gray-100 text-gray-600"}`}>
+                  {tierLabels[h.notificationType] ?? h.notificationType}
+                </Badge>
+                <div>
+                  <p className="text-xs font-medium capitalize">{h.recipientType} notified</p>
+                  <p className="text-xs text-muted-foreground font-mono">{h.recipientEmail}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">
+                  {h.inactiveDays} days inactive
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {new Date(h.sentAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="text-xs text-muted-foreground pt-2">
+        Notifications are sent automatically when a student has not logged in for 7, 14, or 30 days.
+        Contact support if you believe a notification was sent in error.
+      </p>
+    </div>
   );
 }
