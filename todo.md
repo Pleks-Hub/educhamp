@@ -893,3 +893,20 @@
 - [x] Enable ACH/bank debit (us_bank_account) in Stripe checkout session
 - [x] Update CheckoutModal UI to show payment method icons (Card, PayPal, Bank/ACH badges)
 - [x] Checkout uses real Stripe Price IDs for proper subscription management
+
+## Sprint 27 — Free Trial, Stripe Webhook, Resend DNS
+
+### Free Trial
+- [x] Add trial_period_days: 14 to createCheckoutSession in payment router
+- [x] Update CheckoutModal UI to show "14-day free trial" badge and trial end date
+- [x] Update CTA button text to "Start Free Trial"
+
+### Stripe Webhook Registration
+- [x] Register webhook endpoint https://educhamp.app/api/stripe/webhook via Stripe API (endpoint ID: we_1Tbsm17Mcfd3gqtz5pnFYasy)
+- [x] Subscribe to all 6 required events
+- [-] Update STRIPE_WEBHOOK_SECRET env var (BLOCKED — user must paste whsec_f1YtygORnidWD9MTDUYNpKlNU0alyEhm into Settings → Payment)
+
+### Resend DNS Verification
+- [x] Check current DNS status for educhamp.app via Resend API (status: NOT VERIFIED)
+- [x] Provide exact DNS records (SPF, DKIM, DMARC) for the domain owner to add
+- [-] DNS records to be added by domain owner in DNS provider (BLOCKED — requires manual DNS step)

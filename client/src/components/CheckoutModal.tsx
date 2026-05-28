@@ -21,6 +21,7 @@ import {
   Shield,
   ArrowRight,
   X,
+  Gift,
 } from "lucide-react";
 
 interface CheckoutModalProps {
@@ -159,6 +160,17 @@ export function CheckoutModal({
         </DialogHeader>
 
         <div className="space-y-5 py-2">
+          {/* Free trial banner */}
+          <div className="flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 dark:bg-indigo-950/30 dark:border-indigo-800 px-3 py-2.5">
+            <Gift className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <div className="text-sm">
+              <span className="font-semibold text-indigo-700 dark:text-indigo-300">14-day free trial included</span>
+              <span className="text-indigo-600/80 dark:text-indigo-400/80 ml-1">
+                — first charge on {new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+              </span>
+            </div>
+          </div>
+
           {/* Plan summary */}
           <div className="rounded-lg border bg-muted/40 p-4 space-y-2">
             <div className="flex items-center justify-between">
@@ -293,7 +305,7 @@ export function CheckoutModal({
               </>
             ) : (
               <>
-                Continue to Secure Checkout
+                Start Free Trial
                 <ArrowRight className="h-4 w-4" />
               </>
             )}

@@ -245,6 +245,13 @@ export const paymentRouter = router({
         allow_promotion_codes: !stripeCouponId, // allow manual codes if no server-side coupon
         discounts: stripeCouponId ? [{ coupon: stripeCouponId }] : undefined,
         line_items: [lineItem],
+        subscription_data: {
+          trial_period_days: 14,
+          metadata: {
+            plan_key: input.planKey,
+            billing_period: input.billingPeriod,
+          },
+        },
         client_reference_id: String(ctx.user.id),
         metadata: {
           user_id: String(ctx.user.id),
