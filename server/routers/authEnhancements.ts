@@ -9,6 +9,8 @@ import { nanoid } from "nanoid";
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import { notifyOwner } from "../_core/notification";
+import { sendEmail } from "../emailService";
+import { buildPasswordResetEmail } from "../emailTemplates/passwordReset";
 import {
   getUserByEmail,
   createPasswordResetToken,
@@ -57,10 +59,20 @@ export const authEnhancementsRouter = router({
 
       const resetUrl = `${input.origin}/reset-password?token=${token}`;
 
+      if (user.email) {
+        // Send the reset link directly to the user's email address
+        const { html, text, subject } = buildPasswordResetEmail({
+          userName: user.name ?? user.email,
+          resetUrl,
+        });
+        await sendEmail({ to: user.email, subject, html, text, templateName: "passwordReset" });
+      }
+
+      // Notify owner for audit trail only (no reset link exposed)
       await notifyOwner({
         title: `Password Reset Requested — ${user.name ?? user.email}`,
-        content: `A password reset was requested for **${user.name ?? user.email}**.\n\n**Reset Link:** ${resetUrl}\n\nThis link expires in 1 hour. If you did not request this, no action is needed.`,
-      });
+        content: `A password reset email was sent to **${user.email ?? user.name}**. The link expires in 1 hour.`,
+      }).catch(() => {});
 
       return { success: true };
     }),

@@ -150,10 +150,11 @@ export function registerTutorStreamRoute(app: Express) {
 
     try {
       // ── Session & history ─────────────────────────────────────────────────
-      // Sessions are always owned by the authenticated user (parent or student).
-      // contextUserId is used for loading child data but the session belongs to user.id.
+      // Sessions are scoped to contextUserId (the student being tutored).
+      // When a parent opens the tutor for a child, the session is stored under
+      // the child's ID so the child's conversation history is preserved correctly.
       const session = await getOrCreateTutorSession(
-        user.id,
+        contextUserId,
         unitId ?? null,
         lessonId ?? null,
         mode

@@ -491,6 +491,29 @@ export default function Home() {
       {/* Parent invite status banner — shown to students who have sent a parent invite */}
       {user?.accountType === "student" && <ParentInviteBanner />}
 
+      {/* Auto-enrollment banner — shown once on first login when student was auto-enrolled */}
+      {dashboard?.wasAutoEnrolled && (
+        <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+          <GraduationCap className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-foreground">
+              You've been enrolled in {dashboard.courseTitle}
+            </p>
+            <p className="text-muted-foreground text-xs mt-0.5">
+              We matched you to this course based on your grade level. Take the placement test to find your exact starting point and unlock all units.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0 border-primary/30 text-primary hover:bg-primary/10"
+            onClick={() => setLocation("/course-welcome")}
+          >
+            Take Placement Test
+          </Button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">
         <div>

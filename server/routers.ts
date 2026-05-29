@@ -124,6 +124,7 @@ export const appRouter = router({
       // If a student has no enrollments yet, auto-enroll them in a grade-appropriate
       // default course so the dashboard is never empty on first login.
       let enrollments = await getUserCourseEnrollments(userId);
+      let wasAutoEnrolled = false;
       if (enrollments.length === 0 && ctx.user.accountType === "student") {
         const { getGradeDefaultCourse: _getDefault, enrollUserInCourse: _enroll, setUserActiveCourse: _setActive } = await import("./db");
         const defaultCourse = await _getDefault(ctx.user.grade ?? "9");
@@ -131,6 +132,7 @@ export const appRouter = router({
         await _enroll(userId, defaultCourseId);
         await _setActive(userId, defaultCourseId);
         enrollments = await getUserCourseEnrollments(userId);
+        wasAutoEnrolled = true;
       }
       const currentEnrollmentForInit = enrollments.find((e) => e.enrollment.isCurrent) ?? enrollments[0];
       const initCourseId = currentEnrollmentForInit?.enrollment.courseId ?? 1;
@@ -201,6 +203,7 @@ export const appRouter = router({
         activeCourseId,
         hasDiagnosticForActiveCourse: latestDiag !== null,
         diagnosticCooldownDays: currentEnrollment?.course?.diagnosticCooldownDays ?? 7,
+        wasAutoEnrolled,
       };
     }),
 
@@ -266,7 +269,7 @@ export const appRouter = router({
 
   // ─── Quiz ─────────────────────────────────────────────────────────────────────
   quiz: router({
-    getQuestions: protectedProcedure
+    getQuestions: studentProcedure
       .input(z.object({ unitId: z.number() }))
       .query(async ({ input }) => {
         const questions = await getQuizQuestionsByUnit(input.unitId);
