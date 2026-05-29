@@ -1390,3 +1390,13 @@
 - [x] Verified: dev server no longer sends Content-Security-Policy header
 - [x] Verified: app renders correctly in browser after fix
 - [x] Tests: 218/218 passing, 0 TypeScript errors
+
+## Sprint 45 — Bundle Size Fix (Blank Page on Production)
+- [x] Identified root cause: vendor-misc was 10.9 MB (21s download) exceeding manus-runtime 5s timeout
+- [x] Upgraded lucide-react to 0.542.0 to deduplicate with streamdown's version (eliminated 9MB duplicate)
+- [x] Added vendor-icons chunk for lucide-react (45 KB)
+- [x] Added vendor-shiki chunk for shiki syntax highlighter (9.3 MB, now lazy-loaded only on AI chat)
+- [x] Added vendor-markdown chunk for remark/rehype/unified/katex/DOMPurify pipeline
+- [x] Initial load reduced from 2032 KB to 1306 KB gzip (36% reduction)
+- [x] vendor-shiki (1621 KB gzip) is now lazy — only loads when Tutor/AI chat is opened
+- [x] 218 tests pass, 0 TypeScript errors
