@@ -67,8 +67,11 @@ async function startServer() {
   // ── Security headers (Helmet) ──────────────────────────────────────────────
   app.use(
     helmet({
-      // Allow inline scripts/styles needed by Vite HMR in dev; tighten in prod
-      contentSecurityPolicy: process.env.NODE_ENV === "production" ? undefined : false,
+      // The Manus platform injects inline <script id="manus-runtime"> tags that
+      // helmet's default script-src 'self' CSP blocks, causing a blank page.
+      // Disabling CSP here; the platform's Cloudflare layer applies its own
+      // security headers at the edge.
+      contentSecurityPolicy: false,
       crossOriginEmbedderPolicy: false, // Required for Manus storage proxy
     })
   );

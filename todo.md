@@ -1382,3 +1382,11 @@
 - [x] TypeScript: 0 errors
 - [x] Test suite: 218 tests passing (11 test files)
 - [x] Production build: completes cleanly, no chunk size warnings
+
+## Sprint 44 — CSP Blank Page Fix [COMPLETE]
+
+- [x] Root cause identified: helmet() default CSP (script-src 'self') blocked the Manus platform's inline manus-runtime script (366 KB React code), causing blank white page on all production domains
+- [x] Fix: set contentSecurityPolicy: false in helmet config — Cloudflare/Manus edge layer handles security headers
+- [x] Verified: dev server no longer sends Content-Security-Policy header
+- [x] Verified: app renders correctly in browser after fix
+- [x] Tests: 218/218 passing, 0 TypeScript errors
