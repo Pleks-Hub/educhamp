@@ -44,6 +44,18 @@ export const NAV_TOOLTIPS: Record<string, TooltipEntry> = {
     title: "Skill Index",
     description: "Browse every skill in the curriculum by ID (e.g. ALG1-U1-S2). See prerequisites, mastery level, and which unit each skill belongs to.",
   },
+  achievements: {
+    title: "Achievements",
+    description: "Track your XP, level, badges, quests, streaks, and house standings. Earn rewards by completing lessons and challenges.",
+  },
+  rewards: {
+    title: "Rewards Marketplace",
+    description: "Spend your XP on real-world rewards set up by your parent or guardian — screen time, outings, treats, and more.",
+  },
+  adventureMap: {
+    title: "Adventure Map",
+    description: "Visualise your learning journey as an adventure. Unlock new areas by completing units and earning XP.",
+  },
   parent: {
     title: "Parent Dashboard",
     description: "Manage enrolled children, view their progress reports, set learning goals, write private notes, and invite co-parents.",

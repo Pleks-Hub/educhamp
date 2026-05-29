@@ -43,6 +43,7 @@ const CourseRequestResult = lazy(() => import("./pages/CourseRequestResult"));
 const Verify2FA = lazy(() => import("./pages/Verify2FA"));
 const EarlyDiagnostic = lazy(() => import("./pages/EarlyDiagnostic"));
 const GamificationHub = lazy(() => import("./pages/GamificationHub"));
+const RewardsMarketplace = lazy(() => import("./pages/RewardsMarketplace"));
 const AdventureMap = lazy(() => import("./pages/AdventureMap"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
@@ -104,6 +105,7 @@ function Router() {
                 <Route path="/referrals" component={Referrals} />
                 <Route path="/billing" component={Billing} />
                 <Route path="/gamification" component={GamificationHub} />
+                <Route path="/rewards" component={RewardsMarketplace} />
                 <Route path="/adventure-map" component={AdventureMap} />
                 <Route path="/404" component={NotFound} />
                 <Route component={NotFound} />

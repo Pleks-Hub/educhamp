@@ -19,6 +19,8 @@ import {
   rewardRedemptions,
   userAvatars,
   users,
+  seasonalChallenges,
+  userSeasonalProgress,
 } from "../../drizzle/schema";
 import { and, eq, desc, sql, count } from "drizzle-orm";
 
@@ -296,4 +298,41 @@ export const gamificationRouter = router({
         house,
       };
     }),
+
+  // ── Seasonal Challenges ────────────────────────────────────────────────────
+  getActiveSeasonalChallenge: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return null;
+    const now = new Date();
+    // Find the currently active challenge (isActive = true AND within date range)
+    const [challenge] = await db
+      .select()
+      .from(seasonalChallenges)
+      .where(and(
+        eq(seasonalChallenges.isActive, true),
+        sql`${seasonalChallenges.startDate} <= ${now}`,
+        sql`${seasonalChallenges.endDate} >= ${now}`,
+      ))
+      .orderBy(desc(seasonalChallenges.startDate))
+      .limit(1);
+    if (!challenge) return null;
+    // Get user progress for this challenge
+    const [progress] = await db
+      .select()
+      .from(userSeasonalProgress)
+      .where(and(
+        eq(userSeasonalProgress.userId, ctx.user.id),
+        eq(userSeasonalProgress.challengeId, challenge.id),
+      ))
+      .limit(1);
+    const daysLeft = Math.max(0, Math.ceil(
+      (new Date(challenge.endDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    ));
+    return {
+      ...challenge,
+      userProgress: progress?.progress ?? 0,
+      completed: !!progress?.completedAt,
+      daysLeft,
+    };
+  }),
 });

@@ -1611,3 +1611,45 @@
 - [x] Server: XP farming prevention (daily cap, cooldown per source, duplicate guard)
 - [x] Server: Vitest tests for XP engine, badge award logic, streak tracking, quest completion
 - [x] Run full regression test suite — 299 tests pass, 0 TypeScript errors
+
+## Sprint 58 — Early Childhood Accessibility & Weekly Parent Digest
+
+- [x] DB: userProfiles — add parentLedMode, disableAnimations, disableSound columns
+- [x] Server: onboarding.getPersonalization / savePersonalization — expose new accessibility fields
+- [x] UI: Profile.tsx — Accessibility Settings card with Switch toggles for disableAnimations, disableSound, parentLedMode
+- [x] Server: weeklyParentDigest email template (HTML + text)
+- [x] Server: weeklyParentDigest scheduled handler (builds per-child digest with XP, mastery, quiz scores, badges)
+- [x] Server: admin.scheduleWeeklyParentDigest tRPC procedure
+- [x] Server: /api/scheduled/weekly-parent-digest route registered in index.ts
+- [x] Tests: sprint58.test.ts — 24 new tests (258 total)
+
+## Sprint 59 — Course Catalogue Simplification & Messaging Audit
+
+- [x] UI: CourseCatalog — "My Courses" enrolled section at top of page
+- [x] UI: CourseCatalog — Subject filter pills alongside grade filter
+- [x] Audit: Platform-wide messaging confirmed course-agnostic (dynamic courseTitle throughout)
+
+## Sprint 60 — Gamification Framework
+
+- [x] DB: xpLedger, studentLevels, badges, userBadges, quests, userQuests, streaks, houses, userHouses, userAvatars tables
+- [x] Server: XP engine (award/deduct, daily cap, anti-farming, ledger)
+- [x] Server: Badge system (seedDefaultBadges, getBadgesForUser, markBadgesSeen)
+- [x] Server: Quest system (daily/weekly/monthly, assignDailyQuests, seedDefaultQuests)
+- [x] Server: Streak tracking (currentStreak, longestStreak, streakFreeze)
+- [x] Server: House system (4 houses, leaderboard, assignHouse, seedDefaultHouses)
+- [x] Server: gamificationRouter (getProfile, getLeaderboard, getBadges, getQuests, getStreak, getHouseLeaderboard, getXpHistory, getAvatar, updateAvatar, getChildGamificationSummary)
+- [x] UI: GamificationHub page (/gamification) with XP bar, badges, quests, streak, leaderboard
+- [x] UI: DashboardLayout sidebar — Achievements link
+
+## Sprint 61 — Auto-seed, Rewards Marketplace, Seasonal Challenge Banner
+
+- [x] Server: Auto-seed gamification defaults on server startup (badges, quests, houses)
+- [x] Server: gamificationRouter — getRewards, createReward, redeemReward procedures
+- [x] Server: gamificationRouter — getActiveSeasonalChallenge procedure
+- [x] UI: RewardsMarketplace page (/rewards) with redeem flow and XP balance display
+- [x] UI: DashboardLayout sidebar — Rewards Marketplace link
+- [x] UI: SeasonalChallengeBanner component (theme-aware gradient, progress bar, dismiss per session)
+- [x] UI: SeasonalChallengeBanner wired into Home dashboard
+- [x] UI: Parent Dashboard — CreateRewardPanel in Achievements tab
+- [x] Tooltips: achievements, rewards, adventureMap entries added to NAV_TOOLTIPS
+- [x] Tests: sprint61.test.ts — 29 new tests (328 total, 0 TypeScript errors)

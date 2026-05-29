@@ -14,6 +14,9 @@ import { inviteExpiryHandler } from "../scheduled/inviteExpiry";
 import { inactivityMonitorHandler } from "../scheduled/inactivityMonitor";
 import { weeklyParentDigestHandler } from "../scheduled/weeklyParentDigest";
 import { seedDefaultRoles } from "../db";
+import { seedDefaultBadges } from "../gamification/badges";
+import { seedDefaultQuests } from "../gamification/quests";
+import { seedDefaultHouses } from "../gamification/houses";
 import { registerStripeWebhook } from "../stripeWebhook";
 import { registerResendWebhook } from "../resendWebhook";
 import helmet from "helmet";
@@ -190,6 +193,12 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
     // Seed default RBAC roles on startup (idempotent — skips existing roles)
     seedDefaultRoles(1).catch((err) => console.warn("[RBAC] Seed default roles failed:", err));
+    // Auto-seed gamification defaults (idempotent — safe to run on every start)
+    Promise.all([
+      seedDefaultBadges(),
+      seedDefaultQuests(),
+      seedDefaultHouses(),
+    ]).catch((err) => console.warn("[Gamification] Auto-seed failed:", err));
   });
 }
 startServer().catch(console.error);

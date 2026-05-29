@@ -1152,6 +1152,133 @@ function ChildAchievementsPanel({ childId, childName }: { childId: number; child
   );
 }
 
+// ─── Create Reward Panel ─────────────────────────────────────────────────────
+
+function CreateRewardPanel({ childId, childName }: { childId: number; childName: string }) {
+  const utils = trpc.useUtils();
+  const [title, setTitle] = useState("");
+  const [xpCost, setXpCost] = useState("500");
+  const [category, setCategory] = useState<"screen_time" | "outing" | "treat" | "custom">("custom");
+  const [open, setOpen] = useState(false);
+
+  const { data: existingRewards, isLoading: loadingRewards } = trpc.gamification.getRewards.useQuery();
+
+  const createReward = trpc.gamification.createReward.useMutation({
+    onSuccess: () => {
+      toast.success(`Reward "${title}" created for ${childName}!`);
+      setTitle("");
+      setXpCost("500");
+      setCategory("custom");
+      setOpen(false);
+      utils.gamification.getRewards.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const categoryEmoji: Record<string, string> = {
+    screen_time: "📱",
+    outing: "🎉",
+    treat: "🍦",
+    custom: "🎁",
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <span>🎁</span> Rewards Marketplace
+          </CardTitle>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setOpen(true)}>
+            <Plus className="h-3 w-3" /> Add Reward
+          </Button>
+        </div>
+        <CardDescription className="text-xs">
+          Create real-world rewards that {childName} can redeem with their earned XP.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {loadingRewards ? (
+          <div className="h-12 rounded-lg bg-muted animate-pulse" />
+        ) : !existingRewards || existingRewards.length === 0 ? (
+          <div className="text-center py-6 text-muted-foreground">
+            <p className="text-sm">No rewards set up yet.</p>
+            <p className="text-xs mt-1">Add a reward to motivate {childName}!</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {existingRewards.map((r: any) => (
+              <div key={r.id} className="flex items-center gap-3 rounded-lg border p-3">
+                <span className="text-xl">{categoryEmoji[r.category] ?? "🎁"}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{r.rewardTitle}</p>
+                  <p className="text-xs text-muted-foreground">{r.xpCost.toLocaleString()} XP</p>
+                </div>
+                <Badge variant="outline" className="text-xs capitalize">{r.category.replace("_", " ")}</Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      {/* Create reward dialog */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add a Reward for {childName}</DialogTitle>
+            <DialogDescription>
+              Set a real-world reward that {childName} can redeem by spending their XP.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Reward Title *</Label>
+              <Input
+                placeholder="e.g. 30 min extra screen time"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Category</Label>
+              <Select value={category} onValueChange={(v) => setCategory(v as any)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="screen_time">📱 Screen Time</SelectItem>
+                  <SelectItem value="outing">🎉 Outing / Activity</SelectItem>
+                  <SelectItem value="treat">🍦 Treat / Snack</SelectItem>
+                  <SelectItem value="custom">🎁 Custom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>XP Cost (50 – 50,000)</Label>
+              <Input
+                type="number"
+                min={50}
+                max={50000}
+                placeholder="500"
+                value={xpCost}
+                onChange={(e) => setXpCost(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Higher XP = bigger reward. A typical lesson earns ~50–200 XP.</p>
+            </div>
+            <Button
+              className="w-full"
+              disabled={!title.trim() || createReward.isPending}
+              onClick={() => createReward.mutate({ childUserId: childId, rewardTitle: title.trim(), xpCost: Number(xpCost), category })}
+            >
+              {createReward.isPending ? "Creating…" : "Create Reward"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
 // ─── Report Export Panel ──────────────────────────────────────────────────────
 
 function ReportExportPanel({ childId, childName }: { childId: number; childName: string }) {
@@ -1622,7 +1749,10 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
 
         {/* Achievements & Rewards tab */}
         <TabsContent value="achievements" className="mt-4">
-          <ChildAchievementsPanel childId={child.childId} childName={child.name ?? "Student"} />
+          <div className="space-y-6">
+            <ChildAchievementsPanel childId={child.childId} childName={child.name ?? "Student"} />
+            <CreateRewardPanel childId={child.childId} childName={child.name ?? "Student"} />
+          </div>
         </TabsContent>
 
         {/* Export tab */}

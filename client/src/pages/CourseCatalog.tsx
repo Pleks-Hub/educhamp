@@ -4,6 +4,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
   BookOpen,
@@ -21,18 +22,19 @@ import {
   Sparkles,
   Star,
   XCircle,
+  GraduationCap,
 } from "lucide-react";
 import { useLocation } from "wouter";
 
 // ─── Subject → icon + colour mapping ─────────────────────────────────────────
-const SUBJECT_META: Record<string, { icon: React.ElementType; colour: string; bg: string }> = {
-  math:           { icon: Calculator,   colour: "text-blue-700",   bg: "bg-blue-50 border-blue-200" },
-  english:        { icon: BookOpen,     colour: "text-purple-700", bg: "bg-purple-50 border-purple-200" },
-  science:        { icon: FlaskConical, colour: "text-green-700",  bg: "bg-green-50 border-green-200" },
-  social_studies: { icon: Globe,        colour: "text-amber-700",  bg: "bg-amber-50 border-amber-200" },
-  technology:     { icon: Monitor,      colour: "text-cyan-700",   bg: "bg-cyan-50 border-cyan-200" },
-  language:       { icon: Languages,    colour: "text-rose-700",   bg: "bg-rose-50 border-rose-200" },
-  other:          { icon: Star,         colour: "text-slate-700",  bg: "bg-slate-50 border-slate-200" },
+const SUBJECT_META: Record<string, { icon: React.ElementType; colour: string; bg: string; label: string }> = {
+  math:           { icon: Calculator,   colour: "text-blue-700",   bg: "bg-blue-50 border-blue-200",   label: "Math" },
+  english:        { icon: BookOpen,     colour: "text-purple-700", bg: "bg-purple-50 border-purple-200", label: "English" },
+  science:        { icon: FlaskConical, colour: "text-green-700",  bg: "bg-green-50 border-green-200",  label: "Science" },
+  social_studies: { icon: Globe,        colour: "text-amber-700",  bg: "bg-amber-50 border-amber-200",  label: "Social Studies" },
+  technology:     { icon: Monitor,      colour: "text-cyan-700",   bg: "bg-cyan-50 border-cyan-200",    label: "Technology" },
+  language:       { icon: Languages,    colour: "text-rose-700",   bg: "bg-rose-50 border-rose-200",    label: "Language" },
+  other:          { icon: Star,         colour: "text-slate-700",  bg: "bg-slate-50 border-slate-200",  label: "Other" },
 };
 
 function subjectMeta(subject: string) {
@@ -41,20 +43,18 @@ function subjectMeta(subject: string) {
 
 // ─── Grade ordering: Pre-K → K → 1 → 2 → … → 12 → AP → SAT ─────────────────
 const GRADE_ORDER = [
-  "Pre-K",
-  "Kindergarten",
+  "Pre-K", "Kindergarten",
   "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
   "AP", "SAT",
 ];
 
-/** Human-readable grade label in standard academic format */
 function gradeLabel(g: string): string {
-  if (g === "Pre-K")       return "Pre-K";
+  if (g === "Pre-K")        return "Pre-K";
   if (g === "Kindergarten") return "Kindergarten";
-  if (g === "AP")          return "AP / Advanced";
-  if (g === "SAT")         return "SAT Prep";
+  if (g === "AP")           return "AP / Advanced";
+  if (g === "SAT")          return "SAT Prep";
   const n = parseInt(g, 10);
-  if (!isNaN(n))           return `Grade ${n}`;
+  if (!isNaN(n))            return `Grade ${n}`;
   return g;
 }
 
@@ -67,25 +67,24 @@ function gradeSort(a: string, b: string): number {
   return ia - ib;
 }
 
-// ─── Grade filter pill list ───────────────────────────────────────────────────
 const GRADE_FILTER_PILLS = [
   { value: "all",           label: "All Grades" },
   { value: "Pre-K",         label: "Pre-K" },
   { value: "Kindergarten",  label: "Kindergarten" },
-  { value: "1",             label: "Grade 1" },
-  { value: "2",             label: "Grade 2" },
-  { value: "3",             label: "Grade 3" },
-  { value: "4",             label: "Grade 4" },
-  { value: "5",             label: "Grade 5" },
-  { value: "6",             label: "Grade 6" },
-  { value: "7",             label: "Grade 7" },
-  { value: "8",             label: "Grade 8" },
-  { value: "9",             label: "Grade 9" },
-  { value: "10",            label: "Grade 10" },
-  { value: "11",            label: "Grade 11" },
-  { value: "12",            label: "Grade 12" },
-  { value: "AP",            label: "AP / Advanced" },
-  { value: "SAT",           label: "SAT Prep" },
+  { value: "1",  label: "Gr. 1" },
+  { value: "2",  label: "Gr. 2" },
+  { value: "3",  label: "Gr. 3" },
+  { value: "4",  label: "Gr. 4" },
+  { value: "5",  label: "Gr. 5" },
+  { value: "6",  label: "Gr. 6" },
+  { value: "7",  label: "Gr. 7" },
+  { value: "8",  label: "Gr. 8" },
+  { value: "9",  label: "Gr. 9" },
+  { value: "10", label: "Gr. 10" },
+  { value: "11", label: "Gr. 11" },
+  { value: "12", label: "Gr. 12" },
+  { value: "AP",  label: "AP" },
+  { value: "SAT", label: "SAT" },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -94,9 +93,10 @@ export default function CourseCatalog() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [gradeFilter, setGradeFilter] = useState("all");
+  const [subjectFilter, setSubjectFilter] = useState("all");
   const [requestingId, setRequestingId] = useState<number | null>(null);
 
-  const catalogQuery   = trpc.admin.getCourseCatalog.useQuery();
+  const catalogQuery    = trpc.admin.getCourseCatalog.useQuery();
   const myRequestsQuery = trpc.courses.getMyCourseRequests.useQuery();
   const utils = trpc.useUtils();
 
@@ -131,16 +131,24 @@ export default function CourseCatalog() {
 
   const courses = catalogQuery.data ?? [];
 
-  // Derive which grade-filter pills actually have courses (to hide empty grades)
-  const availableGrades = useMemo(() => {
-    return new Set(courses.map((c) => c.gradeLevel));
+  // Enrolled courses for "My Courses" section
+  const enrolledCourses = useMemo(() => courses.filter((c) => c.isEnrolled), [courses]);
+
+  // Available subjects for filter pills (only subjects that have courses)
+  const availableSubjects = useMemo(() => {
+    return Array.from(new Set(courses.map((c) => c.subject.toLowerCase())));
   }, [courses]);
 
-  // Filtered + sorted courses
+  // Derive which grade-filter pills actually have courses
+  const availableGrades = useMemo(() => new Set(courses.map((c) => c.gradeLevel)), [courses]);
+
+  // Filtered + sorted courses (excluding enrolled ones — shown separately above)
   const filtered = useMemo(() => {
     return courses
       .filter((c) => {
+        if (c.isEnrolled) return false; // shown in My Courses section
         if (gradeFilter !== "all" && c.gradeLevel !== gradeFilter) return false;
+        if (subjectFilter !== "all" && c.subject.toLowerCase() !== subjectFilter) return false;
         if (search.trim()) {
           const q = search.toLowerCase();
           return (
@@ -159,7 +167,7 @@ export default function CourseCatalog() {
         if (gs !== 0) return gs;
         return a.sortOrder - b.sortOrder;
       });
-  }, [courses, gradeFilter, search]);
+  }, [courses, gradeFilter, subjectFilter, search]);
 
   // Group by grade level
   const grouped = useMemo(() => {
@@ -171,6 +179,9 @@ export default function CourseCatalog() {
     }
     return Array.from(map.entries()).sort(([a], [b]) => gradeSort(a, b));
   }, [filtered]);
+
+  const recommendedCount = courses.filter((c) => c.isRecommended && !c.isEnrolled).length;
+  const pendingCount     = (myRequestsQuery.data ?? []).filter((r) => r.status === "pending").length;
 
   async function handleRequest(courseId: number) {
     setRequestingId(courseId);
@@ -191,8 +202,7 @@ export default function CourseCatalog() {
     }
   }
 
-  const recommendedCount = courses.filter((c) => c.isRecommended && !c.isEnrolled).length;
-  const pendingCount     = (myRequestsQuery.data ?? []).filter((r) => r.status === "pending").length;
+  const hasActiveFilters = search || gradeFilter !== "all" || subjectFilter !== "all";
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
@@ -225,6 +235,52 @@ export default function CourseCatalog() {
         </div>
       </div>
 
+      {/* ── My Courses (enrolled) ──────────────────────────────────────────── */}
+      {enrolledCourses.length > 0 && (
+        <div>
+          <h2 className="text-base font-semibold text-slate-700 mb-3 flex items-center gap-2">
+            <GraduationCap className="h-4 w-4 text-emerald-600" />
+            My Courses
+            <span className="text-slate-400 text-xs font-normal">
+              {enrolledCourses.length} enrolled
+            </span>
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-2">
+            {enrolledCourses.map((course) => {
+              const meta = subjectMeta(course.subject);
+              const SubjectIcon = meta.icon;
+              return (
+                <div
+                  key={course.id}
+                  className="relative rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 transition-all hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium ${meta.bg} ${meta.colour}`}>
+                      <SubjectIcon className="h-3 w-3" />
+                      {meta.label}
+                    </div>
+                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">
+                      <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Enrolled
+                    </Badge>
+                  </div>
+                  <h3 className="font-semibold text-slate-900 text-sm leading-snug mb-1">{course.title}</h3>
+                  <p className="text-xs text-slate-500 mb-3">{course.courseCode} · {gradeLabel(course.gradeLevel)}</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full gap-1 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                    onClick={() => handleSwitch(course.id, course.title)}
+                  >
+                    Switch to this course <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          <Separator className="mt-4" />
+        </div>
+      )}
+
       {/* ── Search bar ─────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -236,17 +292,51 @@ export default function CourseCatalog() {
             className="pl-9"
           />
         </div>
-        {(search || gradeFilter !== "all") && (
+        {hasActiveFilters && (
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => { setSearch(""); setGradeFilter("all"); }}
+            onClick={() => { setSearch(""); setGradeFilter("all"); setSubjectFilter("all"); }}
             className="text-slate-500"
           >
             Clear filters
           </Button>
         )}
       </div>
+
+      {/* ── Subject filter pills ───────────────────────────────────────────── */}
+      {availableSubjects.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setSubjectFilter("all")}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+              subjectFilter === "all"
+                ? "bg-slate-800 text-white border-slate-800"
+                : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-800"
+            }`}
+          >
+            All Subjects
+          </button>
+          {availableSubjects.map((subj) => {
+            const meta = subjectMeta(subj);
+            const SubjectIcon = meta.icon;
+            return (
+              <button
+                key={subj}
+                onClick={() => setSubjectFilter(subj)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                  subjectFilter === subj
+                    ? `${meta.bg} ${meta.colour} border-current`
+                    : "bg-white text-slate-600 border-slate-200 hover:border-slate-400 hover:text-slate-800"
+                }`}
+              >
+                <SubjectIcon className="h-3.5 w-3.5" />
+                {meta.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Grade filter pills ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-2">
@@ -296,16 +386,14 @@ export default function CourseCatalog() {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
             {gradeCourses.map((course) => {
-              const meta       = subjectMeta(course.subject);
+              const meta        = subjectMeta(course.subject);
               const SubjectIcon = meta.icon;
 
               return (
                 <div
                   key={course.id}
                   className={`relative rounded-xl border p-4 transition-all hover:shadow-md ${
-                    course.isEnrolled
-                      ? "border-emerald-200 bg-emerald-50/50"
-                      : course.isRecommended
+                    course.isRecommended
                       ? "border-indigo-200 bg-indigo-50/50 ring-1 ring-indigo-200"
                       : course.isGradeAppropriate
                       ? "border-slate-200 bg-white hover:border-slate-300"
@@ -316,20 +404,15 @@ export default function CourseCatalog() {
                   <div className="flex items-start justify-between mb-3">
                     <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium ${meta.bg} ${meta.colour}`}>
                       <SubjectIcon className="h-3 w-3" />
-                      {course.subject.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                      {meta.label}
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      {course.isEnrolled && (
-                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">
-                          <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Enrolled
-                        </Badge>
-                      )}
-                      {course.isRecommended && !course.isEnrolled && (
+                      {course.isRecommended && (
                         <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 text-[10px]">
                           <Sparkles className="h-2.5 w-2.5 mr-0.5" /> Recommended
                         </Badge>
                       )}
-                      {!course.isGradeAppropriate && !course.isEnrolled && (
+                      {!course.isGradeAppropriate && (
                         <Badge variant="outline" className="text-slate-400 text-[10px]">
                           Outside grade range
                         </Badge>
@@ -352,21 +435,9 @@ export default function CourseCatalog() {
 
                   {/* Action button */}
                   {(() => {
-                    const reqStatus  = requestStatusMap.get(course.id);
+                    const reqStatus    = requestStatusMap.get(course.id);
                     const isRequesting = requestingId === course.id;
 
-                    if (course.isEnrolled) {
-                      return (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full gap-1 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                          onClick={() => handleSwitch(course.id, course.title)}
-                        >
-                          Switch to this course <ChevronRight className="h-3.5 w-3.5" />
-                        </Button>
-                      );
-                    }
                     if (reqStatus?.status === "pending") {
                       return (
                         <div className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-md bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium">

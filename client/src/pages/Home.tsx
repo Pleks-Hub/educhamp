@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GuidedTour } from "@/components/GuidedTour";
+import { SeasonalChallengeBanner } from "@/components/SeasonalChallengeBanner";
 import CourseSwitcher from "@/components/CourseSwitcher";
 import {
   AlertCircle,
@@ -563,6 +564,9 @@ export default function Home() {
 
       {/* Auto-enrollment banner — shown once on first login when student was auto-enrolled */}
       {dashboard?.wasAutoEnrolled && <AutoEnrollBanner courseTitle={dashboard.courseTitle ?? "your course"} />}
+
+      {/* Seasonal challenge banner — shown when an active challenge exists */}
+      <SeasonalChallengeBanner />
 
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">

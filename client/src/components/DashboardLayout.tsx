@@ -45,6 +45,7 @@ import {
   Sigma,
   Sparkles,
   Trophy,
+  Gift,
   User,
   Users,
 } from "lucide-react";
@@ -65,6 +66,7 @@ const menuItems = [
   { icon: BarChart3, label: "Progress", path: "/progress", tooltipKey: "progress" },
   { icon: Sigma, label: "Skill Index", path: "/skills", tooltipKey: "skillIndex" },
   { icon: Trophy, label: "Achievements", path: "/gamification", tooltipKey: "achievements" },
+  { icon: Gift, label: "Rewards", path: "/rewards", tooltipKey: "rewards" },
   { icon: Map, label: "Adventure Map", path: "/adventure-map", tooltipKey: "adventureMap" },
 ];
 
