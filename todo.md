@@ -1653,3 +1653,20 @@
 - [x] UI: Parent Dashboard — CreateRewardPanel in Achievements tab
 - [x] Tooltips: achievements, rewards, adventureMap entries added to NAV_TOOLTIPS
 - [x] Tests: sprint61.test.ts — 29 new tests (328 total, 0 TypeScript errors)
+
+## Assessment Audit & Remediation (May 2026)
+
+- [x] Audit all assessment tables across every course and grade level
+- [x] Fix 371 questions with malformed plain-string choices (should be {label,text} objects)
+- [x] Remove 357 duplicate quiz and diagnostic questions
+- [x] Trim APLIT diagnostic to exactly 57 questions
+- [x] Fix GR3SS quiz distribution (balanced at 6/unit)
+- [x] Add hard difficulty questions to GR3MATH, GR3ELA, GR3SCI, GR3SS
+- [x] Add hard difficulty questions to all Grade 4-8 standard courses
+- [x] Add hard difficulty questions to all KAP courses (G4-G8)
+- [x] Generate 63 missing questions for APCALCBC units 4-12, SATPREP U12, GR3SS
+- [x] Generate 325 diagnostic questions for Pre-K through Grade 2 (all subjects)
+- [x] Generate 380 quiz questions for Pre-K through Grade 2 (all subjects, all units)
+- [x] Fix correctAnswer case mismatch (lowercase 'a' to uppercase 'A')
+- [x] All 19 validation checks pass: 3,094 quiz questions, 3,426 diagnostic questions
+- [x] 328 tests passing, 0 TypeScript errors
