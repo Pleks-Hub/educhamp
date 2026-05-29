@@ -37,12 +37,14 @@ import {
   LayoutDashboard,
   Library,
   LogOut,
+  Map,
   PanelLeft,
   Settings,
   Share2,
   Shield,
   Sigma,
   Sparkles,
+  Trophy,
   User,
   Users,
 } from "lucide-react";
@@ -53,6 +55,7 @@ import { toast } from "sonner";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import CourseSwitcher from "./CourseSwitcher";
+import { XpProgressBar } from "./XpProgressBar";
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/", tooltipKey: "dashboard" },
   { icon: Library, label: "Course Catalog", path: "/courses", tooltipKey: "courses" },
@@ -61,6 +64,8 @@ const menuItems = [
   { icon: ClipboardList, label: "Diagnostic", path: "/diagnostic", tooltipKey: "diagnostic" },
   { icon: BarChart3, label: "Progress", path: "/progress", tooltipKey: "progress" },
   { icon: Sigma, label: "Skill Index", path: "/skills", tooltipKey: "skillIndex" },
+  { icon: Trophy, label: "Achievements", path: "/gamification", tooltipKey: "achievements" },
+  { icon: Map, label: "Adventure Map", path: "/adventure-map", tooltipKey: "adventureMap" },
 ];
 
 // Parent Dashboard is shown to all authenticated users — any user can enrol children
@@ -270,6 +275,9 @@ function DashboardLayoutContent({
               )}
             </div>
           </SidebarHeader>
+
+          {/* XP Progress Bar — shown when sidebar is expanded */}
+          {!isCollapsed && <XpProgressBar />}
 
           {/* Navigation */}
           <SidebarContent className="py-3">

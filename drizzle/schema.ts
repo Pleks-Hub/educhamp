@@ -1097,3 +1097,246 @@ export const inactivityNotifications = mysqlTable("inactivityNotifications", {
 
 export type InactivityNotification = typeof inactivityNotifications.$inferSelect;
 export type InsertInactivityNotification = typeof inactivityNotifications.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Sprint 60 — Gamification Framework
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── XP Ledger ────────────────────────────────────────────────────────────────
+/**
+ * Immutable ledger of every XP transaction.
+ * source: the event type that triggered the award.
+ * sourceId: optional FK to the triggering record (quizAttemptId, lessonId, etc.)
+ */
+export const xpLedger = mysqlTable("xpLedger", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  amount: int("amount").notNull(),                                // XP awarded (always positive)
+  source: varchar("source", { length: 64 }).notNull(),           // "lesson_complete" | "quiz_pass" | "mastery" | "streak" | "diagnostic" | "quest" | "badge"
+  sourceId: varchar("sourceId", { length: 64 }),                 // optional reference id
+  description: varchar("description", { length: 256 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  userIdx: index("xpLedger_userId_idx").on(t.userId),
+  userSourceIdx: index("xpLedger_userId_source_idx").on(t.userId, t.source),
+  createdAtIdx: index("xpLedger_createdAt_idx").on(t.createdAt),
+}));
+
+export type XpLedgerEntry = typeof xpLedger.$inferSelect;
+export type InsertXpLedgerEntry = typeof xpLedger.$inferInsert;
+
+// ─── Student Levels ───────────────────────────────────────────────────────────
+/**
+ * Aggregated XP total and current level for each student.
+ * Updated after every XP award via upsert.
+ */
+export const studentLevels = mysqlTable("studentLevels", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  totalXp: int("totalXp").notNull().default(0),
+  currentLevel: int("currentLevel").notNull().default(1),
+  currentLevelName: varchar("currentLevelName", { length: 64 }).notNull().default("Rookie Learner"),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type StudentLevel = typeof studentLevels.$inferSelect;
+export type InsertStudentLevel = typeof studentLevels.$inferInsert;
+
+// ─── Badges ───────────────────────────────────────────────────────────────────
+/**
+ * Master badge catalogue. Seeded at startup; admins can add more.
+ * category: "academic" | "achievement" | "behavioral" | "consistency" | "special" | "parent_engagement"
+ */
+export const badges = mysqlTable("badges", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 64 }).notNull().unique(),        // machine-readable slug e.g. "first_quiz_passed"
+  name: varchar("name", { length: 128 }).notNull(),
+  description: varchar("description", { length: 512 }).notNull(),
+  category: varchar("category", { length: 64 }).notNull().default("achievement"),
+  iconEmoji: varchar("iconEmoji", { length: 8 }).notNull().default("🏅"),
+  xpReward: int("xpReward").notNull().default(50),
+  isActive: boolean("isActive").notNull().default(true),
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Badge = typeof badges.$inferSelect;
+export type InsertBadge = typeof badges.$inferInsert;
+
+// ─── User Badges ──────────────────────────────────────────────────────────────
+export const userBadges = mysqlTable("userBadges", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  badgeId: int("badgeId").notNull(),
+  earnedAt: timestamp("earnedAt").defaultNow().notNull(),
+  seenAt: timestamp("seenAt"),                                   // null = unseen (triggers celebration)
+}, (t) => ({
+  userIdx: index("userBadges_userId_idx").on(t.userId),
+  userBadgeUniq: uniqueIndex("userBadges_userId_badgeId_idx").on(t.userId, t.badgeId),
+}));
+
+export type UserBadge = typeof userBadges.$inferSelect;
+export type InsertUserBadge = typeof userBadges.$inferInsert;
+
+// ─── Quests ───────────────────────────────────────────────────────────────────
+/**
+ * Quest template catalogue.
+ * requirementType: "lessons_completed" | "quizzes_passed" | "xp_earned" | "mastery_achieved" | "streak_days" | "diagnostic_improved"
+ */
+export const quests = mysqlTable("quests", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 64 }).notNull().unique(),
+  title: varchar("title", { length: 128 }).notNull(),
+  description: varchar("description", { length: 512 }).notNull(),
+  questType: mysqlEnum("questType", ["daily", "weekly", "monthly"]).notNull().default("daily"),
+  xpReward: int("xpReward").notNull().default(100),
+  badgeId: int("badgeId"),                                       // optional badge awarded on completion
+  requirementType: varchar("requirementType", { length: 64 }).notNull(),
+  requirementValue: int("requirementValue").notNull().default(1),
+  isActive: boolean("isActive").notNull().default(true),
+  sortOrder: int("sortOrder").notNull().default(0),
+});
+
+export type Quest = typeof quests.$inferSelect;
+export type InsertQuest = typeof quests.$inferInsert;
+
+// ─── User Quests ──────────────────────────────────────────────────────────────
+export const userQuests = mysqlTable("userQuests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  questId: int("questId").notNull(),
+  assignedDate: varchar("assignedDate", { length: 16 }).notNull(), // YYYY-MM-DD
+  progress: int("progress").notNull().default(0),
+  completedAt: timestamp("completedAt"),
+  xpAwarded: boolean("xpAwarded").notNull().default(false),
+}, (t) => ({
+  userIdx: index("userQuests_userId_idx").on(t.userId),
+  userDateIdx: index("userQuests_userId_date_idx").on(t.userId, t.assignedDate),
+  userQuestDateUniq: uniqueIndex("userQuests_userId_questId_date_idx").on(t.userId, t.questId, t.assignedDate),
+}));
+
+export type UserQuest = typeof userQuests.$inferSelect;
+export type InsertUserQuest = typeof userQuests.$inferInsert;
+
+// ─── Streaks ──────────────────────────────────────────────────────────────────
+export const streaks = mysqlTable("streaks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  currentStreak: int("currentStreak").notNull().default(0),
+  longestStreak: int("longestStreak").notNull().default(0),
+  lastActivityDate: varchar("lastActivityDate", { length: 16 }),  // YYYY-MM-DD
+  streakFreezeCount: int("streakFreezeCount").notNull().default(0),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Streak = typeof streaks.$inferSelect;
+export type InsertStreak = typeof streaks.$inferInsert;
+
+// ─── Houses ───────────────────────────────────────────────────────────────────
+export const houses = mysqlTable("houses", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 64 }).notNull().unique(),       // "Titans" | "Eagles" | "Lions" | "Falcons"
+  color: varchar("color", { length: 32 }).notNull().default("#4f46e5"),
+  mascotEmoji: varchar("mascotEmoji", { length: 8 }).notNull().default("🦅"),
+  totalPoints: int("totalPoints").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type House = typeof houses.$inferSelect;
+export type InsertHouse = typeof houses.$inferInsert;
+
+// ─── User Houses ──────────────────────────────────────────────────────────────
+export const userHouses = mysqlTable("userHouses", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  houseId: int("houseId").notNull(),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+  pointsContributed: int("pointsContributed").notNull().default(0),
+}, (t) => ({
+  houseIdx: index("userHouses_houseId_idx").on(t.houseId),
+}));
+
+export type UserHouse = typeof userHouses.$inferSelect;
+export type InsertUserHouse = typeof userHouses.$inferInsert;
+
+// ─── Seasonal Challenges ──────────────────────────────────────────────────────
+export const seasonalChallenges = mysqlTable("seasonalChallenges", {
+  id: int("id").autoincrement().primaryKey(),
+  key: varchar("key", { length: 64 }).notNull().unique(),
+  title: varchar("title", { length: 128 }).notNull(),
+  description: text("description"),
+  theme: varchar("theme", { length: 64 }),                       // "summer" | "back_to_school" | "sat_sprint" | "stem_month"
+  startDate: timestamp("startDate").notNull(),
+  endDate: timestamp("endDate").notNull(),
+  badgeId: int("badgeId"),
+  xpBonus: int("xpBonus").notNull().default(0),
+  isActive: boolean("isActive").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type SeasonalChallenge = typeof seasonalChallenges.$inferSelect;
+export type InsertSeasonalChallenge = typeof seasonalChallenges.$inferInsert;
+
+// ─── User Seasonal Progress ───────────────────────────────────────────────────
+export const userSeasonalProgress = mysqlTable("userSeasonalProgress", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  challengeId: int("challengeId").notNull(),
+  progress: int("progress").notNull().default(0),
+  completedAt: timestamp("completedAt"),
+}, (t) => ({
+  userChallengeUniq: uniqueIndex("userSeasonal_userId_challengeId_idx").on(t.userId, t.challengeId),
+}));
+
+export type UserSeasonalProgress = typeof userSeasonalProgress.$inferSelect;
+
+// ─── Rewards Marketplace ──────────────────────────────────────────────────────
+/**
+ * Parent-configurable real-world reward goals.
+ * Parents create rewards; students redeem with XP.
+ */
+export const rewardsMarketplace = mysqlTable("rewardsMarketplace", {
+  id: int("id").autoincrement().primaryKey(),
+  parentUserId: int("parentUserId").notNull(),                   // parent who created this reward
+  childUserId: int("childUserId").notNull(),                     // student it applies to
+  rewardTitle: varchar("rewardTitle", { length: 256 }).notNull(),
+  xpCost: int("xpCost").notNull(),
+  category: varchar("category", { length: 64 }).default("custom"), // "screen_time" | "outing" | "treat" | "custom"
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  parentIdx: index("rewardsMarket_parentUserId_idx").on(t.parentUserId),
+  childIdx: index("rewardsMarket_childUserId_idx").on(t.childUserId),
+}));
+
+export type RewardItem = typeof rewardsMarketplace.$inferSelect;
+export type InsertRewardItem = typeof rewardsMarketplace.$inferInsert;
+
+// ─── Reward Redemptions ───────────────────────────────────────────────────────
+export const rewardRedemptions = mysqlTable("rewardRedemptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),                               // student who redeemed
+  rewardId: int("rewardId").notNull(),
+  redeemedAt: timestamp("redeemedAt").defaultNow().notNull(),
+  xpSpent: int("xpSpent").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).notNull().default("pending"),
+}, (t) => ({
+  userIdx: index("rewardRedemptions_userId_idx").on(t.userId),
+}));
+
+export type RewardRedemption = typeof rewardRedemptions.$inferSelect;
+
+// ─── User Avatars ─────────────────────────────────────────────────────────────
+export const userAvatars = mysqlTable("userAvatars", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  avatarStyle: varchar("avatarStyle", { length: 64 }).notNull().default("default"),
+  accessories: text("accessories"),                              // JSON array of unlocked accessory keys
+  backgroundColor: varchar("backgroundColor", { length: 32 }).notNull().default("#4f46e5"),
+  petName: varchar("petName", { length: 64 }),
+  unlockedItems: text("unlockedItems"),                         // JSON array of all unlocked cosmetic keys
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserAvatar = typeof userAvatars.$inferSelect;
+export type InsertUserAvatar = typeof userAvatars.$inferInsert;

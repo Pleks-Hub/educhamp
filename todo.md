@@ -1542,3 +1542,72 @@
 - [x] Placement diagnostic: verify grade labels and logic cover Pre-K–Grade 2
 - [x] FAQ/help content: update any grade-range copy
 - [x] Run full regression test suite — 263 tests pass, 0 TypeScript errors
+
+## Sprint 60 — Comprehensive Gamification Framework
+
+### Phase 1: DB Schema
+- [x] DB: xpLedger table (userId, amount, source, sourceId, description, createdAt)
+- [x] DB: studentLevels table (userId, totalXp, currentLevel, currentLevelName, updatedAt)
+- [x] DB: badges table (id, key, name, description, category, iconEmoji, xpReward, isActive, sortOrder)
+- [x] DB: userBadges table (userId, badgeId, earnedAt, seenAt)
+- [x] DB: quests table (id, key, title, description, questType daily/weekly/monthly, xpReward, badgeId, requirementType, requirementValue, isActive)
+- [x] DB: userQuests table (userId, questId, assignedDate, progress, completedAt, xpAwarded)
+- [x] DB: streaks table (userId, currentStreak, longestStreak, lastActivityDate, streakFreezeCount, updatedAt)
+- [x] DB: houses table (id, name, color, mascot, totalPoints)
+- [x] DB: userHouses table (userId, houseId, joinedAt, pointsContributed)
+- [x] DB: seasonalChallenges table (id, key, title, description, startDate, endDate, badgeId, isActive)
+- [x] DB: userSeasonalProgress table (userId, challengeId, progress, completedAt)
+- [x] DB: rewardsMarketplace table (userId, rewardTitle, xpCost, category, isActive, createdAt)
+- [x] DB: rewardRedemptions table (userId, rewardId, redeemedAt, status)
+- [x] DB: userAvatars table (userId, avatarStyle, accessories JSON, backgroundColor, petName, updatedAt)
+- [x] Apply migration via webdev_execute_sql
+
+### Phase 2: Server — XP Engine & Badge System
+- [x] Server: gamification/xp.ts — awardXP(userId, amount, source, sourceId, description) with anti-farming guards
+- [x] Server: gamification/levels.ts — XP thresholds per level (1–50), level name map, updateStudentLevel()
+- [x] Server: gamification/badges.ts — seedDefaultBadges(), checkAndAwardBadges(userId, event), getBadgesForUser()
+- [x] Server: gamification/streaks.ts — recordActivity(userId), getStreak(userId), useStreakFreeze(userId)
+- [x] Server: gamification/quests.ts — generateDailyQuests(userId), updateQuestProgress(userId, event), completeQuest()
+- [x] Server: gamification/houses.ts — assignHouse(userId), awardHousePoints(userId, amount), getHouseLeaderboard()
+- [x] Server: tRPC gamification router — getProfile, getLeaderboard, getQuests, getBadges, getStreak, redeemReward
+- [x] Server: wire awardXP calls into lesson completion, quiz submission, diagnostic completion, mastery update
+
+### Phase 3: Student UI
+- [x] UI: XP progress bar + level badge in sidebar/header (persistent across all pages)
+- [x] UI: /gamification — dedicated Gamification Hub page (XP, level, streak, badges, quests, house)
+- [x] UI: Badge collection grid with earned/locked states and category tabs
+- [x] UI: Quest panel (daily/weekly/monthly) with progress bars and XP rewards
+- [x] UI: Streak counter widget with freeze button
+- [x] UI: Student level card with level name and next-level XP progress
+- [x] UI: House affiliation card with house leaderboard
+
+### Phase 4: Learning Adventure Map
+- [x] UI: /adventure-map — visual course journey with unit nodes, milestones, and completion rewards
+- [x] UI: Unit nodes show lock/in-progress/completed states with XP rewards displayed
+- [x] UI: Mastery progression levels (Beginner→Explorer→Skilled→Proficient→Master→Grand Master) replace old labels
+
+### Phase 5: Young Learner Rewards
+- [x] UI: Young Learner reward mode — stars ⭐, stickers 🏅, treasure chests 🎁 instead of XP numbers
+- [x] UI: Achievement Book page for Pre-K–Grade 2 showing collected stickers/stars
+- [x] UI: Animated character rewards on milestone completion
+
+### Phase 6: Parent Engagement
+- [x] UI: Parent Dashboard — Achievements tab (child's badges, XP, streak, house)
+- [x] UI: Rewards Marketplace — parent-configurable real-world reward goals linked to XP milestones
+- [x] Server: Update weekly parent digest to include XP earned, badges, streak, mastery growth
+
+### Phase 7: Admin Portal
+- [x] UI: Admin — Gamification tab with badge management (create/edit/deactivate badges)
+- [x] UI: Admin — XP economy settings (XP amounts per event, anti-farming thresholds)
+- [x] UI: Admin — Gamification analytics (top earners, badge distribution, quest completion rates)
+- [x] UI: Admin — House management and seasonal challenge creation
+
+### Phase 8: AI Motivation Coach
+- [x] Server: Extend EduBot system prompt with motivational coaching layer
+- [x] Server: Achievement nudge messages injected into tutor context (X XP to next level, badge progress)
+- [x] UI: Achievement nudge toast shown after quiz/lesson completion
+
+### Phase 9: QA & Anti-Abuse
+- [x] Server: XP farming prevention (daily cap, cooldown per source, duplicate guard)
+- [x] Server: Vitest tests for XP engine, badge award logic, streak tracking, quest completion
+- [x] Run full regression test suite — 299 tests pass, 0 TypeScript errors

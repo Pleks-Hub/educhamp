@@ -32,7 +32,7 @@ import {
   UserPlus, UserMinus, Copy, MoreHorizontal, Search,
   Inbox, Send, XCircle, Filter, Building2, Phone, Calendar, Sparkles,
   ChevronLeft, ChevronDown, ChevronUp, Star, Tag, CreditCard,
-  MailX, ShieldOff, ShieldCheck, RotateCcw, Download,
+  MailX, ShieldOff, ShieldCheck, RotateCcw, Download, Trophy, Zap, Award,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -2445,6 +2445,9 @@ export default function AdminDashboard() {
             <NavTooltip content={{ title: "Inactivity", description: "Monitor student inactivity, view notification history, and trigger manual follow-ups." }} side="bottom" delayDuration={700}>
               <TabsTrigger value="inactivity" className="gap-2"><Activity className="h-4 w-4" /> Inactivity</TabsTrigger>
             </NavTooltip>
+            <NavTooltip content={{ title: "Gamification", description: "Manage badges, XP economy settings, leaderboards, and gamification analytics." }} side="bottom" delayDuration={700}>
+              <TabsTrigger value="gamification" className="gap-2"><Trophy className="h-4 w-4" /> Gamification</TabsTrigger>
+            </NavTooltip>
           </TabsList>
 
           <TabsContent value="overview"><OverviewTab /></TabsContent>
@@ -2463,6 +2466,7 @@ export default function AdminDashboard() {
           <TabsContent value="subscriptions"><SubscriptionCRMTab /></TabsContent>
           <TabsContent value="paymentanalytics"><PaymentAnalyticsTab /></TabsContent>
           <TabsContent value="inactivity"><InactivityMonitoringTab /></TabsContent>
+          <TabsContent value="gamification"><GamificationAdminTab /></TabsContent>
         </Tabs>
       </div>
     </div>
@@ -2691,6 +2695,162 @@ function InactivityMonitoringTab() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+// ─── Gamification Admin Tab ───────────────────────────────────────────────────
+
+function GamificationAdminTab() {
+  const bootstrap = trpc.gamification.bootstrap.useMutation({
+    onSuccess: () => toast.success("Gamification data seeded successfully"),
+    onError: (e) => toast.error(e.message),
+  });
+
+  const { data: leaderboard, isLoading: lbLoading } = trpc.gamification.getLeaderboard.useQuery(
+    { limit: 20 },
+    { staleTime: 60_000 }
+  );
+
+  const { data: houseLeaderboard, isLoading: hlLoading } = trpc.gamification.getHouseLeaderboard.useQuery(
+    undefined,
+    { staleTime: 60_000 }
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-amber-500" />
+            Gamification Management
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage badges, XP economy, leaderboards, and gamification analytics.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => bootstrap.mutate()}
+          disabled={bootstrap.isPending}
+          className="gap-2"
+        >
+          <Zap className="w-4 h-4" />
+          {bootstrap.isPending ? "Seeding…" : "Seed / Re-seed Defaults"}
+        </Button>
+      </div>
+
+      {/* XP Economy Summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="pt-5 text-center">
+            <div className="text-3xl font-black text-amber-500">50 XP</div>
+            <p className="text-xs text-muted-foreground mt-1">Per Lesson Completed</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 text-center">
+            <div className="text-3xl font-black text-indigo-500">150 XP</div>
+            <p className="text-xs text-muted-foreground mt-1">Per Quiz Pass (75%+)</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 text-center">
+            <div className="text-3xl font-black text-emerald-500">200 XP</div>
+            <p className="text-xs text-muted-foreground mt-1">Per Perfect Score (90%+)</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Student XP Leaderboard */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Star className="w-4 h-4 text-amber-500" />
+            Top Students by XP
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {lbLoading ? (
+            <div className="space-y-2">
+              {[0, 1, 2, 3, 4].map((i) => <div key={i} className="h-8 bg-muted rounded animate-pulse" />)}
+            </div>
+          ) : leaderboard && leaderboard.length > 0 ? (
+            <div className="space-y-2">
+              {leaderboard.map((entry: any, idx: number) => (
+                <div key={entry.userId} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
+                  <span className="w-6 text-center font-bold text-muted-foreground text-sm">
+                    {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}`}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{entry.name ?? "Student"}</p>
+                    <p className="text-xs text-muted-foreground">{entry.levelName} · Level {entry.level}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-amber-600">{(entry.totalXp ?? 0).toLocaleString()} XP</p>
+                    <p className="text-xs text-muted-foreground">{(entry.weeklyXp ?? 0).toLocaleString()} this week</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-6">No XP data yet. Students will appear here as they complete lessons.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* House Leaderboard */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Award className="w-4 h-4 text-purple-500" />
+            House Leaderboard
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {hlLoading ? (
+            <div className="space-y-2">
+              {[0, 1, 2, 3].map((i) => <div key={i} className="h-12 bg-muted rounded animate-pulse" />)}
+            </div>
+          ) : houseLeaderboard && houseLeaderboard.length > 0 ? (
+            <div className="space-y-3">
+              {houseLeaderboard.map((house: any, idx: number) => (
+                <div key={house.id} className="flex items-center gap-3 p-3 rounded-xl border">
+                  <span className="text-2xl">{house.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold">{house.name}</p>
+                    <p className="text-xs text-muted-foreground">{house.memberCount ?? 0} members</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-purple-600">{(house.totalPoints ?? 0).toLocaleString()} pts</p>
+                    <p className="text-xs text-muted-foreground">#{idx + 1}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-6">No house data yet. Click "Seed Defaults" to initialise the four houses.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Anti-Abuse Note */}
+      <Card className="border-amber-200 bg-amber-50/50 dark:bg-amber-950/20">
+        <CardContent className="pt-4">
+          <div className="flex gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Anti-Abuse Controls Active</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                XP farming is prevented by daily caps (500 XP/day), duplicate-event guards (idempotency keys), and
+                minimum time-between-awards per event type. Streak freezes are capped at 3 per student.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

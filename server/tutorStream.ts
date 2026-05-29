@@ -16,6 +16,10 @@ import { sdk } from "./_core/sdk";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
 import { buildTutorSystemPrompt, isYoungLearnerGrade } from "./educhamp-helpers";
+import { getStudentXpSummary } from "./gamification/xp";
+import { getLevelProgress } from "./gamification/levels";
+import { getStreak } from "./gamification/streaks";
+import { getBadgesForUser } from "./gamification/badges";
 import {
   getOrCreateTutorSession,
   updateTutorSessionMessages,
@@ -286,6 +290,28 @@ export function registerTutorStreamRoute(app: Express) {
       const modeProfile = await getProfileForMode(contextUserId).catch(() => null);
       const parentLedMode = modeProfile?.parentLedMode === true;
 
+      // ── Gamification context for AI motivation coach ──────────────────────────────
+      const [xpSummary, streakData, badgesData] = await Promise.all([
+        getStudentXpSummary(contextUserId).catch(() => null),
+        getStreak(contextUserId).catch(() => null),
+        getBadgesForUser(contextUserId).catch(() => []),
+      ]);
+      const levelProgress = xpSummary ? getLevelProgress(xpSummary.totalXp ?? 0) : null;
+      const badgesList = badgesData && typeof badgesData === 'object' && 'all' in badgesData
+        ? (badgesData as any).all
+        : Array.isArray(badgesData) ? badgesData : [];
+      const recentBadge = badgesList
+        .filter((b: any) => b.earned)
+        .sort((a: any, b: any) => (b.earnedAt ?? 0) - (a.earnedAt ?? 0))[0]?.name;
+      const gamificationCtx = xpSummary ? {
+        level: levelProgress?.level ?? 1,
+        levelName: levelProgress?.levelName ?? "Novice",
+        totalXp: xpSummary.totalXp ?? 0,
+        currentStreak: streakData?.currentStreak ?? 0,
+        longestStreak: streakData?.longestStreak ?? 0,
+        recentBadge,
+      } : undefined;
+
       const systemPrompt = buildTutorSystemPrompt(
         contextUserName,
         mode,
@@ -303,6 +329,7 @@ export function registerTutorStreamRoute(app: Express) {
           studentDemographics,
           isYoungLearner,
           parentLedMode,
+          gamification: gamificationCtx,
           courseContext: activeCourse
             ? {
                 title: activeCourse.title,

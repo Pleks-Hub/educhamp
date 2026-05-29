@@ -9,6 +9,12 @@ import { landingRouter } from "./routers/landing";
 import { adminRouter } from "./routers/admin";
 import { newsletterRouter } from "./routers/newsletter";
 import { paymentRouter } from "./routers/payment";
+import { gamificationRouter } from "./routers/gamification";
+import { awardXp } from "./gamification/xp";
+import { checkAndAwardBadges } from "./gamification/badges";
+import { recordActivity } from "./gamification/streaks";
+import { updateQuestProgress } from "./gamification/quests";
+import { awardHousePoints } from "./gamification/houses";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
 import { notifyOwner } from "./_core/notification";
@@ -68,6 +74,7 @@ export const appRouter = router({
   landing: landingRouter,
   newsletter: newsletterRouter,
   payment: paymentRouter,
+  gamification: gamificationRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
@@ -249,6 +256,17 @@ export const appRouter = router({
       .input(z.object({ lessonId: z.number(), unitId: z.number(), unitNumber: z.number() }))
       .mutation(async ({ ctx, input }) => {
         await markLessonComplete(ctx.user.id, input.lessonId, input.unitId);
+
+        // ── Gamification side-effects (fire-and-forget) ──────────────────
+        Promise.all([
+          awardXp(ctx.user.id, "lesson_complete", 50, `lesson_${input.lessonId}`, "Lesson completed"),
+          recordActivity(ctx.user.id),
+          updateQuestProgress(ctx.user.id, "lessons_completed", 1),
+          updateQuestProgress(ctx.user.id, "xp_earned", 50),
+          awardHousePoints(ctx.user.id, 10),
+          checkAndAwardBadges(ctx.user.id, { type: "lesson_complete", lessonCount: 1 }),
+        ]).catch(() => {});
+
         // Re-fetch AFTER the mark so the count is accurate (no +1 double-count)
         const [lessonProgress, allLessons] = await Promise.all([
           getLessonProgressForUser(ctx.user.id, input.unitId),
@@ -434,12 +452,25 @@ export const appRouter = router({
           };
         });
 
+        // ── Gamification side-effects for quiz completion ────────────────
+        const quizXp = score >= 90 ? 200 : score >= 75 ? 150 : score >= 60 ? 75 : 25;
+        Promise.all([
+          awardXp(ctx.user.id, score >= 75 ? "quiz_pass" : "lesson_complete", quizXp, `quiz_${input.unitId}_${Date.now()}`, `Quiz: Unit ${input.unitNumber} (${score}%)`),
+          recordActivity(ctx.user.id),
+          updateQuestProgress(ctx.user.id, "quizzes_passed", score >= 75 ? 1 : 0),
+          updateQuestProgress(ctx.user.id, "xp_earned", quizXp),
+          awardHousePoints(ctx.user.id, score >= 75 ? 25 : 5),
+          checkAndAwardBadges(ctx.user.id, { type: "quiz_pass", score, quizAttemptCount: 1 }),
+          ...(newStatus === "completed" ? [checkAndAwardBadges(ctx.user.id, { type: "unit_complete" })] : []),
+        ]).catch(() => {});
+
         return {
           score,
           correctCount,
           totalQuestions: questions.length,
           results,
           masteryLabel,
+          xpAwarded: quizXp,
           adaptivePath: score < 60
             ? "Your score is below 60%. The AI Tutor Remediation mode is now unlocked to help you revisit key concepts before retrying."
             : score < 75

@@ -1021,6 +1021,137 @@ function ChildCoursesPanel({ childId, childName }: { childId: number; childName:
   );
 }
 
+// ─── Child Achievements & Rewards Panel ─────────────────────────────────────
+
+function ChildAchievementsPanel({ childId, childName }: { childId: number; childName: string }) {
+  const { data: gamification, isLoading } = trpc.gamification.getChildGamificationSummary.useQuery(
+    { childId },
+    { staleTime: 30_000 }
+  );
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (!gamification) {
+    return (
+      <div className="text-center py-10 text-muted-foreground">
+        <Trophy className="w-10 h-10 mx-auto mb-2 opacity-40" />
+        <p>No gamification data yet for {childName}.</p>
+      </div>
+    );
+  }
+
+  const { xp, level, streak, badges, quests, house } = gamification;
+
+  return (
+    <div className="space-y-4">
+      {/* XP & Level card */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Star className="w-4 h-4 text-amber-500" />
+            XP & Level — {childName}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-2xl font-black text-amber-600">{level?.levelName ?? "Novice"}</p>
+              <p className="text-xs text-muted-foreground">Level {level?.level ?? 1}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-lg font-bold">{(xp?.totalXp ?? 0).toLocaleString()} XP</p>
+              <p className="text-xs text-muted-foreground">{((xp as any)?.weeklyXp ?? 0).toLocaleString()} this week</p>
+            </div>
+          </div>
+          <Progress value={level?.progressPercent ?? 0} className="h-2" />
+          <p className="text-xs text-muted-foreground text-right">{level?.xpNeeded ?? 0} XP to next level</p>
+        </CardContent>
+      </Card>
+
+      {/* Streak card */}
+      <Card>
+        <CardContent className="pt-4 flex items-center gap-4">
+          <div className="text-4xl">{(streak?.currentStreak ?? 0) >= 7 ? "🔥" : "⚡"}</div>
+          <div>
+            <p className="font-bold text-lg">{streak?.currentStreak ?? 0}-day streak</p>
+            <p className="text-xs text-muted-foreground">Longest: {streak?.longestStreak ?? 0} days</p>
+          </div>
+          {(streak as any)?.streakFreezeCount > 0 && (
+            <Badge variant="outline" className="ml-auto text-xs">
+              ❄️ {(streak as any).streakFreezeCount} freeze{(streak as any).streakFreezeCount !== 1 ? "s" : ""}
+            </Badge>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Badges */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-purple-500" />
+            Badges Earned ({badges?.earnedCount ?? 0})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {badges?.recent && badges.recent.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {badges.recent.map((b: any) => (
+                <div key={b.id} className="flex items-center gap-1.5 bg-purple-50 dark:bg-purple-950/30 rounded-lg px-2 py-1">
+                  <span className="text-lg">{b.icon}</span>
+                  <span className="text-xs font-medium">{b.name}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">No badges earned yet — keep learning!</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* House */}
+      {house && (
+        <Card>
+          <CardContent className="pt-4 flex items-center gap-3">
+            <span className="text-3xl">{(house as any).mascotEmoji ?? (house as any).emoji ?? "🏠"}</span>
+            <div>
+              <p className="font-bold">{(house as any).house?.name ?? (house as any).name ?? "House"}</p>
+              <p className="text-xs text-muted-foreground">{((house as any).house?.totalPoints ?? (house as any).points ?? 0).toLocaleString()} house points</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Active quests */}
+      {quests && quests.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">🗺️ Active Quests</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {quests.map((q: any) => (
+              <div key={q.id} className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="font-medium">{q.title}</span>
+                  <span className="text-muted-foreground">{q.progress}/{q.target}</span>
+                </div>
+                <Progress value={Math.round((q.progress / q.target) * 100)} className="h-1.5" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ─── Report Export Panel ──────────────────────────────────────────────────────
 
 function ReportExportPanel({ childId, childName }: { childId: number; childName: string }) {
@@ -1358,7 +1489,7 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
 
       {/* Tabbed detail sections */}
       <Tabs defaultValue="courses">
-        <TabsList className="w-full grid grid-cols-4 sm:grid-cols-8">
+        <TabsList className="w-full grid grid-cols-4 sm:grid-cols-9">
           <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
           <TabsTrigger value="requests" className="text-xs">Requests</TabsTrigger>
           <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
@@ -1366,6 +1497,7 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
           <TabsTrigger value="goals" className="text-xs">Goals</TabsTrigger>
           <TabsTrigger value="gaps" className="text-xs">Skill Gaps</TabsTrigger>
           <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
+          <TabsTrigger value="achievements" className="text-xs">🏆 Rewards</TabsTrigger>
           <TabsTrigger value="report" className="text-xs">Export</TabsTrigger>
         </TabsList>
 
@@ -1486,6 +1618,11 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
         {/* Learning Insights tab */}
         <TabsContent value="insights" className="mt-4">
           <LearningInsightsPanel childId={child.childId} />
+        </TabsContent>
+
+        {/* Achievements & Rewards tab */}
+        <TabsContent value="achievements" className="mt-4">
+          <ChildAchievementsPanel childId={child.childId} childName={child.name ?? "Student"} />
         </TabsContent>
 
         {/* Export tab */}

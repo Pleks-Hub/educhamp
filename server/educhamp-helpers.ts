@@ -116,6 +116,15 @@ export type StudentContext = {
     gradeLevel?: string;
     schoolDistrict?: string;
   };
+  // Gamification context (for AI motivation coach)
+  gamification?: {
+    level?: number;
+    levelName?: string;
+    totalXp?: number;
+    currentStreak?: number;
+    longestStreak?: number;
+    recentBadge?: string;      // name of most recently earned badge
+  };
   // Active course context (injected so the tutor knows which subject it is teaching)
   courseContext?: {
     title: string;             // e.g. "AP Chemistry"
@@ -383,6 +392,24 @@ IMPORTANT: Do NOT attempt to answer questions from other courses. Doing so would
   // ── Young Learner Mode override ─────────────────────────────────────────────────────
   const youngLearnerSection = ctx?.isYoungLearner ? YOUNG_LEARNER_MODE_INSTRUCTIONS : "";
 
+  // ── Gamification / Motivation Coach section ────────────────────────────────
+  const g = ctx?.gamification;
+  const gamificationSection = g ? `
+## 🏆 Student Gamification Profile
+Use this data to personalise encouragement and celebrate achievements naturally in your responses.
+- **Level**: ${g.level ?? 1} — ${g.levelName ?? "Novice"}
+- **Total XP**: ${(g.totalXp ?? 0).toLocaleString()}
+- **Current Streak**: ${g.currentStreak ?? 0} day${(g.currentStreak ?? 0) !== 1 ? "s" : ""}
+- **Longest Streak**: ${g.longestStreak ?? 0} days${g.recentBadge ? `\n- **Recent Badge**: ${g.recentBadge} 🏅` : ""}
+
+**Motivation Coach Guidelines:**
+- Acknowledge milestones naturally (e.g., "You're on a ${g.currentStreak}-day streak — that's incredible dedication!").
+- Celebrate level-ups when they happen: "Congratulations on reaching Level ${g.level}!"
+- Reference XP earned for correct answers: "That's worth XP towards your next level!"
+- Keep encouragement genuine and specific — avoid generic praise like "Good job!" in favour of specific recognition.
+- For young learners, use emoji and simple language to celebrate ("⭐ You got it! That's another star for your collection!").
+` : "";
+
   // ── Parent-Led Mode section ─────────────────────────────────────────────────────
   const parentLedSection = ctx?.parentLedMode ? `
 ## 👨‍👧 PARENT-LED LEARNING MODE — ACTIVE
@@ -431,7 +458,7 @@ ${pacingGuidance}
 ${parentGoalSection}
 ${redirectionInstruction}
 
-${youngLearnerSection}${parentLedSection}
+${youngLearnerSection}${parentLedSection}${gamificationSection}
 ## Core Principles
 1. Always address the student by their preferred name (${displayName}) to personalise responses
 2. Keep responses focused — 2-4 paragraphs unless working through a multi-step problem
