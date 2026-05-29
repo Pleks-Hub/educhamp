@@ -265,46 +265,7 @@ export default defineConfig({
           if (id.includes("node_modules/@radix-ui")) {
             return "vendor-radix";
           }
-          // Vendor: Framer Motion
-          if (id.includes("node_modules/framer-motion")) {
-            return "vendor-motion";
-          }
-          // Vendor: Streamdown (markdown renderer)
-          if (id.includes("node_modules/streamdown")) {
-            return "vendor-streamdown";
-          }
-          // Vendor: Mermaid (diagram renderer — very large, isolate it)
-          if (id.includes("node_modules/mermaid") || id.includes("node_modules/cytoscape")) {
-            return "vendor-mermaid";
-          }
-          // Vendor: Shiki syntax highlighter (bundled grammars are ~9 MB — isolate to lazy chunk)
-          if (id.includes("node_modules/shiki") || id.includes("node_modules/@shikijs") || id.includes("node_modules/vscode-oniguruma")) {
-            return "vendor-shiki";
-          }
-          // Vendor: remark/rehype/unified markdown pipeline (streamdown deps)
-          if (
-            id.includes("node_modules/remark") ||
-            id.includes("node_modules/rehype") ||
-            id.includes("node_modules/unified") ||
-            id.includes("node_modules/micromark") ||
-            id.includes("node_modules/hast") ||
-            id.includes("node_modules/mdast") ||
-            id.includes("node_modules/unist") ||
-            id.includes("node_modules/vfile") ||
-            id.includes("node_modules/property-information") ||
-            id.includes("node_modules/html-url-attributes") ||
-            id.includes("node_modules/marked") ||
-            id.includes("node_modules/katex") ||
-            id.includes("node_modules/dompurify") ||
-            id.includes("node_modules/DOMPurify")
-          ) {
-            return "vendor-markdown";
-          }
-          // Vendor: Lucide icons (large — isolate to its own chunk)
-          if (id.includes("node_modules/lucide-react")) {
-            return "vendor-icons";
-          }
-          // Vendor: Stripe
+          // Vendor: Stripe (safe to isolate — no circular deps with core)
           if (id.includes("node_modules/@stripe") || id.includes("node_modules/stripe")) {
             return "vendor-stripe";
           }
