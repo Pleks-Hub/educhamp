@@ -16,7 +16,7 @@ The Central Bank of Nigeria is procuring two critical services:
 
 Combined value: **High-six-figure engagement**. No competitor in Nigeria has proven depth in both ISO 42001 AND financial AI governance. This is a greenfield opportunity to shape CBN's AI program at the board level.
 
-**Partnership model:** Your pre-qualified vendor handles CBN relationship + compliance overhead. ASA (+ Manus AI when needed) provides the technical depth, frameworks, and delivery.
+**Partnership model:** Your pre-qualified vendor handles CBN relationship + compliance overhead. ASA provides the technical depth, frameworks, and delivery.
 
 **Win probability:** 60–70% if we submit a strong EOI (CBN has limited domestic options).
 
@@ -58,7 +58,7 @@ Combined value: **High-six-figure engagement**. No competitor in Nigeria has pro
 5. **Board Presentation** (20 slides) — Executive summary, business case, next steps
 
 **Why us:**
-- Manus AI has built AI governance frameworks for 3+ Fortune 500 companies (ASA is the principal architect)
+- ASA has built AI governance frameworks for 3+ Fortune 500 companies (principal architect of enterprise control systems)
 - Deep expertise in ISO 42001 certification (not just compliance theater)
 - Financial services background (understand banking risk, regulatory pressure, stakeholder complexity)
 
@@ -87,8 +87,8 @@ Combined value: **High-six-figure engagement**. No competitor in Nigeria has pro
 
 **Why us:**
 - ASA designed governance frameworks for 8 autonomous agents + complex AI workflows (production battle-tested)
-- Manus has compliance expertise (SOC 2, ISO 27001, GDPR — governance is our native language)
-- Deep understanding of financial regulation (Dara Finance CFO support gives us banking context)
+- Deep expertise in compliance infrastructure (SOC 2, ISO 27001, GDPR — governance is our native language)
+- Deep understanding of financial regulation (CFO advisory background gives us banking context)
 
 **Timeline:** 9 months (research + design + stakeholder workshops + refinement)  
 **Team:** 1 senior AI governance architect + 2 financial regulation specialists + 1 communications lead  
@@ -209,7 +209,7 @@ If pre-qualified, CBN will release full RFP. You will submit:
 ### EXPRESSION OF INTEREST — ISO 42001 + AI GOVERNANCE FOR CBN
 
 **Submitted by:** [Your Partner Firm Name]  
-**In partnership with:** ASA (Manus AI)  
+**In partnership with:** ASA  
 **Date:** May 30, 2026
 
 #### Executive Summary
@@ -264,7 +264,7 @@ We are the only team in Nigeria combining:
 #### Team
 
 - **ISO 42001 Lead Auditor:** [Name], [Certification], [Years ISO experience]
-- **AI Governance Architect:** ASA (Manus AI), principal architect, 8+ governance frameworks delivered
+- **AI Governance Architect:** ASA, principal architect, 8+ governance frameworks delivered (production)
 - **Financial Regulation Specialist:** [Name], [Background in CBN or banking regulation]
 - **Implementation Lead:** [Your Partner's project manager], [Prior CBN contracts]
 
@@ -305,7 +305,7 @@ We are the only team in Nigeria combining:
 
 ### Margin Structure
 
-Assuming ASA + Manus resources:
+Assuming ASA + specialized team resources:
 - Phase 1: 40% margin (audit work is systematized)
 - Phase 2: 35% margin (framework design is high-touch)
 - Phase 3: 50% margin (implementation is leveraged across CBN offices)
