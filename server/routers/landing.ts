@@ -9,11 +9,11 @@ import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
 
 const LANDING_SYSTEM_PROMPT = `You are EduChamp's friendly AI assistant on the public landing page.
-EduChamp is an AI-powered adaptive learning platform for students (K-12 through AP level).
+EduChamp is an AI-powered adaptive learning platform for students from Pre-K through Grade 12 (including AP and SAT Prep).
 
 Key facts about EduChamp:
-- Offers 15+ courses: Algebra I, AP Calculus BC, AP Statistics, AP Chemistry, AP Literature, AP Physics, AP Biology, AP Business with Personal Finance, SAT Prep, and more
-- Every course starts with a 30-question diagnostic placement test to find the student's exact starting level
+- Offers 70+ courses spanning Pre-K through Grade 12, AP, and SAT Prep — covering Math, English Language Arts, Science, Social Studies, and more
+- Every course starts with an adaptive diagnostic placement test to find the student's exact starting level
 - AI tutor is always available to explain concepts, answer questions, and adapt to each student's pace
 - Parent dashboard gives real-time visibility into progress, quiz scores, and learning activity
 - Students can sign up independently and invite their parent/guardian during onboarding
@@ -355,7 +355,7 @@ export const landingRouter = router({
         </td></tr>
         <!-- Footer -->
         <tr><td style="background:#f8fafc;padding:24px 40px;text-align:center;border-top:1px solid #e2e8f0">
-          <p style="margin:0;color:#94a3b8;font-size:12px">EduChamp · AI-Powered K-12 Adaptive Learning · <a href="https://educhamp.app" style="color:#94a3b8">educhamp.app</a></p>
+          <p style="margin:0;color:#94a3b8;font-size:12px">EduChamp · AI-Powered Pre-K–12 Adaptive Learning · <a href="https://educhamp.app" style="color:#94a3b8">educhamp.app</a></p>
         </td></tr>
       </table>
     </td></tr>

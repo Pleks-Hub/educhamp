@@ -477,7 +477,7 @@ export default function LandingPage() {
     { q: "What is the difference between the Family and Premium Family plans?", a: "The Family Plan ($19.99/mo) covers up to 3 students with access to all 70+ courses, unlimited AI tutoring, and the parent dashboard. The Premium Family Plan ($29.99/mo) adds diagnostic assessments, exam prep modules, priority AI sessions, and custom learning paths. Both plans can be cancelled at any time." },
     { q: "Do you offer plans for schools and school districts?", a: "Yes. The ISD / School License is a per-seat annual contract designed for campuses and districts. It includes teacher and admin dashboards, custom TEKS alignment, bulk content management, and a performance analytics API. Contact schools@educhamp.app for pricing and a demo." },
     { q: "What grade levels are supported?", a: "EduChamp supports students from Pre-K through Grade 12, including all major AP courses and SAT preparation. The catalogue covers early childhood (Pre-K–Grade 2), elementary (Grades 3–5), middle school (Grades 6–8), high school (Grades 9–12), and advanced AP/SAT tracks — over 70 courses in total." },
-    { q: "What is the difference between ACA and KAP courses?", a: "ACA (Academic) courses follow the standard Katy ISD grade-level curriculum. KAP (Katy Advanced Program) courses are accelerated, enriched variants for students who are ready for a more challenging academic pathway. Both are available for Grades 3–8 in core subjects." },
+    { q: "What is the difference between ACA and KAP courses?", a: "ACA (Academic) courses follow the standard Katy ISD grade-level curriculum. KAP (Katy Advanced Program) courses are accelerated, enriched variants for students who are ready for a more challenging academic pathway. Both pathways are available across core subjects from elementary through middle school." },
     { q: "How does course enrollment work?", a: "During onboarding, parents select the student's grade level and the system automatically recommends and enrols the student in the appropriate core courses. Students can also browse the full catalogue and self-enrol in additional subjects, subject to grade and prerequisite validation." },
     { q: "What is EduBot?", a: "EduBot is EduChamp's AI learning coach — a friendly, named AI tutor that introduces itself at the start of every session, explains its role, and guides students through lessons, practice, quizzes, and exam review. EduBot is scoped to the student's active course and will politely redirect any off-topic questions back to the current subject." },
     { q: "Can my child sign up without me?", a: "Students aged 16 and over can sign up independently and optionally invite a parent or guardian. Students under 16 are required to have a parent or guardian complete or approve the registration before course access is granted — ensuring appropriate oversight for younger learners." },
@@ -964,7 +964,7 @@ export default function LandingPage() {
               <div className="grid grid-cols-3 gap-4">
                 {[
                   { value: "70+", label: "Courses" },
-                  { value: "K–12", label: "Grade range" },
+                  { value: "Pre-K–12", label: "Grade range" },
                   { value: "TEKS", label: "Aligned" },
                 ].map((s) => (
                   <div key={s.label} className="text-center bg-white/5 border border-white/10 rounded-xl py-4">

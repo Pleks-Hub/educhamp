@@ -694,7 +694,7 @@ export const adminRouter = router({
           <a href="https://educhamp.app" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:15px">Visit EduChamp →</a>
         </td></tr>
         <tr><td style="background:#f8fafc;padding:24px 40px;text-align:center;border-top:1px solid #e2e8f0">
-          <p style="margin:0;color:#94a3b8;font-size:12px">EduChamp · AI-Powered K-12 Adaptive Learning</p>
+          <p style="margin:0;color:#94a3b8;font-size:12px">EduChamp · AI-Powered Pre-K–12 Adaptive Learning</p>
         </td></tr>
       </table>
     </td></tr>

@@ -350,7 +350,7 @@ const campaignRouter = router({
         landing_page: "prospective users who signed up from the landing page",
       }[input.segment];
 
-      const systemPrompt = `You are EduChamp's newsletter content writer. EduChamp is an AI-powered adaptive learning platform for K-12 and AP students.
+      const systemPrompt = `You are EduChamp's newsletter content writer. EduChamp is an AI-powered adaptive learning platform for Pre-K through Grade 12 students, including AP and SAT Prep.
 
 Generate a complete, engaging newsletter email for the following audience: ${audienceLabel}.
 

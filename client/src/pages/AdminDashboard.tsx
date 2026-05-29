@@ -941,13 +941,13 @@ function CourseDetail({ course, units, onUpdate }: { course: any; units: any[]; 
 // ─── CMS Tab ──────────────────────────────────────────────────────────────────
 
 const CMS_SECTIONS = [
-  { key: "homepage.hero.title", section: "homepage", label: "Hero Title", contentType: "text" as const, defaultValue: "Master Algebra I with AI-Powered Learning" },
+  { key: "homepage.hero.title", section: "homepage", label: "Hero Title", contentType: "text" as const, defaultValue: "AI-Powered Adaptive Learning for Pre-K through Grade 12" },
   { key: "homepage.hero.subtitle", section: "homepage", label: "Hero Subtitle", contentType: "text" as const, defaultValue: "Personalised, adaptive lessons that meet every student where they are." },
   { key: "homepage.cta.primary", section: "homepage", label: "Primary CTA Button", contentType: "text" as const, defaultValue: "Start Free Today" },
   { key: "homepage.features.title", section: "homepage", label: "Features Section Title", contentType: "text" as const, defaultValue: "Everything a student needs to succeed" },
   { key: "homepage.announcement", section: "homepage", label: "Announcement Banner", contentType: "richtext" as const, defaultValue: "" },
   { key: "homepage.faq.1.q", section: "faq", label: "FAQ 1 — Question", contentType: "text" as const, defaultValue: "What is EduChamp?" },
-  { key: "homepage.faq.1.a", section: "faq", label: "FAQ 1 — Answer", contentType: "richtext" as const, defaultValue: "EduChamp is an AI-powered adaptive learning platform for Grades 3–12, covering Math, ELA, Science, Social Studies, and more." },
+  { key: "homepage.faq.1.a", section: "faq", label: "FAQ 1 — Answer", contentType: "richtext" as const, defaultValue: "EduChamp is an AI-powered adaptive learning platform for Pre-K through Grade 12, covering Math, ELA, Science, Social Studies, and more." },
   { key: "homepage.faq.2.q", section: "faq", label: "FAQ 2 — Question", contentType: "text" as const, defaultValue: "How does the AI Tutor work?" },
   { key: "homepage.faq.2.a", section: "faq", label: "FAQ 2 — Answer", contentType: "richtext" as const, defaultValue: "Our AI Tutor analyses your answers and provides step-by-step explanations." },
   { key: "onboarding.welcome.title", section: "onboarding", label: "Onboarding Welcome Title", contentType: "text" as const, defaultValue: "Welcome to EduChamp!" },

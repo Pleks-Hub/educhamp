@@ -1525,3 +1525,20 @@
 - [x] Build youngLearnerDigest email template (emoji-rich, mobile-optimized)
 - [x] Add scheduled weekly digest job for Pre-K/Kindergarten parents
 - [x] Run full regression test suite — 263 tests pass, 0 TypeScript errors
+
+## Sprint 59 — Course Catalogue Simplification & Platform-Wide Grade Audit
+
+- [x] CourseCatalog.tsx: remove subject-category filter row (Math/English/Science/Social Studies/Language/Technology)
+- [x] CourseCatalog.tsx: enforce academic grade order (Pre-K → Kindergarten → Grade 1 → … → Grade 12)
+- [x] CourseCatalog.tsx: standardize grade label display ("Pre-K", "Kindergarten", "Grade N" format)
+- [x] LandingPage.tsx: update course count and grade coverage copy to reflect Pre-K–Grade 12
+- [x] Home.tsx: update any grade-range or course-count references
+- [x] AdminDashboard.tsx: update grade filters, labels, and stats to include Pre-K–Grade 12
+- [x] Onboarding flows: verify grade selectors include Pre-K and Kindergarten
+- [x] Email templates: audit all templates for outdated grade references
+- [x] AI tutor prompts: verify system prompts reference Pre-K–Grade 12
+- [x] Notification templates: update any grade-range copy
+- [x] Reports/analytics: verify grade filters include full Pre-K–Grade 12 range
+- [x] Placement diagnostic: verify grade labels and logic cover Pre-K–Grade 2
+- [x] FAQ/help content: update any grade-range copy
+- [x] Run full regression test suite — 263 tests pass, 0 TypeScript errors

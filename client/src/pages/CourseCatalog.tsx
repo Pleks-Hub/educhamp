@@ -7,24 +7,24 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   BookOpen,
+  Calculator,
   CheckCircle2,
   ChevronRight,
   Clock,
   FlaskConical,
   Globe,
+  Languages,
   Loader2,
   Monitor,
   Search,
   Send,
   Sparkles,
   Star,
-  Languages,
-  Calculator,
   XCircle,
 } from "lucide-react";
 import { useLocation } from "wouter";
 
-// Subject → icon + colour mapping
+// ─── Subject → icon + colour mapping ─────────────────────────────────────────
 const SUBJECT_META: Record<string, { icon: React.ElementType; colour: string; bg: string }> = {
   math:           { icon: Calculator,   colour: "text-blue-700",   bg: "bg-blue-50 border-blue-200" },
   english:        { icon: BookOpen,     colour: "text-purple-700", bg: "bg-purple-50 border-purple-200" },
@@ -39,19 +39,26 @@ function subjectMeta(subject: string) {
   return SUBJECT_META[subject.toLowerCase()] ?? SUBJECT_META.other;
 }
 
+// ─── Grade ordering: Pre-K → K → 1 → 2 → … → 12 → AP → SAT ─────────────────
 const GRADE_ORDER = [
-  "Pre-K", "Kindergarten", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "AP", "SAT",
+  "Pre-K",
+  "Kindergarten",
+  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
+  "AP", "SAT",
 ];
 
-function gradeLabel(g: string) {
-  if (g === "AP") return "AP";
-  if (g === "SAT") return "SAT Prep";
+/** Human-readable grade label in standard academic format */
+function gradeLabel(g: string): string {
+  if (g === "Pre-K")       return "Pre-K";
   if (g === "Kindergarten") return "Kindergarten";
-  if (g === "Pre-K") return "Pre-K";
-  return `Grade ${g}`;
+  if (g === "AP")          return "AP / Advanced";
+  if (g === "SAT")         return "SAT Prep";
+  const n = parseInt(g, 10);
+  if (!isNaN(n))           return `Grade ${n}`;
+  return g;
 }
 
-function gradeSort(a: string, b: string) {
+function gradeSort(a: string, b: string): number {
   const ia = GRADE_ORDER.indexOf(a);
   const ib = GRADE_ORDER.indexOf(b);
   if (ia === -1 && ib === -1) return a.localeCompare(b);
@@ -60,47 +67,60 @@ function gradeSort(a: string, b: string) {
   return ia - ib;
 }
 
-const SUBJECT_FILTERS = [
-  { value: "all", label: "All Subjects" },
-  { value: "math", label: "Math" },
-  { value: "english", label: "English / ELA" },
-  { value: "science", label: "Science" },
-  { value: "social_studies", label: "Social Studies" },
-  { value: "technology", label: "Technology" },
-  { value: "language", label: "Language" },
+// ─── Grade filter pill list ───────────────────────────────────────────────────
+const GRADE_FILTER_PILLS = [
+  { value: "all",           label: "All Grades" },
+  { value: "Pre-K",         label: "Pre-K" },
+  { value: "Kindergarten",  label: "Kindergarten" },
+  { value: "1",             label: "Grade 1" },
+  { value: "2",             label: "Grade 2" },
+  { value: "3",             label: "Grade 3" },
+  { value: "4",             label: "Grade 4" },
+  { value: "5",             label: "Grade 5" },
+  { value: "6",             label: "Grade 6" },
+  { value: "7",             label: "Grade 7" },
+  { value: "8",             label: "Grade 8" },
+  { value: "9",             label: "Grade 9" },
+  { value: "10",            label: "Grade 10" },
+  { value: "11",            label: "Grade 11" },
+  { value: "12",            label: "Grade 12" },
+  { value: "AP",            label: "AP / Advanced" },
+  { value: "SAT",           label: "SAT Prep" },
 ];
 
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function CourseCatalog() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const [search, setSearch] = useState("");
-  const [subjectFilter, setSubjectFilter] = useState("all");
   const [gradeFilter, setGradeFilter] = useState("all");
   const [requestingId, setRequestingId] = useState<number | null>(null);
 
-  const catalogQuery = trpc.admin.getCourseCatalog.useQuery();
+  const catalogQuery   = trpc.admin.getCourseCatalog.useQuery();
   const myRequestsQuery = trpc.courses.getMyCourseRequests.useQuery();
   const utils = trpc.useUtils();
+
   const requestCourse = trpc.courses.requestCourse.useMutation({
     onSuccess: (data) => {
       utils.courses.getMyCourseRequests.invalidate();
       if (data.alreadyExists) {
-        toast.info("Request already submitted", { description: "Your parent has been notified. Check back for the status." });
+        toast.info("Request already submitted", {
+          description: "Your parent has been notified. Check back for the status.",
+        });
       } else {
-        toast.success("Course request submitted!", { description: "Your parent or guardian will receive an email to approve or reject this request." });
+        toast.success("Course request submitted!", {
+          description: "Your parent or guardian will receive an email to approve or reject this request.",
+        });
       }
     },
-    onError: (err) => {
-      toast.error(err.message ?? "Failed to submit request.");
-    },
-  });
-  const setActiveCourse = trpc.admin.setActiveCourse.useMutation({
-    onSuccess: () => {
-      utils.admin.myEnrollments.invalidate();
-    },
+    onError: (err) => toast.error(err.message ?? "Failed to submit request."),
   });
 
-  // Build a map of courseId → request status for quick lookup
+  const setActiveCourse = trpc.admin.setActiveCourse.useMutation({
+    onSuccess: () => utils.admin.myEnrollments.invalidate(),
+  });
+
+  // Build courseId → request status map
   const requestStatusMap = useMemo(() => {
     const map = new Map<number, { status: string; rejectionReason: string | null }>();
     for (const r of myRequestsQuery.data ?? []) {
@@ -111,17 +131,15 @@ export default function CourseCatalog() {
 
   const courses = catalogQuery.data ?? [];
 
-  // Unique grade levels for the grade filter dropdown
-  const gradeLevels = useMemo(() => {
-    const grades = Array.from(new Set(courses.map((c) => c.gradeLevel)));
-    return grades.sort(gradeSort);
+  // Derive which grade-filter pills actually have courses (to hide empty grades)
+  const availableGrades = useMemo(() => {
+    return new Set(courses.map((c) => c.gradeLevel));
   }, [courses]);
 
   // Filtered + sorted courses
   const filtered = useMemo(() => {
     return courses
       .filter((c) => {
-        if (subjectFilter !== "all" && c.subject.toLowerCase() !== subjectFilter) return false;
         if (gradeFilter !== "all" && c.gradeLevel !== gradeFilter) return false;
         if (search.trim()) {
           const q = search.toLowerCase();
@@ -135,14 +153,13 @@ export default function CourseCatalog() {
         return true;
       })
       .sort((a, b) => {
-        // Recommended first, then grade order, then sort order
         if (a.isRecommended && !b.isRecommended) return -1;
         if (!a.isRecommended && b.isRecommended) return 1;
         const gs = gradeSort(a.gradeLevel, b.gradeLevel);
         if (gs !== 0) return gs;
         return a.sortOrder - b.sortOrder;
       });
-  }, [courses, subjectFilter, gradeFilter, search]);
+  }, [courses, gradeFilter, search]);
 
   // Group by grade level
   const grouped = useMemo(() => {
@@ -152,7 +169,6 @@ export default function CourseCatalog() {
       arr.push(c);
       map.set(c.gradeLevel, arr);
     }
-    // Sort groups
     return Array.from(map.entries()).sort(([a], [b]) => gradeSort(a, b));
   }, [filtered]);
 
@@ -176,35 +192,42 @@ export default function CourseCatalog() {
   }
 
   const recommendedCount = courses.filter((c) => c.isRecommended && !c.isEnrolled).length;
-  const pendingCount = (myRequestsQuery.data ?? []).filter((r) => r.status === "pending").length;
+  const pendingCount     = (myRequestsQuery.data ?? []).filter((r) => r.status === "pending").length;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-      {/* Header */}
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Course Catalog</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Full Course Catalogue</h1>
         <p className="text-slate-500 mt-1">
-          Browse all 70+ courses from Pre-K through Grade 12, AP, and SAT Prep. Enrol in any course and start learning today.
+          Browse 70+ courses from Pre-K through Grade 12, AP, and SAT Prep — all aligned to Katy ISD TEKS.
         </p>
         <div className="flex flex-wrap gap-2 mt-3">
           {recommendedCount > 0 && (
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-sm text-indigo-800">
               <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-              <span><strong>{recommendedCount}</strong> course{recommendedCount > 1 ? "s" : ""} recommended for your grade level</span>
+              <span>
+                <strong>{recommendedCount}</strong>{" "}
+                course{recommendedCount > 1 ? "s" : ""} recommended for your grade level
+              </span>
             </div>
           )}
           {pendingCount > 0 && (
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-sm text-amber-800">
               <Clock className="h-3.5 w-3.5 text-amber-500" />
-              <span><strong>{pendingCount}</strong> request{pendingCount > 1 ? "s" : ""} awaiting parent approval</span>
+              <span>
+                <strong>{pendingCount}</strong>{" "}
+                request{pendingCount > 1 ? "s" : ""} awaiting parent approval
+              </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Filters */}
+      {/* ── Search bar ─────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[200px] max-w-xs">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             placeholder="Search courses…"
@@ -213,30 +236,11 @@ export default function CourseCatalog() {
             className="pl-9"
           />
         </div>
-        <select
-          value={subjectFilter}
-          onChange={(e) => setSubjectFilter(e.target.value)}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          {SUBJECT_FILTERS.map((f) => (
-            <option key={f.value} value={f.value}>{f.label}</option>
-          ))}
-        </select>
-        <select
-          value={gradeFilter}
-          onChange={(e) => setGradeFilter(e.target.value)}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          <option value="all">All Grades</option>
-          {gradeLevels.map((g) => (
-            <option key={g} value={g}>{gradeLabel(g)}</option>
-          ))}
-        </select>
-        {(search || subjectFilter !== "all" || gradeFilter !== "all") && (
+        {(search || gradeFilter !== "all") && (
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => { setSearch(""); setSubjectFilter("all"); setGradeFilter("all"); }}
+            onClick={() => { setSearch(""); setGradeFilter("all"); }}
             className="text-slate-500"
           >
             Clear filters
@@ -244,34 +248,55 @@ export default function CourseCatalog() {
         )}
       </div>
 
-      {/* Loading */}
+      {/* ── Grade filter pills ─────────────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-2">
+        {GRADE_FILTER_PILLS.filter(
+          (p) => p.value === "all" || availableGrades.has(p.value)
+        ).map((pill) => (
+          <button
+            key={pill.value}
+            onClick={() => setGradeFilter(pill.value)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+              gradeFilter === pill.value
+                ? "bg-indigo-600 text-white border-indigo-600"
+                : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300 hover:text-indigo-700"
+            }`}
+          >
+            {pill.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Loading ────────────────────────────────────────────────────────── */}
       {catalogQuery.isLoading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
         </div>
       )}
 
-      {/* Empty */}
+      {/* ── Empty state ────────────────────────────────────────────────────── */}
       {!catalogQuery.isLoading && filtered.length === 0 && (
         <div className="text-center py-16 text-slate-500">
           <BookOpen className="h-10 w-10 mx-auto mb-3 text-slate-300" />
           <p className="font-medium">No courses match your filters.</p>
-          <p className="text-sm mt-1">Try clearing the filters or searching for a different subject.</p>
+          <p className="text-sm mt-1">Try clearing the filters or searching by course name.</p>
         </div>
       )}
 
-      {/* Grouped course cards */}
+      {/* ── Grouped course cards ───────────────────────────────────────────── */}
       {grouped.map(([grade, gradeCourses]) => (
         <div key={grade}>
           <h2 className="text-base font-semibold text-slate-700 mb-3 flex items-center gap-2">
             <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-xs font-medium">
               {gradeLabel(grade)}
             </span>
-            <span className="text-slate-400 text-xs font-normal">{gradeCourses.length} course{gradeCourses.length > 1 ? "s" : ""}</span>
+            <span className="text-slate-400 text-xs font-normal">
+              {gradeCourses.length} course{gradeCourses.length > 1 ? "s" : ""}
+            </span>
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
             {gradeCourses.map((course) => {
-              const meta = subjectMeta(course.subject);
+              const meta       = subjectMeta(course.subject);
               const SubjectIcon = meta.icon;
 
               return (
@@ -287,11 +312,11 @@ export default function CourseCatalog() {
                       : "border-slate-100 bg-slate-50/50 opacity-75"
                   }`}
                 >
-                  {/* Badges */}
+                  {/* Subject badge + status badges */}
                   <div className="flex items-start justify-between mb-3">
                     <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium ${meta.bg} ${meta.colour}`}>
                       <SubjectIcon className="h-3 w-3" />
-                      {course.subject.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                      {course.subject.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       {course.isEnrolled && (
@@ -313,16 +338,23 @@ export default function CourseCatalog() {
                   </div>
 
                   {/* Title + code */}
-                  <h3 className="font-semibold text-slate-900 text-sm leading-snug mb-1">{course.title}</h3>
-                  <p className="text-xs text-slate-500 mb-1">{course.courseCode} · {gradeLabel(course.gradeLevel)}</p>
+                  <h3 className="font-semibold text-slate-900 text-sm leading-snug mb-1">
+                    {course.title}
+                  </h3>
+                  <p className="text-xs text-slate-500 mb-1">
+                    {course.courseCode} · {gradeLabel(course.gradeLevel)}
+                  </p>
                   {course.description && (
-                    <p className="text-xs text-slate-500 line-clamp-2 mb-3">{course.description}</p>
+                    <p className="text-xs text-slate-500 line-clamp-2 mb-3">
+                      {course.description}
+                    </p>
                   )}
 
                   {/* Action button */}
                   {(() => {
-                    const reqStatus = requestStatusMap.get(course.id);
+                    const reqStatus  = requestStatusMap.get(course.id);
                     const isRequesting = requestingId === course.id;
+
                     if (course.isEnrolled) {
                       return (
                         <Button
@@ -359,7 +391,9 @@ export default function CourseCatalog() {
                             Your parent did not approve this request
                           </div>
                           {reqStatus.rejectionReason && (
-                            <p className="text-xs text-slate-500 text-center line-clamp-2">"{reqStatus.rejectionReason}"</p>
+                            <p className="text-xs text-slate-500 text-center line-clamp-2">
+                              "{reqStatus.rejectionReason}"
+                            </p>
                           )}
                         </div>
                       );

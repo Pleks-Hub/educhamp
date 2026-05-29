@@ -33,7 +33,7 @@ const GRADE_OPTIONS = [
 ];
 
 const SUBJECT_OPTIONS = [
-  "Mathematics", "Algebra I", "Algebra II", "Geometry", "Pre-Calculus",
+  "Mathematics", "Algebra", "Geometry", "Pre-Calculus",
   "AP Calculus BC", "AP Statistics", "English Language Arts", "AP Literature",
   "Science", "AP Biology", "AP Chemistry", "AP Physics",
   "Social Studies", "AP Human Geography", "AP Business",

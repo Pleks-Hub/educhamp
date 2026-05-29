@@ -42,19 +42,30 @@ const SUBJECT_LABELS: Record<string, string> = {
   language: "World Languages",
 };
 
-const GRADE_LABELS: Record<string, string> = {
-  "3": "3rd Grade",
-  "4": "4th Grade",
-  "5": "5th Grade",
-  "6": "6th Grade",
-  "7": "7th Grade",
-  "8": "8th Grade",
-  "9": "9th Grade",
-  "10": "10th Grade",
-  "11": "11th Grade",
-  "12": "12th Grade",
-  "AP": "AP / Advanced",
-};
+const GRADE_ORDER = [
+  "Pre-K", "Kindergarten",
+  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
+  "AP", "SAT",
+];
+
+function gradeLabel(g: string): string {
+  if (g === "Pre-K")        return "Pre-K";
+  if (g === "Kindergarten") return "Kindergarten";
+  if (g === "AP")           return "AP / Advanced";
+  if (g === "SAT")          return "SAT Prep";
+  const n = parseInt(g, 10);
+  if (!isNaN(n))            return `Grade ${n}`;
+  return g;
+}
+
+function gradeSort(a: string, b: string): number {
+  const ia = GRADE_ORDER.indexOf(a);
+  const ib = GRADE_ORDER.indexOf(b);
+  if (ia === -1 && ib === -1) return a.localeCompare(b);
+  if (ia === -1) return 1;
+  if (ib === -1) return -1;
+  return ia - ib;
+}
 
 interface CourseSwitcherProps {
   open: boolean;
@@ -115,27 +126,25 @@ export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
   );
   const currentCourseId = (myEnrollments ?? []).find((e: any) => e.enrollment.isCurrent)?.course.id;
 
-  // Derive available grade levels from the course list
+  // Derive available grade levels from the course list, sorted in academic order
   const availableGrades = Array.from(
     new Set((allCourses ?? []).map((c: any) => c.gradeLevel))
-  ).sort((a, b) => {
-    const aNum = parseInt(a);
-    const bNum = parseInt(b);
-    if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
-    return a.localeCompare(b);
-  });
+  ).sort(gradeSort);
 
   const filteredCourses = (allCourses ?? []).filter((c: any) =>
     gradeFilter === "all" || c.gradeLevel === gradeFilter
   );
 
-  // Group by grade then subject
-  const grouped = filteredCourses.reduce((acc: Record<string, any[]>, c: any) => {
-    const key = GRADE_LABELS[c.gradeLevel] ?? `Grade ${c.gradeLevel}`;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(c);
+  // Group by grade (using raw gradeLevel as key so we can sort groups)
+  const groupedRaw = filteredCourses.reduce((acc: Record<string, any[]>, c: any) => {
+    if (!acc[c.gradeLevel]) acc[c.gradeLevel] = [];
+    acc[c.gradeLevel].push(c);
     return acc;
   }, {});
+  // Sort groups in academic order
+  const grouped = Object.fromEntries(
+    Object.entries(groupedRaw).sort(([a], [b]) => gradeSort(a, b))
+  );
 
   const isLoading = loadingCourses || loadingEnrollments;
 
@@ -178,7 +187,7 @@ export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
                       : "bg-muted text-muted-foreground hover:bg-muted/80"
                   }`}
                 >
-                  {GRADE_LABELS[g] ?? `Grade ${g}`}
+                  {gradeLabel(g)}
                 </button>
               ))}
             </div>
@@ -197,11 +206,11 @@ export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
             </div>
           ) : (
             <div className="space-y-6">
-              {Object.entries(grouped).map(([gradeLabel, gradeCourses]) => (
-                <div key={gradeLabel}>
+              {Object.entries(grouped).map(([gradeKey, gradeCourses]) => (
+                <div key={gradeKey}>
                   <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
                     <span className="h-px flex-1 bg-border" />
-                    {gradeLabel}
+                    {gradeLabel(gradeKey)}
                     <span className="h-px flex-1 bg-border" />
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

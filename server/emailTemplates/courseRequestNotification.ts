@@ -129,7 +129,7 @@ These links expire in 7 days. You can also manage requests from your Parent Dash
 ${data.dashboardUrl}
 
 ---
-EduChamp — Adaptive Algebra I Learning
+EduChamp — AI-Powered Pre-K–12 Learning
 support@educhamp.app`;
 
   return { subject, html, text };
@@ -201,7 +201,7 @@ export function buildCourseRequestOutcomeEmail(data: CourseRequestOutcomeData): 
       <a href="${data.dashboardUrl}" class="cta">Go to Dashboard →</a>
     </div>
     <div class="footer">
-      <p>EduChamp — Adaptive Algebra I Learning · <a href="mailto:support@educhamp.app">support@educhamp.app</a></p>
+      <p>EduChamp — AI-Powered Pre-K–12 Learning · <a href="mailto:support@educhamp.app">support@educhamp.app</a></p>
     </div>
   </div>
 </body>

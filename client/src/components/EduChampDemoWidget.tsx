@@ -226,9 +226,9 @@ export function EduChampDemoWidget({ variant = "full", initialMode, hideTabs = f
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm text-white">{mode.label}</p>
             <p className="text-xs text-slate-400 truncate">
-              {activeMode === "tutor" ? "Algebra I · Unit 5: Linear Functions" :
-               activeMode === "quiz"  ? "Algebra I · Unit 2: Equations" :
-               activeMode === "practice" ? "3rd Grade Math · Unit 4: Fractions" :
+              {activeMode === "tutor" ? "Mathematics · Unit 5: Linear Functions" :
+               activeMode === "quiz"  ? "Mathematics · Unit 2: Equations" :
+               activeMode === "practice" ? "Grade 3 Math · Unit 4: Fractions" :
                "STAAR/EOC Review · Multi-Subject"}
             </p>
           </div>
