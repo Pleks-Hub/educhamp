@@ -1426,3 +1426,9 @@
 - [x] Add plan_changed=1 success toast on return from Stripe
 - [x] Update GA4 funnel guide with Change Plan tracking appendix
 - [x] End-to-end smoke test: landing page → auth redirect → all 234 tests pass
+
+## Sprint 50 — Fix vendor-charts TDZ crash (production blank page)
+- [x] Remove vendor-charts manualChunk split from vite.config.ts (recharts/d3 merged back into vendor-misc)
+- [x] Verified: vendor-charts chunk absent from production build
+- [x] Verified: 234/234 tests pass, 0 TypeScript errors
+- [x] Root cause: recharts/d3 had circular import dependency with vendor-misc causing TDZ ReferenceError at runtime

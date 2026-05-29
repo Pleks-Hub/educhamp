@@ -265,10 +265,6 @@ export default defineConfig({
           if (id.includes("node_modules/@radix-ui")) {
             return "vendor-radix";
           }
-          // Vendor: Recharts (charting library)
-          if (id.includes("node_modules/recharts") || id.includes("node_modules/d3")) {
-            return "vendor-charts";
-          }
           // Vendor: Framer Motion
           if (id.includes("node_modules/framer-motion")) {
             return "vendor-motion";
