@@ -31,6 +31,7 @@ const SCHOOL_TYPES = [
 ];
 
 const GRADE_LEVELS = [
+  { value: "Pre-K", label: "Pre-K", minAge: 3, maxAge: 5 },
   { value: "Kindergarten", label: "Kindergarten", minAge: 5, maxAge: 7 },
   { value: "Grade 1", label: "Grade 1", minAge: 6, maxAge: 8 },
   { value: "Grade 2", label: "Grade 2", minAge: 7, maxAge: 9 },
@@ -69,7 +70,8 @@ function calcAge(dob: string): number | null {
 
 /** Suggest a grade level from age */
 function suggestGradeFromAge(age: number): string {
-  if (age <= 5) return "Kindergarten";
+  if (age <= 4) return "Pre-K";
+  if (age === 5) return "Kindergarten";
   if (age === 6) return "Grade 1";
   if (age === 7) return "Grade 2";
   if (age === 8) return "Grade 3";

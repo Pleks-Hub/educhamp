@@ -97,7 +97,7 @@ export default function JoinPage() {
             <GraduationCap className="h-8 w-8" />
           </div>
           <h1 className="text-3xl font-bold text-slate-900">EduChamp</h1>
-          <p className="text-slate-600 mt-2 text-lg">Adaptive Learning Platform — Grades 3–12 &amp; AP</p>
+          <p className="text-slate-600 mt-2 text-lg">Adaptive Learning Platform — Pre-K through Grade 12 &amp; AP</p>
         </div>
 
         {/* Student invite banner (parent → student) */}
@@ -166,7 +166,7 @@ export default function JoinPage() {
             {/* Features */}
             <div className="space-y-2">
               {[
-                { icon: BookOpen, text: "56+ adaptive courses across Grades 3–12 & AP" },
+                { icon: BookOpen, text: "70+ adaptive courses from Pre-K through Grade 12 &amp; AP" },
                 { icon: Star, text: "AI tutor that adapts to your learning pace" },
                 { icon: CheckCircle2, text: "Placement test to find your starting point" },
                 { icon: Users, text: "Parent dashboard for real-time progress tracking" },

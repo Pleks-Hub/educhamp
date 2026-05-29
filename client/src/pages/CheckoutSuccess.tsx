@@ -46,7 +46,7 @@ export default function CheckoutSuccess() {
         {
           icon: <ClipboardList className="h-5 w-5 text-muted-foreground" />,
           title: "View the curriculum",
-          description: "Explore 56+ courses aligned to your child's grade level.",
+          description: "Explore 70+ courses (Pre-K through Grade 12) aligned to your child's grade level.",
           href: "/courses",
           cta: "Browse Courses",
           primary: false,

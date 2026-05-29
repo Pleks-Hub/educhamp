@@ -116,7 +116,7 @@ export function buildTrialExpiryEmail(data: TrialExpiryEmailData): { subject: st
                       <li>Adaptive learning path and placement results</li>
                       <li>AI Tutor (EduBot) with full context awareness</li>
                       <li>Parent Dashboard and progress reports</li>
-                      <li>Access to all ${data.planName.includes("School") ? "56+" : "12"} courses</li>
+                      <li>Access to all 70+ courses (Pre-K through Grade 12 + AP + SAT Prep)</li>
                     </ul>
                   </td>
                 </tr>
@@ -134,7 +134,7 @@ export function buildTrialExpiryEmail(data: TrialExpiryEmailData): { subject: st
           <tr>
             <td style="background:#f9fafb;padding:24px 40px;border-top:1px solid #e5e7eb;text-align:center;">
               <p style="font-size:12px;color:#9ca3af;margin:0 0 8px;">
-                EduChamp · AI-Powered Adaptive Learning for Grades 3–12
+                EduChamp · AI-Powered Adaptive Learning for Pre-K through Grade 12
               </p>
               <p style="font-size:12px;color:#9ca3af;margin:0;">
                 You're receiving this because you started a free trial.

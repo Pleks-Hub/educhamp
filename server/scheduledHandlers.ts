@@ -12,6 +12,7 @@ import { notifyOwner } from "./_core/notification";
 
 // Grade progression map: current grade → next grade
 const GRADE_PROGRESSION: Record<string, string> = {
+  "Pre-K": "Kindergarten",
   "Kindergarten": "Grade 1",
   "Grade 1": "Grade 2",
   "Grade 2": "Grade 3",

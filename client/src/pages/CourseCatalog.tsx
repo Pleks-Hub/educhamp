@@ -40,13 +40,14 @@ function subjectMeta(subject: string) {
 }
 
 const GRADE_ORDER = [
-  "Kindergarten", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "AP", "SAT",
+  "Pre-K", "Kindergarten", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "AP", "SAT",
 ];
 
 function gradeLabel(g: string) {
   if (g === "AP") return "AP";
   if (g === "SAT") return "SAT Prep";
   if (g === "Kindergarten") return "Kindergarten";
+  if (g === "Pre-K") return "Pre-K";
   return `Grade ${g}`;
 }
 
@@ -183,7 +184,7 @@ export default function CourseCatalog() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Course Catalog</h1>
         <p className="text-slate-500 mt-1">
-          Browse all 56+ courses across Grades 3–12 and AP/SAT. Enrol in any course and start learning today.
+          Browse all 70+ courses from Pre-K through Grade 12, AP, and SAT Prep. Enrol in any course and start learning today.
         </p>
         <div className="flex flex-wrap gap-2 mt-3">
           {recommendedCount > 0 && (

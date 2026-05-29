@@ -30,7 +30,7 @@ export const PLANS: Record<
     features: [
       "1 student account",
       "AI Tutor (EduBot)",
-      "Algebra I curriculum",
+      "All 70+ courses (Pre-K through Grade 12)",
       "Adaptive quizzes",
       "Parent dashboard",
       "Progress reports",
@@ -43,7 +43,7 @@ export const PLANS: Record<
     features: [
       "Up to 3 student accounts",
       "All Family Plan features",
-      "All 56+ courses (Grades 3–12 + AP)",
+      "All 70+ courses (Pre-K through Grade 12 + AP)",
       "STAAR & SAT/ACT exam prep",
       "Priority AI Tutor",
       "Advanced analytics",

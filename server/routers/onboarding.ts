@@ -142,7 +142,7 @@ export const onboardingRouter = router({
         ? ` (${input.schoolType === "homeschool" ? "homeschooled" : `attending a ${input.schoolType} school`})`
         : "";
 
-      const systemPrompt = `You are EduChamp's onboarding advisor. Your job is to create a personalised, actionable learning goal statement for a parent who has just enrolled their child in EduChamp — an AI-powered adaptive learning platform for Grades 3–12. Be warm, specific, and encouraging. Keep the response to 3-4 sentences maximum.`;
+      const systemPrompt = `You are EduChamp's onboarding advisor. Your job is to create a personalised, actionable learning goal statement for a parent who has just enrolled their child in EduChamp — an AI-powered adaptive learning platform for Pre-K through Grade 12. Be warm, specific, and encouraging. Keep the response to 3-4 sentences maximum.`;
 
       const userPrompt = `A parent has signed up for EduChamp with the following goal: "${input.parentSignupReason}"
 

@@ -21,7 +21,7 @@ const GOAL_CATEGORIES = [
   { value: "test_prep", label: "Test Preparation", desc: "Prepare for STAAR, SAT, or ACT exams" },
   { value: "enrichment", label: "Enrichment", desc: "Go beyond the classroom with advanced content" },
   { value: "remediation", label: "Remediation", desc: "Fill learning gaps and catch up on missed concepts" },
-  { value: "homeschool_supplement", label: "Homeschool Supplement", desc: "Structured curriculum for home education (Grades 3–12 & AP)" },
+  { value: "homeschool_supplement", label: "Homeschool Supplement", desc: "Structured curriculum for home education (Pre-K through Grade 12 & AP)" },
   { value: "other", label: "Other", desc: "Another reason not listed above" },
 ];
 

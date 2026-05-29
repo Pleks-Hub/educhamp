@@ -383,7 +383,7 @@ export default function LandingPage() {
     { icon: BarChart3, title: "Adaptive Placement Tests", desc: "A 57-question diagnostic placement test identifies exactly where each student stands across all units and builds a fully personalized learning roadmap from day one." },
     { icon: GraduationCap, title: "Mastery-Based Progression", desc: "Students advance by demonstrating mastery, not just completing lessons — ensuring no knowledge gaps are left behind at any grade level." },
     { icon: Users, title: "Parent & Guardian Dashboard", desc: "Real-time visibility into progress, quiz scores, AI tutor sessions, skill gaps, and learning goals — with co-parent sharing and detailed performance reports." },
-    { icon: BookOpen, title: "56+ Courses, Grades 3–12", desc: "From Grade 3 Math to AP Calculus BC, AP Chemistry, SAT Prep, and beyond — all aligned to Katy ISD TEKS and AP College Board standards." },
+    { icon: BookOpen, title: "70+ Courses, Pre-K–Grade 12", desc: "From Pre-K foundational skills to AP Calculus BC, AP Chemistry, SAT Prep, and beyond — all aligned to Katy ISD TEKS and AP College Board standards." },
     { icon: Zap, title: "Instant Feedback & Insights", desc: "Every quiz and exercise provides immediate, detailed feedback. AI-driven skill gap analysis highlights exactly where to focus next." },
   ];
 
@@ -400,15 +400,15 @@ export default function LandingPage() {
   };
 
   // Grade-level ordering — mirrors CourseCatalog.tsx GRADE_ORDER
-  const GRADE_ORDER = ["Kindergarten","1","2","3","4","5","6","7","8","9","10","11","12","AP","SAT"];
-  const gradeLabel = (g: string) => g === "AP" ? "AP Courses" : g === "SAT" ? "SAT Prep" : g === "Kindergarten" ? "Kindergarten" : `Grade ${g}`;
+  const GRADE_ORDER = ["Pre-K","Kindergarten","1","2","3","4","5","6","7","8","9","10","11","12","AP","SAT"];
+  const gradeLabel = (g: string) => g === "AP" ? "AP Courses" : g === "SAT" ? "SAT Prep" : g === "Kindergarten" ? "Kindergarten" : g === "Pre-K" ? "Pre-K" : `Grade ${g}`;
   const gradeSort  = (a: string, b: string) => {
     const ia = GRADE_ORDER.indexOf(a), ib = GRADE_ORDER.indexOf(b);
     if (ia === -1 && ib === -1) return a.localeCompare(b);
     if (ia === -1) return 1; if (ib === -1) return -1; return ia - ib;
   };
 
-  const [activeCatalogueGrade, setActiveCatalogueGrade] = useState<string>("3");
+  const [activeCatalogueGrade, setActiveCatalogueGrade] = useState<string>("Pre-K");
   const [activeSubjectFilter, setActiveSubjectFilter] = useState<string>("all");
 
   // Subject filter pills definition
@@ -474,9 +474,9 @@ export default function LandingPage() {
 
   const faqs = [
     { q: "Is EduChamp free to use?", a: "EduChamp offers a free tier to get started. Sign up to explore the platform — no credit card required. Paid plans (Family at $19.99/mo and Premium Family at $29.99/mo) unlock unlimited AI tutor sessions, all courses, and the parent dashboard." },
-    { q: "What is the difference between the Family and Premium Family plans?", a: "The Family Plan ($19.99/mo) covers up to 3 students with access to all 56+ courses, unlimited AI tutoring, and the parent dashboard. The Premium Family Plan ($29.99/mo) adds diagnostic assessments, exam prep modules, priority AI sessions, and custom learning paths. Both plans can be cancelled at any time." },
+    { q: "What is the difference between the Family and Premium Family plans?", a: "The Family Plan ($19.99/mo) covers up to 3 students with access to all 70+ courses, unlimited AI tutoring, and the parent dashboard. The Premium Family Plan ($29.99/mo) adds diagnostic assessments, exam prep modules, priority AI sessions, and custom learning paths. Both plans can be cancelled at any time." },
     { q: "Do you offer plans for schools and school districts?", a: "Yes. The ISD / School License is a per-seat annual contract designed for campuses and districts. It includes teacher and admin dashboards, custom TEKS alignment, bulk content management, and a performance analytics API. Contact schools@educhamp.app for pricing and a demo." },
-    { q: "What grade levels are supported?", a: "EduChamp supports students from Grade 3 through Grade 12, including all major AP courses and SAT preparation. The catalogue covers elementary (Grades 3–5), middle school (Grades 6–8), high school (Grades 9–12), and advanced AP/SAT tracks — over 56 courses in total." },
+    { q: "What grade levels are supported?", a: "EduChamp supports students from Pre-K through Grade 12, including all major AP courses and SAT preparation. The catalogue covers early childhood (Pre-K–Grade 2), elementary (Grades 3–5), middle school (Grades 6–8), high school (Grades 9–12), and advanced AP/SAT tracks — over 70 courses in total." },
     { q: "What is the difference between ACA and KAP courses?", a: "ACA (Academic) courses follow the standard Katy ISD grade-level curriculum. KAP (Katy Advanced Program) courses are accelerated, enriched variants for students who are ready for a more challenging academic pathway. Both are available for Grades 3–8 in core subjects." },
     { q: "How does course enrollment work?", a: "During onboarding, parents select the student's grade level and the system automatically recommends and enrols the student in the appropriate core courses. Students can also browse the full catalogue and self-enrol in additional subjects, subject to grade and prerequisite validation." },
     { q: "What is EduBot?", a: "EduBot is EduChamp's AI learning coach — a friendly, named AI tutor that introduces itself at the start of every session, explains its role, and guides students through lessons, practice, quizzes, and exam review. EduBot is scoped to the student's active course and will politely redirect any off-topic questions back to the current subject." },
@@ -579,7 +579,7 @@ export default function LandingPage() {
                 </span>
               </h1>
               <p className="text-lg text-slate-300 mb-6 leading-relaxed max-w-lg">
-                EduChamp's AI tutor EduBot and adaptive placement tests create a personalised learning path for every student — from Grade 3 Math to AP Calculus, AP Chemistry, and SAT Prep. Supporting Grades 3–12 with 56+ courses aligned to Katy ISD TEKS.
+                EduChamp's AI tutor EduBot and adaptive placement tests create a personalised learning path for every student — from Pre-K foundational skills to AP Calculus, AP Chemistry, and SAT Prep. Supporting Pre-K through Grade 12 with 70+ courses aligned to Katy ISD TEKS.
               </p>
               {/* Trust micro-badges */}
               <div className="flex flex-wrap gap-3 mb-8">
@@ -685,7 +685,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Full Course Catalogue</h2>
-            <p className="text-slate-500 max-w-2xl mx-auto">Browse all courses by grade level — from Grade 3 foundational skills to AP Calculus, AP Chemistry, and SAT Prep. All courses are aligned to Katy ISD TEKS and AP College Board standards with both ACA (standard) and KAP (advanced) pathways.</p>
+            <p className="text-slate-500 max-w-2xl mx-auto">Browse all courses by grade level — from Pre-K foundational skills to AP Calculus, AP Chemistry, and SAT Prep. All courses are aligned to Katy ISD TEKS and AP College Board standards with both ACA (standard) and KAP (advanced) pathways.</p>
           </div>
 
           {/* Subject filter pills */}
@@ -924,7 +924,7 @@ export default function LandingPage() {
               {
                 icon: <Brain className="h-6 w-6" />,
                 title: "Adaptive AI Tutor",
-                desc: "EduBot meets each student at their level, providing personalized explanations and practice across 56+ courses.",
+                desc: "EduBot meets each student at their level, providing personalized explanations and practice across 70+ courses.",
               },
               {
                 icon: <HeartHandshake className="h-6 w-6" />,
@@ -963,7 +963,7 @@ export default function LandingPage() {
               {/* Stat row */}
               <div className="grid grid-cols-3 gap-4">
                 {[
-                  { value: "56+", label: "Courses" },
+                  { value: "70+", label: "Courses" },
                   { value: "K–12", label: "Grade range" },
                   { value: "TEKS", label: "Aligned" },
                 ].map((s) => (
@@ -1065,11 +1065,11 @@ export default function LandingPage() {
               <ul className="space-y-3 mb-8 flex-1">
                 {[
                   "Up to 3 students",
-                  "All 56+ courses & subjects",
+                  "All 70+ courses & subjects",
                   "AI Tutor EduBot (unlimited)",
                   "Parent dashboard",
                   "Weekly progress reports",
-                  "Grades 3–12 + AP + SAT Prep",
+                  "Pre-K through Grade 12 + AP + SAT Prep",
                 ].map(f => (
                   <li key={f} className="flex items-start gap-2.5 text-sm text-slate-700">
                     <CheckCircle className="h-4 w-4 text-indigo-500 flex-shrink-0 mt-0.5" />
@@ -1181,7 +1181,7 @@ export default function LandingPage() {
               <tbody>
                 {[
                   { feature: 'Number of students', family: 'Up to 3', premium: 'Up to 3', isd: 'Unlimited' },
-                  { feature: 'All courses & subjects (56+)', family: '✓', premium: '✓', isd: '✓' },
+                  { feature: 'All courses & subjects (70+)', family: '✓', premium: '✓', isd: '✓' },
                   { feature: 'AI Tutor EduBot', family: 'Unlimited', premium: 'Priority access', isd: 'Priority access' },
                   { feature: 'Diagnostic assessments', family: '—', premium: '✓', isd: '✓' },
                   { feature: 'Exam prep modules', family: '—', premium: '✓', isd: '✓' },

@@ -139,7 +139,7 @@ export function buildParentInviteEmail(data: ParentInviteEmailData): { html: str
               <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:24px;">
                 ${[
                   ["📊", "Real-time progress tracking", "Monitor your student's mastery scores, quiz results, and learning milestones in real time."],
-                  ["🤖", "AI-powered personalised learning", "EduBot, our AI tutor, adapts to your student's pace and learning style across 56+ courses."],
+                  ["🤖", "AI-powered personalised learning", "EduBot, our AI tutor, adapts to your student's pace and learning style across 70+ courses (Pre-K through Grade 12)."],
                   ["🎯", "Goal setting & insights", "Set learning goals, review skill gap analysis, and receive AI-generated progress summaries."],
                   ["🔔", "Instant notifications", "Get notified when your student completes a quiz, achieves mastery, or needs extra support."],
                 ].map(([icon, title, desc]) => `
@@ -247,7 +247,7 @@ ${studentGrade ? `Grade Level  : ${studentGrade}\n` : ""}${courseName ? `Active 
 WHY JOIN EDUCHAMP?
 ------------------
 • Real-time progress tracking — monitor mastery scores, quiz results, and milestones
-• AI-powered personalised learning — EduBot adapts to your student's pace across 56+ courses
+• AI-powered personalised learning — EduBot adapts to your student's pace across 70+ courses (Pre-K through Grade 12)
 • Goal setting & insights — set goals, review skill gaps, and get AI progress summaries
 • Instant notifications — get notified on quiz completions, mastery achievements, and more
 

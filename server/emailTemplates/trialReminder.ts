@@ -125,7 +125,7 @@ export function buildTrialReminderEmail(data: TrialReminderEmailData): {
         </div>
 
         <p class="text">
-          If you'd like to continue enjoying unlimited AI tutoring, all 56+ courses, and the parent dashboard,
+          If you'd like to continue enjoying unlimited AI tutoring, all 70+ courses (Pre-K through Grade 12), and the parent dashboard,
           no action is needed — your subscription will start automatically.
         </p>
         <p class="text">

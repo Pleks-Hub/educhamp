@@ -117,7 +117,7 @@ function CourseCard({
                 <Badge className="text-xs bg-primary text-primary-foreground">Active</Badge>
               )}
               {gradeLevel && (
-                <Badge variant="outline" className="text-xs">{gradeLevel === "AP" ? "AP / Advanced" : `Grade ${gradeLevel}`}</Badge>
+                <Badge variant="outline" className="text-xs">{gradeLevel === "AP" ? "AP / Advanced" : gradeLevel === "Kindergarten" ? "Kindergarten" : gradeLevel === "Pre-K" ? "Pre-K" : `Grade ${gradeLevel}`}</Badge>
               )}
               {subject && (
                 <Badge className={`text-xs border ${colors.bg} ${colors.text} ${colors.border}`}>
@@ -201,7 +201,7 @@ function EmptyEnrollmentState({ onBrowse }: { onBrowse: () => void }) {
           Browse &amp; Enrol in Courses
         </Button>
         <p className="text-xs text-muted-foreground">
-          56+ courses available: Grades 3–12, AP, and SAT Prep — ACA and KAP pathways
+          70+ courses available: Pre-K through Grade 12, AP, and SAT Prep — ACA and KAP pathways
         </p>
       </CardContent>
     </Card>

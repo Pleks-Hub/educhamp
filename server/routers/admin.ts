@@ -423,6 +423,7 @@ export const adminRouter = router({
 
     function gradeToNum(g: string | null): number | null {
       if (!g) return null;
+      if (g === "Pre-K") return -1;
       if (g === "Kindergarten") return 0;
       const m = g.match(/(\d+)/);
       return m ? parseInt(m[1]) : null;

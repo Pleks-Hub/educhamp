@@ -1456,11 +1456,47 @@
 - [x] Add personalised next-step CTAs to CheckoutSuccess page
 - [x] Add wasAutoEnrolled banner on dashboard for first-time auto-enrolled students
 - [x] Fix tutor session ownership: use contextUserId for getOrCreateTutorSession when childId is set
-- [ ] Enforce 2FA at login (challenge after OAuth callback if 2FA is enabled)
+- [x] Enforce 2FA at login (challenge after OAuth callback if 2FA is enabled)
 - [x] Change quiz.getQuestions from protectedProcedure to studentProcedure
 
 ## Sprint 55
 
 - [x] Implement 2FA enforcement at login (pending-2FA cookie, /verify-2fa route, OAuth callback gate)
 - [x] Enhance auto-enrollment banner with smooth slide-in animation and polished CTA
-- [ ] Add filter (by date/unit) and export (CSV/JSON) to tutor session history page
+- [x] Add filter (by date/unit) and export (CSV/JSON) to tutor session history page
+
+## Sprint 56 — Pre-K through Grade 2 Expansion
+
+- [ ] Audit all grade-level hardcoded strings, filters, and schema constraints
+- [ ] Add Pre-K, Kindergarten, Grade 1, Grade 2 to grade enum/validation everywhere
+- [ ] Seed courses, subjects, units, lessons for Pre-K–Grade 2 in the database
+- [ ] Update placement diagnostic logic for Pre-K–Grade 2 (no reading assumed)
+- [ ] Update AI tutor system prompt for age-appropriate language (Pre-K–Grade 2)
+- [ ] Update onboarding grade selector to include Pre-K, K, Grade 1, Grade 2
+- [ ] Update all frontend grade filters, dropdowns, and labels
+- [ ] Update admin portal course/user management to show Pre-K–Grade 2
+- [ ] Update analytics and reporting to include Pre-K–Grade 2 data
+- [ ] Update email templates and notifications for Pre-K–Grade 2 messaging
+- [ ] Update landing page and marketing copy to reflect Pre-K–Grade 12 coverage
+- [ ] Run full regression test suite and fix any failures
+
+## Sprint 56 — Pre-K through Grade 2 Expansion
+
+- [x] Audit all grade-level hardcodes across entire codebase
+- [x] Seed 16 courses for Pre-K, Kindergarten, Grade 1, Grade 2 (Math, ELA, Science, Social Studies per grade)
+- [x] Seed 76 units and 228 skills for all new courses
+- [x] Add Pre-K to gradeToNum in admin.ts
+- [x] Add Pre-K to GRADE_PROGRESSION in scheduledHandlers.ts
+- [x] Update onboarding AI prompt to reflect Pre-K through Grade 12
+- [x] Add Pre-K to GRADE_LEVELS and suggestGradeFromAge in StudentOnboarding.tsx
+- [x] Add Pre-K to AdminDashboard GRADE_LEVELS and GRADE_PROMOTIONS
+- [x] Update CourseCatalog.tsx GRADE_ORDER and gradeLabel to include Pre-K
+- [x] Update LandingPage.tsx all grade/course-count copy to Pre-K through Grade 12 / 70+
+- [x] Update Home.tsx empty-state footer copy and grade badge label
+- [x] Update trialExpiry.ts footer and course count
+- [x] Update trialReminder.ts course count
+- [x] Update parentInvite.ts course count in HTML and plain text
+- [x] Update stripe.ts PLANS features to reflect 70+ courses
+- [x] Update ParentOnboarding.tsx homeschool_supplement goal description
+- [x] Update CheckoutSuccess.tsx course count copy
+- [x] 234 tests pass, 0 TypeScript errors
