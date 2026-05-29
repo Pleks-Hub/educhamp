@@ -12,6 +12,25 @@ import DashboardLayout from "./components/DashboardLayout";
 import NotFound from "@/pages/NotFound";
 import Home from "./pages/Home";
 import LandingPage from "./pages/LandingPage";
+import { useAuth } from "./_core/hooks/useAuth";
+
+/**
+ * Root route: renders the public LandingPage for unauthenticated visitors
+ * and the authenticated Home dashboard for logged-in users.
+ * This avoids the double-redirect (/ → DashboardLayout → /landing) for
+ * unauthenticated users, and ensures the landing page is always visible
+ * even when the Manus platform visibility is set to "public".
+ */
+function RootRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return <PageSkeleton />;
+  if (!user) return <LandingPage />;
+  return (
+    <DashboardLayout>
+      <Home />
+    </DashboardLayout>
+  );
+}
 
 // ── Lazily loaded — split into separate chunks ────────────────────────────────
 const Curriculum = lazy(() => import("./pages/Curriculum"));
@@ -61,6 +80,8 @@ function Router() {
     <Suspense fallback={<PageSkeleton />}>
       <Switch>
         {/* Public routes — no auth required, no sidebar */}
+        {/* Root path: show landing page for unauthenticated users; Home (dashboard) for authenticated users */}
+        <Route path="/" component={RootRoute} />
         <Route path="/landing" component={LandingPage} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
@@ -81,7 +102,6 @@ function Router() {
           <DashboardLayout>
             <Suspense fallback={<PageSkeleton />}>
               <Switch>
-                <Route path="/" component={Home} />
                 <Route path="/courses" component={CourseCatalog} />
                 <Route path="/curriculum" component={Curriculum} />
                 <Route path="/curriculum/unit/:unitNumber" component={UnitDetail} />
