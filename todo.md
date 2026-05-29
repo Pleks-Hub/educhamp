@@ -1416,9 +1416,9 @@
 
 ## Sprint 49 — Change Plan button, GA4 funnel, smoke test
 
-- [ ] Add Change Plan button + confirmation modal to /billing page (in-app plan switcher)
-- [ ] Add changePlan tRPC procedure to payment router (Stripe subscription update via new checkout)
-- [ ] Smoke-test full sign-up flow end-to-end in browser
+- [x] Add Change Plan button + confirmation modal to /billing page (in-app plan switcher)
+- [x] Add changePlan tRPC procedure to payment router (Stripe subscription update via new checkout)
+- [x] Smoke-test full sign-up flow end-to-end in browser
 
 ## Sprint 49 — Change Plan + GA4 + Smoke Test (completed)
 - [x] Add changePlan tRPC procedure to payment router
