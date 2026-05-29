@@ -1413,3 +1413,16 @@
 - [x] Write Stripe webhook smoke tests (16 tests, all passing)
 - [x] Export handleStripeEvent for unit testability
 - [x] Verify /api/stripe/webhook test event detection returns {verified:true}
+
+## Sprint 49 — Change Plan button, GA4 funnel, smoke test
+
+- [ ] Add Change Plan button + confirmation modal to /billing page (in-app plan switcher)
+- [ ] Add changePlan tRPC procedure to payment router (Stripe subscription update via new checkout)
+- [ ] Smoke-test full sign-up flow end-to-end in browser
+
+## Sprint 49 — Change Plan + GA4 + Smoke Test (completed)
+- [x] Add changePlan tRPC procedure to payment router
+- [x] Add Change Plan button and in-app plan switcher modal to /billing page
+- [x] Add plan_changed=1 success toast on return from Stripe
+- [x] Update GA4 funnel guide with Change Plan tracking appendix
+- [x] End-to-end smoke test: landing page → auth redirect → all 234 tests pass

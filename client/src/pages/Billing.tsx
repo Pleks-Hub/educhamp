@@ -1,9 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   CreditCard,
@@ -16,6 +24,8 @@ import {
   Calendar,
   DollarSign,
   ArrowRight,
+  ArrowUpDown,
+  Check,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { NavTooltip } from "@/components/NavTooltip";
@@ -46,11 +56,73 @@ function fmtAmount(cents: number | null | undefined) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
 
+const PLAN_OPTIONS = [
+  {
+    key: "family" as const,
+    name: "Family Plan",
+    description: "Up to 3 students, full curriculum access",
+    monthlyPrice: "$19.99",
+    annualPrice: "$15.99",
+    selectedColor: "border-indigo-500 bg-indigo-50 ring-2 ring-indigo-400",
+    idleColor: "border-indigo-200 bg-indigo-50 hover:border-indigo-300",
+    badge: null as string | null,
+  },
+  {
+    key: "premium_family" as const,
+    name: "Premium Family",
+    description: "Unlimited students, priority AI tutor, advanced analytics",
+    monthlyPrice: "$29.99",
+    annualPrice: "$23.99",
+    selectedColor: "border-purple-500 bg-purple-50 ring-2 ring-purple-400",
+    idleColor: "border-purple-200 bg-purple-50 hover:border-purple-300",
+    badge: "Most Popular" as string | null,
+  },
+];
+
 export default function Billing() {
   const [, navigate] = useLocation();
   const [portalLoading, setPortalLoading] = useState(false);
+  const [changePlanOpen, setChangePlanOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<"family" | "premium_family">("family");
+  const [selectedBilling, setSelectedBilling] = useState<"monthly" | "annual">("monthly");
+  const [changePlanLoading, setChangePlanLoading] = useState(false);
 
   const { data: sub, isLoading } = trpc.payment.getMySubscription.useQuery();
+
+  // Show success toast when returning from plan change
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("plan_changed") === "1") {
+      toast.success("Plan updated successfully! Your new plan is now active.");
+      window.history.replaceState({}, "", "/billing");
+    }
+  }, []);
+
+  // Pre-select current plan when modal opens
+  useEffect(() => {
+    if (changePlanOpen && sub) {
+      if (sub.planName === "family" || sub.planName === "premium_family") {
+        setSelectedPlan(sub.planName);
+      }
+      setSelectedBilling((sub.billingPeriod as "monthly" | "annual") ?? "monthly");
+    }
+  }, [changePlanOpen, sub]);
+
+  const changePlanMutation = trpc.payment.changePlan.useMutation({
+    onSuccess: ({ url }) => {
+      if (url) {
+        toast.info("Redirecting to Stripe to complete your plan change…");
+        window.open(url, "_blank");
+      }
+      setChangePlanLoading(false);
+      setChangePlanOpen(false);
+    },
+    onError: (err) => {
+      toast.error(err.message ?? "Could not initiate plan change.");
+      setChangePlanLoading(false);
+    },
+  });
+
   const createPortal = trpc.payment.createPortalSession.useMutation({
     onSuccess: ({ url }) => {
       window.open(url, "_blank");
@@ -65,6 +137,15 @@ export default function Billing() {
   const handleOpenPortal = () => {
     setPortalLoading(true);
     createPortal.mutate({ origin: window.location.origin });
+  };
+
+  const handleChangePlan = () => {
+    setChangePlanLoading(true);
+    changePlanMutation.mutate({
+      planKey: selectedPlan,
+      billingPeriod: selectedBilling,
+      origin: window.location.origin,
+    });
   };
 
   if (isLoading) {
@@ -164,8 +245,22 @@ export default function Billing() {
             <Separator />
 
             <div className="flex flex-col sm:flex-row gap-2">
+              {/* Change Plan — primary CTA */}
+              <NavTooltip content="Switch to a different plan or billing period." side="top">
+                <Button
+                  variant="default"
+                  className="flex-1 gap-2"
+                  onClick={() => setChangePlanOpen(true)}
+                  disabled={!sub.stripeCustomerId}
+                >
+                  <ArrowUpDown className="h-4 w-4" />
+                  Change Plan
+                </Button>
+              </NavTooltip>
+              {/* Manage billing portal — secondary */}
               <NavTooltip content={BILLING_TOOLTIPS.manageSubscription} side="top">
                 <Button
+                  variant="outline"
                   onClick={handleOpenPortal}
                   disabled={portalLoading || !sub.stripeCustomerId}
                   className="flex-1 gap-2"
@@ -175,17 +270,17 @@ export default function Billing() {
                   ) : (
                     <ExternalLink className="h-4 w-4" />
                   )}
-                  Manage Billing & Invoices
+                  Manage Billing
                 </Button>
               </NavTooltip>
-              {(!sub.stripeCustomerId) && (
-                <p className="text-xs text-muted-foreground self-center">
-                  Stripe portal not available for this subscription.
-                </p>
-              )}
             </div>
+            {!sub.stripeCustomerId && (
+              <p className="text-xs text-muted-foreground">
+                Stripe portal not available for this subscription.
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">
-              The Stripe billing portal lets you update payment methods, download invoices, and cancel or change your plan.
+              Use <strong>Change Plan</strong> to switch plans in-app. Use <strong>Manage Billing</strong> to update payment methods, download invoices, or cancel.
             </p>
           </CardContent>
         </Card>
@@ -244,6 +339,124 @@ export default function Billing() {
           Contact support
         </a>
       </p>
+
+      {/* ── Change Plan Modal ────────────────────────────────────────────────────────── */}
+      <Dialog open={changePlanOpen} onOpenChange={setChangePlanOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowUpDown className="h-5 w-5 text-indigo-500" />
+              Change Your Plan
+            </DialogTitle>
+            <DialogDescription>
+              Select the plan and billing period you want to switch to. You will be redirected to Stripe to confirm the change.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Billing period toggle */}
+            <div className="flex rounded-lg border p-1 gap-1 bg-muted/40">
+              <button
+                className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${
+                  selectedBilling === "monthly"
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setSelectedBilling("monthly")}
+              >
+                Monthly
+              </button>
+              <button
+                className={`flex-1 rounded-md py-1.5 text-sm font-medium transition-colors ${
+                  selectedBilling === "annual"
+                    ? "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setSelectedBilling("annual")}
+              >
+                Annual
+                <span className="ml-1.5 text-xs text-emerald-600 font-semibold">Save 20%</span>
+              </button>
+            </div>
+
+            {/* Plan cards */}
+            <div className="space-y-3">
+              {PLAN_OPTIONS.map((plan) => {
+                const isSelected = selectedPlan === plan.key;
+                const price = selectedBilling === "annual" ? plan.annualPrice : plan.monthlyPrice;
+                const isCurrentPlan = sub?.planName === plan.key && sub?.billingPeriod === selectedBilling;
+
+                return (
+                  <button
+                    key={plan.key}
+                    className={`w-full text-left rounded-xl border p-4 transition-all duration-150 ${
+                      isSelected ? plan.selectedColor : plan.idleColor
+                    }`}
+                    onClick={() => setSelectedPlan(plan.key)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm">{plan.name}</span>
+                          {plan.badge && (
+                            <span className="text-xs bg-purple-100 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5 font-medium">
+                              {plan.badge}
+                            </span>
+                          )}
+                          {isCurrentPlan && (
+                            <span className="text-xs bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5 font-medium">
+                              Current
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{plan.description}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-right">
+                          <span className="font-bold text-base">{price}</span>
+                          <span className="text-xs text-muted-foreground">/mo</span>
+                          {selectedBilling === "annual" && (
+                            <p className="text-xs text-muted-foreground">billed annually</p>
+                          )}
+                        </div>
+                        <div
+                          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected ? "border-indigo-500 bg-indigo-500" : "border-muted-foreground/40"
+                          }`}
+                        >
+                          {isSelected && <Check className="h-3 w-3 text-white" />}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              You will be taken to Stripe to confirm payment. Proration is handled automatically.
+            </p>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setChangePlanOpen(false)} disabled={changePlanLoading}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleChangePlan}
+              disabled={changePlanLoading}
+              className="gap-2"
+            >
+              {changePlanLoading ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <ArrowUpDown className="h-4 w-4" />
+              )}
+              Confirm & Proceed to Stripe
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

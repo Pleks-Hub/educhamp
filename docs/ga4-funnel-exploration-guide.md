@@ -88,3 +88,31 @@ Explorations are only visible to users with Editor access. To make the funnel vi
 ## Recommended next actions after the funnel is live
 
 Once the funnel is collecting data, the three highest-impact optimisations based on typical SaaS conversion patterns are: (1) adding social proof (testimonials, school logos) directly above the pricing section to reduce Step 2 → Step 3 drop-off; (2) enabling Stripe's Link payment method to reduce checkout friction; and (3) setting up a GA4 Audience for users who completed Step 2 but not Step 3, then retargeting them with a Google Ads remarketing campaign using the `begin_checkout` conversion event as the bid signal.
+
+---
+
+## Appendix — Tracking the in-app Change Plan flow (added Sprint 49)
+
+The new **Change Plan** button on `/billing` introduces a second conversion funnel: existing subscribers upgrading or switching plans. This flow fires the same `checkout_redirect` and `trial_started` events but with an additional metadata field `source: "change_plan"` in the `logPaymentEvent` server call. To track this separately in GA4:
+
+**New GTM trigger to add:** Create a Custom Event trigger named `change_plan_checkout` that fires when `event` equals `checkout_redirect` **and** `coupon_applied` parameter is not present (or add a dedicated `change_plan_initiated` dataLayer push to `Billing.tsx` if you want a cleaner signal).
+
+**Recommended second funnel — Plan Upgrade Funnel:**
+
+| Step | Name | Condition |
+|---|---|---|
+| 1 | Billing page visit | `page_view` where `page_location` contains `/billing` |
+| 2 | Change Plan modal opened | Custom event `change_plan_modal_open` (add a `window.dataLayer.push` call in the `setChangePlanOpen(true)` handler in `Billing.tsx`) |
+| 3 | Stripe redirect initiated | `checkout_redirect` with `source = change_plan` |
+| 4 | Plan change completed | `page_view` where `page_location` contains `/billing?plan_changed=1` |
+
+**To add the dataLayer push for Step 2**, insert the following into `Billing.tsx` inside the `onClick` handler for the Change Plan button:
+
+```tsx
+onClick={() => {
+  window.dataLayer?.push({ event: "change_plan_modal_open" });
+  setChangePlanOpen(true);
+}}
+```
+
+This gives you a clean signal for how many subscribers open the modal vs. how many complete the plan change — the modal-to-completion rate is the key metric for evaluating whether the in-app switcher reduces churn compared to the previous Stripe Portal flow.

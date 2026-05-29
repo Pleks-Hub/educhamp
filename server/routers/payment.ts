@@ -305,6 +305,77 @@ export const paymentRouter = router({
       return { url: session.url };
     }),
 
+  // ── Protected: change plan (in-app plan switcher) ──────────────────────────
+  changePlan: protectedProcedure
+    .input(
+      z.object({
+        planKey: z.enum(["family", "premium_family"]),
+        billingPeriod: z.enum(["monthly", "annual"]),
+        origin: z.string().url(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const plan = getPlanByKey(input.planKey);
+      if (!plan) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid plan" });
+
+      await saveUserBillingPeriod(ctx.user.id, input.billingPeriod);
+
+      const stripeCustomerId = await getOrCreateStripeCustomer(
+        ctx.user.id,
+        ctx.user.email ?? "",
+        ctx.user.name
+      );
+
+      const priceEntry = input.billingPeriod === "annual" ? plan.annual : plan.monthly;
+      const stripePriceId = priceEntry.stripePriceId;
+      const amountCents = priceEntry.amountCents;
+
+      const lineItem = stripePriceId
+        ? { price: stripePriceId, quantity: 1 }
+        : {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: `${plan.name} — ${input.billingPeriod === "annual" ? "Annual" : "Monthly"}`,
+              },
+              unit_amount: amountCents,
+              recurring: { interval: (input.billingPeriod === "annual" ? "year" : "month") as "year" | "month" },
+            },
+            quantity: 1,
+          };
+
+      const session = await stripe.checkout.sessions.create({
+        customer: stripeCustomerId,
+        mode: "subscription",
+        payment_method_types: ["card"],
+        line_items: [lineItem],
+        subscription_data: {
+          metadata: { plan_key: input.planKey, billing_period: input.billingPeriod },
+        },
+        client_reference_id: String(ctx.user.id),
+        metadata: {
+          user_id: String(ctx.user.id),
+          customer_email: ctx.user.email ?? "",
+          customer_name: ctx.user.name ?? "",
+          plan_key: input.planKey,
+          billing_period: input.billingPeriod,
+        },
+        success_url: `${input.origin}/billing?plan_changed=1`,
+        cancel_url: `${input.origin}/billing`,
+      });
+
+      await logPaymentEvent({
+        userId: ctx.user.id,
+        event: "checkout.session.created",
+        stripeObjectId: session.id,
+        amountCents,
+        currency: "usd",
+        metadata: { planKey: input.planKey, billingPeriod: input.billingPeriod, source: "change_plan" },
+      });
+
+      return { url: session.url };
+    }),
+
   // ─── Admin: Coupon Management ─────────────────────────────────────────────
 
   admin: router({
