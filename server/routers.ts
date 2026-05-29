@@ -40,6 +40,7 @@ import {
   saveDiagnosticAttempt,
   saveQuizAttempt,
   updateTutorSessionMessages,
+  listTutorSessions,
   upsertUnitProgress,
   upsertUserMastery,
   getParentsByChildId,
@@ -804,6 +805,28 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await updateTutorSessionMessages(input.sessionId, []);
         return { success: true };
+      }),
+
+    listSessions: protectedProcedure
+      .input(
+        z.object({
+          unitId: z.number().optional(),
+          mode: z.enum(["teach", "practice", "quiz", "exam_review", "remediation", "parent_summary"]).optional(),
+          fromDate: z.date().optional(),
+          toDate: z.date().optional(),
+          limit: z.number().min(1).max(100).default(20),
+          offset: z.number().min(0).default(0),
+        })
+      )
+      .query(async ({ ctx, input }) => {
+        return listTutorSessions(ctx.user.id, {
+          unitId: input.unitId,
+          mode: input.mode,
+          fromDate: input.fromDate,
+          toDate: input.toDate,
+          limit: input.limit,
+          offset: input.offset,
+        });
       }),
   }),
 

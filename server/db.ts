@@ -1,4 +1,4 @@
-import { and, count as sqlCount, desc, eq, gte, inArray, like, lt, or, sql } from "drizzle-orm";
+import { and, count as sqlCount, desc, eq, gte, inArray, like, lt, lte, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser,
@@ -424,6 +424,39 @@ export async function updateTutorSessionMessages(sessionId: number, messages: un
   const db = await getDb();
   if (!db) return;
   await db.update(tutorSessions).set({ messages: messages as any }).where(eq(tutorSessions.id, sessionId));
+}
+
+export async function listTutorSessions(
+  userId: number,
+  opts?: { unitId?: number; mode?: string; fromDate?: Date; toDate?: Date; limit?: number; offset?: number }
+) {
+  const db = await getDb();
+  if (!db) return { sessions: [], total: 0 };
+
+  const conditions = [eq(tutorSessions.userId, userId)];
+  if (opts?.unitId) conditions.push(eq(tutorSessions.unitId, opts.unitId));
+  if (opts?.mode) conditions.push(eq(tutorSessions.mode, opts.mode as any));
+  if (opts?.fromDate) conditions.push(gte(tutorSessions.createdAt, opts.fromDate));
+  if (opts?.toDate) conditions.push(lte(tutorSessions.createdAt, opts.toDate));
+
+  const limit = opts?.limit ?? 20;
+  const offset = opts?.offset ?? 0;
+
+  const [rows, countRows] = await Promise.all([
+    db
+      .select()
+      .from(tutorSessions)
+      .where(and(...conditions))
+      .orderBy(desc(tutorSessions.updatedAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ total: sql<number>`count(*)` })
+      .from(tutorSessions)
+      .where(and(...conditions)),
+  ]);
+
+  return { sessions: rows, total: Number(countRows[0]?.total ?? 0) };
 }
 
 // ─── Parent Module ────────────────────────────────────────────────────────────
