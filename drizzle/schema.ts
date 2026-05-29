@@ -430,6 +430,8 @@ export const userProfiles = mysqlTable("userProfiles", {
   displayName: varchar("displayName", { length: 128 }),
   preferredName: varchar("preferredName", { length: 64 }),   // nickname the AI uses when addressing the student
   aiWelcomeMessage: text("aiWelcomeMessage"),                 // custom welcome message shown in AI chat
+  // Early childhood modes
+  parentLedMode: boolean("parentLedMode").notNull().default(false), // Parent-Led Learning Mode for Pre-K/K
   // Onboarding state
   onboardingCompleted: boolean("onboardingCompleted").notNull().default(false),
   onboardingStep: int("onboardingStep").notNull().default(0),

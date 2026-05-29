@@ -1467,18 +1467,18 @@
 
 ## Sprint 56 — Pre-K through Grade 2 Expansion
 
-- [ ] Audit all grade-level hardcoded strings, filters, and schema constraints
-- [ ] Add Pre-K, Kindergarten, Grade 1, Grade 2 to grade enum/validation everywhere
-- [ ] Seed courses, subjects, units, lessons for Pre-K–Grade 2 in the database
-- [ ] Update placement diagnostic logic for Pre-K–Grade 2 (no reading assumed)
-- [ ] Update AI tutor system prompt for age-appropriate language (Pre-K–Grade 2)
-- [ ] Update onboarding grade selector to include Pre-K, K, Grade 1, Grade 2
-- [ ] Update all frontend grade filters, dropdowns, and labels
-- [ ] Update admin portal course/user management to show Pre-K–Grade 2
-- [ ] Update analytics and reporting to include Pre-K–Grade 2 data
-- [ ] Update email templates and notifications for Pre-K–Grade 2 messaging
-- [ ] Update landing page and marketing copy to reflect Pre-K–Grade 12 coverage
-- [ ] Run full regression test suite and fix any failures
+- [x] Audit all grade-level hardcoded strings, filters, and schema constraints
+- [x] Add Pre-K, Kindergarten, Grade 1, Grade 2 to grade enum/validation everywhere
+- [x] Seed courses, subjects, units, lessons for Pre-K–Grade 2 in the database
+- [x] Update placement diagnostic logic for Pre-K–Grade 2 (no reading assumed)
+- [x] Update AI tutor system prompt for age-appropriate language (Pre-K–Grade 2)
+- [x] Update onboarding grade selector to include Pre-K, K, Grade 1, Grade 2
+- [x] Update all frontend grade filters, dropdowns, and labels
+- [x] Update admin portal course/user management to show Pre-K–Grade 2
+- [x] Update analytics and reporting to include Pre-K–Grade 2 data
+- [x] Update email templates and notifications for Pre-K–Grade 2 messaging
+- [x] Update landing page and marketing copy to reflect Pre-K–Grade 12 coverage
+- [x] Run full regression test suite and fix any failures
 
 ## Sprint 56 — Pre-K through Grade 2 Expansion
 
@@ -1500,3 +1500,15 @@
 - [x] Update ParentOnboarding.tsx homeschool_supplement goal description
 - [x] Update CheckoutSuccess.tsx course count copy
 - [x] 234 tests pass, 0 TypeScript errors
+
+## Sprint 57 — Early Childhood Learning Experiences
+
+- [x] Implement Young Learner Mode: auto-detect grade (Pre-K–Grade 2), switch EduBot persona
+- [ ] Young Learner EduBot: simpler vocab, emoji, short sentences, praise, gamified responses
+- [ ] Add child-safe content guardrails to tutorStream for young learner grades
+- [ ] Build visual placement diagnostic for Pre-K–Grade 2 (picture-tap, counting, matching)
+- [ ] Add large touch-friendly UI, audio narration support, and read-aloud to diagnostic
+- [x] Implement Parent-Led Learning Mode toggle in student settings
+- [ ] Parent-Led Mode: narrated instructions, parent coaching prompts, shared session UI
+- [ ] Auto-enable Parent-Led Mode for Pre-K and Kindergarten by default
+- [ ] Run full regression test suite and fix any failures

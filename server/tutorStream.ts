@@ -15,7 +15,7 @@ import type { Express, Request, Response } from "express";
 import { sdk } from "./_core/sdk";
 import { ENV } from "./_core/env";
 import { notifyOwner } from "./_core/notification";
-import { buildTutorSystemPrompt } from "./educhamp-helpers";
+import { buildTutorSystemPrompt, isYoungLearnerGrade } from "./educhamp-helpers";
 import {
   getOrCreateTutorSession,
   updateTutorSessionMessages,
@@ -29,7 +29,7 @@ import {
   getActiveCourseIdForUser,
 } from "./db";
 
-type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary";
+type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary"; // local alias
 
 const VALID_MODES = new Set<string>(["teach", "practice", "quiz", "exam_review", "remediation", "parent_summary"]);
 
@@ -278,6 +278,14 @@ export function registerTutorStreamRoute(app: Express) {
               .join(" | ")
           : "";
 
+      // Determine Young Learner Mode and Parent-Led Mode
+      const youngLearnerGrade = studentDemographics?.gradeLevel ?? activeCourse?.gradeLevel;
+      const isYoungLearner = isYoungLearnerGrade(youngLearnerGrade);
+      // Load parent-led mode setting from profile
+      const { getUserProfile: getProfileForMode } = await import("./db");
+      const modeProfile = await getProfileForMode(contextUserId).catch(() => null);
+      const parentLedMode = modeProfile?.parentLedMode === true;
+
       const systemPrompt = buildTutorSystemPrompt(
         contextUserName,
         mode,
@@ -293,6 +301,8 @@ export function registerTutorStreamRoute(app: Express) {
           learningObjectives: learningObjectivesText,
           parentGoalContext,
           studentDemographics,
+          isYoungLearner,
+          parentLedMode,
           courseContext: activeCourse
             ? {
                 title: activeCourse.title,

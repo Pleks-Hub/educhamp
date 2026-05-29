@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
   User, Shield, ShieldCheck, ShieldOff, KeyRound, Copy, RefreshCw,
@@ -435,6 +436,7 @@ function PersonalizationCard() {
   const [displayName, setDisplayName] = useState("");
   const [preferredName, setPreferredName] = useState("");
   const [aiWelcomeMessage, setAiWelcomeMessage] = useState("");
+  const [parentLedMode, setParentLedMode] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
   const saveMutation = trpc.onboarding.savePersonalization.useMutation({
@@ -455,6 +457,7 @@ function PersonalizationCard() {
       setDisplayName(personalization.displayName ?? "");
       setPreferredName((personalization as any).preferredName ?? "");
       setAiWelcomeMessage((personalization as any).aiWelcomeMessage ?? "");
+      setParentLedMode((personalization as any).parentLedMode ?? false);
       setInitialized(true);
     }
   }, [personalization, initialized]);
@@ -464,6 +467,7 @@ function PersonalizationCard() {
       displayName: displayName.trim() || undefined,
       preferredName: preferredName.trim() || null,
       aiWelcomeMessage: aiWelcomeMessage.trim() || null,
+      parentLedMode,
     });
   };
 
@@ -567,6 +571,30 @@ function PersonalizationCard() {
             maxLength={500}
           />
           <p className="text-xs text-muted-foreground text-right">{aiWelcomeMessage.length}/500</p>
+        </div>
+
+        <Separator />
+
+        {/* Parent-Led Learning Mode */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="parentLedMode" className="text-sm font-medium">
+              Parent-Led Learning Mode 👨‍👩‍👧
+            </Label>
+            <p className="text-xs text-muted-foreground max-w-sm">
+              Enable this for Pre-K through Grade 2 students. EduBot will narrate instructions
+              aloud, use simpler language, and include coaching prompts for the parent to read
+              alongside the child.
+            </p>
+          </div>
+          <Switch
+            id="parentLedMode"
+            checked={parentLedMode}
+            onCheckedChange={(checked) => {
+              setParentLedMode(checked);
+              saveMutation.mutate({ parentLedMode: checked });
+            }}
+          />
         </div>
 
         <Button

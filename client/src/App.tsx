@@ -40,6 +40,7 @@ const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 const Billing = lazy(() => import("./pages/Billing"));
 const CourseRequestResult = lazy(() => import("./pages/CourseRequestResult"));
 const Verify2FA = lazy(() => import("./pages/Verify2FA"));
+const EarlyDiagnostic = lazy(() => import("./pages/EarlyDiagnostic"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -91,6 +92,7 @@ function Router() {
                 <Route path="/curriculum/unit/:unitNumber/quiz" component={Quiz} />
                 <Route path="/tutor" component={Tutor} />
                 <Route path="/diagnostic" component={Diagnostic} />
+                <Route path="/diagnostic/early" component={EarlyDiagnostic} />
                 <Route path="/course-welcome" component={CourseWelcome} />
                 <Route path="/progress" component={Progress} />
                 <Route path="/skills" component={Skills} />

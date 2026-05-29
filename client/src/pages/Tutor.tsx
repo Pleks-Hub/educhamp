@@ -769,6 +769,20 @@ export default function Tutor() {
           </div>
         </div>
 
+        {/* ── Parent-Led Learning Mode Banner ─────────────────────────────── */}
+        {activeTab === "chat" && (personalization as any)?.parentLedMode && (
+          <div className="mx-4 mt-3 mb-0 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-4 py-3 flex items-start gap-3 text-sm">
+            <span className="text-xl shrink-0 mt-0.5">👨‍👩‍👧</span>
+            <div className="space-y-1 min-w-0">
+              <p className="font-semibold text-amber-900 dark:text-amber-200 leading-tight">Parent-Led Mode is ON</p>
+              <p className="text-amber-800 dark:text-amber-300 text-xs leading-relaxed">
+                <strong>Parent:</strong> Read EduBot's responses aloud to your child. Tap a question below together, then help your child pick an answer.
+                EduBot will use simple words and short sentences designed for young learners.
+              </p>
+            </div>
+          </div>
+        )}
+
         {activeTab === "history" && (
           <HistoryPanel
             sessions={historyQuery.data?.sessions ?? []}

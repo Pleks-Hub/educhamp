@@ -1,0 +1,1 @@
+ALTER TABLE `userProfiles` ADD `parentLedMode` boolean DEFAULT false NOT NULL;

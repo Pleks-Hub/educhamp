@@ -92,9 +92,13 @@ export const onboardingRouter = router({
   saveStudentProfile: protectedProcedure
     .input(studentProfileSchema)
     .mutation(async ({ ctx, input }) => {
+      // Auto-enable Parent-Led Mode for Pre-K and Kindergarten
+      const earlyGrades = ["Pre-K", "Kindergarten"];
+      const autoParentLed = earlyGrades.includes(input.gradeLevel ?? "");
       await upsertUserProfile(ctx.user.id, {
         ...input,
         onboardingStep: 1,
+        ...(autoParentLed ? { parentLedMode: true } : {}),
       });
       return { success: true };
     }),
@@ -686,6 +690,7 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
       displayName: (profile as any)?.displayName ?? null,
       preferredName: (profile as any)?.preferredName ?? null,
       aiWelcomeMessage: (profile as any)?.aiWelcomeMessage ?? null,
+      parentLedMode: (profile as any)?.parentLedMode ?? false,
     };
   }),
 
@@ -697,6 +702,7 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         displayName: z.string().max(128).optional(),
         preferredName: z.string().max(64).optional().nullable(),
         aiWelcomeMessage: z.string().max(500).optional().nullable(),
+        parentLedMode: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -709,6 +715,7 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         ...(input.aiWelcomeMessage !== undefined && input.aiWelcomeMessage !== null
           ? { aiWelcomeMessage: input.aiWelcomeMessage }
           : {}),
+        ...(input.parentLedMode !== undefined ? { parentLedMode: input.parentLedMode } : {}),
       });
       return { success: true };
     }),

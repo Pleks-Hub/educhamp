@@ -704,6 +704,58 @@ export const appRouter = router({
     getAllAttempts: protectedProcedure.query(async ({ ctx }) => {
       return getAllDiagnosticAttempts(ctx.user.id);
     }),
+
+    /**
+     * Submit pre-graded results from the visual/audio early diagnostic (Pre-K through Grade 2).
+     * Unlike submitDiagnostic, this accepts already-graded answers from the client-side question bank.
+     */
+    saveDiagnosticResults: studentProcedure
+      .input(
+        z.object({
+          score: z.number().min(0).max(100),
+          recommendation: z.string().max(512),
+          unitResults: z.array(
+            z.object({
+              unit: z.string(),
+              score: z.number().min(0).max(100),
+              ready: z.boolean(),
+            })
+          ),
+          courseId: z.number().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const resolvedCourseId = input.courseId ?? await getActiveCourseIdForUser(ctx.user.id);
+        // Build a minimal gradedAnswers array for saveDiagnosticAttempt
+        const gradedAnswers = input.unitResults.map((r, i) => ({
+          questionId: `early-${i}`,
+          answer: r.ready ? "correct" : "incorrect",
+          correct: r.ready,
+        }));
+        const unitResultsForSave = input.unitResults.map((r, i) => ({
+          unitNumber: i + 1,
+          unitTitle: r.unit,
+          correct: r.ready ? 1 : 0,
+          total: 1,
+          status: (r.ready ? "likely_mastered" : "needs_instruction") as
+            | "likely_mastered"
+            | "partial_understanding"
+            | "needs_instruction",
+          recommendation: r.ready
+            ? "Likely mastered — verify with unit quiz before advancing."
+            : "Needs full instruction — begin with Unit 1 or earliest gap.",
+        }));
+        await saveDiagnosticAttempt(
+          ctx.user.id,
+          gradedAnswers,
+          unitResultsForSave,
+          input.score >= 70 ? 6 : 2, // prerequisiteScore proxy
+          input.score,
+          input.recommendation,
+          resolvedCourseId
+        );
+        return { success: true, score: input.score };
+      }),
   }),
 
   // ─── AI Tutor ─────────────────────────────────────────────────────────────────

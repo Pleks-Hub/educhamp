@@ -241,6 +241,15 @@ export default function Diagnostic() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
+  // Auto-redirect Pre-K through Grade 2 to the visual/audio early diagnostic
+  useEffect(() => {
+    if (!user) return;
+    const earlyGrades = ["Pre-K", "Kindergarten", "Grade 1", "Grade 2"];
+    if (earlyGrades.includes(user.grade ?? "")) {
+      setLocation("/diagnostic/early");
+    }
+  }, [user, setLocation]);
+
   // Test state
   const [started, setStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
