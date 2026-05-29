@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ReadAloudButton } from "@/components/ReadAloudButton";
+import { useCelebration } from "@/components/CelebrationOverlay";
 
 // ─── Exact types from schema.ts ───────────────────────────────────────────────
 
@@ -99,6 +101,13 @@ export default function LessonDetail() {
   const [revealedSolutions, setRevealedSolutions] = useState<Set<number>>(new Set());
   const [checkedAnswers, setCheckedAnswers] = useState<Record<number, "correct" | "wrong" | null>>({});
 
+  const { celebrate } = useCelebration();
+
+  // Young learner / parent-led mode detection
+  const { data: personalization } = trpc.onboarding.getPersonalization.useQuery(undefined, { enabled: !!user });
+  const isYoungLearner = ["Pre-K", "Kindergarten", "Grade 1", "Grade 2"].includes(user?.grade ?? "");
+  const showReadAloud = isYoungLearner || !!(personalization as any)?.parentLedMode;
+
   const { data: lesson, isLoading } = trpc.curriculum.getLesson.useQuery(
     { lessonId },
     { enabled: !isNaN(lessonId) }
@@ -106,8 +115,9 @@ export default function LessonDetail() {
 
   const markComplete = trpc.progress.markLessonComplete.useMutation({
     onSuccess: () => {
+      celebrate("lesson_complete", "Lesson Complete! ⭐");
       toast.success("Lesson completed! Great work.");
-      setLocation(`/curriculum/unit/${unitNumber}`);
+      setTimeout(() => setLocation(`/curriculum/unit/${unitNumber}`), 2000);
     },
   });
 
@@ -277,6 +287,10 @@ export default function LessonDetail() {
 
         {/* ── Explanation ─────────────────────────────────────────────────── */}
         <TabsContent value="explanation" className="mt-4 space-y-4">
+          {/* Read-Aloud bar — shown for young learners and parent-led mode */}
+          {showReadAloud && lesson.explanation && (
+            <ReadAloudButton text={lesson.explanation} className="mb-2" />
+          )}
           <Card className="border">
             <CardContent className="p-6">
               <div className="lesson-prose whitespace-pre-wrap text-sm leading-relaxed">

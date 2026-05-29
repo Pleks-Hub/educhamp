@@ -12,6 +12,7 @@ import { registerTutorStreamRoute } from "../tutorStream";
 import { gradePromotionHandler } from "../scheduledHandlers";
 import { inviteExpiryHandler } from "../scheduled/inviteExpiry";
 import { inactivityMonitorHandler } from "../scheduled/inactivityMonitor";
+import { weeklyParentDigestHandler } from "../scheduled/weeklyParentDigest";
 import { seedDefaultRoles } from "../db";
 import { registerStripeWebhook } from "../stripeWebhook";
 import { registerResendWebhook } from "../resendWebhook";
@@ -108,6 +109,7 @@ async function startServer() {
   app.post("/api/scheduled/grade-promotion", gradePromotionHandler);
   app.post("/api/scheduled/invite-expiry", inviteExpiryHandler);
   app.post("/api/scheduled/inactivity-monitor", inactivityMonitorHandler);
+  app.post("/api/scheduled/weekly-parent-digest", weeklyParentDigestHandler);
 
   // ── Course request email approve/reject token handler ─────────────────────
   app.get("/api/course-request/token", async (req, res) => {

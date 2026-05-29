@@ -437,6 +437,8 @@ function PersonalizationCard() {
   const [preferredName, setPreferredName] = useState("");
   const [aiWelcomeMessage, setAiWelcomeMessage] = useState("");
   const [parentLedMode, setParentLedMode] = useState(false);
+  const [disableAnimations, setDisableAnimations] = useState(false);
+  const [disableSound, setDisableSound] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
   const saveMutation = trpc.onboarding.savePersonalization.useMutation({
@@ -458,6 +460,8 @@ function PersonalizationCard() {
       setPreferredName((personalization as any).preferredName ?? "");
       setAiWelcomeMessage((personalization as any).aiWelcomeMessage ?? "");
       setParentLedMode((personalization as any).parentLedMode ?? false);
+      setDisableAnimations((personalization as any).disableAnimations ?? false);
+      setDisableSound((personalization as any).disableSound ?? false);
       setInitialized(true);
     }
   }, [personalization, initialized]);
@@ -468,6 +472,8 @@ function PersonalizationCard() {
       preferredName: preferredName.trim() || null,
       aiWelcomeMessage: aiWelcomeMessage.trim() || null,
       parentLedMode,
+      disableAnimations,
+      disableSound,
     });
   };
 
@@ -571,6 +577,49 @@ function PersonalizationCard() {
             maxLength={500}
           />
           <p className="text-xs text-muted-foreground text-right">{aiWelcomeMessage.length}/500</p>
+        </div>
+
+        <Separator />
+
+        {/* Disable Celebration Animations */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="disableAnimations" className="text-sm font-medium">
+              Disable Celebration Animations
+            </Label>
+            <p className="text-xs text-muted-foreground max-w-sm">
+              Turn off confetti and star-burst animations when completing lessons and quizzes.
+              Useful for students who find motion distracting.
+            </p>
+          </div>
+          <Switch
+            id="disableAnimations"
+            checked={disableAnimations}
+            onCheckedChange={(checked) => {
+              setDisableAnimations(checked);
+              saveMutation.mutate({ disableAnimations: checked });
+            }}
+          />
+        </div>
+
+        {/* Disable Celebration Sounds */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="disableSound" className="text-sm font-medium">
+              Disable Celebration Sounds
+            </Label>
+            <p className="text-xs text-muted-foreground max-w-sm">
+              Mute sound effects that play when earning badges and completing milestones.
+            </p>
+          </div>
+          <Switch
+            id="disableSound"
+            checked={disableSound}
+            onCheckedChange={(checked) => {
+              setDisableSound(checked);
+              saveMutation.mutate({ disableSound: checked });
+            }}
+          />
         </div>
 
         <Separator />

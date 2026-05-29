@@ -1,5 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { ReadAloudButton } from "@/components/ReadAloudButton";
+import { useCelebration } from "@/components/CelebrationOverlay";
 import { useLocation, useParams } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -94,6 +96,13 @@ export default function Quiz() {
   const unitNumber = parseInt(params.unitNumber ?? "1", 10);
   const [, setLocation] = useLocation();
 
+  const { celebrate } = useCelebration();
+
+  // Young learner / parent-led mode detection
+  const { data: personalization } = trpc.onboarding.getPersonalization.useQuery(undefined, { enabled: !!user });
+  const isYoungLearner = ["Pre-K", "Kindergarten", "Grade 1", "Grade 2"].includes(user?.grade ?? "");
+  const showReadAloud = isYoungLearner || !!(personalization as any)?.parentLedMode;
+
   const [started, setStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -111,7 +120,14 @@ export default function Quiz() {
 
   const submitMutation = trpc.quiz.submitQuiz.useMutation({
     onSuccess: (data) => {
-      setResult(data as unknown as QuizResult);
+      const result = data as unknown as QuizResult;
+      setResult(result);
+      // Trigger celebration based on score
+      if (result.score === 100) {
+        celebrate("quiz_perfect", "Perfect Score! 🏆");
+      } else if (result.score >= 75) {
+        celebrate("quiz_pass", `${result.score}% — Great Work! 🎉`);
+      }
       toast.success("Quiz submitted! Results ready.");
     },
     onError: (err) => {
@@ -393,6 +409,9 @@ export default function Quiz() {
                 {currentQ.skillTag && <span className="text-xs font-mono text-muted-foreground">{currentQ.skillTag}</span>}
                 <span className="text-xs text-muted-foreground capitalize">{currentQ.difficulty}</span>
               </div>
+              {showReadAloud && currentQ.questionText && (
+                <ReadAloudButton text={currentQ.questionText} className="mb-2" />
+              )}
               <p className="text-base font-medium text-foreground leading-relaxed math-expr">
                 {currentQ.questionText}
               </p>

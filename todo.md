@@ -1504,11 +1504,24 @@
 ## Sprint 57 — Early Childhood Learning Experiences
 
 - [x] Implement Young Learner Mode: auto-detect grade (Pre-K–Grade 2), switch EduBot persona
-- [ ] Young Learner EduBot: simpler vocab, emoji, short sentences, praise, gamified responses
-- [ ] Add child-safe content guardrails to tutorStream for young learner grades
-- [ ] Build visual placement diagnostic for Pre-K–Grade 2 (picture-tap, counting, matching)
-- [ ] Add large touch-friendly UI, audio narration support, and read-aloud to diagnostic
+- [x] Young Learner EduBot: simpler vocab, emoji, short sentences, praise, gamified responses
+- [x] Add child-safe content guardrails to tutorStream for young learner grades
+- [x] Build visual placement diagnostic for Pre-K–Grade 2 (picture-tap, counting, matching)
+- [x] Add large touch-friendly UI, audio narration support, and read-aloud to diagnostic
 - [x] Implement Parent-Led Learning Mode toggle in student settings
-- [ ] Parent-Led Mode: narrated instructions, parent coaching prompts, shared session UI
-- [ ] Auto-enable Parent-Led Mode for Pre-K and Kindergarten by default
-- [ ] Run full regression test suite and fix any failures
+- [x] Parent-Led Mode: narrated instructions, parent coaching prompts, shared session UI
+- [x] Auto-enable Parent-Led Mode for Pre-K and Kindergarten by default
+- [x] Run full regression test suite and fix any failures
+
+## Sprint 58 — Early Childhood Enhancements
+
+- [x] Build ReadAloud hook (useReadAloud) with Web Speech API: play/pause/replay/speed control, word highlighting, fallback
+- [x] Build ReadAloudButton component with accessible UI
+- [x] Integrate ReadAloud into lesson detail page
+- [x] Integrate ReadAloud into quiz/activity question display
+- [x] Add disableAnimations and disableSound toggles to userProfiles schema and Profile settings
+- [x] Build CelebrationOverlay component: confetti, star burst, badge pop, streak animations
+- [x] Wire CelebrationOverlay to unit completion, badge earn, and milestone events
+- [x] Build youngLearnerDigest email template (emoji-rich, mobile-optimized)
+- [x] Add scheduled weekly digest job for Pre-K/Kindergarten parents
+- [x] Run full regression test suite — 263 tests pass, 0 TypeScript errors

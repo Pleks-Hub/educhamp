@@ -5,6 +5,7 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { PaletteProvider } from "./contexts/PaletteContext";
+import { CelebrationProvider } from "./components/CelebrationOverlay";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // ── Eagerly loaded (always needed on first paint) ─────────────────────────────
@@ -116,10 +117,12 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light">
         <PaletteProvider>
-          <TooltipProvider>
-            <Toaster richColors position="top-right" />
-            <Router />
-          </TooltipProvider>
+          <CelebrationProvider>
+            <TooltipProvider>
+              <Toaster richColors position="top-right" />
+              <Router />
+            </TooltipProvider>
+          </CelebrationProvider>
         </PaletteProvider>
       </ThemeProvider>
     </ErrorBoundary>

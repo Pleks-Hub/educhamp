@@ -197,6 +197,13 @@
       "when": 1780070270631,
       "tag": "0027_clear_luke_cage",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1780071636156,
+      "tag": "0028_military_smiling_tiger",
+      "breakpoints": true
     }
   ]
 }

@@ -432,6 +432,8 @@ export const userProfiles = mysqlTable("userProfiles", {
   aiWelcomeMessage: text("aiWelcomeMessage"),                 // custom welcome message shown in AI chat
   // Early childhood modes
   parentLedMode: boolean("parentLedMode").notNull().default(false), // Parent-Led Learning Mode for Pre-K/K
+  disableAnimations: boolean("disableAnimations").notNull().default(false), // Disable celebration animations
+  disableSound: boolean("disableSound").notNull().default(false), // Disable celebration sounds
   // Onboarding state
   onboardingCompleted: boolean("onboardingCompleted").notNull().default(false),
   onboardingStep: int("onboardingStep").notNull().default(0),

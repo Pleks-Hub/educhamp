@@ -915,6 +915,28 @@ export const adminRouter = router({
       return { success: true, taskUid: job.taskUid, nextExecutionAt: job.nextExecutionAt };
     }),
 
+  /** Schedule the weekly parent digest cron (runs every Monday at 8 AM UTC). */
+  scheduleWeeklyParentDigest: adminProcedure
+    .mutation(async ({ ctx }) => {
+      const { createHeartbeatJob } = await import("../_core/heartbeat");
+      const { parse: parseCookie } = await import("cookie");
+      const { COOKIE_NAME } = await import("../../shared/const");
+      const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
+      if (!sessionToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "No session cookie" });
+      const job = await createHeartbeatJob({
+        name: "weekly-parent-digest",
+        cron: "0 0 8 * * 1", // Every Monday at 08:00 UTC
+        path: "/api/scheduled/weekly-parent-digest",
+        description: "Weekly learning digest email for parents of Pre-K through Grade 2 students",
+      }, sessionToken);
+      await upsertPlatformSetting("weeklyParentDigestCronTaskUid", job.taskUid, "Task UID for the weekly parent digest heartbeat cron");
+      await logAdminAction(ctx.user.id, "digest.scheduleWeeklyParentDigest", "digest", null, {
+        taskUid: job.taskUid,
+        nextExecutionAt: job.nextExecutionAt,
+      });
+      return { success: true, taskUid: job.taskUid, nextExecutionAt: job.nextExecutionAt };
+    }),
+
   exportSuppressions: adminProcedure
     .input(z.object({
       search: z.string().optional(),
