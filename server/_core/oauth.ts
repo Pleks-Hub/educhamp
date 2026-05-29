@@ -1,9 +1,10 @@
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS, PENDING_2FA_COOKIE_NAME } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
-import { sdk } from "./sdk";
+import { sdk, createPending2FAToken, verifyPending2FAToken } from "./sdk";
 import { sendWelcomeNotification } from "../routers/authEnhancements";
+import speakeasy from "speakeasy";
 
 function getQueryParam(req: Request, key: string): string | undefined {
   const value = req.query[key];
@@ -11,6 +12,7 @@ function getQueryParam(req: Request, key: string): string | undefined {
 }
 
 export function registerOAuthRoutes(app: Express) {
+  // ─── OAuth callback ────────────────────────────────────────────────────────
   app.get("/api/oauth/callback", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
@@ -51,6 +53,28 @@ export function registerOAuthRoutes(app: Express) {
         }
       }
 
+      // ── 2FA gate ─────────────────────────────────────────────────────────
+      // Check if the user has 2FA enabled. New users skip this gate because
+      // they cannot have 2FA set up yet.
+      if (!isNewUser) {
+        const freshUser = await db.getUserByOpenId(userInfo.openId);
+        if (freshUser) {
+          const twoFactor = await db.getTwoFactor(freshUser.id);
+          if (twoFactor?.isEnabled) {
+            // Issue a short-lived pending-2FA cookie and redirect to the challenge page
+            const pendingToken = await createPending2FAToken(userInfo.openId);
+            const cookieOptions = getSessionCookieOptions(req);
+            res.cookie(PENDING_2FA_COOKIE_NAME, pendingToken, {
+              ...cookieOptions,
+              maxAge: 5 * 60 * 1000, // 5 minutes
+            });
+            res.redirect(302, "/verify-2fa");
+            return;
+          }
+        }
+      }
+
+      // ── Normal session (no 2FA required) ─────────────────────────────────
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
         name: userInfo.name || "",
         expiresInMs: ONE_YEAR_MS,
@@ -60,13 +84,7 @@ export function registerOAuthRoutes(app: Express) {
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
       // For new users: redirect to onboarding wizard.
-      // The frontend may have stored a post-login redirect in sessionStorage;
-      // we pass a flag so the client-side router can pick it up.
-      // For existing users who have completed onboarding, redirect normally.
       if (isNewUser) {
-        // New user — send to parent onboarding by default.
-        // If they arrived via a student invite link, the frontend sessionStorage
-        // key "educhamp_post_login_redirect" will override this on the client side.
         res.redirect(302, "/onboarding/parent");
       } else {
         // Check if onboarding is complete
@@ -85,5 +103,71 @@ export function registerOAuthRoutes(app: Express) {
       console.error("[OAuth] Callback failed", error);
       res.status(500).json({ error: "OAuth callback failed" });
     }
+  });
+
+  // ─── 2FA challenge endpoint ────────────────────────────────────────────────
+  // Called from the /verify-2fa page after the user enters their TOTP code.
+  app.post("/api/auth/verify-2fa-challenge", async (req: Request, res: Response) => {
+    const cookies = req.headers.cookie ?? "";
+    const parsed = Object.fromEntries(
+      cookies.split(";").map((c) => c.trim().split("=").map(decodeURIComponent))
+    );
+    const pendingToken = parsed[PENDING_2FA_COOKIE_NAME];
+    const openId = await verifyPending2FAToken(pendingToken);
+
+    if (!openId) {
+      res.status(401).json({ error: "Pending 2FA session expired or invalid. Please sign in again." });
+      return;
+    }
+
+    const { code } = req.body as { code?: string };
+    if (!code || typeof code !== "string") {
+      res.status(400).json({ error: "TOTP code is required." });
+      return;
+    }
+
+    const user = await db.getUserByOpenId(openId);
+    if (!user) {
+      res.status(401).json({ error: "User not found." });
+      return;
+    }
+
+    const twoFactor = await db.getTwoFactor(user.id);
+    if (!twoFactor?.isEnabled) {
+      res.status(400).json({ error: "2FA is not enabled for this account." });
+      return;
+    }
+
+    // Accept TOTP code (6 digits) or backup code (10 chars)
+    let isValid = false;
+    if (code.length === 6) {
+      isValid = speakeasy.totp.verify({
+        token: code,
+        secret: twoFactor.secret,
+        encoding: "base32",
+        window: 1,
+      });
+    } else {
+      // Backup code
+      isValid = !!(await db.consumeBackupCode(user.id, code));
+    }
+
+    if (!isValid) {
+      res.status(401).json({ error: "Invalid code. Please try again." });
+      return;
+    }
+
+    // Code is valid — issue a full session cookie and clear the pending cookie
+    const sessionToken = await sdk.createSessionToken(openId, {
+      name: user.name || "",
+      expiresInMs: ONE_YEAR_MS,
+    });
+
+    const cookieOptions = getSessionCookieOptions(req);
+    res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+    // Clear the pending-2FA cookie
+    res.clearCookie(PENDING_2FA_COOKIE_NAME, { ...cookieOptions });
+
+    res.json({ success: true });
   });
 }

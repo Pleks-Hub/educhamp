@@ -1458,3 +1458,9 @@
 - [x] Fix tutor session ownership: use contextUserId for getOrCreateTutorSession when childId is set
 - [ ] Enforce 2FA at login (challenge after OAuth callback if 2FA is enabled)
 - [x] Change quiz.getQuestions from protectedProcedure to studentProcedure
+
+## Sprint 55
+
+- [ ] Implement 2FA enforcement at login (pending-2FA cookie, /verify-2fa route, OAuth callback gate)
+- [ ] Enhance auto-enrollment banner with smooth slide-in animation and polished CTA
+- [ ] Add filter (by date/unit) and export (CSV/JSON) to tutor session history page

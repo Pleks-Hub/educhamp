@@ -86,6 +86,15 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "2mb", extended: true }));
 
   // ── Rate limiting ──────────────────────────────────────────────────────────
+  // 2FA challenge: strict limit to prevent brute-force
+  const twoFAChallengeLimit = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many 2FA attempts. Please wait 15 minutes before trying again." },
+  });
+  app.use("/api/auth/verify-2fa-challenge", twoFAChallengeLimit);
   app.use("/api/trpc", apiLimiter);
   app.use("/api/tutor/stream", chatbotLimiter);
   // Apply tighter chatbot limit to the landing page AI chat endpoint

@@ -39,6 +39,7 @@ const ChatManagement = lazy(() => import("./pages/ChatManagement"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 const Billing = lazy(() => import("./pages/Billing"));
 const CourseRequestResult = lazy(() => import("./pages/CourseRequestResult"));
+const Verify2FA = lazy(() => import("./pages/Verify2FA"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -70,6 +71,7 @@ function Router() {
         <Route path="/onboarding/student" component={StudentOnboarding} />
         <Route path="/checkout/success" component={CheckoutSuccess} />
         <Route path="/course-request/result" component={CourseRequestResult} />
+        <Route path="/verify-2fa" component={Verify2FA} />
 
         {/* Admin console — standalone, no sidebar */}
         <Route path="/admin" component={AdminDashboard} />

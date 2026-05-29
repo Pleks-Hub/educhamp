@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -36,7 +36,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useMemo } from "react";
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -352,6 +352,76 @@ function NotificationBell() {
   );
 }
 
+
+const BANNER_DISMISSED_KEY = "educhamp_auto_enroll_dismissed";
+
+function AutoEnrollBanner({ courseTitle }: { courseTitle: string }) {
+  const [, setLocation] = useLocation();
+  const [visible, setVisible] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const dismissed = sessionStorage.getItem(BANNER_DISMISSED_KEY);
+    if (!dismissed) {
+      setMounted(true);
+      requestAnimationFrame(() => setVisible(true));
+    }
+  }, []);
+
+  const dismiss = () => {
+    setVisible(false);
+    setTimeout(() => {
+      sessionStorage.setItem(BANNER_DISMISSED_KEY, "1");
+      setMounted(false);
+    }, 300);
+  };
+
+  if (!mounted) return null;
+
+  return (
+    <div
+      className="overflow-hidden transition-all duration-300 ease-out"
+      style={{
+        maxHeight: visible ? "120px" : "0px",
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(-8px)",
+      }}
+    >
+      <div className="flex items-start gap-3 rounded-xl border border-primary/25 bg-gradient-to-r from-primary/8 to-primary/4 px-4 py-3 text-sm">
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/15 shrink-0 mt-0.5">
+          <GraduationCap className="h-4 w-4 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-foreground leading-tight">
+            You've been enrolled in{" "}
+            <span className="text-primary">{courseTitle}</span>
+          </p>
+          <p className="text-muted-foreground text-xs mt-0.5 leading-relaxed">
+            We matched you to this course based on your grade level. Take the placement test to find your exact starting point.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            size="sm"
+            className="h-7 px-3 text-xs font-medium gap-1.5"
+            onClick={() => setLocation("/course-welcome")}
+          >
+            <Target className="h-3 w-3" />
+            Take Placement Test
+          </Button>
+          <button
+            type="button"
+            onClick={dismiss}
+            className="flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            aria-label="Dismiss"
+          >
+            <XCircle className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -492,27 +562,7 @@ export default function Home() {
       {user?.accountType === "student" && <ParentInviteBanner />}
 
       {/* Auto-enrollment banner — shown once on first login when student was auto-enrolled */}
-      {dashboard?.wasAutoEnrolled && (
-        <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
-          <GraduationCap className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-foreground">
-              You've been enrolled in {dashboard.courseTitle}
-            </p>
-            <p className="text-muted-foreground text-xs mt-0.5">
-              We matched you to this course based on your grade level. Take the placement test to find your exact starting point and unlock all units.
-            </p>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="shrink-0 border-primary/30 text-primary hover:bg-primary/10"
-            onClick={() => setLocation("/course-welcome")}
-          >
-            Take Placement Test
-          </Button>
-        </div>
-      )}
+      {dashboard?.wasAutoEnrolled && <AutoEnrollBanner courseTitle={dashboard.courseTitle ?? "your course"} />}
 
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">

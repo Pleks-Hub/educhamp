@@ -1,4 +1,4 @@
-import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { AXIOS_TIMEOUT_MS, COOKIE_NAME, ONE_YEAR_MS, PENDING_2FA_COOKIE_NAME } from "@shared/const";
 import { ForbiddenError } from "@shared/_core/errors";
 import axios, { type AxiosInstance } from "axios";
 import { parse as parseCookieHeader } from "cookie";
@@ -346,3 +346,43 @@ function buildCronUser(
 }
 
 export const sdk = new SDKServer();
+
+// ─── Pending 2FA helpers ─────────────────────────────────────────────────────
+// These are standalone functions (not on the sdk instance) because they are
+// used in the OAuth callback and the 2FA challenge route, both of which run
+// outside the tRPC context.
+
+const FIVE_MINUTES_MS = 5 * 60 * 1000;
+
+/**
+ * Create a short-lived JWT that identifies a user who has completed OAuth
+ * but has not yet passed the 2FA challenge.
+ */
+export async function createPending2FAToken(openId: string): Promise<string> {
+  const secret = new TextEncoder().encode(ENV.cookieSecret);
+  const expiresAt = Math.floor((Date.now() + FIVE_MINUTES_MS) / 1000);
+  return new SignJWT({ openId, pending2fa: true })
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setExpirationTime(expiresAt)
+    .sign(secret);
+}
+
+/**
+ * Verify a pending-2FA cookie and return the openId if valid.
+ * Returns null if the token is missing, expired, or malformed.
+ */
+export async function verifyPending2FAToken(
+  token: string | undefined | null
+): Promise<string | null> {
+  if (!token) return null;
+  try {
+    const secret = new TextEncoder().encode(ENV.cookieSecret);
+    const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+    if (payload.pending2fa !== true || typeof payload.openId !== "string") return null;
+    return payload.openId;
+  } catch {
+    return null;
+  }
+}
+
+export { PENDING_2FA_COOKIE_NAME };
