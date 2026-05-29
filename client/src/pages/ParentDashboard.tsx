@@ -21,7 +21,7 @@ import {
   Send, BookMarked, ThumbsUp, ThumbsDown, AlertCircle
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { Streamdown } from "streamdown";
+import { StreamdownRenderer } from "@/components/StreamdownRenderer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

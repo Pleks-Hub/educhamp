@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Streamdown } from "streamdown";
+import { StreamdownRenderer } from "@/components/StreamdownRenderer";
 import {
   BookOpen,
   Brain,
@@ -524,9 +524,9 @@ export default function Tutor() {
                   >
                     {msg.role === "assistant" ? (
                       msg.content ? (
-                        <Streamdown className="prose prose-sm max-w-none dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:leading-relaxed [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-3 [&_strong]:font-semibold [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs">
+                        <StreamdownRenderer className="prose prose-sm max-w-none dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:leading-relaxed [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-3 [&_strong]:font-semibold [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs">
                           {msg.content}
-                        </Streamdown>
+                        </StreamdownRenderer>
                       ) : (
                         /* Typing indicator while streaming starts */
                         <div className="flex items-center gap-1.5 py-1">

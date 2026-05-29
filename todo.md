@@ -1354,3 +1354,31 @@
 - [x] Service worker disabled in dev mode (devOptions: { enabled: false })
 - [x] PWAUpdatePrompt registered in main.tsx
 - [x] Safari/iOS compatible (no caching of authenticated responses via NetworkFirst for API)
+
+## Sprint 43 — Cross-Browser Diagnostic, KaTeX Lazy Loading & PWA Enhancements [COMPLETE]
+
+### Cross-Browser Diagnostic
+- [x] Comprehensive audit: scanned for unsupported JS APIs, CSS incompatibilities, cookie issues, SSE headers, font loading
+- [x] Confirmed no .at(), structuredClone(), crypto.randomUUID() in client code (Vite transpiles for safari14 target)
+- [x] localStorage/sessionStorage all wrapped in try/catch for Safari Private Browsing safety
+- [x] CORS headers validated — /api/trpc is same-origin, no explicit CORS needed
+- [x] Confirmed -webkit-backdrop-filter prefix already in index.css from Sprint 41
+
+### KaTeX / Streamdown Lazy Loading
+- [x] Created client/src/components/StreamdownRenderer.tsx — lazy wrapper with React.Suspense and skeleton fallback
+- [x] Replaced eager Streamdown import in AIChatBox.tsx with StreamdownRenderer
+- [x] Replaced eager Streamdown import in Tutor.tsx with StreamdownRenderer
+- [x] Replaced eager Streamdown import in ParentDashboard.tsx with StreamdownRenderer
+- [x] vendor-streamdown chunk is now 30 kB (lazy-loaded only when AI chat is used)
+- [x] Main bundle remains 258 kB; largest chunks: vendor-charts 397 kB, index 260 kB, vendor-react 224 kB
+
+### PWA Enhancements
+- [x] Created client/public/offline.html — branded offline fallback page with EduChamp styling
+- [x] Updated PWA manifest in vite.config.ts: added proper icon references (192x192, 512x512 from CDN), offline fallback
+- [x] navigateFallback set to /offline.html for offline navigation
+- [x] PWA manifest description updated to "Your personalized Algebra I learning platform"
+
+### Tests & QA
+- [x] TypeScript: 0 errors
+- [x] Test suite: 218 tests passing (11 test files)
+- [x] Production build: completes cleanly, no chunk size warnings

@@ -155,18 +155,32 @@ const pwaPlugin = VitePWA({
   registerType: "prompt",
   // Only generate SW in production to avoid dev-mode caching issues
   devOptions: { enabled: false },
-  includeAssets: ["favicon.ico", "robots.txt"],
+  includeAssets: ["favicon.ico", "robots.txt", "offline.html"],
   manifest: {
     name: "EduChamp",
     short_name: "EduChamp",
-    description: "AI-Powered Adaptive Algebra Learning",
+    description: "AI-Powered Adaptive Learning for Grades 3–12. Personalized tutoring, mastery tracking, and TEKS-aligned curriculum.",
     theme_color: "#4f46e5",
     background_color: "#0f0a1e",
     display: "standalone",
     orientation: "portrait-primary",
     start_url: "/",
+    scope: "/",
+    categories: ["education"],
     icons: [
       { src: "/favicon.ico", sizes: "64x64", type: "image/x-icon" },
+      {
+        src: "https://d2xsxph8kpxj0f.cloudfront.net/310519663050137747/bGgBz5qKButMMCqjwC5rTw/educhamp-favicon-192-RCJzKWMHgzeJhmTEtN4iig.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "https://d2xsxph8kpxj0f.cloudfront.net/310519663050137747/bGgBz5qKButMMCqjwC5rTw/educhamp-favicon-192-RCJzKWMHgzeJhmTEtN4iig.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable any",
+      },
     ],
   },
   workbox: {
