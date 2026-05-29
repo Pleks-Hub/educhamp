@@ -188,7 +188,7 @@ const pwaPlugin = VitePWA({
     // (vendor-misc includes KaTeX fonts and other large assets)
     maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
     // Cache the app shell (HTML, JS, CSS, fonts) — exclude very large chunks from precache
-    globPatterns: ["**/*.{css,html,ico,png,svg,woff2}", "assets/vendor-react-*.js", "assets/vendor-trpc-*.js", "assets/vendor-radix-*.js", "assets/index-*.js"],
+    globPatterns: ["**/*.{css,html,ico,png,svg,woff2}", "assets/index-*.js"],
     // Network-first for API calls, cache-first for static assets
     runtimeCaching: [
       {
@@ -249,33 +249,7 @@ export default defineConfig({
     // Target es2019 for broad Safari 14+ / Chrome 79+ / Firefox 67+ compatibility
     target: ["es2019", "safari14", "chrome79", "firefox67", "edge79"],
     chunkSizeWarningLimit: 600,
-    rollupOptions: {
-      output: {
-        // Manual chunks to split the 2.7 MB main bundle into smaller pieces
-        manualChunks(id) {
-          // Vendor: React core
-          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom")) {
-            return "vendor-react";
-          }
-          // Vendor: tRPC + TanStack Query
-          if (id.includes("node_modules/@trpc") || id.includes("node_modules/@tanstack")) {
-            return "vendor-trpc";
-          }
-          // Vendor: Radix UI components
-          if (id.includes("node_modules/@radix-ui")) {
-            return "vendor-radix";
-          }
-          // Vendor: Stripe (safe to isolate — no circular deps with core)
-          if (id.includes("node_modules/@stripe") || id.includes("node_modules/stripe")) {
-            return "vendor-stripe";
-          }
-          // Vendor: all other node_modules
-          if (id.includes("node_modules")) {
-            return "vendor-misc";
-          }
-        },
-      },
-    },
+    rollupOptions: {},
   },
   server: {
     host: true,

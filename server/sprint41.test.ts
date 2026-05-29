@@ -182,15 +182,15 @@ describe("Vite build configuration", () => {
     expect(config).toContain("es2019");
   });
 
-  it("manualChunks splits vendor-react from vendor-trpc", async () => {
+  it("vite.config.ts does NOT use manualChunks (removed to fix TDZ createContext crash)", async () => {
     const fs = await import("fs");
     const path = await import("path");
     const configPath = path.resolve(process.cwd(), "vite.config.ts");
     const config = fs.readFileSync(configPath, "utf-8");
 
-    expect(config).toContain("vendor-react");
-    expect(config).toContain("vendor-trpc");
-    expect(config).toContain("vendor-radix");
+    // manualChunks were causing circular module evaluation order (TDZ crashes).
+    // Rollup now handles chunking automatically — no manual splits.
+    expect(config).not.toContain("manualChunks");
   });
 
   it("App.tsx uses React.lazy for all page routes", async () => {
