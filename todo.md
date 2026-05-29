@@ -1402,9 +1402,9 @@
 - [x] 218 tests pass, 0 TypeScript errors
 
 ## Sprint 46 — Production Readiness
-- [ ] Add loading skeleton/spinner to Tutor page AI chat area (vendor-shiki lazy load feedback)
-- [ ] Optimize font loading: self-host Inter + display font, remove render-blocking Google Fonts CDN call
-- [ ] Stripe webhook smoke test: verify checkout.session.completed updates DB correctly
+- [x] Add loading skeleton/spinner to Tutor page AI chat area (vendor-shiki lazy load feedback)
+- [x] Optimize font loading: self-host Inter + display font, remove render-blocking Google Fonts CDN call
+- [x] Stripe webhook smoke test: verify checkout.session.completed updates DB correctly
 
 ## Sprint 46 — Production Readiness (2026-05-29)
 - [x] Add Tutor page loading skeleton/overlay for vendor-shiki lazy load
