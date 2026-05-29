@@ -416,37 +416,56 @@ function DashboardLayoutContent({
 
       <SidebarInset className="bg-background">
         {/* Trial active banner */}
-        {showTrialBanner && (
-          <div className="sticky top-0 z-50 flex items-center justify-between gap-3 bg-amber-500/10 border-b border-amber-500/30 px-4 py-2.5 text-sm">
-            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>
-                <strong>Free trial active</strong> — your trial{" "}
-                {trialDaysLeft === 0
-                  ? "expires today"
-                  : trialDaysLeft === 1
-                  ? "ends tomorrow"
-                  : `ends in ${trialDaysLeft} days`}.
-                {" "}Upgrade to keep full access.
-              </span>
+        {showTrialBanner && (() => {
+          const isUrgent = trialDaysLeft <= 3;
+          const bannerBg = isUrgent
+            ? "bg-red-500/10 border-red-500/30"
+            : "bg-amber-500/10 border-amber-500/30";
+          const textColor = isUrgent
+            ? "text-red-700 dark:text-red-400"
+            : "text-amber-700 dark:text-amber-400";
+          const pillBg = isUrgent
+            ? "bg-red-500 text-white"
+            : "bg-amber-500 text-white";
+          const btnBg = isUrgent
+            ? "bg-red-500 hover:bg-red-600"
+            : "bg-amber-500 hover:bg-amber-600";
+          const dayLabel =
+            trialDaysLeft === 0
+              ? "Expires today"
+              : trialDaysLeft === 1
+              ? "1 day left"
+              : `${trialDaysLeft} days left`;
+          return (
+            <div className={`sticky top-0 z-50 flex items-center justify-between gap-3 border-b px-4 py-2.5 text-sm ${bannerBg}`}>
+              <div className={`flex items-center gap-2.5 ${textColor}`}>
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${pillBg}`}>
+                  {dayLabel}
+                </span>
+                <span className="hidden sm:inline">
+                  <strong>Free trial</strong> — upgrade to keep full access after your trial ends.
+                </span>
+                <span className="sm:hidden text-xs">Upgrade to keep access.</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setLocation("/billing")}
+                  className={`rounded-md px-3 py-1 text-xs font-semibold text-white transition-colors ${btnBg}`}
+                >
+                  Upgrade Now
+                </button>
+                <button
+                  onClick={dismissTrialBanner}
+                  aria-label="Dismiss trial banner"
+                  className={`rounded p-1 transition-colors ${isUrgent ? "text-red-600 hover:bg-red-500/20" : "text-amber-600 hover:bg-amber-500/20"}`}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setLocation("/billing")}
-                className="rounded-md bg-amber-500 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-600 transition-colors"
-              >
-                Upgrade now
-              </button>
-              <button
-                onClick={dismissTrialBanner}
-                aria-label="Dismiss trial banner"
-                className="rounded p-1 text-amber-600 hover:bg-amber-500/20 transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Mobile top bar */}
         {isMobile && (

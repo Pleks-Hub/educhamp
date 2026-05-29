@@ -418,17 +418,59 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6 page-enter">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-48" />
+      <div className="p-6 space-y-6 page-enter max-w-6xl">
+        {/* Header skeleton */}
+        <div className="flex items-start justify-between flex-wrap gap-3">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-56" />
+            <Skeleton className="h-4 w-40" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-28 rounded-lg" />
+            <Skeleton className="h-9 w-9 rounded-lg" />
+          </div>
         </div>
+
+        {/* Stat cards skeleton */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-xl border bg-card p-4 space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-7 w-12" />
+              <Skeleton className="h-2 w-full rounded-full" />
+            </div>
+          ))}
         </div>
+
+        {/* Main content skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Skeleton className="lg:col-span-2 h-64 rounded-xl" />
-          <Skeleton className="h-64 rounded-xl" />
+          {/* Left: unit grid */}
+          <div className="lg:col-span-2 rounded-xl border bg-card p-5 space-y-4">
+            <Skeleton className="h-5 w-32" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-2 w-full rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Right: next steps */}
+          <div className="rounded-xl border bg-card p-5 space-y-4">
+            <Skeleton className="h-5 w-28" />
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-3/4" />
+                </div>
+              </div>
+            ))}
+            <Skeleton className="h-9 w-full rounded-lg mt-2" />
+          </div>
         </div>
       </div>
     );

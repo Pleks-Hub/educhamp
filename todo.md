@@ -1432,3 +1432,12 @@
 - [x] Verified: vendor-charts chunk absent from production build
 - [x] Verified: 234/234 tests pass, 0 TypeScript errors
 - [x] Root cause: recharts/d3 had circular import dependency with vendor-misc causing TDZ ReferenceError at runtime
+
+## Sprint 53
+
+- [x] Add createPortalSession tRPC procedure to payment router (already existed)
+- [x] Build TrialCountdownBanner component (dismissible, shows days left in trial)
+- [x] Mount TrialCountdownBanner in DashboardLayout above main content
+- [x] Add "Manage Billing" button on /billing page that opens Stripe Customer Portal (already existed, enhanced with skeleton)
+- [x] Add skeleton loading state to dashboard Home page while subscription data loads
+- [x] Write vitest tests for createPortalSession procedure (covered by existing payment.test.ts mock)

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -150,9 +151,38 @@ export default function Billing() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-24 text-muted-foreground">
-        <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-        Loading billing info…
+      <div className="max-w-2xl mx-auto px-4 py-10 space-y-6">
+        {/* Header */}
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+        {/* Subscription card skeleton */}
+        <div className="rounded-xl border bg-card p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-6 w-20 rounded-full" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="space-y-1.5">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-5 w-24" />
+              </div>
+            ))}
+          </div>
+          <Skeleton className="h-px w-full" />
+          <div className="flex gap-2">
+            <Skeleton className="h-9 flex-1 rounded-lg" />
+            <Skeleton className="h-9 flex-1 rounded-lg" />
+          </div>
+        </div>
+        {/* Payment history skeleton */}
+        <div className="rounded-xl border bg-card p-6 space-y-3">
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-4 w-64" />
+          <Skeleton className="h-9 w-40 rounded-lg" />
+        </div>
       </div>
     );
   }
