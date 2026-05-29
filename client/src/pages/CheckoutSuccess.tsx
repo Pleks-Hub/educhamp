@@ -76,7 +76,7 @@ export default function CheckoutSuccess() {
         {/* Actions */}
         <div className="flex flex-col gap-3">
           <Button asChild size="lg" className="gap-2">
-            <Link href="/dashboard">
+            <Link href="/">
               <BookOpen className="h-4 w-4" />
               Go to Dashboard
               <ArrowRight className="h-4 w-4" />

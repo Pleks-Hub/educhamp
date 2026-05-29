@@ -173,7 +173,10 @@ export const landingRouter = router({
   // ─── Admin: Chat Management ───────────────────────────────────────────────
 
   /** List all chat sessions (admin only) */
-  adminGetSessions: protectedProcedure
+  adminGetSessions: protectedProcedure.use(({ ctx, next }) => {
+    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    return next({ ctx });
+  })
     .input(z.object({
       search: z.string().optional(),
       status: z.enum(["all", "active", "converted", "archived"]).default("all"),
@@ -216,7 +219,10 @@ export const landingRouter = router({
     }),
 
   /** Get full conversation for a session (admin only) */
-  adminGetConversation: protectedProcedure
+  adminGetConversation: protectedProcedure.use(({ ctx, next }) => {
+    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    return next({ ctx });
+  })
     .input(z.object({ sessionId: z.number().int() }))
     .query(async ({ ctx, input }) => {
       if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -234,7 +240,10 @@ export const landingRouter = router({
     }),
 
   /** Update session status (admin only) */
-  adminUpdateSession: protectedProcedure
+  adminUpdateSession: protectedProcedure.use(({ ctx, next }) => {
+    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    return next({ ctx });
+  })
     .input(z.object({
       sessionId: z.number().int(),
       status: z.enum(["active", "converted", "archived"]).optional(),

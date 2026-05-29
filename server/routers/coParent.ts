@@ -15,7 +15,7 @@ import {
   verifyCoParentAccess,
 } from "../db";
 import { notifyOwner } from "../_core/notification";
-import { protectedProcedure, router } from "../_core/trpc";
+import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 
 /**
  * Co-parent / guardian router.
@@ -86,7 +86,7 @@ export const coParentRouter = router({
    * Preview an invitation before accepting (shown on the /accept-invite page).
    * Public — no auth required, just the token.
    */
-  previewInvitation: protectedProcedure
+  previewInvitation: publicProcedure
     .input(z.object({ token: z.string() }))
     .query(async ({ input }) => {
       const inv = await getCoParentInvitationByToken(input.token);

@@ -81,13 +81,16 @@ async function startServer() {
   // ── Resend webhook (must be registered BEFORE express.json) ──────────────────────────────────────────────────
   registerResendWebhook(app);
 
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // 2 MB body limit — no raw file bytes go through tRPC (all uploads use S3 pre-signed URLs)
+  app.use(express.json({ limit: "2mb" }));
+  app.use(express.urlencoded({ limit: "2mb", extended: true }));
 
   // ── Rate limiting ──────────────────────────────────────────────────────────
   app.use("/api/trpc", apiLimiter);
   app.use("/api/tutor/stream", chatbotLimiter);
+  // Apply tighter chatbot limit to the landing page AI chat endpoint
+  app.use("/api/trpc/landing.chat", chatbotLimiter);
+  app.use("/api/trpc/landing.createSession", chatbotLimiter);
 
   registerStorageProxy(app);
   registerOAuthRoutes(app);

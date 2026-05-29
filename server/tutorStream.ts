@@ -122,6 +122,11 @@ export function registerTutorStreamRoute(app: Express) {
       res.status(400).json({ error: "message and mode are required" });
       return;
     }
+    // Enforce max message length to prevent oversized LLM payloads
+    if (typeof message !== "string" || message.length > 4000) {
+      res.status(400).json({ error: "Message too long. Maximum 4000 characters." });
+      return;
+    }
     const mode = VALID_MODES.has(rawMode) ? (rawMode as TutorMode) : "teach";
 
     // ── SSE headers ───────────────────────────────────────────────────────────
@@ -132,8 +137,10 @@ export function registerTutorStreamRoute(app: Express) {
     res.setHeader("X-Accel-Buffering", "no");
     // Safari requires explicit transfer-encoding to stream properly
     res.setHeader("Transfer-Encoding", "chunked");
-    // Prevent proxies from buffering the SSE stream
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    // Restrict SSE to the app's own origin — never use wildcard on authenticated endpoints
+    const allowedOrigin = req.headers.origin ?? "";
+    res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
+    res.setHeader("Vary", "Origin");
     res.flushHeaders();
 
     const send = (data: object) => {
@@ -143,6 +150,8 @@ export function registerTutorStreamRoute(app: Express) {
 
     try {
       // ── Session & history ─────────────────────────────────────────────────
+      // Sessions are always owned by the authenticated user (parent or student).
+      // contextUserId is used for loading child data but the session belongs to user.id.
       const session = await getOrCreateTutorSession(
         user.id,
         unitId ?? null,

@@ -7,8 +7,6 @@ Allow: /
 # Disallow authenticated/private routes
 Disallow: /admin
 Disallow: /admin/
-Disallow: /dashboard
-Disallow: /dashboard/
 Disallow: /diagnostic
 Disallow: /diagnostic/
 Disallow: /quiz

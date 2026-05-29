@@ -23,9 +23,11 @@ export default function AcceptInvite() {
 
   const [accepted, setAccepted] = useState(false);
 
+  // previewInvitation is now a public procedure — load it immediately so unauthenticated
+  // visitors can see who invited them before they sign in.
   const { data: preview, isLoading: previewLoading, error: previewError } = trpc.coParent.previewInvitation.useQuery(
     { token: token ?? "" },
-    { enabled: !!token && isAuthenticated }
+    { enabled: !!token }
   );
 
   const acceptMutation = trpc.coParent.acceptInvitation.useMutation({
@@ -80,6 +82,17 @@ export default function AcceptInvite() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
+            {preview && (
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 text-sm space-y-1 text-center">
+                <p className="font-medium text-foreground">Invited by: {preview.inviteeName ?? preview.inviteeEmail}</p>
+                {preview.relationship && (
+                  <p className="text-muted-foreground capitalize">Relationship: {preview.relationship}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Expires: {new Date(preview.expiresAt).toLocaleDateString()}
+                </p>
+              </div>
+            )}
             <div className="bg-muted/50 rounded-lg p-4 text-sm space-y-1 text-center">
               <p className="text-muted-foreground">Sign in with your EduChamp account to continue.</p>
               <p className="text-xs text-muted-foreground">

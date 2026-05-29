@@ -1441,3 +1441,20 @@
 - [x] Add "Manage Billing" button on /billing page that opens Stripe Customer Portal (already existed, enhanced with skeleton)
 - [x] Add skeleton loading state to dashboard Home page while subscription data loads
 - [x] Write vitest tests for createPortalSession procedure (covered by existing payment.test.ts mock)
+
+## Sprint 54 (Audit Fixes)
+
+- [x] Fix CORS wildcard on tutor SSE endpoint (restrict to app origin)
+- [x] Fix broken /dashboard link in CheckoutSuccess → change to /
+- [x] Fix previewInvitation from protectedProcedure to publicProcedure
+- [x] Add admin role guard to landing adminGetSessions/adminGetConversation/adminUpdateSession
+- [x] Reduce body limit from 50mb to 2mb
+- [x] Add message length validation (max 4000 chars) in tutorStream
+- [x] Apply chatbotLimiter to landing.chat and landing.createSession tRPC paths
+- [x] Remove stale /dashboard entries from robots.txt
+- [ ] Fix password reset to email the user (not owner notification)
+- [ ] Add personalised next-step CTAs to CheckoutSuccess page
+- [ ] Add wasAutoEnrolled banner on dashboard for first-time auto-enrolled students
+- [ ] Fix tutor session ownership: use contextUserId for getOrCreateTutorSession when childId is set
+- [ ] Enforce 2FA at login (challenge after OAuth callback if 2FA is enabled)
+- [ ] Change quiz.getQuestions from protectedProcedure to studentProcedure
