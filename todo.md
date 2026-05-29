@@ -1400,3 +1400,16 @@
 - [x] Initial load reduced from 2032 KB to 1306 KB gzip (36% reduction)
 - [x] vendor-shiki (1621 KB gzip) is now lazy — only loads when Tutor/AI chat is opened
 - [x] 218 tests pass, 0 TypeScript errors
+
+## Sprint 46 — Production Readiness
+- [ ] Add loading skeleton/spinner to Tutor page AI chat area (vendor-shiki lazy load feedback)
+- [ ] Optimize font loading: self-host Inter + display font, remove render-blocking Google Fonts CDN call
+- [ ] Stripe webhook smoke test: verify checkout.session.completed updates DB correctly
+
+## Sprint 46 — Production Readiness (2026-05-29)
+- [x] Add Tutor page loading skeleton/overlay for vendor-shiki lazy load
+- [x] Self-host Inter + Lora fonts (eliminate Google Fonts CDN render-blocking call)
+- [x] Add preload hints for critical font files in index.html
+- [x] Write Stripe webhook smoke tests (16 tests, all passing)
+- [x] Export handleStripeEvent for unit testability
+- [x] Verify /api/stripe/webhook test event detection returns {verified:true}

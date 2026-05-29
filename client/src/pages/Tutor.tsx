@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StreamdownRenderer } from "@/components/StreamdownRenderer";
+import { StreamdownRenderer, useStreamdownReady } from "@/components/StreamdownRenderer";
 import {
   BookOpen,
   Brain,
@@ -144,6 +144,9 @@ export default function Tutor() {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  // Track whether vendor-shiki has loaded — show branded overlay on first message send
+  const streamdownReady = useStreamdownReady();
+  const [shikiLoadingVisible, setShikiLoadingVisible] = useState(false);
   // Use useMobile hook for reactive mobile detection (avoids SSR issues and Safari quirks)
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false); // default closed; updated in effect below
@@ -229,6 +232,8 @@ export default function Tutor() {
       setMessages((prev) => [...prev, userMessage]);
       setIsStreaming(true);
       setInput("");
+      // Show the shiki loading overlay only if the chunk hasn't loaded yet
+      if (!streamdownReady) setShikiLoadingVisible(true);
 
       if (streamingAbortRef.current) streamingAbortRef.current.abort();
       const controller = new AbortController();
@@ -299,10 +304,11 @@ export default function Tutor() {
           }
         } finally {
           setIsStreaming(false);
+          setShikiLoadingVisible(false);
         }
       })();
     },
-    [input, isStreaming, user, mode, currentUnit, selectedUnit, sessionId]
+    [input, isStreaming, user, mode, currentUnit, selectedUnit, sessionId, streamdownReady]
   );
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -551,6 +557,32 @@ export default function Tutor() {
             </div>
           )}
         </div>
+
+        {/* ── Shiki / Streamdown loading overlay ─────────────────────────── */}
+        {shikiLoadingVisible && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-4 text-center max-w-xs px-6">
+              <div className="relative">
+                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center ring-2 ring-primary/20">
+                  <Brain className="h-8 w-8 text-primary" />
+                </div>
+                <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-background border-2 border-primary/30 flex items-center justify-center">
+                  <Loader2 className="h-3 w-3 text-primary animate-spin" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">EduBot is warming up…</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Loading the AI renderer for the first time.<br />This only happens once per session.
+                </p>
+              </div>
+              {/* Animated progress bar */}
+              <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                <div className="h-full bg-primary rounded-full animate-[shimmer_1.5s_ease-in-out_infinite]" style={{ width: '60%', animation: 'pulse 1.5s ease-in-out infinite' }} />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Scroll-to-bottom button */}
         {showScrollButton && (

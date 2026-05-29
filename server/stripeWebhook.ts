@@ -82,7 +82,7 @@ async function getUserIdFromMetadata(metadata: Record<string, string>): Promise<
   return isNaN(parsed) ? null : parsed;
 }
 
-async function handleStripeEvent(event: any) {
+export async function handleStripeEvent(event: any) {
   const obj = event.data?.object;
 
   switch (event.type) {
