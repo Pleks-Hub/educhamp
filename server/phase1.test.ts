@@ -219,9 +219,12 @@ describe("Phase 1B — COPPA_GRADES set coverage", () => {
     expect(COPPA_GRADES.has("Grade 6")).toBe(true);
   });
 
-  it("does NOT include Grade 7 through Grade 12", () => {
-    expect(COPPA_GRADES.has("Grade 7")).toBe(false);
-    expect(COPPA_GRADES.has("Grade 8")).toBe(false);
+  it("includes Grade 7 and Grade 8 (EduChamp policy: under-14 gate covers K–8)", () => {
+    expect(COPPA_GRADES.has("Grade 7")).toBe(true);
+    expect(COPPA_GRADES.has("Grade 8")).toBe(true);
+  });
+
+  it("does NOT include Grade 9 through Grade 12", () => {
     expect(COPPA_GRADES.has("Grade 9")).toBe(false);
     expect(COPPA_GRADES.has("Grade 10")).toBe(false);
     expect(COPPA_GRADES.has("Grade 11")).toBe(false);
@@ -247,8 +250,8 @@ describe("Phase 1B — isCoppaGrade() function", () => {
     expect(isCoppaGrade("Grade 6")).toBe(true);
   });
 
-  it("returns false for Grade 7", () => {
-    expect(isCoppaGrade("Grade 7")).toBe(false);
+  it("returns true for Grade 7 (EduChamp policy: under-14 gate covers K–8)", () => {
+    expect(isCoppaGrade("Grade 7")).toBe(true);
   });
 
   it("returns false for Grade 9", () => {
@@ -271,8 +274,8 @@ describe("Phase 1B — isCoppaGrade() function", () => {
     expect(isCoppaGrade("6")).toBe(true);
   });
 
-  it("handles numeric grade format '7'", () => {
-    expect(isCoppaGrade("7")).toBe(false);
+  it("handles numeric grade format '7' (EduChamp policy: Grade 7 is in COPPA_GRADES)", () => {
+    expect(isCoppaGrade("7")).toBe(true);
   });
 
   it("trims whitespace before checking", () => {

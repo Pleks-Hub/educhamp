@@ -28,7 +28,7 @@ const requireUser = t.middleware(async opts => {
 export const protectedProcedure = t.procedure.use(requireUser);
 
 // studentProcedure: blocks parent/guardian accounts from taking quizzes, diagnostics, or accumulating mastery
-// Also enforces the COPPA gate: students under 13 with pending/denied/expired consent are blocked.
+// Also enforces the COPPA gate: students under 14 (EduChamp policy) with pending/denied/expired consent are blocked.
 export const studentProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;

@@ -69,9 +69,15 @@ describe("isUnder13", () => {
     expect(isUnder13(dob.toISOString().split("T")[0])).toBe(true);
   });
 
-  it("returns false for a 13-year-old (exactly at threshold)", () => {
+  it("returns true for a 13-year-old (EduChamp policy: under-14 gate, so 13 IS gated)", () => {
     const today = new Date();
     const dob = new Date(today.getFullYear() - 13, today.getMonth(), today.getDate());
+    expect(isUnder13(dob.toISOString().split("T")[0])).toBe(true);
+  });
+
+  it("returns false for a 14-year-old (exactly at threshold — 14 is NOT gated)", () => {
+    const today = new Date();
+    const dob = new Date(today.getFullYear() - 14, today.getMonth(), today.getDate());
     expect(isUnder13(dob.toISOString().split("T")[0])).toBe(false);
   });
 
@@ -157,13 +163,28 @@ describe("gradeToNum", () => {
 
 // ─── 6. gradeWindow ───────────────────────────────────────────────────────────
 
+// Spec behaviour (approved 2026-05-30):
+//   - Floor = grade - 1 for all students
+//   - Ceiling = null (no restriction) for Grade 7+
+//   - Ceiling = grade + 2 for Grade 6 and below
 describe("gradeWindow", () => {
-  it("returns ±2 window for a numeric grade", () => {
-    expect(gradeWindow("9")).toEqual({ floor: 7, ceiling: 11 });
-    expect(gradeWindow("1")).toEqual({ floor: -1, ceiling: 3 });
+  it("Grade 9 student: floor=8, ceiling=null (no upper cap for Grade 7+)", () => {
+    expect(gradeWindow("9")).toEqual({ floor: 8, ceiling: null });
   });
 
-  it("returns null floor/ceiling for non-numeric grades", () => {
+  it("Grade 7 student: floor=6, ceiling=null (boundary of no-ceiling rule)", () => {
+    expect(gradeWindow("7")).toEqual({ floor: 6, ceiling: null });
+  });
+
+  it("Grade 6 student: floor=5, ceiling=8 (soft ceiling applies below Grade 7)", () => {
+    expect(gradeWindow("6")).toEqual({ floor: 5, ceiling: 8 });
+  });
+
+  it("Grade 1 student: floor=0 (Kindergarten), ceiling=3", () => {
+    expect(gradeWindow("1")).toEqual({ floor: 0, ceiling: 3 });
+  });
+
+  it("returns null floor/ceiling for non-numeric grades (AP, SAT, Adult)", () => {
     expect(gradeWindow("AP")).toEqual({ floor: null, ceiling: null });
     expect(gradeWindow(null)).toEqual({ floor: null, ceiling: null });
   });
@@ -181,17 +202,23 @@ describe("isCourseEligible", () => {
     expect(isCourseEligible("SAT", "9")).toBe(true);
   });
 
-  it("returns true when course is within ±2 grades", () => {
-    // Grade 9 student can access Grade 7–11
+  it("Grade 9 student: can access Grade 8, 9, 10, 11, 12 (no ceiling)", () => {
+    expect(isCourseEligible("8", "9")).toBe(true);  // floor = 8, exactly at floor
     expect(isCourseEligible("9", "9")).toBe(true);
-    expect(isCourseEligible("7", "9")).toBe(true);
-    expect(isCourseEligible("11", "9")).toBe(true);
+    expect(isCourseEligible("12", "9")).toBe(true); // no ceiling for Grade 7+
   });
 
-  it("returns false when course is outside ±2 grades", () => {
-    // Grade 9 student cannot access Grade 6 or Grade 12
+  it("Grade 9 student: cannot access Grade 7 (below floor of 8)", () => {
+    expect(isCourseEligible("7", "9")).toBe(false);
     expect(isCourseEligible("6", "9")).toBe(false);
-    expect(isCourseEligible("12", "9")).toBe(false);
+    expect(isCourseEligible("1", "9")).toBe(false);
+  });
+
+  it("Grade 6 student: can access Grade 5, 6, 7, 8 but not Grade 9 (soft ceiling)", () => {
+    expect(isCourseEligible("5", "6")).toBe(true);
+    expect(isCourseEligible("6", "6")).toBe(true);
+    expect(isCourseEligible("8", "6")).toBe(true);  // ceiling = 8
+    expect(isCourseEligible("9", "6")).toBe(false); // above soft ceiling
   });
 
   it("returns true when student grade is null (no restriction)", () => {
@@ -206,21 +233,34 @@ describe("isCourseEligible", () => {
 
 // ─── 8. isCoppaGrade ─────────────────────────────────────────────────────────
 
+// EduChamp policy: under-14 gate covers K–8 (ages ~5–13)
 describe("isCoppaGrade", () => {
-  it("returns true for grades K–6 (COPPA_GRADES set covers Pre-K through Grade 6)", () => {
+  it("returns true for grades K–8 (COPPA_GRADES set covers Pre-K through Grade 8)", () => {
     expect(isCoppaGrade("Kindergarten")).toBe(true);
     expect(isCoppaGrade("1")).toBe(true);
     expect(isCoppaGrade("5")).toBe(true);
     expect(isCoppaGrade("6")).toBe(true);
+    expect(isCoppaGrade("7")).toBe(true);  // newly added: 7th graders are typically 12–13
+    expect(isCoppaGrade("8")).toBe(true);  // newly added: 8th graders are typically 13–14
     // Also accepts 'Grade N' format
-    expect(isCoppaGrade("Grade 1")).toBe(true);
-    expect(isCoppaGrade("Grade 6")).toBe(true);
+    expect(isCoppaGrade("Grade 7")).toBe(true);
+    expect(isCoppaGrade("Grade 8")).toBe(true);
+    expect(isCoppaGrade("8th Grade")).toBe(true);
   });
 
-  it("returns false for Grade 7 and above (not in COPPA_GRADES)", () => {
-    expect(isCoppaGrade("7")).toBe(false);
-    expect(isCoppaGrade("8")).toBe(false);
+  it("age-13 boundary: Grade 8 triggers consent gate (age 13 is under-14)", () => {
+    // A 13-year-old is typically in Grade 8. Under EduChamp policy (< 14), they require consent.
+    expect(isCoppaGrade("8")).toBe(true);
+  });
+
+  it("age-14 boundary: Grade 9 does NOT trigger consent gate (age 14 is not under-14)", () => {
+    // A 14-year-old is typically in Grade 9. They do not require parental consent.
     expect(isCoppaGrade("9")).toBe(false);
+  });
+
+  it("returns false for Grade 9 and above (not in COPPA_GRADES)", () => {
+    expect(isCoppaGrade("9")).toBe(false);
+    expect(isCoppaGrade("10")).toBe(false);
     expect(isCoppaGrade("12")).toBe(false);
   });
 

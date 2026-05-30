@@ -2749,11 +2749,11 @@ export async function checkAdminPermission(
 
 // ─── COPPA Parental Consent ───────────────────────────────────────────────────
 
-/** COPPA_GRADES: grade levels that require parental consent (roughly ages ≤ 12) */
+/** COPPA_GRADES: grade levels that require parental consent (EduChamp policy: under 14, roughly K–8) */
 export const COPPA_GRADES = new Set([
-  "Pre-K", "Kindergarten", "1", "2", "3", "4", "5", "6",
-  "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6",
-  "1st Grade", "2nd Grade", "3rd Grade", "4th Grade", "5th Grade", "6th Grade",
+  "Pre-K", "Kindergarten", "1", "2", "3", "4", "5", "6", "7", "8",
+  "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8",
+  "1st Grade", "2nd Grade", "3rd Grade", "4th Grade", "5th Grade", "6th Grade", "7th Grade", "8th Grade",
 ]);
 
 export function isCoppaGrade(gradeLevel?: string | null): boolean {

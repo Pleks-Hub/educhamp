@@ -23,15 +23,19 @@ export function calcAge(dob: string | null | undefined): number | null {
 }
 
 /**
- * Returns true if the student is under 13 (COPPA threshold).
+ * Returns true if the student is under 14 (EduChamp product policy — one year
+ * above the COPPA legal minimum of 13 to ensure all 8th-graders are gated).
  * Returns false if age cannot be determined (conservative: do not gate
  * students whose age is unknown — they will be prompted to enter DOB).
  */
-export function isUnder13(dob: string | null | undefined): boolean {
+export function isUnder14(dob: string | null | undefined): boolean {
   const age = calcAge(dob);
   if (age === null) return false;
-  return age < 13;
+  return age < 14;
 }
+
+/** @deprecated Use isUnder14 — kept for backwards compatibility during migration */
+export const isUnder13 = isUnder14;
 
 /**
  * Returns true if the student is under 18.
@@ -77,8 +81,14 @@ export function gradeToNum(gradeLevel: string | null | undefined): number | null
 
 /**
  * Returns the grade floor and ceiling for a given student grade.
- * Students can access courses within ±2 grades of their own grade.
- * AP and SAT courses are always accessible (no grade restriction).
+ *
+ * Spec behaviour (approved 2026-05-30):
+ *   - Floor: student grade - 1 (one grade below is always accessible)
+ *   - Ceiling: none for Grade 7 and above (advanced students are not blocked)
+ *   - Ceiling for Grade 6 and below: student grade + 2 (prevent very young
+ *     students from seeing high-school content)
+ *
+ * AP and SAT courses are always accessible regardless of grade.
  */
 export function gradeWindow(studentGrade: string | null | undefined): {
   floor: number | null;
@@ -86,12 +96,17 @@ export function gradeWindow(studentGrade: string | null | undefined): {
 } {
   const num = gradeToNum(studentGrade);
   if (num === null) return { floor: null, ceiling: null };
-  return { floor: num - 2, ceiling: num + 2 };
+  const floor = num - 1;
+  // No upper ceiling for Grade 7+ (num >= 7); soft ceiling for younger students
+  const ceiling = num >= 7 ? null : num + 2;
+  return { floor, ceiling };
 }
 
 /**
  * Returns true if a course's gradeLevel is within the student's grade window.
  * AP and SAT courses always return true.
+ * Grade 7+ students have no upper ceiling — they can access any course at or
+ * above their floor (grade - 1).
  */
 export function isCourseEligible(
   courseGradeLevel: string | null | undefined,
@@ -101,8 +116,10 @@ export function isCourseEligible(
   const cg = courseGradeLevel.trim();
   if (cg === "AP" || cg === "SAT") return true;
   const courseNum = gradeToNum(cg);
-  if (courseNum === null) return true;
+  if (courseNum === null) return true; // non-numeric grade (AP, SAT, Adult) — always eligible
   const { floor, ceiling } = gradeWindow(studentGrade);
-  if (floor === null || ceiling === null) return true;
-  return courseNum >= floor && courseNum <= ceiling;
+  if (floor === null) return true; // student grade unknown — show everything
+  if (courseNum < floor) return false; // below floor — not eligible
+  if (ceiling !== null && courseNum > ceiling) return false; // above soft ceiling (young students only)
+  return true;
 }
