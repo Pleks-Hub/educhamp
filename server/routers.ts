@@ -314,6 +314,8 @@ export const appRouter = router({
           unitNumber: z.number(),
           unitTitle: z.string(),
           answers: z.array(z.object({ questionId: z.number(), answer: z.string() })),
+          questionTimings: z.array(z.object({ questionId: z.number(), seconds: z.number() })).optional(),
+          isPracticeMode: z.boolean().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -348,6 +350,8 @@ export const appRouter = router({
         const correctCount = gradedAnswers.filter((a) => a.correct).length;
         const score = Math.round((correctCount / questions.length) * 100);
 
+        const isPractice = input.isPracticeMode ?? false;
+
         // Save quiz attempt
         await saveQuizAttempt(
           ctx.user.id,
@@ -356,8 +360,37 @@ export const appRouter = router({
           gradedAnswers,
           score,
           questions.length,
-          correctCount
+          correctCount,
+          input.questionTimings,
+          isPractice
         );
+
+        // Practice mode: skip all mastery/progress/gamification side-effects
+        if (isPractice) {
+          const results = gradedAnswers.map((a) => {
+            const q = questionMap.get(a.questionId);
+            return {
+              questionId: a.questionId,
+              questionText: q?.questionText ?? "",
+              yourAnswer: a.answer,
+              correctAnswer: q?.correctAnswer ?? "",
+              correct: a.correct,
+              explanation: q?.explanation ?? "",
+              skillTag: q?.skillTag ?? "",
+              difficulty: q?.difficulty ?? "easy",
+            };
+          });
+          return {
+            score,
+            correctCount,
+            totalQuestions: questions.length,
+            results,
+            masteryLabel: getMasteryLabel(score),
+            xpAwarded: 0,
+            isPracticeMode: true,
+            adaptivePath: "Practice mode — this attempt does not affect your mastery score or progress.",
+          };
+        }
 
         // Update unit progress based on score
         let newStatus: "locked" | "in_progress" | "quiz_unlocked" | "completed" = "in_progress";
@@ -475,6 +508,7 @@ export const appRouter = router({
           results,
           masteryLabel,
           xpAwarded: quizXp,
+          isPracticeMode: false,
           adaptivePath: score < 60
             ? "Your score is below 60%. The AI Tutor Remediation mode is now unlocked to help you revisit key concepts before retrying."
             : score < 75

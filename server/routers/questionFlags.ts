@@ -201,6 +201,8 @@ export const questionFlagsRouter = router({
 
   /**
    * Admin: update the status of a flagged question (review, resolve, dismiss).
+   * When status is "resolved" or "dismissed", sends an in-app notification and
+   * an email to the student who filed the report.
    */
   adminUpdateFlag: adminProcedure
     .input(
@@ -213,8 +215,23 @@ export const questionFlagsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await (await import("../db")).getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const { questionFlags } = await import("../../drizzle/schema");
+      const {
+        questionFlags,
+        users,
+        quizQuestions,
+        diagnosticQuestions,
+        userNotifications,
+      } = await import("../../drizzle/schema");
       const { eq } = await import("drizzle-orm");
+
+      // Fetch the flag before updating so we have student info
+      const [flag] = await db
+        .select()
+        .from(questionFlags)
+        .where(eq(questionFlags.id, input.flagId))
+        .limit(1);
+
+      if (!flag) throw new TRPCError({ code: "NOT_FOUND", message: "Flag not found" });
 
       await db
         .update(questionFlags)
@@ -224,6 +241,101 @@ export const questionFlagsRouter = router({
           reviewNote: input.reviewNote ?? null,
         })
         .where(eq(questionFlags.id, input.flagId));
+
+      // Only notify for terminal statuses (resolved / dismissed)
+      if (input.status === "resolved" || input.status === "dismissed") {
+        // Fetch student info
+        const [student] = await db
+          .select({ id: users.id, name: users.name, email: users.email })
+          .from(users)
+          .where(eq(users.id, flag.userId))
+          .limit(1);
+
+        if (student) {
+          // Fetch question text
+          let questionText = "";
+          try {
+            if (flag.questionType === "quiz") {
+              const [q] = await db
+                .select({ questionText: quizQuestions.questionText })
+                .from(quizQuestions)
+                .where(eq(quizQuestions.id, flag.questionId))
+                .limit(1);
+              questionText = q?.questionText ?? "";
+            } else {
+              const [q] = await db
+                .select({ questionText: diagnosticQuestions.questionText })
+                .from(diagnosticQuestions)
+                .where(eq(diagnosticQuestions.id, flag.questionId))
+                .limit(1);
+              questionText = q?.questionText ?? "";
+            }
+          } catch { /* non-fatal */ }
+
+          const reasonLabel =
+            ({
+              incorrect_answer: "Incorrect answer",
+              unclear_question: "Unclear or confusing question",
+              wrong_difficulty: "Wrong difficulty level",
+              out_of_scope: "Out of scope for this course",
+              duplicate: "Duplicate question",
+              other: "Other",
+            } as Record<string, string>)[flag.reason] ?? flag.reason;
+
+          const notifTitle =
+            input.status === "resolved"
+              ? "Your question report was resolved"
+              : "Your question report has been reviewed";
+          const notifMessage =
+            input.status === "resolved"
+              ? `Thank you for reporting an issue. Our team has resolved the problem with the ${flag.questionType} question you flagged.`
+              : `Our team reviewed your report about a ${flag.questionType} question and determined no changes are needed at this time.`;
+
+          // In-app notification
+          await db
+            .insert(userNotifications)
+            .values({
+              userId: student.id,
+              type: "flag_resolution",
+              title: notifTitle,
+              message: notifMessage,
+              isRead: false,
+              metadata: JSON.stringify({
+                flagId: input.flagId,
+                status: input.status,
+                questionType: flag.questionType,
+                questionId: flag.questionId,
+                reviewNote: input.reviewNote ?? null,
+              }),
+            })
+            .catch((e) => console.error("[FlagNotif] In-app insert failed:", e));
+
+          // Email notification (fire-and-forget)
+          if (student.email) {
+            const { buildFlagResolutionEmail } = await import(
+              "../emailTemplates/flagResolutionNotification"
+            );
+            const { sendEmail } = await import("../emailService");
+            const dashboardUrl = `${process.env.VITE_OAUTH_PORTAL_URL ?? "https://educhamp.app"}/dashboard`;
+            const emailPayload = buildFlagResolutionEmail({
+              studentName: student.name ?? "Student",
+              status: input.status,
+              questionText,
+              questionType: flag.questionType,
+              reason: reasonLabel,
+              reviewNote: input.reviewNote,
+              dashboardUrl,
+            });
+            sendEmail({
+              to: student.email,
+              subject: emailPayload.subject,
+              html: emailPayload.html,
+              text: emailPayload.text,
+              templateName: "flag_resolution",
+            }).catch((e) => console.error("[FlagNotif] Email send failed:", e));
+          }
+        }
+      }
 
       return { success: true };
     }),

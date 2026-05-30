@@ -108,11 +108,15 @@ export default function Quiz() {
   const showReadAloud = isYoungLearner || !!(personalization as any)?.parentLedMode;
 
   const [started, setStarted] = useState(false);
+  const [isPracticeMode, setIsPracticeMode] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<QuizResult | null>(null);
   const [showAnswers, setShowAnswers] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  // Per-question timing
+  const [questionTimings, setQuestionTimings] = useState<{ questionId: number; seconds: number }[]>([]);
+  const questionStartRef = useRef<number>(Date.now());
 
   const { data: unit } = trpc.curriculum.getUnit.useQuery({ unitNumber }, { enabled: !isNaN(unitNumber) });
   const { data: questions, isLoading } = trpc.quiz.getQuestions.useQuery(
@@ -145,9 +149,10 @@ export default function Quiz() {
       unitId: unitRef.current.id,
       unitTitle: unitRef.current.title ?? "",
       answers: answerArray,
+      isPracticeMode,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unitNumber]);
+  }, [unitNumber, isPracticeMode]);
 
   const examTimer = useExamTimer(
     isTimedExam ? timeLimitMinutes : null,
@@ -203,11 +208,20 @@ export default function Quiz() {
 
   // Result screen
   if (result) {
+    const resultWithPractice = result as QuizResult & { isPracticeMode?: boolean };
+    const showPracticeBadge = resultWithPractice.isPracticeMode;
     return (
       <div className="p-6 space-y-6 page-enter max-w-3xl">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Quiz Complete!</h1>
-          <p className="text-muted-foreground text-sm mt-1">Unit {unitNumber}: {unit?.title}</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Quiz Complete!</h1>
+            <p className="text-muted-foreground text-sm mt-1">Unit {unitNumber}: {unit?.title}</p>
+          </div>
+          {showPracticeBadge && (
+            <span className="ml-auto inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+              <BookOpen className="h-3 w-3" /> Practice Mode
+            </span>
+          )}
         </div>
 
         {/* Score Banner */}
@@ -243,6 +257,45 @@ export default function Quiz() {
             <p className="text-sm text-muted-foreground">{result.adaptivePath}</p>
           </CardContent>
         </Card>
+
+        {/* Time-per-question breakdown (shown when timings were recorded) */}
+        {questionTimings.length > 0 && (
+          <Card className="border">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-semibold text-foreground">Time Per Question</p>
+              </div>
+              <div className="space-y-1.5">
+                {result.results.map((r, idx) => {
+                  const timing = questionTimings.find((t) => t.questionId === r.questionId);
+                  const secs = timing?.seconds ?? 0;
+                  const maxSecs = Math.max(...questionTimings.map((t) => t.seconds), 1);
+                  const pct = Math.min((secs / maxSecs) * 100, 100);
+                  return (
+                    <div key={r.questionId} className="flex items-center gap-2 text-xs">
+                      <span className="w-6 text-right text-muted-foreground font-mono">Q{idx + 1}</span>
+                      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            r.correct ? "bg-green-400" : "bg-red-400"
+                          }`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="w-14 text-right text-muted-foreground">
+                        {secs >= 60 ? `${Math.floor(secs / 60)}m ${secs % 60}s` : `${secs}s`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Total: {(() => { const t = questionTimings.reduce((s, x) => s + x.seconds, 0); return t >= 60 ? `${Math.floor(t / 60)}m ${t % 60}s` : `${t}s`; })()} · Avg: {questionTimings.length ? Math.round(questionTimings.reduce((s, x) => s + x.seconds, 0) / questionTimings.length) : 0}s/question
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Answer Review Toggle */}
         <Button variant="outline" size="sm" onClick={() => setShowAnswers(!showAnswers)}>
@@ -381,9 +434,34 @@ export default function Quiz() {
               </ul>
             </div>
 
-            <Button onClick={() => setStarted(true)} className="w-full gap-2" size="lg">
-              {isTimedExam ? <Timer className="h-4 w-4" /> : <Star className="h-4 w-4" />}
-              {isTimedExam ? "Start Timed Exam" : "Start Quiz"}
+            {/* Practice mode toggle — only shown for timed courses */}
+            {isTimedExam && (
+              <div className="flex items-center justify-between p-3 rounded-lg border border-dashed border-muted-foreground/40 bg-muted/20">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Practice Mode</p>
+                  <p className="text-xs text-muted-foreground">Timed, but won't affect your mastery score</p>
+                </div>
+                <button
+                  onClick={() => setIsPracticeMode((v) => !v)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    isPracticeMode ? "bg-primary" : "bg-muted-foreground/30"
+                  }`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    isPracticeMode ? "translate-x-6" : "translate-x-1"
+                  }`} />
+                </button>
+              </div>
+            )}
+
+            <Button
+              onClick={() => { questionStartRef.current = Date.now(); setStarted(true); }}
+              className="w-full gap-2"
+              size="lg"
+              variant={isPracticeMode ? "outline" : "default"}
+            >
+              {isPracticeMode ? <BookOpen className="h-4 w-4" /> : isTimedExam ? <Timer className="h-4 w-4" /> : <Star className="h-4 w-4" />}
+              {isPracticeMode ? "Start Practice (No Score Impact)" : isTimedExam ? "Start Timed Exam" : "Start Quiz"}
             </Button>
           </CardContent>
         </Card>
@@ -432,7 +510,26 @@ export default function Quiz() {
   const currentAnswer = answers[String(currentQ.id)] ?? "";
   const diffConfig = DIFFICULTY_CONFIG[currentQ.difficulty] ?? DIFFICULTY_CONFIG.medium;
 
+  // Record time spent on the current question before advancing
+  const recordCurrentTiming = () => {
+    if (!questions) return;
+    const q = (questions as QuizQuestion[])[currentIndex];
+    if (!q) return;
+    const seconds = Math.round((Date.now() - questionStartRef.current) / 1000);
+    setQuestionTimings((prev) => {
+      const existing = prev.findIndex((t) => t.questionId === q.id);
+      if (existing >= 0) {
+        const updated = [...prev];
+        updated[existing] = { questionId: q.id, seconds: (updated[existing]?.seconds ?? 0) + seconds };
+        return updated;
+      }
+      return [...prev, { questionId: q.id, seconds }];
+    });
+    questionStartRef.current = Date.now();
+  };
+
   const handleNext = () => {
+    recordCurrentTiming();
     if (currentIndex < totalQ - 1) {
       setCurrentIndex((i) => i + 1);
     } else {
@@ -440,7 +537,7 @@ export default function Quiz() {
         questionId: q.id,
         answer: answers[String(q.id)] ?? "",
       }));
-      submitMutation.mutate({ unitNumber, unitId: unit?.id ?? 0, unitTitle: unit?.title ?? "", answers: answerArray });
+      submitMutation.mutate({ unitNumber, unitId: unit?.id ?? 0, unitTitle: unit?.title ?? "", answers: answerArray, questionTimings, isPracticeMode });
     }
   };
 

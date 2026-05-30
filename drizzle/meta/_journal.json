@@ -218,6 +218,20 @@
       "when": 1780103744370,
       "tag": "0030_crazy_wonder_man",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1780105014377,
+      "tag": "0031_last_shadow_king",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1780105189543,
+      "tag": "0032_sudden_queen_noir",
+      "breakpoints": true
     }
   ]
 }

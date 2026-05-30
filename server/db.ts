@@ -290,7 +290,9 @@ export async function saveQuizAttempt(
   answers: { questionId: number; answer: string; correct: boolean }[],
   score: number,
   totalQuestions: number,
-  correctCount: number
+  correctCount: number,
+  questionTimings?: { questionId: number; seconds: number }[],
+  isPracticeMode?: boolean
 ) {
   const db = await getDb();
   if (!db) return null;
@@ -302,6 +304,8 @@ export async function saveQuizAttempt(
     score,
     totalQuestions,
     correctCount,
+    questionTimings: questionTimings ?? [],
+    isPracticeMode: isPracticeMode ?? false,
     completedAt: new Date(),
   });
   return result;

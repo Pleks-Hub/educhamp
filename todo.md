@@ -1683,3 +1683,17 @@
 - [x] Timed exam mode: admin can configure per-course timer in Admin Console Courses tab
 - [x] Timed exam mode: seeded SATPREP (54 min), APCALCAB/BC (30 min), APLIT (55 min), APHG (70 min)
 - [x] Tests for all new features (sprint62.test.ts — 44 tests, 372 total passing)
+
+## Sprint 63 — Per-Question Timing, Flag Notifications, Practice Mode
+
+- [x] Per-question time tracking: add questionTimings JSON column to quizAttempts table
+- [x] Per-question time tracking: instrument Quiz.tsx to record seconds per question
+- [x] Per-question time tracking: pass timings array to submitQuiz mutation
+- [x] Per-question time tracking: store timings in quizAttempts.questionTimings
+- [x] Per-question time tracking: surface time-per-question breakdown on quiz results screen
+- [x] Flag resolution notifications: send email to student when admin resolves/dismisses their flag
+- [x] Flag resolution notifications: send in-app notification to student on flag status change
+- [x] Timed exam practice mode: add isPracticeMode flag to quiz start screen for timed courses
+- [x] Timed exam practice mode: submitQuiz procedure skips mastery/XP/gamification in practice mode
+- [x] Timed exam practice mode: show "Practice Mode" badge on quiz UI and results screen
+- [x] Tests for all Sprint 63 features (sprint63.test.ts — 29 tests, 401 total passing)

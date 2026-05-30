@@ -1,0 +1,1 @@
+ALTER TABLE `quizAttempts` MODIFY COLUMN `questionTimings` json;

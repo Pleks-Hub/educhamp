@@ -208,6 +208,8 @@ export const quizAttempts = mysqlTable("quizAttempts", {
   score: int("score").notNull(), // percentage 0-100
   totalQuestions: int("totalQuestions").notNull(),
   correctCount: int("correctCount").notNull(),
+  questionTimings: json("questionTimings").$type<{ questionId: number; seconds: number }[]>(),
+  isPracticeMode: boolean("isPracticeMode").notNull().default(false),
   completedAt: timestamp("completedAt").defaultNow().notNull(),
 }, (t) => ({
   userIdIdx: index("quizAttempts_userId_idx").on(t.userId),
