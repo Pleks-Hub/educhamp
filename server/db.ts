@@ -1657,6 +1657,8 @@ export async function updateCourseWithStatus(courseId: number, data: {
   sortOrder?: number;
   status?: "active" | "archived" | "suspended";
   diagnosticCooldownDays?: number;
+  isTimedExam?: boolean;
+  timeLimitMinutes?: number | null;
 }) {
   const db = await getDb();
   if (!db) return;

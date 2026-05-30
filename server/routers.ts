@@ -10,6 +10,7 @@ import { adminRouter } from "./routers/admin";
 import { newsletterRouter } from "./routers/newsletter";
 import { paymentRouter } from "./routers/payment";
 import { gamificationRouter } from "./routers/gamification";
+import { questionFlagsRouter } from "./routers/questionFlags";
 import { awardXp } from "./gamification/xp";
 import { checkAndAwardBadges } from "./gamification/badges";
 import { recordActivity } from "./gamification/streaks";
@@ -75,6 +76,7 @@ export const appRouter = router({
   newsletter: newsletterRouter,
   payment: paymentRouter,
   gamification: gamificationRouter,
+  questionFlags: questionFlagsRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
@@ -211,6 +213,8 @@ export const appRouter = router({
         activeCourseId,
         hasDiagnosticForActiveCourse: latestDiag !== null,
         diagnosticCooldownDays: currentEnrollment?.course?.diagnosticCooldownDays ?? 7,
+        isTimedExam: currentEnrollment?.course?.isTimedExam ?? false,
+        timeLimitMinutes: currentEnrollment?.course?.timeLimitMinutes ?? null,
         wasAutoEnrolled,
       };
     }),

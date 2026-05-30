@@ -20,14 +20,18 @@ import {
   Clock,
   Loader2,
   Star,
+  Timer,
   Trophy,
   XCircle,
   Zap,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 import { CourseContextBanner } from "@/components/CourseContextBanner";
+import { FlagQuestionButton } from "@/components/FlagQuestionButton";
+import { useExamTimer } from "@/hooks/useExamTimer";
+import { ExamTimerBar } from "@/components/ExamTimerBar";
 
 type ChoiceItem = { label: string; text: string };
 
@@ -115,13 +119,54 @@ export default function Quiz() {
     { unitId: unit?.id ?? 0 },
     { enabled: started && !!unit?.id }
   );
-  // Fetch dashboard to determine next unit after quiz completion
-  const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!result });
+  // Fetch dashboard for timed exam settings and next unit after quiz completion
+  const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!user });
+
+  const isTimedExam = dashboard?.isTimedExam ?? false;
+  const timeLimitMinutes = dashboard?.timeLimitMinutes ?? null;
+
+  // ── Auto-submit handler (called when timer expires) ──────────────────────
+  const questionsRef = useRef(questions);
+  questionsRef.current = questions;
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
+  const unitRef = useRef(unit);
+  unitRef.current = unit;
+
+  const handleAutoSubmit = useCallback(() => {
+    if (!questionsRef.current || !unitRef.current) return;
+    toast.warning("Time's up! Submitting your answers automatically.");
+    const answerArray = (questionsRef.current as QuizQuestion[]).map((q) => ({
+      questionId: q.id,
+      answer: answersRef.current[String(q.id)] ?? "",
+    }));
+    submitMutation.mutate({
+      unitNumber,
+      unitId: unitRef.current.id,
+      unitTitle: unitRef.current.title ?? "",
+      answers: answerArray,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unitNumber]);
+
+  const examTimer = useExamTimer(
+    isTimedExam ? timeLimitMinutes : null,
+    handleAutoSubmit
+  );
+
+  // Start exam timer when quiz starts
+  useEffect(() => {
+    if (started && isTimedExam && timeLimitMinutes) {
+      examTimer.start();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started, isTimedExam, timeLimitMinutes]);
 
   const submitMutation = trpc.quiz.submitQuiz.useMutation({
     onSuccess: (data) => {
       const result = data as unknown as QuizResult;
       setResult(result);
+      examTimer.pause();
       // Trigger celebration based on score
       if (result.score === 100) {
         celebrate("quiz_perfect", "Perfect Score! 🏆");
@@ -135,7 +180,7 @@ export default function Quiz() {
     },
   });
 
-  // Timer
+  // Elapsed time tracker (for non-timed quizzes)
   useEffect(() => {
     if (!started || result) return;
     const interval = setInterval(() => setElapsed((e) => e + 1), 1000);
@@ -198,8 +243,6 @@ export default function Quiz() {
             <p className="text-sm text-muted-foreground">{result.adaptivePath}</p>
           </CardContent>
         </Card>
-
-
 
         {/* Answer Review Toggle */}
         <Button variant="outline" size="sm" onClick={() => setShowAnswers(!showAnswers)}>
@@ -278,6 +321,20 @@ export default function Quiz() {
           <p className="text-muted-foreground text-sm mt-1">{unit?.title}</p>
         </div>
 
+        {/* Timed Exam Warning Banner */}
+        {isTimedExam && timeLimitMinutes && (
+          <div className="flex items-start gap-3 p-4 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700">
+            <Timer className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Timed Exam</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                This is a timed exam. You have <strong>{timeLimitMinutes} minutes</strong> to complete all questions.
+                The exam will auto-submit when time runs out.
+              </p>
+            </div>
+          </div>
+        )}
+
         <Card className="border shadow-sm">
           <CardContent className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-3">
@@ -286,8 +343,17 @@ export default function Quiz() {
                 <p className="text-xs text-muted-foreground">Questions</p>
               </div>
               <div className="p-3 bg-muted/30 rounded-lg text-center">
-                <p className="text-2xl font-bold">~20</p>
-                <p className="text-xs text-muted-foreground">Minutes</p>
+                {isTimedExam && timeLimitMinutes ? (
+                  <>
+                    <p className="text-2xl font-bold">{timeLimitMinutes}</p>
+                    <p className="text-xs text-muted-foreground">Minutes (Timed)</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold">~20</p>
+                    <p className="text-xs text-muted-foreground">Minutes</p>
+                  </>
+                )}
               </div>
             </div>
 
@@ -316,8 +382,8 @@ export default function Quiz() {
             </div>
 
             <Button onClick={() => setStarted(true)} className="w-full gap-2" size="lg">
-              <Star className="h-4 w-4" />
-              Start Quiz
+              {isTimedExam ? <Timer className="h-4 w-4" /> : <Star className="h-4 w-4" />}
+              {isTimedExam ? "Start Timed Exam" : "Start Quiz"}
             </Button>
           </CardContent>
         </Card>
@@ -364,7 +430,7 @@ export default function Quiz() {
   const totalQ = questions.length;
   const progressPct = (currentIndex / totalQ) * 100;
   const currentAnswer = answers[String(currentQ.id)] ?? "";
-  const diffConfig = DIFFICULTY_CONFIG[currentQ.difficulty] ?? DIFFICULTY_CONFIG.easy;
+  const diffConfig = DIFFICULTY_CONFIG[currentQ.difficulty] ?? DIFFICULTY_CONFIG.medium;
 
   const handleNext = () => {
     if (currentIndex < totalQ - 1) {
@@ -379,7 +445,16 @@ export default function Quiz() {
   };
 
   return (
-    <div className="p-6 space-y-6 page-enter max-w-2xl">
+    <div className="p-6 space-y-4 page-enter max-w-2xl">
+      {/* Exam Timer Bar (shown only for timed exams) */}
+      {isTimedExam && (
+        <ExamTimerBar
+          formattedTime={examTimer.formattedTime}
+          percentRemaining={examTimer.percentRemaining}
+          status={examTimer.status}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -387,10 +462,13 @@ export default function Quiz() {
           <p className="text-xs text-muted-foreground">Question {currentIndex + 1} of {totalQ}</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" />
-            {formatTime(elapsed)}
-          </div>
+          {/* Show elapsed time only for non-timed quizzes */}
+          {!isTimedExam && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock className="h-3.5 w-3.5" />
+              {formatTime(elapsed)}
+            </div>
+          )}
           <Badge className={`text-xs ${diffConfig.color}`}>{diffConfig.label}</Badge>
         </div>
       </div>
@@ -409,9 +487,12 @@ export default function Quiz() {
                 {currentQ.skillTag && <span className="text-xs font-mono text-muted-foreground">{currentQ.skillTag}</span>}
                 <span className="text-xs text-muted-foreground capitalize">{currentQ.difficulty}</span>
               </div>
-              {showReadAloud && currentQ.questionText && (
-                <ReadAloudButton text={currentQ.questionText} className="mb-2" />
-              )}
+              <div className="flex items-center justify-between mb-1">
+                {showReadAloud && currentQ.questionText ? (
+                  <ReadAloudButton text={currentQ.questionText} className="" />
+                ) : <span />}
+                <FlagQuestionButton questionType="quiz" questionId={currentQ.id} />
+              </div>
               <p className="text-base font-medium text-foreground leading-relaxed math-expr">
                 {currentQ.questionText}
               </p>

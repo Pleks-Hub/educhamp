@@ -1670,3 +1670,16 @@
 - [x] Fix correctAnswer case mismatch (lowercase 'a' to uppercase 'A')
 - [x] All 19 validation checks pass: 3,094 quiz questions, 3,426 diagnostic questions
 - [x] 328 tests passing, 0 TypeScript errors
+
+## Sprint 62 — Domain Verification, Question Flagging, Timed Exams
+- [x] Resend domain verification: fetch DNS records via Resend API and display SPF/DKIM/DMARC status in Email Settings admin panel
+- [x] Flag this question: add questionFlags DB table and migration
+- [x] Flag this question: add flagQuestion and getQuestionFlags tRPC procedures
+- [x] Flag this question: add Flag button to Quiz.tsx and Diagnostic.tsx UIs
+- [x] Flag this question: add Question Flags moderation tab to AdminDashboard
+- [x] Timed exam mode: add timedExam config to courses (isTimedExam, timeLimitMinutes columns)
+- [x] Timed exam mode: add countdown timer component to Quiz.tsx (ExamTimerBar + useExamTimer)
+- [x] Timed exam mode: auto-submit on timer expiry
+- [x] Timed exam mode: admin can configure per-course timer in Admin Console Courses tab
+- [x] Timed exam mode: seeded SATPREP (54 min), APCALCAB/BC (30 min), APLIT (55 min), APHG (70 min)
+- [x] Tests for all new features (sprint62.test.ts — 44 tests, 372 total passing)

@@ -62,6 +62,7 @@ import {
 } from "../db";
 import { sendEmail } from "../emailService";
 import { buildInactivityEmail } from "../emailTemplates/inactivityNotification";
+import { BRAND, wrapEmailHtml } from "../emailTemplates/emailBase";
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
 
@@ -234,6 +235,8 @@ export const adminRouter = router({
       sortOrder: z.number().optional(),
       status: z.enum(["active", "archived", "suspended"]).optional(),
       diagnosticCooldownDays: z.number().min(0).max(365).optional(),
+      isTimedExam: z.boolean().optional(),
+      timeLimitMinutes: z.number().min(1).max(300).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { courseId, ...data } = input;
@@ -1167,5 +1170,186 @@ export const adminRouter = router({
       }
       const successCount = results.filter((r) => r.success).length;
       return { successCount, failCount: results.length - successCount, results };
+    }),
+
+  // ─── Email Settings ─────────────────────────────────────────────────────────
+
+  /**
+   * Get current email sender settings from platformSettings.
+   */
+  getEmailSettings: adminProcedure.query(async () => {
+    const db = await (await import("../db")).getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const { platformSettings } = await import("../../drizzle/schema");
+    const { sql } = await import("drizzle-orm");
+    const keys = ["email.fromAddress", "email.fromName", "email.replyTo", "email.categories"];
+    const rows = await db.select().from(platformSettings).where(
+      sql`${platformSettings.key} IN (${sql.join(keys.map((k) => sql`${k}`), sql`, `)})`
+    );
+    const map: Record<string, string> = {};
+    for (const row of rows) map[row.key] = row.value;
+    return {
+      fromAddress: map["email.fromAddress"] ?? "EduChamp <hi@educhamp.app>",
+      fromName: map["email.fromName"] ?? "EduChamp",
+      replyTo: map["email.replyTo"] ?? "hi@educhamp.app",
+      categories: map["email.categories"]
+        ? (JSON.parse(map["email.categories"]) as Record<string, boolean>)
+        : {
+            transactional: true,
+            parentDigest: true,
+            trialReminders: true,
+            inactivityAlerts: true,
+            courseRequests: true,
+            marketing: false,
+          },
+    };
+  }),
+
+  /**
+   * Save email sender settings to platformSettings.
+   */
+  saveEmailSettings: adminProcedure
+    .input(
+      z.object({
+        fromAddress: z.string().min(1),
+        fromName: z.string().min(1),
+        replyTo: z.string().email(),
+        categories: z.record(z.string(), z.boolean()).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const updates: { key: string; value: string; label: string; category: string }[] = [
+        { key: "email.fromAddress", value: input.fromAddress, label: "From Address", category: "email" },
+        { key: "email.fromName", value: input.fromName, label: "From Name", category: "email" },
+        { key: "email.replyTo", value: input.replyTo, label: "Reply-To Address", category: "email" },
+      ];
+      if (input.categories) {
+        updates.push({
+          key: "email.categories",
+          value: JSON.stringify(input.categories),
+          label: "Email Categories",
+          category: "email",
+        });
+      }
+      for (const u of updates) {
+        await upsertPlatformSetting(u.key, u.value, u.label);
+      }
+      await logAdminAction(ctx.user.id, "email.settings.update", "platform", 0, {
+        fromAddress: input.fromAddress,
+      });
+      return { success: true };
+    }),
+
+  /**
+   * Send a test email to verify the current sender configuration.
+   */
+  sendTestEmail: adminProcedure
+    .input(z.object({ to: z.string().email() }))
+    .mutation(async ({ ctx, input }) => {
+      const body = `
+        <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:${BRAND.textPrimary};">Test Email from EduChamp</h2>
+        <p style="margin:0 0 16px;font-size:15px;color:${BRAND.textMuted};line-height:1.6;">
+          This is a test email sent from the EduChamp Admin Console to verify that your email configuration is working correctly.
+        </p>
+        <div style="background:${BRAND.footerBg};border-radius:12px;padding:20px;margin:20px 0;">
+          <p style="margin:0;font-size:13px;color:${BRAND.textMuted};"><strong>Sender:</strong> ${BRAND.fromAddress}</p>
+          <p style="margin:8px 0 0;font-size:13px;color:${BRAND.textMuted};"><strong>Reply-To:</strong> ${BRAND.supportEmail}</p>
+          <p style="margin:8px 0 0;font-size:13px;color:${BRAND.textMuted};"><strong>Sent at:</strong> ${new Date().toISOString()}</p>
+          <p style="margin:8px 0 0;font-size:13px;color:${BRAND.textMuted};"><strong>Sent by admin:</strong> ${ctx.user.name}</p>
+        </div>
+        <p style="margin:0;font-size:14px;color:${BRAND.textMuted};">If you received this email, your email delivery is working correctly. ✅</p>
+      `;
+      const html = wrapEmailHtml({ bodyHtml: body, previewText: "EduChamp email configuration test" });
+      const result = await sendEmail({
+        to: input.to,
+        subject: "✅ EduChamp Email Configuration Test",
+        html,
+        templateName: "test-email",
+        text: `Test email from EduChamp Admin Console.\n\nSender: ${BRAND.fromAddress}\nSent at: ${new Date().toISOString()}\nSent by: ${ctx.user.name}\n\nIf you received this, email delivery is working correctly.`,
+      });
+      await logAdminAction(ctx.user.id, "email.test.sent", "platform", 0, {
+        to: input.to,
+        success: result.success,
+      });
+      return result;
+    }),
+
+  /**
+   * Fetch Resend domain list and DNS record status for educhamp.app.
+   */
+  getResendDomainStatus: adminProcedure.query(async () => {
+    const { Resend } = await import("resend");
+    const { ENV } = await import("../_core/env");
+    if (!ENV.resendApiKey) {
+      return { error: "No RESEND_API_KEY configured", domains: [] };
+    }
+    const resend = new Resend(ENV.resendApiKey);
+    try {
+      const { data, error } = await resend.domains.list();
+      if (error || !data) return { error: error?.message ?? "Failed to fetch domains", domains: [] };
+      const domainsWithRecords = await Promise.all(
+        data.data.map(async (domain) => {
+          try {
+            const { data: detail } = await resend.domains.get(domain.id);
+            return {
+              id: domain.id,
+              name: domain.name,
+              status: domain.status,
+              region: domain.region,
+              createdAt: domain.created_at,
+              records: (detail?.records ?? []) as Array<{
+                record: string;
+                name: string;
+                type: string;
+                value?: string;
+                ttl?: string;
+                status: string;
+                priority?: number;
+              }>,
+            };
+          } catch {
+            return {
+              id: domain.id,
+              name: domain.name,
+              status: domain.status,
+              region: domain.region,
+              createdAt: domain.created_at,
+              records: [] as Array<{
+                record: string;
+                name: string;
+                type: string;
+                value?: string;
+                ttl?: string;
+                status: string;
+                priority?: number;
+              }>,
+            };
+          }
+        })
+      );
+      return { domains: domainsWithRecords, error: null };
+    } catch (err) {
+      return { error: String(err), domains: [] };
+    }
+  }),
+
+  /**
+   * Trigger Resend domain verification for a specific domain ID.
+   */
+  verifyResendDomain: adminProcedure
+    .input(z.object({ domainId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { Resend } = await import("resend");
+      const { ENV } = await import("../_core/env");
+      if (!ENV.resendApiKey) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No RESEND_API_KEY configured" });
+      }
+      const resend = new Resend(ENV.resendApiKey);
+      const { data, error } = await resend.domains.verify(input.domainId);
+      if (error) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message });
+      await logAdminAction(ctx.user.id, "email.domain.verify", "platform", 0, {
+        domainId: input.domainId,
+      });
+      return { success: true, data };
     }),
 });

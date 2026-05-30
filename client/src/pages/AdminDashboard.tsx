@@ -33,6 +33,7 @@ import {
   Inbox, Send, XCircle, Filter, Building2, Phone, Calendar, Sparkles,
   ChevronLeft, ChevronDown, ChevronUp, Star, Tag, CreditCard,
   MailX, ShieldOff, ShieldCheck, RotateCcw, Download, Trophy, Zap, Award,
+  Flag, MailCheck, CheckSquare, AlertCircle, Server,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -830,6 +831,7 @@ function CoursesTab() {
 
 function CourseDetail({ course, units, onUpdate }: { course: any; units: any[]; onUpdate: (d: any) => void }) {
   const [cooldownInput, setCooldownInput] = useState<string>("");
+  const [timerInput, setTimerInput] = useState<string>("");
 
   if (!course) return null;
 
@@ -916,6 +918,58 @@ function CourseDetail({ course, units, onUpdate }: { course: any; units: any[]; 
               Update
             </Button>
           </div>
+        </div>
+
+        {/* Timed Exam */}
+        <div className="p-4 rounded-lg border bg-muted/30 space-y-3">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Label className="text-sm font-medium">Timed Exam Mode</Label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Enable a countdown timer for this course. When enabled, quizzes will auto-submit when time runs out.
+            Recommended for SAT Prep and AP courses.
+          </p>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <Switch
+              checked={!!course.isTimedExam}
+              onCheckedChange={(v) => onUpdate({ isTimedExam: v })}
+            />
+            {course.isTimedExam ? "Timed exam enabled" : "Timed exam disabled"}
+          </label>
+          {course.isTimedExam && (
+            <div className="flex items-center gap-2 mt-2">
+              <Input
+                type="number"
+                min={1}
+                max={300}
+                placeholder={String(course.timeLimitMinutes ?? 30)}
+                value={timerInput}
+                onChange={(e) => setTimerInput(e.target.value)}
+                className="h-8 w-24 text-sm"
+              />
+              <span className="text-sm text-muted-foreground">minutes</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8"
+                disabled={!timerInput || isNaN(Number(timerInput))}
+                onClick={() => {
+                  const mins = parseInt(timerInput);
+                  if (!isNaN(mins) && mins >= 1 && mins <= 300) {
+                    onUpdate({ timeLimitMinutes: mins });
+                    setTimerInput("");
+                    toast.success(`Time limit set to ${mins} minute${mins !== 1 ? "s" : ""}`);
+                  }
+                }}
+              >
+                Update
+              </Button>
+              {course.timeLimitMinutes && (
+                <span className="text-xs text-muted-foreground">Current: {course.timeLimitMinutes} min</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Units */}
@@ -2448,6 +2502,12 @@ export default function AdminDashboard() {
             <NavTooltip content={{ title: "Gamification", description: "Manage badges, XP economy settings, leaderboards, and gamification analytics." }} side="bottom" delayDuration={700}>
               <TabsTrigger value="gamification" className="gap-2"><Trophy className="h-4 w-4" /> Gamification</TabsTrigger>
             </NavTooltip>
+            <NavTooltip content="Flagged Questions — review and resolve student-reported question issues">
+              <TabsTrigger value="flaggedquestions" className="gap-2"><Flag className="h-4 w-4" /> Flagged Questions</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content="Email Settings — configure sender identity, test delivery, and domain verification">
+              <TabsTrigger value="emailsettings" className="gap-2"><MailCheck className="h-4 w-4" /> Email Settings</TabsTrigger>
+            </NavTooltip>
           </TabsList>
 
           <TabsContent value="overview"><OverviewTab /></TabsContent>
@@ -2467,6 +2527,8 @@ export default function AdminDashboard() {
           <TabsContent value="paymentanalytics"><PaymentAnalyticsTab /></TabsContent>
           <TabsContent value="inactivity"><InactivityMonitoringTab /></TabsContent>
           <TabsContent value="gamification"><GamificationAdminTab /></TabsContent>
+          <TabsContent value="flaggedquestions"><FlaggedQuestionsTab /></TabsContent>
+          <TabsContent value="emailsettings"><EmailSettingsTab /></TabsContent>
         </Tabs>
       </div>
     </div>
@@ -2849,6 +2911,353 @@ function GamificationAdminTab() {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Flagged Questions Tab ────────────────────────────────────────────────────
+
+const FLAG_STATUS_COLORS: Record<string, string> = {
+  open: "bg-red-100 text-red-700",
+  reviewed: "bg-amber-100 text-amber-700",
+  resolved: "bg-emerald-100 text-emerald-700",
+  dismissed: "bg-gray-100 text-gray-600",
+};
+
+const FLAG_REASON_LABELS: Record<string, string> = {
+  incorrect_answer: "Incorrect Answer",
+  unclear_question: "Unclear Question",
+  wrong_difficulty: "Wrong Difficulty",
+  out_of_scope: "Out of Scope",
+  typo: "Typo / Grammar",
+  other: "Other",
+};
+
+function FlaggedQuestionsTab() {
+  const [statusFilter, setStatusFilter] = useState<"open" | "reviewed" | "resolved" | "dismissed" | "all">("open");
+  const [page, setPage] = useState(1);
+  const [reviewDialog, setReviewDialog] = useState<{ id: number; questionText: string; reason: string; note: string | null } | null>(null);
+  const [reviewNote, setReviewNote] = useState("");
+  const utils = trpc.useUtils();
+
+  const { data, isLoading, refetch } = trpc.questionFlags.adminListFlags.useQuery({ status: statusFilter, page, pageSize: 20 });
+  const { data: stats } = trpc.questionFlags.adminFlagStats.useQuery();
+  const updateFlag = trpc.questionFlags.adminUpdateFlag.useMutation({
+    onSuccess: () => {
+      toast.success("Flag updated");
+      setReviewDialog(null);
+      setReviewNote("");
+      refetch();
+      utils.questionFlags.adminFlagStats.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Flagged Questions</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Review and resolve student-reported question issues</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => refetch()}><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button>
+      </div>
+
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card className="border"><CardContent className="pt-4 pb-3 text-center"><p className="text-2xl font-bold text-red-600">{stats.open}</p><p className="text-xs text-muted-foreground mt-0.5">Open</p></CardContent></Card>
+          <Card className="border"><CardContent className="pt-4 pb-3 text-center"><p className="text-2xl font-bold text-amber-600">{stats.reviewed}</p><p className="text-xs text-muted-foreground mt-0.5">Reviewed</p></CardContent></Card>
+          <Card className="border"><CardContent className="pt-4 pb-3 text-center"><p className="text-2xl font-bold text-emerald-600">{stats.resolved}</p><p className="text-xs text-muted-foreground mt-0.5">Resolved</p></CardContent></Card>
+          <Card className="border"><CardContent className="pt-4 pb-3 text-center"><p className="text-2xl font-bold">{stats.total}</p><p className="text-xs text-muted-foreground mt-0.5">Total</p></CardContent></Card>
+        </div>
+      )}
+
+      <div className="flex items-center gap-3">
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as typeof statusFilter); setPage(1); }}>
+          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="open">Open</SelectItem>
+            <SelectItem value="reviewed">Reviewed</SelectItem>
+            <SelectItem value="resolved">Resolved</SelectItem>
+            <SelectItem value="dismissed">Dismissed</SelectItem>
+            <SelectItem value="all">All</SelectItem>
+          </SelectContent>
+        </Select>
+        {data && <span className="text-sm text-muted-foreground">{data.total} flags</span>}
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)}</div>
+      ) : !data?.flags.length ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <CheckSquare className="h-10 w-10 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">No {statusFilter === "all" ? "" : statusFilter} flags</p>
+          <p className="text-sm mt-1">All questions are looking good!</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {data.flags.map((flag) => (
+            <Card key={flag.id} className="border">
+              <CardContent className="pt-4 pb-3">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <Badge className={FLAG_STATUS_COLORS[flag.status] ?? "bg-gray-100 text-gray-600"}>{flag.status}</Badge>
+                      <Badge variant="outline" className="text-xs capitalize">{flag.questionType}</Badge>
+                      <Badge variant="outline" className="text-xs">{FLAG_REASON_LABELS[flag.reason] ?? flag.reason}</Badge>
+                    </div>
+                    <p className="text-sm font-medium line-clamp-2">{flag.questionText || "(question not found)"}</p>
+                    {flag.details && <p className="text-xs text-muted-foreground mt-1 italic">"{flag.details}"</p>}
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Reported by <span className="font-medium">{flag.userName}</span> · {new Date(flag.createdAt).toLocaleDateString()}
+                    </p>
+                    {flag.reviewNote && (
+                      <p className="text-xs text-emerald-700 mt-1 bg-emerald-50 rounded px-2 py-1">Admin note: {flag.reviewNote}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    {flag.status === "open" && (
+                      <Button size="sm" variant="outline" onClick={() => { setReviewDialog({ id: flag.id, questionText: flag.questionText ?? "", reason: flag.reason, note: flag.reviewNote ?? null }); setReviewNote(flag.reviewNote ?? ""); }}>
+                        <Eye className="h-3.5 w-3.5 mr-1" />Review
+                      </Button>
+                    )}
+                    {(flag.status === "open" || flag.status === "reviewed") && (
+                      <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateFlag.mutate({ flagId: flag.id, status: "resolved" })}>
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />Resolve
+                      </Button>
+                    )}
+                    {flag.status === "open" && (
+                      <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => updateFlag.mutate({ flagId: flag.id, status: "dismissed" })}>
+                        Dismiss
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {data && data.totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+          <span className="text-sm text-muted-foreground">Page {page} of {data.totalPages}</span>
+          <Button variant="outline" size="sm" disabled={page === data.totalPages} onClick={() => setPage(p => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+      )}
+
+      <Dialog open={!!reviewDialog} onOpenChange={(o) => !o && setReviewDialog(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Review Flagged Question</DialogTitle></DialogHeader>
+          {reviewDialog && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-lg bg-muted px-4 py-3 text-sm">
+                <p className="font-medium mb-1">Question:</p>
+                <p className="text-muted-foreground">{reviewDialog.questionText || "(not found)"}</p>
+              </div>
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm">
+                <p className="font-medium text-amber-800">Reported reason: {FLAG_REASON_LABELS[reviewDialog.reason] ?? reviewDialog.reason}</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Admin review note (optional)</Label>
+                <Textarea value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} placeholder="Describe the action taken or why this was dismissed..." rows={3} />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setReviewDialog(null)}>Cancel</Button>
+            <Button variant="ghost" className="text-muted-foreground" onClick={() => reviewDialog && updateFlag.mutate({ flagId: reviewDialog.id, status: "dismissed", reviewNote: reviewNote || undefined })}>
+              Dismiss
+            </Button>
+            <Button onClick={() => reviewDialog && updateFlag.mutate({ flagId: reviewDialog.id, status: "reviewed", reviewNote: reviewNote || undefined })}>
+              Mark Reviewed
+            </Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => reviewDialog && updateFlag.mutate({ flagId: reviewDialog.id, status: "resolved", reviewNote: reviewNote || undefined })}>
+              Resolve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ─── Email Settings Tab ───────────────────────────────────────────────────────
+
+function EmailSettingsTab() {
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [fromAddress, setFromAddress] = useState("");
+  const [fromName, setFromName] = useState("");
+  const [replyTo, setReplyTo] = useState("");
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  const { data: settings, isLoading: settingsLoading, refetch: refetchSettings } = trpc.admin.getEmailSettings.useQuery();
+  const { data: domainStatus, isLoading: domainLoading, refetch: refetchDomain } = trpc.admin.getResendDomainStatus.useQuery();
+
+  const saveSettings = trpc.admin.saveEmailSettings.useMutation({
+    onSuccess: () => { toast.success("Email settings saved"); refetchSettings(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const sendTest = trpc.admin.sendTestEmail.useMutation({
+    onSuccess: (r) => r.success ? toast.success("Test email sent successfully!") : toast.error("Test email failed — check Resend logs"),
+    onError: (e) => toast.error(e.message),
+  });
+
+  // Populate form from loaded settings
+  if (settings && !settingsLoaded) {
+    setFromAddress(settings.fromAddress ?? "");
+    setFromName(settings.fromName ?? "");
+    setReplyTo(settings.replyTo ?? "");
+    setSettingsLoaded(true);
+  }
+
+  return (
+    <div className="space-y-6 max-w-3xl">
+      <div>
+        <h2 className="text-lg font-semibold">Email Settings</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">Configure sender identity, test delivery, and verify domain authentication</p>
+      </div>
+
+      {/* Sender Configuration */}
+      <Card className="border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2"><Mail className="h-4 w-4" />Sender Configuration</CardTitle>
+          <CardDescription>All outbound emails use these settings. Changes take effect immediately.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {settingsLoading ? (
+            <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-lg" />)}</div>
+          ) : (
+            <>
+              <div className="space-y-1.5">
+                <Label>From Address</Label>
+                <Input value={fromAddress} onChange={(e) => setFromAddress(e.target.value)} placeholder="hi@educhamp.app" />
+                <p className="text-xs text-muted-foreground">Must be from a verified Resend domain (e.g. educhamp.app)</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Display Name</Label>
+                <Input value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="EduChamp" />
+                <p className="text-xs text-muted-foreground">Shown as the sender name in email clients</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Reply-To Address</Label>
+                <Input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="hi@educhamp.app" />
+                <p className="text-xs text-muted-foreground">Where replies from recipients will be directed</p>
+              </div>
+              <Button onClick={() => saveSettings.mutate({ fromAddress, fromName, replyTo })} disabled={saveSettings.isPending}>
+                {saveSettings.isPending ? "Saving…" : "Save Settings"}
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Test Email */}
+      <Card className="border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2"><Send className="h-4 w-4" />Send Test Email</CardTitle>
+          <CardDescription>Verify that email delivery is working with the current configuration.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-3">
+            <Input value={testEmailTo} onChange={(e) => setTestEmailTo(e.target.value)} placeholder="your@email.com" className="flex-1" type="email" />
+            <Button onClick={() => sendTest.mutate({ to: testEmailTo })} disabled={sendTest.isPending || !testEmailTo}>
+              {sendTest.isPending ? "Sending…" : "Send Test"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">A branded test email will be sent from the configured sender address.</p>
+        </CardContent>
+      </Card>
+
+      {/* Domain Verification */}
+      <Card className="border">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2"><Server className="h-4 w-4" />Domain Authentication Status</CardTitle>
+              <CardDescription>SPF, DKIM, and DMARC records for educhamp.app</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => refetchDomain()} disabled={domainLoading}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${domainLoading ? "animate-spin" : ""}`} />Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {domainLoading ? (
+            <div className="space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-lg" />)}</div>
+          ) : !domainStatus ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm">Could not load domain status. Check your Resend API key.</p>
+            </div>
+          ) : domainStatus.domains.length === 0 ? (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-4">
+              <p className="text-sm font-medium text-amber-800 flex items-center gap-2"><AlertTriangle className="h-4 w-4" />No domains found in Resend</p>
+              <p className="text-sm text-amber-700 mt-1">Add <strong>educhamp.app</strong> in your Resend dashboard, then add the provided DNS records to your domain registrar.</p>
+              <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline mt-2">
+                Open Resend Domains →
+              </a>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {domainStatus.domains.map((domain: any) => (
+                <div key={domain.id} className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Badge className={domain.status === "verified" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}>
+                      {domain.status === "verified" ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <AlertTriangle className="h-3 w-3 mr-1" />}
+                      {domain.status}
+                    </Badge>
+                    <span className="font-medium text-sm">{domain.name}</span>
+                    {domain.region && <span className="text-xs text-muted-foreground">Region: {domain.region}</span>}
+                  </div>
+                  {domain.records && domain.records.length > 0 && (
+                    <div className="rounded-lg border overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/40">
+                            <TableHead className="text-xs py-2">Type</TableHead>
+                            <TableHead className="text-xs py-2">Name</TableHead>
+                            <TableHead className="text-xs py-2">Value</TableHead>
+                            <TableHead className="text-xs py-2">Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {domain.records.map((rec: any, idx: number) => (
+                            <TableRow key={idx}>
+                              <TableCell className="text-xs font-mono py-2">{rec.type}</TableCell>
+                              <TableCell className="text-xs font-mono py-2 max-w-[120px] truncate" title={rec.name}>{rec.name}</TableCell>
+                              <TableCell className="text-xs font-mono py-2 max-w-[200px] truncate" title={rec.value}>{rec.value}</TableCell>
+                              <TableCell className="py-2">
+                                <Badge className={rec.status === "verified" ? "bg-emerald-100 text-emerald-700 text-[10px]" : "bg-amber-100 text-amber-700 text-[10px]"}>
+                                  {rec.status}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                  {domain.status !== "verified" && (
+                    <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+                      <p className="text-xs text-blue-800 font-medium mb-1">To complete domain verification:</p>
+                      <ol className="text-xs text-blue-700 space-y-1 list-decimal list-inside">
+                        <li>Log in to your domain registrar (e.g. Namecheap, GoDaddy, Cloudflare)</li>
+                        <li>Add each DNS record shown above to your domain's DNS settings</li>
+                        <li>Wait up to 72 hours for DNS propagation, then click Refresh above</li>
+                      </ol>
+                      <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline mt-2">
+                        Open Resend Dashboard →
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

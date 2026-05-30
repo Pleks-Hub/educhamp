@@ -524,6 +524,8 @@ export const courses = mysqlTable("courses", {
   sortOrder: int("sortOrder").notNull().default(0),
   status: mysqlEnum("status", ["active", "archived", "suspended"]).notNull().default("active"),
   diagnosticCooldownDays: int("diagnosticCooldownDays").notNull().default(7), // per-course retake cooldown
+  isTimedExam: boolean("isTimedExam").notNull().default(false),  // enables countdown timer in quiz mode
+  timeLimitMinutes: int("timeLimitMinutes"),                      // null = no limit; total minutes for the full unit quiz
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -1340,3 +1342,31 @@ export const userAvatars = mysqlTable("userAvatars", {
 
 export type UserAvatar = typeof userAvatars.$inferSelect;
 export type InsertUserAvatar = typeof userAvatars.$inferInsert;
+
+// ─── Question Flags ───────────────────────────────────────────────────────────
+export const questionFlags = mysqlTable("questionFlags", {
+  id: int("id").autoincrement().primaryKey(),
+  questionType: mysqlEnum("questionType", ["quiz", "diagnostic"]).notNull(),
+  questionId: int("questionId").notNull(),
+  userId: int("userId").notNull(),
+  reason: mysqlEnum("reason", [
+    "incorrect_answer",
+    "unclear_question",
+    "wrong_difficulty",
+    "out_of_scope",
+    "duplicate",
+    "other",
+  ]).notNull(),
+  details: text("details"),
+  status: mysqlEnum("status", ["open", "reviewed", "resolved", "dismissed"]).notNull().default("open"),
+  reviewedBy: int("reviewedBy"),
+  reviewNote: text("reviewNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  questionIdx: index("questionFlags_question_idx").on(t.questionType, t.questionId),
+  userIdx: index("questionFlags_userId_idx").on(t.userId),
+  statusIdx: index("questionFlags_status_idx").on(t.status),
+}));
+export type QuestionFlag = typeof questionFlags.$inferSelect;
+export type InsertQuestionFlag = typeof questionFlags.$inferInsert;

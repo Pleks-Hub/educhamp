@@ -38,6 +38,7 @@ import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 import { NavTooltip } from "@/components/NavTooltip";
 import { DIAGNOSTIC_TOOLTIPS } from "@/lib/tooltipContent";
+import { FlagQuestionButton } from "@/components/FlagQuestionButton";
 
 type ChoiceItem = { label: string; text: string };
 
@@ -897,9 +898,14 @@ export default function Diagnostic() {
               <span className="h-7 w-7 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold shrink-0 mt-0.5">
                 {currentIndex + 1}
               </span>
-              <p className="text-base font-medium text-foreground leading-relaxed">
-                {currentQ.questionText}
-              </p>
+              <div className="flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-base font-medium text-foreground leading-relaxed flex-1">
+                    {currentQ.questionText}
+                  </p>
+                  <FlagQuestionButton questionType="diagnostic" questionId={currentQ.id} />
+                </div>
+              </div>
             </div>
 
             {currentQ.questionType === "multiple_choice" && (

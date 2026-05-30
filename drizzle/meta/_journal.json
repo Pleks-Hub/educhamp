@@ -211,6 +211,13 @@
       "when": 1780074440943,
       "tag": "0029_vengeful_living_lightning",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1780103744370,
+      "tag": "0030_crazy_wonder_man",
+      "breakpoints": true
     }
   ]
 }
