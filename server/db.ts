@@ -2883,3 +2883,110 @@ export async function getApprovedCoppaConsent(studentId: number) {
     .limit(1);
   return rows[0] ?? null;
 }
+
+// ─── Phase 2: Live masteryRecords dual-write ──────────────────────────────────
+// Imports for Phase 1A tables (not in the original import block above)
+import {
+  masteryRecords,
+  enrollmentContexts,
+  unitStandards,
+  standards,
+} from "../drizzle/schema";
+
+const MASTERY_THRESHOLD_LIVE = 75; // CONFIRMED: aligned with userMastery threshold
+
+/**
+ * Dual-write masteryRecords for a unit after a quiz or diagnostic submission.
+ *
+ * Resolution chain (mirrors Phase 1C backfill script):
+ *   unitId → unitStandards → standards (frameworkId)
+ *   studentId → enrollmentContexts (active)
+ *   score >= 75 → isMastered
+ *
+ * This is non-fatal: if any lookup fails (no standards, no enrollmentContext),
+ * the function returns silently so the primary userMastery write is unaffected.
+ *
+ * @param studentId  - the student's user ID
+ * @param unitId     - the unit that was assessed
+ * @param score      - 0-100 score from the quiz or diagnostic
+ * @param sourceType - "quiz" | "diagnostic"
+ */
+export async function writeMasteryRecordsForUnit(
+  studentId: number,
+  unitId: number,
+  score: number,
+  sourceType: "quiz" | "diagnostic"
+): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+
+    // 1. Resolve all standards for this unit
+    const stdRows = await db
+      .select({ standardId: unitStandards.standardId, frameworkId: standards.frameworkId })
+      .from(unitStandards)
+      .innerJoin(standards, eq(unitStandards.standardId, standards.id))
+      .where(eq(unitStandards.unitId, unitId))
+      .orderBy(unitStandards.isPrimary);
+
+    if (stdRows.length === 0) return; // no standards mapped yet — skip silently
+
+    // 2. Resolve the active enrollmentContext for this student
+    const ecRows = await db
+      .select({ id: enrollmentContexts.id })
+      .from(enrollmentContexts)
+      .where(and(eq(enrollmentContexts.studentId, studentId), eq(enrollmentContexts.isActive, true)))
+      .orderBy(enrollmentContexts.id)
+      .limit(1);
+
+    if (ecRows.length === 0) return; // no enrollment context — skip silently
+
+    const enrollmentContextId = ecRows[0].id;
+    const isMastered = score >= MASTERY_THRESHOLD_LIVE;
+    const now = new Date();
+
+    // 3. Upsert one masteryRecord per standard for this unit
+    for (const std of stdRows) {
+      const existing = await db
+        .select({ id: masteryRecords.id, score: masteryRecords.score, attemptCount: masteryRecords.attemptCount })
+        .from(masteryRecords)
+        .where(
+          and(
+            eq(masteryRecords.studentId, studentId),
+            eq(masteryRecords.standardId, std.standardId),
+            eq(masteryRecords.enrollmentContextId, enrollmentContextId)
+          )
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        const prev = existing[0];
+        const newScore = Math.max(prev.score, score);
+        await db
+          .update(masteryRecords)
+          .set({
+            score: newScore,
+            isMastered: newScore >= MASTERY_THRESHOLD_LIVE,
+            attemptCount: (prev.attemptCount ?? 0) + 1,
+            lastAssessedAt: now,
+            sourceType,
+          })
+          .where(eq(masteryRecords.id, prev.id));
+      } else {
+        await db.insert(masteryRecords).values({
+          studentId,
+          standardId: std.standardId,
+          frameworkId: std.frameworkId,
+          enrollmentContextId,
+          score,
+          isMastered,
+          attemptCount: 1,
+          lastAssessedAt: now,
+          sourceType,
+        });
+      }
+    }
+  } catch {
+    // Non-fatal: masteryRecords dual-write failure must never break the primary scoring path
+  }
+}

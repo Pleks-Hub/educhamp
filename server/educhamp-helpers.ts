@@ -125,6 +125,20 @@ export type StudentContext = {
     longestStreak?: number;
     recentBadge?: string;      // name of most recently earned badge
   };
+  // Lesson content (injected when student is viewing a specific lesson — Phase 2)
+  lessonContent?: {
+    lessonTitle: string;           // e.g. "Solving Two-Step Equations"
+    lessonNumber: number;          // e.g. 3
+    teksAlignment?: string | null; // e.g. "TEKS §111.39 Algebra I — A.2(C)"
+    explanation: string;           // full lesson explanation text
+    workedExamples: Array<{        // structured worked examples from the lesson
+      title: string;
+      problem: string;
+      steps: { step: string; explanation: string }[];
+      answer: string;
+    }>;
+    misconceptions: string[];      // common student errors for this lesson
+  };
   // Active course context (injected so the tutor knows which subject it is teaching)
   courseContext?: {
     title: string;             // e.g. "AP Chemistry"
@@ -235,6 +249,40 @@ ${rows}`;
     learningObjectivesSection = `
 ## Current Unit Learning Objectives (Standards Alignment)
 ${ctx.learningObjectives}`;
+  }
+
+  // ── Lesson content injection (Phase 2) ────────────────────────────────────
+  // When the student is viewing a specific lesson, inject the authoritative
+  // curriculum content so the tutor teaches from stored material, not
+  // parametric memory. Falls back to parametric behaviour when absent.
+  let lessonContentSection = "";
+  if (ctx?.lessonContent) {
+    const lc = ctx.lessonContent;
+    const examplesText = lc.workedExamples.length > 0
+      ? lc.workedExamples.map((ex, i) => {
+          const stepsText = ex.steps.map((s, j) =>
+            `  Step ${j + 1}: ${s.step}\n  Explanation: ${s.explanation}`
+          ).join("\n");
+          return `### Example ${i + 1}: ${ex.title}\nProblem: ${ex.problem}\n${stepsText}\nAnswer: ${ex.answer}`;
+        }).join("\n\n")
+      : "No worked examples available for this lesson.";
+    const misconceptionsText = lc.misconceptions.length > 0
+      ? lc.misconceptions.map((m, i) => `${i + 1}. ${m}`).join("\n")
+      : "No common misconceptions recorded.";
+    lessonContentSection = `
+## Lesson Content — Teach From This Material
+**IMPORTANT:** You are tutoring the student on the following specific lesson. Teach from this authoritative curriculum content. Do NOT fabricate alternative explanations, worked examples, or problem types that contradict this material. You may supplement with analogies and additional examples, but your core teaching must be grounded in the content below.
+
+**Lesson**: ${lc.lessonTitle} (Lesson ${lc.lessonNumber})${lc.teksAlignment ? `\n**Standards**: ${lc.teksAlignment}` : ""}
+
+### Explanation
+${lc.explanation}
+
+### Worked Examples From This Lesson
+${examplesText}
+
+### Common Student Misconceptions (Address These Proactively)
+${misconceptionsText}`;
   }
   const modeInstructions = MODE_INSTRUCTIONS[mode];
 
@@ -454,6 +502,7 @@ ${masterySection}
 ${unitMasterySummarySection}
 ${quizSection}
 ${learningObjectivesSection}
+${lessonContentSection}
 ${pacingGuidance}
 ${parentGoalSection}
 ${redirectionInstruction}

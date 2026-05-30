@@ -58,6 +58,7 @@ import {
   getCourseById,
   getCourseCooldownDays,
   getDb,
+  writeMasteryRecordsForUnit,
 } from "./db";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -448,6 +449,9 @@ export const appRouter = router({
           }
         }
 
+        // Phase 2: Dual-write masteryRecords (non-fatal — runs alongside userMastery)
+        await writeMasteryRecordsForUnit(ctx.user.id, input.unitId, score, "quiz").catch(() => {});
+
         // Fetch parent links to include child name in notifications
         const parents = await getParentsByChildId(ctx.user.id).catch(() => []);
         const parentNames = parents.map((p) => p.parentName ?? "a parent").join(", ");
@@ -724,6 +728,17 @@ export const appRouter = router({
           resolvedCourseId
         );
 
+        // Phase 2: Dual-write masteryRecords for all assessed units (non-fatal)
+        for (const unitResult of unitResults) {
+          const assessedUnit = allUnits.find((u) => u.unitNumber === unitResult.unitNumber);
+          if (assessedUnit) {
+            const unitScore = Math.round(
+              unitResult.total > 0 ? (unitResult.correct / unitResult.total) * 100 : 0
+            );
+            await writeMasteryRecordsForUnit(ctx.user.id, assessedUnit.id, unitScore, "diagnostic").catch(() => {});
+          }
+        }
+
         // Initialize unit progress for all units based on diagnostic results.
         // - likely_mastered → quiz_unlocked (can skip straight to quiz)
         // - partial_understanding → in_progress (unlock to study)
@@ -825,6 +840,18 @@ export const appRouter = router({
           input.recommendation,
           resolvedCourseId
         );
+        // Phase 2: Dual-write masteryRecords for early-learner diagnostic (non-fatal)
+        // unitResultsForSave already has unitNumber (i+1) and correct/total fields
+        try {
+          const courseUnits = await getUnitsForCourse(resolvedCourseId);
+          for (const ur of unitResultsForSave) {
+            const assessedUnit = courseUnits.find((u) => u.unitNumber === ur.unitNumber);
+            if (assessedUnit) {
+              const unitScore = ur.correct >= 1 ? 85 : 45; // ready = approaching mastery, not ready = needs instruction
+              await writeMasteryRecordsForUnit(ctx.user.id, assessedUnit.id, unitScore, "diagnostic").catch(() => {});
+            }
+          }
+        } catch { /* non-fatal */ }
         return { success: true, score: input.score };
       }),
   }),

@@ -1786,3 +1786,26 @@
 - [x] Backfill masteryRecords from userMastery (score >= 75 = isMastered, sourceType=backfill)
 - [x] Write phase1c.test.ts covering extraction logic, enrollmentContext creation, and backfill correctness
 - [x] Run full test suite (target: all passing), update todo.md, save checkpoint
+
+### Phase 2 — Lesson Content Injection & Live Dual-Write (May 30, 2026)
+
+#### Phase 2 Day 1 — Algebra I TEKS Gap Resolution
+- [x] Assign canonical TEKS codes to all 12 Algebra I units (update standards rows: isCanonical=true, real code)
+- [x] Re-run phase1c-backfill.mjs to update unitStandards and masteryRecords with correct standardIds
+- [x] Verify BACKFILL_GAPS.md no longer lists Algebra I units
+
+#### Phase 2 — Lesson Content Injection into AI Tutor
+- [x] Add lessonContent field to StudentContext type in educhamp-helpers.ts
+- [x] Update buildTutorSystemPrompt to inject ## Lesson Content section when lessonContent is present
+- [x] Update tutorStream.ts to fetch lesson (explanation, workedExamples, misconceptions) when lessonId is present
+- [x] Fall back to parametric behaviour when lessonId is null (free-chat mode)
+
+#### Phase 2 — Live Dual-Write to masteryRecords
+- [x] Add writeMasteryRecordsForUnit() helper to db.ts (upsert with score >= 75 threshold)
+- [x] Dual-write to masteryRecords from quiz scoring (alongside existing userMastery write)
+- [x] Dual-write to masteryRecords from diagnostic scoring (alongside existing userMastery write)
+- [x] sourceType='quiz' for quiz writes, sourceType='diagnostic' for diagnostic writes
+
+#### Phase 2 — Tests & Checkpoint
+- [x] Write server/phase2.test.ts covering lesson injection, TEKS gap resolution, and dual-write logic
+- [x] Run full test suite (578/578 passing), update todo.md, save checkpoint

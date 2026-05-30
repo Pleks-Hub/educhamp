@@ -1,7 +1,7 @@
 # BACKFILL_GAPS.md — Standards Requiring Manual TEKS Code Assignment
 
 **Generated:** 2026-05-30
-**Total gaps:** 264 standards with `isCanonical = false`
+**Total gaps:** 252 standards with `isCanonical = false`
 
 These standards were extracted from `units.teksAlignment` using narrative-only patterns
 (e.g. `"Aligned to TEKS Algebra I — solving linear equations"`). They do not have
@@ -20,23 +20,6 @@ canonical TEKS codes to each gap standard. Then re-run the backfill script to up
 ---
 
 ## Gap Standards by Course
-
-### Algebra I
-
-| Standard ID | Slug Code | Description | Grade | Units |
-|---|---|---|---|---|
-| 37 | `SLUG_alg1_algebraic_reasoning_and_number_properties` | Aligned to TEKS Algebra I — algebraic reasoning and number properties | — | 1 |
-| 48 | `SLUG_alg1_comprehensive_review_across_all_strands` | Aligned to TEKS Algebra I — comprehensive review across all strands | — | 1 |
-| 47 | `SLUG_alg1_data_analysis_and_statistical_reasoning` | Aligned to TEKS Algebra I — data analysis and statistical reasoning | — | 1 |
-| 43 | `SLUG_alg1_exponents_and_exponential_functions` | Aligned to TEKS Algebra I — exponents and exponential functions | — | 1 |
-| 45 | `SLUG_alg1_factoring_polynomials` | Aligned to TEKS Algebra I — factoring polynomials | — | 1 |
-| 40 | `SLUG_alg1_functions_and_their_representations` | Aligned to TEKS Algebra I — functions and their representations | — | 1 |
-| 41 | `SLUG_alg1_linear_functions_and_graphing` | Aligned to TEKS Algebra I — linear functions and graphing | — | 1 |
-| 44 | `SLUG_alg1_polynomial_operations` | Aligned to TEKS Algebra I — polynomial operations | — | 1 |
-| 46 | `SLUG_alg1_quadratic_functions_and_equations` | Aligned to TEKS Algebra I — quadratic functions and equations | — | 1 |
-| 38 | `SLUG_alg1_solving_linear_equations` | Aligned to TEKS Algebra I — solving linear equations | — | 1 |
-| 39 | `SLUG_alg1_solving_linear_inequalities` | Aligned to TEKS Algebra I — solving linear inequalities | — | 1 |
-| 42 | `SLUG_alg1_systems_of_linear_equations` | Aligned to TEKS Algebra I — systems of linear equations | — | 1 |
 
 ### AP Calculus BC
 

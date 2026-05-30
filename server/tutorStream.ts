@@ -29,6 +29,7 @@ import {
   getQuizAttemptsForUser,
   getUserUnitProgress,
   getLessonsByUnit,
+  getLessonById,
   getUserCourseEnrollments,
   getActiveCourseIdForUser,
 } from "./db";
@@ -242,6 +243,42 @@ export function registerTutorStreamRoute(app: Express) {
         }
       }
 
+      // ── Fetch lesson content when lessonId is present (Phase 2) ─────────────
+      // When the student is viewing a specific lesson, inject the authoritative
+      // curriculum content into the system prompt so the tutor teaches from
+      // stored material rather than parametric memory.
+      let lessonContent: import("./educhamp-helpers").StudentContext["lessonContent"] | undefined;
+      if (lessonId) {
+        try {
+          const lesson = await getLessonById(lessonId);
+          if (lesson) {
+            const workedExamples = Array.isArray(lesson.workedExamples)
+              ? (lesson.workedExamples as any[]).map((ex: any) => ({
+                  title: ex.title ?? "",
+                  problem: ex.problem ?? "",
+                  steps: Array.isArray(ex.steps)
+                    ? ex.steps.map((s: any) => ({ step: s.step ?? "", explanation: s.explanation ?? "" }))
+                    : [],
+                  answer: ex.answer ?? "",
+                }))
+              : [];
+            const misconceptions = Array.isArray(lesson.misconceptions)
+              ? (lesson.misconceptions as string[])
+              : [];
+            lessonContent = {
+              lessonTitle: lesson.title,
+              lessonNumber: lesson.lessonNumber,
+              teksAlignment: lesson.teksAlignment ?? null,
+              explanation: lesson.explanation,
+              workedExamples,
+              misconceptions,
+            };
+          }
+        } catch {
+          // non-fatal — fall back to parametric behaviour
+        }
+      }
+
       // ── Parse placement data ──────────────────────────────────────────────
       let placementScore: number | undefined;
       let placementRecommendation: string | undefined;
@@ -349,6 +386,7 @@ export function registerTutorStreamRoute(app: Express) {
           recentQuizzes,
           unitMasterySummary,
           learningObjectives: learningObjectivesText,
+          lessonContent,
           parentGoalContext,
           studentDemographics,
           isYoungLearner,
