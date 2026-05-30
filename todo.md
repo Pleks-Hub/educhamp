@@ -1980,9 +1980,9 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Save checkpoint 4C and await approval — 824/824 tests passing, TypeScript exit 0
 
 ### Phase 4D — Thin Course Second Pass
-- [ ] Pull current thin course list from docs/QUESTION_BANK_HEALTH.md
-- [ ] For each thin course: identify shortfall by assessmentType, run targeted generation with longer prompts
-- [ ] Re-run health check and confirm all courses at or above minimum
-- [ ] Update QUESTION_BANK_HEALTH.md
-- [ ] Log any courses still thin after 3 passes as needing manual authoring
-- [ ] Save checkpoint 4D
+- [x] Pull current thin course list from docs/QUESTION_BANK_HEALTH.md (16 thin, 0 empty post Phase 4C)
+- [x] For each thin course: identify shortfall, run targeted generation with enriched prompts (strand context + style guidelines per course) — 336 questions inserted, 3 errors (GR3MATH ×1, ENG1 ×2)
+- [x] Re-run health check and confirm all courses at or above minimum — 74/74 healthy ✅
+- [x] Update QUESTION_BANK_HEALTH.md — 6,152 total questions, 0 thin, 0 empty
+- [x] No courses remain thin after this pass; no manual authoring backlog required
+- [x] Save checkpoint 4D — 824/824 tests passing, TypeScript exit 0

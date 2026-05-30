@@ -10,11 +10,11 @@
 | Metric | Value |
 |---|---|
 | Questions before generation | 3,094 |
-| Questions added | +2,722 |
-| Questions after generation | **5,816** |
+| Questions added | +3,058 |
+| Questions after generation | **6,152** |
 | Active courses | 74 |
-| Healthy courses (≥ target) | 58 |
-| Thin courses (< target) | 16 |
+| Healthy courses (≥ target) | 74 |
+| Thin courses (< target) | 0 |
 | Empty courses (0 questions) | 0 |
 
 ---
@@ -23,12 +23,12 @@
 
 ### Advanced Placement (AP)
 
-**Target per course:** 70 | **Courses:** 6 | **Avg items:** 110
+**Target per course:** 70 | **Courses:** 6 | **Avg items:** 114
 
 | Status | Count |
 |---|---|
-| ✅ Healthy (≥ 70) | 5 |
-| ⚠ Thin (< 70) | 1 |
+| ✅ Healthy (≥ 70) | 6 |
+| ⚠ Thin (< 70) | 0 |
 | ❌ Empty (0) | 0 |
 
 <details>
@@ -41,18 +41,18 @@
 | AP Calculus BC | AP | 120 | 47 | 52 | 21 | ✅ |
 | AP Statistics | AP | 120 | 52 | 61 | 7 | ✅ |
 | AP Chemistry | AP | 120 | 52 | 58 | 10 | ✅ |
-| AP Human Geography | 9 | 65 | 21 | 27 | 13 | ⚠ |
+| AP Human Geography | 9 | 86 | 28 | 34 | 20 | ✅ |
 
 </details>
 
 ### K-12 Regular
 
-**Target per course:** 70 | **Courses:** 54 | **Avg items:** 71
+**Target per course:** 70 | **Courses:** 54 | **Avg items:** 74
 
 | Status | Count |
 |---|---|
-| ✅ Healthy (≥ 70) | 42 |
-| ⚠ Thin (< 70) | 12 |
+| ✅ Healthy (≥ 70) | 54 |
+| ⚠ Thin (< 70) | 0 |
 | ❌ Empty (0) | 0 |
 
 <details>
@@ -62,16 +62,16 @@
 |---|---|---|---|---|---|---|
 | Kindergarten Language Arts | Kindergarten | 71 | 26 | 27 | 16 | ✅ |
 | Pre-K Language Arts | Pre-K | 73 | 27 | 26 | 16 | ✅ |
-| Kindergarten Mathematics | Kindergarten | 54 | 24 | 18 | 12 | ⚠ |
+| Kindergarten Mathematics | Kindergarten | 72 | 30 | 24 | 18 | ✅ |
 | Pre-K Mathematics | Pre-K | 85 | 30 | 30 | 20 | ✅ |
-| Kindergarten Science | Kindergarten | 67 | 24 | 24 | 16 | ⚠ |
-| Pre-K Science | Pre-K | 68 | 24 | 24 | 16 | ⚠ |
-| Kindergarten Social Studies | Kindergarten | 68 | 24 | 24 | 16 | ⚠ |
-| Pre-K Social Studies | Pre-K | 68 | 24 | 24 | 16 | ⚠ |
-| 3rd Grade ELA | 3 | 63 | 35 | 14 | 14 | ⚠ |
-| 3rd Grade Math | 3 | 63 | 33 | 16 | 14 | ⚠ |
-| 3rd Grade Science | 3 | 63 | 35 | 14 | 14 | ⚠ |
-| 3rd Grade Social Studies | 3 | 54 | 18 | 24 | 12 | ⚠ |
+| Kindergarten Science | Kindergarten | 79 | 28 | 28 | 20 | ✅ |
+| Pre-K Science | Pre-K | 80 | 28 | 28 | 20 | ✅ |
+| Kindergarten Social Studies | Kindergarten | 80 | 28 | 28 | 20 | ✅ |
+| Pre-K Social Studies | Pre-K | 80 | 28 | 28 | 20 | ✅ |
+| 3rd Grade ELA | 3 | 84 | 42 | 21 | 21 | ✅ |
+| 3rd Grade Math | 3 | 83 | 40 | 22 | 21 | ✅ |
+| 3rd Grade Science | 3 | 84 | 42 | 21 | 21 | ✅ |
+| 3rd Grade Social Studies | 3 | 72 | 24 | 30 | 18 | ✅ |
 | Grade 4 English Language Arts & Reading | 4 | 72 | 32 | 24 | 16 | ✅ |
 | Grade 4 KAP English Language Arts | 4 | 72 | 32 | 24 | 16 | ✅ |
 | Grade 4 KAP Mathematics | 4 | 72 | 32 | 24 | 16 | ✅ |
@@ -94,7 +94,7 @@
 | Grade 6 Science | 6 | 72 | 32 | 24 | 16 | ✅ |
 | Grade 6 KAP Social Studies | 6 | 72 | 32 | 24 | 16 | ✅ |
 | Grade 6 Social Studies | 6 | 72 | 32 | 24 | 16 | ✅ |
-| Grade 6 Technology Applications | 6 | 54 | 24 | 24 | 6 | ⚠ |
+| Grade 6 Technology Applications | 6 | 72 | 30 | 30 | 12 | ✅ |
 | Grade 7 English Language Arts & Reading | 7 | 72 | 32 | 24 | 16 | ✅ |
 | Grade 7 KAP English Language Arts | 7 | 72 | 32 | 24 | 16 | ✅ |
 | Grade 7 KAP Mathematics | 7 | 72 | 32 | 24 | 16 | ✅ |
@@ -103,7 +103,7 @@
 | Grade 7 Science | 7 | 72 | 32 | 24 | 16 | ✅ |
 | Grade 7 KAP Social Studies — Texas History | 7 | 72 | 32 | 24 | 16 | ✅ |
 | Grade 7 Social Studies — Texas History | 7 | 72 | 32 | 24 | 16 | ✅ |
-| Grade 7 Technology Applications | 7 | 54 | 24 | 24 | 6 | ⚠ |
+| Grade 7 Technology Applications | 7 | 72 | 30 | 30 | 12 | ✅ |
 | Grade 8 English Language Arts & Reading | 8 | 72 | 32 | 24 | 16 | ✅ |
 | Grade 8 KAP English Language Arts | 8 | 72 | 32 | 24 | 16 | ✅ |
 | Grade 8 KAP Mathematics (Algebra I Prep) | 8 | 72 | 32 | 24 | 16 | ✅ |
@@ -113,7 +113,7 @@
 | Grade 8 KAP Social Studies — U.S. History | 8 | 72 | 32 | 24 | 16 | ✅ |
 | Grade 8 Social Studies — U.S. History | 8 | 80 | 35 | 43 | 2 | ✅ |
 | Grade 8 Technology Applications | 8 | 100 | 36 | 42 | 16 | ✅ |
-| Spanish 2 | 9 | 63 | 30 | 22 | 11 | ⚠ |
+| Spanish 2 | 9 | 84 | 37 | 29 | 18 | ✅ |
 
 </details>
 
@@ -138,12 +138,12 @@
 
 ### Early Childhood (PK–2)
 
-**Target per course:** 50 | **Courses:** 8 | **Avg items:** 69
+**Target per course:** 50 | **Courses:** 8 | **Avg items:** 72
 
 | Status | Count |
 |---|---|
-| ✅ Healthy (≥ 50) | 7 |
-| ⚠ Thin (< 50) | 1 |
+| ✅ Healthy (≥ 50) | 8 |
+| ⚠ Thin (< 50) | 0 |
 | ❌ Empty (0) | 0 |
 
 <details>
@@ -154,7 +154,7 @@
 | Grade 1 Language Arts | 1 | 59 | 20 | 18 | 20 | ✅ |
 | Grade 1 Mathematics | 1 | 90 | 30 | 30 | 24 | ✅ |
 | Grade 1 Science | 1 | 60 | 20 | 20 | 16 | ✅ |
-| Grade 1 Social Studies | 1 | 31 | 14 | 8 | 8 | ⚠ |
+| Grade 1 Social Studies | 1 | 51 | 22 | 16 | 12 | ✅ |
 | Grade 2 Language Arts | 2 | 90 | 30 | 30 | 24 | ✅ |
 | Grade 2 Mathematics | 2 | 105 | 35 | 35 | 28 | ✅ |
 | Grade 2 Science | 2 | 60 | 20 | 20 | 16 | ✅ |
@@ -164,12 +164,12 @@
 
 ### STAAR EOC
 
-**Target per course:** 140 | **Courses:** 5 | **Avg items:** 134
+**Target per course:** 140 | **Courses:** 5 | **Avg items:** 152
 
 | Status | Count |
 |---|---|
-| ✅ Healthy (≥ 140) | 3 |
-| ⚠ Thin (< 140) | 2 |
+| ✅ Healthy (≥ 140) | 5 |
+| ⚠ Thin (< 140) | 0 |
 | ❌ Empty (0) | 0 |
 
 <details>
@@ -177,9 +177,9 @@
 
 | Course | Grade | Items | Easy | Med | Hard | Status |
 |---|---|---|---|---|---|---|
-| English I | 9 | 96 | 45 | 35 | 16 | ⚠ |
+| English I | 9 | 140 | 59 | 51 | 30 | ✅ |
 | Algebra I | 9 | 190 | 94 | 56 | 36 | ✅ |
-| Biology I | 9 | 96 | 45 | 35 | 16 | ⚠ |
+| Biology I | 9 | 144 | 61 | 51 | 32 | ✅ |
 | English II | 10 | 144 | 60 | 48 | 36 | ✅ |
 | U.S. History | 11 | 144 | 60 | 48 | 36 | ✅ |
 
@@ -188,30 +188,6 @@
 ---
 
 ## Recommended Next Actions
-
-### Thin Courses (Priority: Medium)
-
-16 courses are below their minimum target. The most critical are:
-
-| Course | Current | Target | Gap |
-|---|---|---|---|
-| Grade 1 Social Studies (G1-SS) | 31 | 50 | 19 |
-| English I (ENG1) | 96 | 140 | 44 |
-| Biology I (BIO1) | 96 | 140 | 44 |
-| Kindergarten Mathematics (K-MATH) | 54 | 70 | 16 |
-| 3rd Grade Social Studies (GR3SS) | 54 | 70 | 16 |
-| Grade 6 Technology Applications (G6TECH) | 54 | 70 | 16 |
-| Grade 7 Technology Applications (G7TECH) | 54 | 70 | 16 |
-| 3rd Grade ELA (GR3ELA) | 63 | 70 | 7 |
-| 3rd Grade Math (GR3MATH) | 63 | 70 | 7 |
-| 3rd Grade Science (GR3SCI) | 63 | 70 | 7 |
-| Spanish 2 (SPA2) | 63 | 70 | 7 |
-| AP Human Geography (APHG) | 65 | 70 | 5 |
-| Kindergarten Science (K-SCI) | 67 | 70 | 3 |
-| Pre-K Science (PREK-SCI) | 68 | 70 | 2 |
-| Kindergarten Social Studies (K-SS) | 68 | 70 | 2 |
-
-_...and 1 more thin courses._
 
 ### Difficulty Distribution
 
