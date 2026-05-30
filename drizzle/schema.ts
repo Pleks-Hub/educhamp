@@ -1551,7 +1551,7 @@ export const learningObjectives = mysqlTable("learningObjectives", {
   id: int("id").autoincrement().primaryKey(),
   standardId: int("standardId").notNull(),
   description: text("description").notNull(),
-  masteryThreshold: int("masteryThreshold").notNull().default(75),// confirmed threshold (pending founder decision)
+  masteryThreshold: int("masteryThreshold").notNull().default(75), // CONFIRMED: 75 globally; new objectives authored post-Phase 2 may set this to 80 on a per-objective basis
   bloomsLevel: mysqlEnum("bloomsLevel", ["remember", "understand", "apply", "analyze", "evaluate", "create"]),
   sortOrder: int("sortOrder").notNull().default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1622,7 +1622,7 @@ export const masteryRecords = mysqlTable("masteryRecords", {
   frameworkId: int("frameworkId").notNull(),
   enrollmentContextId: int("enrollmentContextId").notNull(),
   score: int("score").notNull().default(0),                   // 0–100
-  isMastered: boolean("isMastered").notNull().default(false), // score >= masteryThreshold (75, pending founder decision)
+  isMastered: boolean("isMastered").notNull().default(false), // score >= 75 (CONFIRMED threshold; aligned with userMastery.score >= 75)
   attemptCount: int("attemptCount").notNull().default(0),
   lastAssessedAt: timestamp("lastAssessedAt").defaultNow(),
   sourceType: mysqlEnum("sourceType", ["quiz", "diagnostic", "manual", "backfill"]).notNull().default("backfill"),

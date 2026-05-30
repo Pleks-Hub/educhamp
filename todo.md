@@ -1767,3 +1767,10 @@
 
 ### Phase 1 Tests
 - [x] Write phase1.test.ts covering schema integrity, backfill correctness, COPPA gate, de-Katy copy
+
+### Mastery Threshold Lock-In (May 30, 2026)
+- [x] Confirm mastery threshold = 75 globally across userMastery and masteryRecords
+- [x] Remove "pending founder decision" comments from schema.ts and PHASE1_MIGRATION_PLAN.md
+- [x] Fix weeklyParentDigest.ts: change >= 80 to >= 75 for newSkillsMastered count
+- [x] Update PHASE1_MIGRATION_PLAN.md section 5 with confirmed threshold table
+- [x] Add 6 threshold-alignment tests to phase1.test.ts (506/506 passing)

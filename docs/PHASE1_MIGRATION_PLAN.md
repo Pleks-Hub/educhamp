@@ -37,7 +37,7 @@ masteryRecords
   frameworkId      INT FK → standardFrameworks.id
   enrollmentContextId INT FK → enrollmentContexts.id
   score            INT (0–100)
-  isMastered       BOOLEAN  (score >= masteryThreshold, default 75)
+  isMastered       BOOLEAN  (score >= 75 — CONFIRMED threshold, aligned with userMastery)
   attemptCount     INT
   lastAssessedAt   TIMESTAMP
   sourceType       ENUM('quiz','diagnostic','manual','backfill')
@@ -278,18 +278,19 @@ if (input.parentEmail.toLowerCase() === ctx.user.email.toLowerCase()) {
 
 ---
 
-## 5. Mastery threshold alignment (founder addition, May 30)
+## 5. Mastery threshold alignment — CONFIRMED May 30, 2026
 
-**Decision pending from founder.** The plan uses **75** as the `isMastered` threshold throughout, consistent with the existing `userMastery` label system (75–89 = "Mastered"). The companion spec specified **80**.
+**Threshold: 75 — locked in across both `userMastery` and `masteryRecords`.**
 
-The threshold must be identical in both `userMastery` (existing) and `masteryRecords` (new) or the "am I at par" report will show different students as mastered depending on which table is read. The Phase 1C backfill script will use whichever value is confirmed before it runs.
+This is consistent with the existing mastery label system (75–89 = "Mastered") and protects existing students from retroactive re-classification. The Phase 1C backfill script uses `score >= 75` for `isMastered` in `masteryRecords`, matching the live `userMastery` behaviour.
 
-| Threshold | Effect on existing students | Recommendation |
+**Per-objective override:** The `learningObjectives.masteryThreshold` field defaults to 75. New objectives authored post-Phase 2 may set this to 80 (or any value) on a per-objective basis. This is a forward-looking authoring decision and does not affect existing students or the backfill.
+
+| Table | Threshold | Notes |
 |---|---|---|
-| **75** (current) | No change — students who scored 75–79 remain "Mastered" | Keep for continuity with existing progress reports |
-| **80** (spec) | Students who scored 75–79 are retroactively re-classified as "Approaching" | Use only if product positioning requires the higher bar |
-
-> **Awaiting founder confirmation: 75 or 80?** Phase 1C will not run until this is confirmed.
+| `userMastery` | 75 | Live write target; unchanged |
+| `masteryRecords` | 75 | Backfill and new writes; `isMastered = score >= 75` |
+| `learningObjectives.masteryThreshold` | 75 (default) | Per-objective override allowed post-Phase 2 |
 
 ---
 
@@ -322,4 +323,4 @@ This is **not in Phase 1 scope** but is documented here as the first item in Pha
 
 *Phase 1 Migration Plan — approved May 30, 2026. Proceeding to Phase 1A.*
 
-**Pending before Phase 1C:** Founder confirmation of mastery threshold (75 or 80).
+**Mastery threshold confirmed (May 30, 2026):** 75 across both `userMastery` and `masteryRecords`. Phase 1C backfill may proceed.

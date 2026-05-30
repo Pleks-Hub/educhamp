@@ -186,7 +186,7 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
           ? Math.max(...weekQuizzes.map((q) => q.score ?? 0))
           : null;
 
-        // Mastery: count skills with masteryScore >= 80 updated this week
+        // Mastery: count skills with masteryScore >= 75 updated this week (confirmed threshold)
         const weekMastery = await db
           .select()
           .from(userMastery)
@@ -196,7 +196,7 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
               gte(userMastery.updatedAt, weekStart)
             )
           );
-        const newSkillsMastered = weekMastery.filter((m) => (m.score ?? 0) >= 80).length;
+        const newSkillsMastered = weekMastery.filter((m) => (m.score ?? 0) >= 75).length;
 
         // Total mastery score (average across all skills)
         const allMastery = await db
