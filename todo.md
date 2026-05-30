@@ -1774,3 +1774,15 @@
 - [x] Fix weeklyParentDigest.ts: change >= 80 to >= 75 for newSkillsMastered count
 - [x] Update PHASE1_MIGRATION_PLAN.md section 5 with confirmed threshold table
 - [x] Add 6 threshold-alignment tests to phase1.test.ts (506/506 passing)
+
+### Phase 1C — Standards Extraction, unitStandards, enrollmentContexts, masteryRecords Backfill
+
+- [x] Audit DB state: count units, skills, userMastery rows, courses
+- [x] Seed standardFrameworks row for TEKS (Texas Essential Knowledge and Skills)
+- [x] Extract TEKS codes from units.teksAlignment free-text; create standards rows (isCanonical=true for explicit codes, false for narrative slugs)
+- [x] Populate unitStandards join table (unitId → standardId, isPrimary=true)
+- [x] Generate docs/BACKFILL_GAPS.md report listing all narrative-only (isCanonical=false) standards
+- [x] Create default enrollmentContexts for all existing students (districtId=Katy ISD, frameworkId=TEKS, academicYear=2025-26)
+- [x] Backfill masteryRecords from userMastery (score >= 75 = isMastered, sourceType=backfill)
+- [x] Write phase1c.test.ts covering extraction logic, enrollmentContext creation, and backfill correctness
+- [x] Run full test suite (target: all passing), update todo.md, save checkpoint

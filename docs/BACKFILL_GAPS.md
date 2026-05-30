@@ -1,583 +1,774 @@
-# EduChamp Phase 1C Backfill Gaps Report
+# BACKFILL_GAPS.md — Standards Requiring Manual TEKS Code Assignment
 
-Generated: 2026-05-30T04:39:43.345Z
+**Generated:** 2026-05-30
+**Total gaps:** 264 standards with `isCanonical = false`
 
-## Summary
+These standards were extracted from `units.teksAlignment` using narrative-only patterns
+(e.g. `"Aligned to TEKS Algebra I — solving linear equations"`). They do not have
+canonical TEKS codes and cannot be used for the "am I at par" diagnostic until real
+TEKS codes are assigned.
 
-| Category | Count |
-|---|---|
-| Units with extracted canonical TEKS codes | 444 |
-| Units with narrative-only teksAlignment (need manual TEKS codes) | 444 |
-| Extracted codes not yet in standards table | 97 |
-| masteryRecords backfilled | 0 |
-| masteryRecords skipped (no mapping) | 0 |
+## Phase 2 Day 1 Action Required
 
-## ⚠️ Phase 2 Day 1 Priority: Algebra I Narrative Gaps
+Before lesson content injection begins in Phase 2, review this report and assign
+canonical TEKS codes to each gap standard. Then re-run the backfill script to update
+`unitStandards` and `masteryRecords` with the correct `standardId` values.
 
-All Algebra I units use narrative-only teksAlignment strings. These have been assigned
-`isCanonical = false` placeholder standards (prefixed `SLUG_`). The "am I at par"
-diagnostic **cannot work correctly for Algebra I** until these are replaced with real TEKS codes.
-
-**Action required before Phase 2 lesson content injection:**
-For each row below, look up the real TEKS code and run:
-```sql
-UPDATE standards SET code = '<REAL_TEKS_CODE>', isCanonical = true
-WHERE code = '<SLUG_CODE>';
-```
-
-### Narrative-Only Units (444 units)
-
-| Unit ID | Unit Title | teksAlignment Text | Placeholder Code |
-|---|---|---|---|
-| 1 | Reading Foundations & Comprehension | Aligned to TEKS Algebra I — algebraic reasoning and number properties | `SLUG_alg1_algebraic_reasoning_and_number_properties` |
-| 2 | Linear Equations | Aligned to TEKS Algebra I — solving linear equations | `SLUG_alg1_solving_linear_equations` |
-| 3 | Linear Inequalities | Aligned to TEKS Algebra I — solving linear inequalities | `SLUG_alg1_solving_linear_inequalities` |
-| 4 | Functions and Relations | Aligned to TEKS Algebra I — functions and their representations | `SLUG_alg1_functions_and_their_representations` |
-| 5 | Linear Functions and Graphing | Aligned to TEKS Algebra I — linear functions and graphing | `SLUG_alg1_linear_functions_and_graphing` |
-| 6 | Systems of Equations | Aligned to TEKS Algebra I — systems of linear equations | `SLUG_alg1_systems_of_linear_equations` |
-| 7 | Exponents and Exponential Functions | Aligned to TEKS Algebra I — exponents and exponential functions | `SLUG_alg1_exponents_and_exponential_functions` |
-| 8 | Polynomials | Aligned to TEKS Algebra I — polynomial operations | `SLUG_alg1_polynomial_operations` |
-| 9 | Factoring | Aligned to TEKS Algebra I — factoring polynomials | `SLUG_alg1_factoring_polynomials` |
-| 10 | Quadratic Functions | Aligned to TEKS Algebra I — quadratic functions and equations | `SLUG_alg1_quadratic_functions_and_equations` |
-| 11 | Data Analysis and Scatter Plots | Aligned to TEKS Algebra I — data analysis and statistical reasoning | `SLUG_alg1_data_analysis_and_statistical_reasoning` |
-| 12 | STAAR/EOC-Style Review | Aligned to TEKS Algebra I — comprehensive review across all strands | `SLUG_alg1_comprehensive_review_across_all_strands` |
-| 60012 | AP Exam Free-Response Strategies | AP Chem FRQ | `SLUG_ap_chem_frq` |
-| 60013 | Full AP Practice Exam | AP Chem Exam | `SLUG_ap_chem_exam` |
-| 60036 | AP Exam Free-Response Strategies | AP Stat FRQ | `SLUG_ap_stat_frq` |
-| 60037 | Full AP Practice Exam | AP Stat Exam | `SLUG_ap_stat_exam` |
-| 60038 | Limits & Continuity | AP Calc BC Unit 1 | `SLUG_ap_calc_bc_unit_1` |
-| 60039 | Differentiation: Definition & Fundamental Properties | AP Calc BC Unit 2 | `SLUG_ap_calc_bc_unit_2` |
-| 60040 | Differentiation: Composite, Implicit & Inverse Functions | AP Calc BC Unit 3 | `SLUG_ap_calc_bc_unit_3` |
-| 60041 | Contextual Applications of Differentiation | AP Calc BC Unit 4 | `SLUG_ap_calc_bc_unit_4` |
-| 60042 | Analytical Applications of Differentiation | AP Calc BC Unit 5 | `SLUG_ap_calc_bc_unit_5` |
-| 60043 | Integration & Accumulation of Change | AP Calc BC Unit 6 | `SLUG_ap_calc_bc_unit_6` |
-| 60044 | Differential Equations | AP Calc BC Unit 7 | `SLUG_ap_calc_bc_unit_7` |
-| 60045 | Applications of Integration | AP Calc BC Unit 8 | `SLUG_ap_calc_bc_unit_8` |
-| 60046 | Parametric Equations, Polar Coordinates & Vector-Valued Functions | AP Calc BC Unit 9 | `SLUG_ap_calc_bc_unit_9` |
-| 60047 | Infinite Sequences & Series | AP Calc BC Unit 10 | `SLUG_ap_calc_bc_unit_10` |
-| 60048 | AP Exam Free-Response Strategies | AP Calc BC FRQ | `SLUG_ap_calc_bc_frq` |
-| 60049 | Full AP Practice Exam | AP Calc BC Exam | `SLUG_ap_calc_bc_exam` |
-| 60058 | The Literary Argument Essay (Q3) | AP Lit Q3 | `SLUG_ap_lit_q3` |
-| 60059 | Prose Analysis Essay (Q2) | AP Lit Q2 | `SLUG_ap_lit_q2` |
-| 60060 | Poetry Analysis Essay (Q1) | AP Lit Q1 | `SLUG_ap_lit_q1` |
-| 60061 | Full AP Practice Exam | AP Lit Exam | `SLUG_ap_lit_exam` |
-| 60074 | SAT Overview & Score Strategy | SAT Overview | `SLUG_sat_overview` |
-| 60075 | Reading: Information & Ideas | SAT Reading | `SLUG_sat_reading` |
-| 60076 | Reading: Craft & Structure | SAT Reading | `SLUG_sat_reading` |
-| 60077 | Writing: Standard English Conventions | SAT Writing | `SLUG_sat_writing` |
-| 60078 | Writing: Expression of Ideas | SAT Writing | `SLUG_sat_writing` |
-| 60079 | Math: Algebra & Linear Functions | SAT Math | `SLUG_sat_math` |
-| 60080 | Math: Advanced Algebra & Functions | SAT Math | `SLUG_sat_math` |
-| 60081 | Math: Problem-Solving & Data Analysis | SAT Math | `SLUG_sat_math` |
-| 60082 | Math: Geometry & Trigonometry | SAT Math | `SLUG_sat_math` |
-| 60083 | Advanced SAT Tricks & Shortcuts | SAT Strategies | `SLUG_sat_strategies` |
-| 60084 | Full Practice Test 1 with Analysis | SAT Practice | `SLUG_sat_practice` |
-| 60085 | Full Practice Test 2 & Score Maximization | SAT Practice | `SLUG_sat_practice` |
-| 90001 | Place Value & Number Sense | TEKS 4.2 | `SLUG_teks_4_2` |
-| 90002 | Addition & Subtraction | TEKS 4.4 | `SLUG_teks_4_4` |
-| 90003 | Multiplication | TEKS 4.4 | `SLUG_teks_4_4` |
-| 90004 | Division | TEKS 4.4 | `SLUG_teks_4_4` |
-| 90005 | Fractions | TEKS 4.3 | `SLUG_teks_4_3` |
-| 90006 | Decimals | TEKS 4.2 | `SLUG_teks_4_2` |
-| 90007 | Geometry & Measurement | TEKS 4.5-4.8 | `SLUG_teks_4_5_4_8` |
-| 90008 | Data Analysis | TEKS 4.9 | `SLUG_teks_4_9` |
-| 90017 | Reading Comprehension — Literary Text | TEKS 4.7-4.8 | `SLUG_teks_4_7_4_8` |
-| 90018 | Reading Comprehension — Informational Text | TEKS 4.9-4.10 | `SLUG_teks_4_9_4_10` |
-| 90019 | Vocabulary & Word Study | TEKS 4.3 | `SLUG_teks_4_3` |
-| 90020 | Writing — Narrative | TEKS 4.11 | `SLUG_teks_4_11` |
-| 90021 | Writing — Expository | TEKS 4.11 | `SLUG_teks_4_11` |
-| 90022 | Writing — Persuasive | TEKS 4.11 | `SLUG_teks_4_11` |
-| 90023 | Grammar & Conventions | TEKS 4.12 | `SLUG_teks_4_12` |
-| 90024 | Research & Oral Communication | TEKS 4.6, 4.13 | `SLUG_teks_4_6_4_13` |
-| 90025 | Scientific Investigation | TEKS 4.1-4.2 | `SLUG_teks_4_1_4_2` |
-| 90026 | Matter & Its Properties | TEKS 4.5 | `SLUG_teks_4_5` |
-| 90027 | Energy | TEKS 4.6 | `SLUG_teks_4_6` |
-| 90028 | Force & Motion | TEKS 4.6 | `SLUG_teks_4_6` |
-| 90029 | Earth's Surface | TEKS 4.7 | `SLUG_teks_4_7` |
-| 90030 | Weather & Climate | TEKS 4.8 | `SLUG_teks_4_8` |
-| 90031 | Organisms & Environments | TEKS 4.9 | `SLUG_teks_4_9` |
-| 90032 | Earth & Space | TEKS 4.8 | `SLUG_teks_4_8` |
-| 90033 | Texas Geography | TEKS 4.7-4.8 | `SLUG_teks_4_7_4_8` |
-| 90034 | Native Americans of Texas | TEKS 4.1 | `SLUG_teks_4_1` |
-| 90035 | European Exploration & Settlement | TEKS 4.2 | `SLUG_teks_4_2` |
-| 90036 | Texas Revolution | TEKS 4.3 | `SLUG_teks_4_3` |
-| 90037 | Republic of Texas & Statehood | TEKS 4.3 | `SLUG_teks_4_3` |
-| 90038 | Texas Economy | TEKS 4.9-4.11 | `SLUG_teks_4_9_4_11` |
-| 90039 | Texas Government & Citizenship | TEKS 4.14-4.17 | `SLUG_teks_4_14_4_17` |
-| 90040 | Texas Culture & Contributions | TEKS 4.18-4.20 | `SLUG_teks_4_18_4_20` |
-| 90041 | Digital Citizenship & Safety | TEKS Tech 4.1 | `SLUG_teks_tech_4_1` |
-| 90042 | Coding Fundamentals | TEKS Tech 4.5 | `SLUG_teks_tech_4_5` |
-| 90043 | Word Processing & Documents | TEKS Tech 4.3 | `SLUG_teks_tech_4_3` |
-| 90044 | Spreadsheets & Data | TEKS Tech 4.3 | `SLUG_teks_tech_4_3` |
-| 90045 | Presentations | TEKS Tech 4.3 | `SLUG_teks_tech_4_3` |
-| 90046 | Internet Research Skills | TEKS Tech 4.4 | `SLUG_teks_tech_4_4` |
-| 90047 | Multimedia & Creative Projects | TEKS Tech 4.6 | `SLUG_teks_tech_4_6` |
-| 90048 | Computational Thinking | TEKS Tech 4.5 | `SLUG_teks_tech_4_5` |
-| 90049 | Place Value & Decimals | TEKS 5.2 | `SLUG_teks_5_2` |
-| 90050 | Operations with Decimals | TEKS 5.3 | `SLUG_teks_5_3` |
-| 90051 | Fractions — Addition & Subtraction | TEKS 5.3 | `SLUG_teks_5_3` |
-| 90052 | Fractions — Multiplication & Division | TEKS 5.3 | `SLUG_teks_5_3` |
-| 90053 | Algebraic Reasoning | TEKS 5.4 | `SLUG_teks_5_4` |
-| 90054 | Geometry | TEKS 5.5-5.6 | `SLUG_teks_5_5_5_6` |
-| 90055 | Measurement & Conversions | TEKS 5.7 | `SLUG_teks_5_7` |
-| 90056 | Data Analysis & Graphing | TEKS 5.9 | `SLUG_teks_5_9` |
-| 90057 | Literary Analysis | TEKS 5.7-5.8 | `SLUG_teks_5_7_5_8` |
-| 90058 | Informational Text | TEKS 5.9-5.10 | `SLUG_teks_5_9_5_10` |
-| 90059 | Vocabulary & Word Study | TEKS 5.3 | `SLUG_teks_5_3` |
-| 90060 | Narrative Writing | TEKS 5.11 | `SLUG_teks_5_11` |
-| 90061 | Expository Writing | TEKS 5.11 | `SLUG_teks_5_11` |
-| 90062 | Persuasive & Argumentative Writing | TEKS 5.11 | `SLUG_teks_5_11` |
-| 90063 | Grammar & Conventions | TEKS 5.12 | `SLUG_teks_5_12` |
-| 90064 | Research & Media Literacy | TEKS 5.6, 5.13 | `SLUG_teks_5_6_5_13` |
-| 90065 | Scientific Process & Safety | TEKS 5.1-5.2 | `SLUG_teks_5_1_5_2` |
-| 90066 | Properties of Matter | TEKS 5.5 | `SLUG_teks_5_5` |
-| 90067 | Energy Transformations | TEKS 5.6 | `SLUG_teks_5_6` |
-| 90068 | Force, Motion & Simple Machines | TEKS 5.6 | `SLUG_teks_5_6` |
-| 90069 | Earth's Systems | TEKS 5.7 | `SLUG_teks_5_7` |
-| 90070 | Weather, Climate & Water Cycle | TEKS 5.8 | `SLUG_teks_5_8` |
-| 90071 | Ecosystems & Food Webs | TEKS 5.9 | `SLUG_teks_5_9` |
-| 90072 | Space Systems | TEKS 5.8 | `SLUG_teks_5_8` |
-| 90073 | Geography of the United States | TEKS 5.8-5.9 | `SLUG_teks_5_8_5_9` |
-| 90074 | Native Americans | TEKS 5.1 | `SLUG_teks_5_1` |
-| 90075 | European Exploration & Colonization | TEKS 5.2 | `SLUG_teks_5_2` |
-| 90076 | American Revolution | TEKS 5.3 | `SLUG_teks_5_3` |
-| 90077 | The Constitution & New Nation | TEKS 5.4 | `SLUG_teks_5_4` |
-| 90078 | Westward Expansion | TEKS 5.5 | `SLUG_teks_5_5` |
-| 90079 | Civil War & Reconstruction | TEKS 5.6 | `SLUG_teks_5_6` |
-| 90080 | U.S. Government & Economics | TEKS 5.15-5.20 | `SLUG_teks_5_15_5_20` |
-| 90081 | Digital Citizenship & Ethics | TEKS Tech 5.1 | `SLUG_teks_tech_5_1` |
-| 90082 | Programming & Coding | TEKS Tech 5.5 | `SLUG_teks_tech_5_5` |
-| 90083 | Advanced Word Processing | TEKS Tech 5.3 | `SLUG_teks_tech_5_3` |
-| 90084 | Spreadsheets & Data Analysis | TEKS Tech 5.3 | `SLUG_teks_tech_5_3` |
-| 90085 | Multimedia Presentations | TEKS Tech 5.3 | `SLUG_teks_tech_5_3` |
-| 90086 | Research & Information Literacy | TEKS Tech 5.4 | `SLUG_teks_tech_5_4` |
-| 90087 | Digital Storytelling & Media | TEKS Tech 5.6 | `SLUG_teks_tech_5_6` |
-| 90088 | Computational Thinking & Problem Solving | TEKS Tech 5.5 | `SLUG_teks_tech_5_5` |
-| 90089 | Advanced Place Value & Number Theory | TEKS 4.2 KAP | `SLUG_teks_4_2_kap` |
-| 90090 | Multi-Step Problem Solving | TEKS 4.4 KAP | `SLUG_teks_4_4_kap` |
-| 90091 | Advanced Fractions | TEKS 4.3 KAP | `SLUG_teks_4_3_kap` |
-| 90092 | Decimals & Percents | TEKS 4.2 KAP | `SLUG_teks_4_2_kap` |
-| 90093 | Pre-Algebraic Reasoning | TEKS 4.4 KAP | `SLUG_teks_4_4_kap` |
-| 90094 | Geometry & Spatial Reasoning | TEKS 4.5 KAP | `SLUG_teks_4_5_kap` |
-| 90095 | Measurement & Data | TEKS 4.7-4.9 KAP | `SLUG_teks_4_7_4_9_kap` |
-| 90096 | Mathematical Reasoning & Proof | TEKS 4 KAP | `SLUG_teks_4_kap` |
-| 90097 | Advanced Decimals & Number Theory | TEKS 5.2-5.3 KAP | `SLUG_teks_5_2_5_3_kap` |
-| 90098 | Fraction Operations & Ratios | TEKS 5.3 KAP | `SLUG_teks_5_3_kap` |
-| 90099 | Pre-Algebra: Expressions & Equations | TEKS 5.4 KAP | `SLUG_teks_5_4_kap` |
-| 90100 | Integers & Coordinate Plane | TEKS 5.4 KAP | `SLUG_teks_5_4_kap` |
-| 90101 | Advanced Geometry | TEKS 5.5-5.6 KAP | `SLUG_teks_5_5_5_6_kap` |
-| 90102 | Proportional Reasoning | TEKS 5 KAP | `SLUG_teks_5_kap` |
-| 90103 | Statistics & Probability | TEKS 5.9 KAP | `SLUG_teks_5_9_kap` |
-| 90104 | Mathematical Reasoning & Proof | TEKS 5 KAP | `SLUG_teks_5_kap` |
-| 90105 | Advanced Literary Analysis | TEKS 4.7-4.8 KAP | `SLUG_teks_4_7_4_8_kap` |
-| 90106 | Critical Reading of Informational Text | TEKS 4.9-4.10 KAP | `SLUG_teks_4_9_4_10_kap` |
-| 90107 | Advanced Vocabulary & Etymology | TEKS 4.3 KAP | `SLUG_teks_4_3_kap` |
-| 90108 | Advanced Narrative Writing | TEKS 4.11 KAP | `SLUG_teks_4_11_kap` |
-| 90109 | Research Writing | TEKS 4.11 KAP | `SLUG_teks_4_11_kap` |
-| 90110 | Argumentative Writing | TEKS 4.11 KAP | `SLUG_teks_4_11_kap` |
-| 90111 | Advanced Grammar & Style | TEKS 4.12 KAP | `SLUG_teks_4_12_kap` |
-| 90112 | Socratic Seminar & Debate | TEKS 4.6 KAP | `SLUG_teks_4_6_kap` |
-| 90113 | Complex Literary Analysis | TEKS 5.7-5.8 KAP | `SLUG_teks_5_7_5_8_kap` |
-| 90114 | Evaluating Informational Text | TEKS 5.9-5.10 KAP | `SLUG_teks_5_9_5_10_kap` |
-| 90115 | Advanced Vocabulary & Word Study | TEKS 5.3 KAP | `SLUG_teks_5_3_kap` |
-| 90116 | Advanced Narrative Writing | TEKS 5.11 KAP | `SLUG_teks_5_11_kap` |
-| 90117 | Argumentative & Persuasive Writing | TEKS 5.11 KAP | `SLUG_teks_5_11_kap` |
-| 90118 | Research & Synthesis | TEKS 5.11 KAP | `SLUG_teks_5_11_kap` |
-| 90119 | Advanced Grammar & Rhetoric | TEKS 5.12 KAP | `SLUG_teks_5_12_kap` |
-| 90120 | Socratic Seminar & Academic Discourse | TEKS 5.6 KAP | `SLUG_teks_5_6_kap` |
-| 120001 | Ratios and Rates | TEKS 6.4-6.5 | `SLUG_teks_6_4_6_5` |
-| 120002 | Fractions, Decimals, and Percents | TEKS 6.4 | `SLUG_teks_6_4` |
-| 120003 | Integers and the Number Line | TEKS 6.2 | `SLUG_teks_6_2` |
-| 120004 | Operations with Rational Numbers | TEKS 6.3 | `SLUG_teks_6_3` |
-| 120005 | Expressions and Equations | TEKS 6.7-6.9 | `SLUG_teks_6_7_6_9` |
-| 120006 | Proportional Relationships | TEKS 6.4-6.6 | `SLUG_teks_6_4_6_6` |
-| 120007 | Geometry: Area, Surface Area, and Volume | TEKS 6.8 | `SLUG_teks_6_8` |
-| 120008 | Statistics and Data Analysis | TEKS 6.12-6.13 | `SLUG_teks_6_12_6_13` |
-| 120009 | Literary Analysis — Fiction | TEKS 6.7-6.8 | `SLUG_teks_6_7_6_8` |
-| 120010 | Literary Analysis — Poetry and Drama | TEKS 6.7 | `SLUG_teks_6_7` |
-| 120011 | Informational Text Analysis | TEKS 6.9-6.10 | `SLUG_teks_6_9_6_10` |
-| 120012 | Vocabulary and Word Study | TEKS 6.3 | `SLUG_teks_6_3` |
-| 120013 | Writing Process — Narrative | TEKS 6.11 | `SLUG_teks_6_11` |
-| 120014 | Writing Process — Expository and Argumentative | TEKS 6.11 | `SLUG_teks_6_11` |
-| 120015 | Research and Inquiry | TEKS 6.12 | `SLUG_teks_6_12` |
-| 120016 | Grammar, Conventions, and Oral Communication | TEKS 6.1-6.2, 6.5 | `SLUG_teks_6_1_6_2_6_5` |
-| 120017 | Scientific Investigation and Safety | TEKS 6.1-6.4 | `SLUG_teks_6_1_6_4` |
-| 120018 | Matter and Its Properties | TEKS 6.5 | `SLUG_teks_6_5` |
-| 120019 | Energy and Heat | TEKS 6.9 | `SLUG_teks_6_9` |
-| 120020 | Force, Motion, and Newton's Laws | TEKS 6.8 | `SLUG_teks_6_8` |
-| 120021 | Earth's Structure and Plate Tectonics | TEKS 6.10 | `SLUG_teks_6_10` |
-| 120022 | Weathering, Erosion, and Soil | TEKS 6.10 | `SLUG_teks_6_10` |
-| 120023 | Atmosphere and Weather | TEKS 6.11 | `SLUG_teks_6_11` |
-| 120024 | Ecosystems and Interdependence | TEKS 6.12-6.13 | `SLUG_teks_6_12_6_13` |
-| 120025 | Geographic Tools and World Regions | TEKS 6.3-6.4 | `SLUG_teks_6_3_6_4` |
-| 120026 | Ancient Mesopotamia and Egypt | TEKS 6.1 | `SLUG_teks_6_1` |
-| 120027 | Ancient Greece | TEKS 6.1 | `SLUG_teks_6_1` |
-| 120028 | Ancient Rome | TEKS 6.1 | `SLUG_teks_6_1` |
-| 120029 | Ancient China and India | TEKS 6.1 | `SLUG_teks_6_1` |
-| 120030 | World Religions and Culture | TEKS 6.2 | `SLUG_teks_6_2` |
-| 120031 | Medieval Europe and the Byzantine Empire | TEKS 6.1 | `SLUG_teks_6_1` |
-| 120032 | Economics, Government, and Citizenship | TEKS 6.9-6.14 | `SLUG_teks_6_9_6_14` |
-| 120033 | Digital Citizenship and Online Safety | TEKS 126.14.b.1 | `SLUG_teks_126_14_b_1` |
-| 120034 | Computational Thinking and Problem Solving | TEKS 126.14.b.2 | `SLUG_teks_126_14_b_2` |
-| 120035 | Introduction to Coding and Programming | TEKS 126.14.b.3 | `SLUG_teks_126_14_b_3` |
-| 120036 | Data Management and Spreadsheets | TEKS 126.14.b.4 | `SLUG_teks_126_14_b_4` |
-| 120037 | Multimedia and Digital Communication | TEKS 126.14.b.5 | `SLUG_teks_126_14_b_5` |
-| 120038 | Research, Information Literacy, and AI Basics | TEKS 126.14.b.6 | `SLUG_teks_126_14_b_6` |
-| 120039 | Proportionality and Constant of Variation | TEKS 7.4 | `SLUG_teks_7_4` |
-| 120040 | Rational Number Operations | TEKS 7.3 | `SLUG_teks_7_3` |
-| 120041 | Expressions and Equations | TEKS 7.10-7.11 | `SLUG_teks_7_10_7_11` |
-| 120042 | Percent Applications | TEKS 7.4 | `SLUG_teks_7_4` |
-| 120043 | Geometry: Scale Drawings and Similarity | TEKS 7.5 | `SLUG_teks_7_5` |
-| 120044 | Geometry: Circles and Composite Figures | TEKS 7.8-7.9 | `SLUG_teks_7_8_7_9` |
-| 120045 | Statistics and Probability | TEKS 7.6, 7.12 | `SLUG_teks_7_6_7_12` |
-| 120046 | Financial Literacy | TEKS 7.13 | `SLUG_teks_7_13` |
-| 120047 | Literary Analysis — Novel Study | TEKS 7.7-7.8 | `SLUG_teks_7_7_7_8` |
-| 120048 | Literary Analysis — Short Stories and Poetry | TEKS 7.7 | `SLUG_teks_7_7` |
-| 120049 | Informational and Argumentative Text | TEKS 7.9-7.10 | `SLUG_teks_7_9_7_10` |
-| 120050 | Vocabulary — Academic and Domain-Specific | TEKS 7.3 | `SLUG_teks_7_3` |
-| 120051 | Argumentative Writing | TEKS 7.11 | `SLUG_teks_7_11` |
-| 120052 | Expository and Informational Writing | TEKS 7.11 | `SLUG_teks_7_11` |
-| 120053 | Research Process and Synthesis | TEKS 7.12 | `SLUG_teks_7_12` |
-| 120054 | Grammar, Style, and Oral Communication | TEKS 7.1-7.2, 7.5 | `SLUG_teks_7_1_7_2_7_5` |
-| 120055 | Scientific Investigation and Measurement | TEKS 7.1-7.4 | `SLUG_teks_7_1_7_4` |
-| 120056 | Cell Structure and Function | TEKS 7.12 | `SLUG_teks_7_12` |
-| 120057 | Cell Processes — Photosynthesis and Respiration | TEKS 7.12 | `SLUG_teks_7_12` |
-| 120058 | Genetics and Heredity | TEKS 7.14 | `SLUG_teks_7_14` |
-| 120059 | Evolution and Natural Selection | TEKS 7.11 | `SLUG_teks_7_11` |
-| 120060 | Taxonomy and Classification | TEKS 7.10 | `SLUG_teks_7_10` |
-| 120061 | Ecology and Ecosystems | TEKS 7.5, 7.13 | `SLUG_teks_7_5_7_13` |
-| 120062 | Human Body Systems | TEKS 7.12 | `SLUG_teks_7_12` |
-| 120063 | Native Americans of Texas | TEKS 7.1 | `SLUG_teks_7_1` |
-| 120064 | European Exploration and Colonization | TEKS 7.2 | `SLUG_teks_7_2` |
-| 120065 | Mexican Texas and Anglo Settlement | TEKS 7.3 | `SLUG_teks_7_3` |
-| 120066 | Texas Revolution | TEKS 7.4 | `SLUG_teks_7_4` |
-| 120067 | Republic of Texas | TEKS 7.5 | `SLUG_teks_7_5` |
-| 120068 | Texas Statehood and Antebellum Period | TEKS 7.6 | `SLUG_teks_7_6` |
-| 120069 | Civil War and Reconstruction in Texas | TEKS 7.7 | `SLUG_teks_7_7` |
-| 120070 | Texas Geography, Economics, and Government | TEKS 7.8-7.14 | `SLUG_teks_7_8_7_14` |
-| 120071 | Advanced Digital Citizenship | TEKS 126.14.b.1 | `SLUG_teks_126_14_b_1` |
-| 120072 | Programming Logic and Algorithms | TEKS 126.14.b.2 | `SLUG_teks_126_14_b_2` |
-| 120073 | Web Design Fundamentals | TEKS 126.14.b.3 | `SLUG_teks_126_14_b_3` |
-| 120074 | Database Concepts and Spreadsheet Analysis | TEKS 126.14.b.4 | `SLUG_teks_126_14_b_4` |
-| 120075 | Digital Media Production | TEKS 126.14.b.5 | `SLUG_teks_126_14_b_5` |
-| 120076 | Cybersecurity and Digital Responsibility | TEKS 126.14.b.6 | `SLUG_teks_126_14_b_6` |
-| 120077 | Number and Operations — Real Numbers | TEKS 8.2 | `SLUG_teks_8_2` |
-| 120078 | Proportionality and Slope | TEKS 8.4-8.5 | `SLUG_teks_8_4_8_5` |
-| 120079 | Expressions and Equations | TEKS 8.7-8.8 | `SLUG_teks_8_7_8_8` |
-| 120080 | Two-Variable Equations and Systems | TEKS 8.8-8.9 | `SLUG_teks_8_8_8_9` |
-| 120081 | Functions | TEKS 8.5 | `SLUG_teks_8_5` |
-| 120082 | Geometry — Transformations | TEKS 8.10 | `SLUG_teks_8_10` |
-| 120083 | Pythagorean Theorem and Volume | TEKS 8.6, 8.7 | `SLUG_teks_8_6_8_7` |
-| 120084 | Statistics and Scatter Plots | TEKS 8.11-8.12 | `SLUG_teks_8_11_8_12` |
-| 120085 | Literary Analysis — Complex Texts | TEKS 8.7-8.8 | `SLUG_teks_8_7_8_8` |
-| 120086 | Literary Analysis — Across Genres | TEKS 8.7 | `SLUG_teks_8_7` |
-| 120087 | Informational and Persuasive Text | TEKS 8.9-8.10 | `SLUG_teks_8_9_8_10` |
-| 120088 | Vocabulary — Advanced Word Study | TEKS 8.3 | `SLUG_teks_8_3` |
-| 120089 | Argumentative Writing — Advanced | TEKS 8.11 | `SLUG_teks_8_11` |
-| 120090 | Literary and Analytical Writing | TEKS 8.11 | `SLUG_teks_8_11` |
-| 120091 | Research and Synthesis | TEKS 8.12 | `SLUG_teks_8_12` |
-| 120092 | Media Literacy and Oral Communication | TEKS 8.1-8.2, 8.5-8.6 | `SLUG_teks_8_1_8_2_8_5_8_6` |
-| 120093 | Scientific Investigation and Reasoning | TEKS 8.1-8.4 | `SLUG_teks_8_1_8_4` |
-| 120094 | Matter — Atoms and the Periodic Table | TEKS 8.5 | `SLUG_teks_8_5` |
-| 120095 | Chemical Reactions and Properties | TEKS 8.5 | `SLUG_teks_8_5` |
-| 120096 | Forces and Newton's Laws | TEKS 8.6 | `SLUG_teks_8_6` |
-| 120097 | Motion and Momentum | TEKS 8.6 | `SLUG_teks_8_6` |
-| 120098 | Energy — Forms and Transformations | TEKS 8.7 | `SLUG_teks_8_7` |
-| 120099 | Waves, Sound, and Light | TEKS 8.7 | `SLUG_teks_8_7` |
-| 120100 | Space Science and the Universe | TEKS 8.8-8.9 | `SLUG_teks_8_8_8_9` |
-| 120101 | Age of Exploration and Colonial America | TEKS 8.1-8.2 | `SLUG_teks_8_1_8_2` |
-| 120102 | Road to Revolution | TEKS 8.3 | `SLUG_teks_8_3` |
-| 120103 | American Revolution and Independence | TEKS 8.4 | `SLUG_teks_8_4` |
-| 120104 | The Constitution and Bill of Rights | TEKS 8.5-8.6 | `SLUG_teks_8_5_8_6` |
-| 120105 | The Early Republic | TEKS 8.7 | `SLUG_teks_8_7` |
-| 120106 | Westward Expansion and Manifest Destiny | TEKS 8.8-8.9 | `SLUG_teks_8_8_8_9` |
-| 120107 | Sectionalism and the Road to Civil War | TEKS 8.10 | `SLUG_teks_8_10` |
-| 120108 | Civil War and Reconstruction | TEKS 8.11-8.12 | `SLUG_teks_8_11_8_12` |
-| 120109 | Digital Leadership and Ethics | TEKS 126.14.b.1 | `SLUG_teks_126_14_b_1` |
-| 120110 | Advanced Programming Concepts | TEKS 126.14.b.2 | `SLUG_teks_126_14_b_2` |
-| 120111 | App and Game Design | TEKS 126.14.b.3 | `SLUG_teks_126_14_b_3` |
-| 120112 | Data Science and Visualization | TEKS 126.14.b.4 | `SLUG_teks_126_14_b_4` |
-| 120113 | Networks and Cybersecurity | TEKS 126.14.b.5 | `SLUG_teks_126_14_b_5` |
-| 120114 | Digital Entrepreneurship and Careers | TEKS 126.14.b.6 | `SLUG_teks_126_14_b_6` |
-| 120115 | Ratios, Rates, and Proportional Reasoning | TEKS 6.4-6.5 | `SLUG_teks_6_4_6_5` |
-| 120116 | Rational Number Operations — Advanced | TEKS 6.3 | `SLUG_teks_6_3` |
-| 120117 | Algebraic Expressions and Equations | TEKS 6.7-6.9 | `SLUG_teks_6_7_6_9` |
-| 120118 | Proportional Relationships and Graphing | TEKS 6.4-6.6 | `SLUG_teks_6_4_6_6` |
-| 120119 | Geometry — Area, Surface Area, Volume | TEKS 6.8 | `SLUG_teks_6_8` |
-| 120120 | Statistics — Data Analysis and Probability | TEKS 6.12-6.13 | `SLUG_teks_6_12_6_13` |
-| 120121 | Introduction to Functions and Patterns | TEKS 6.4 | `SLUG_teks_6_4` |
-| 120122 | Financial Literacy and Applications | TEKS 6.14 | `SLUG_teks_6_14` |
-| 120123 | Advanced Literary Analysis — Fiction | TEKS 6.7-6.8 | `SLUG_teks_6_7_6_8` |
-| 120124 | Advanced Literary Analysis — Poetry and Drama | TEKS 6.7 | `SLUG_teks_6_7` |
-| 120125 | Advanced Informational and Argumentative Text | TEKS 6.9-6.10 | `SLUG_teks_6_9_6_10` |
-| 120126 | Advanced Vocabulary and Etymology | TEKS 6.3 | `SLUG_teks_6_3` |
-| 120127 | Argumentative Writing — Advanced | TEKS 6.11 | `SLUG_teks_6_11` |
-| 120128 | Research Writing and Synthesis | TEKS 6.12 | `SLUG_teks_6_12` |
-| 120129 | Literary Analysis Essay Writing | TEKS 6.11 | `SLUG_teks_6_11` |
-| 120130 | Advanced Grammar and Style | TEKS 6.1-6.2, 6.5 | `SLUG_teks_6_1_6_2_6_5` |
-| 120131 | Proportionality — Advanced Applications | TEKS 7.4 | `SLUG_teks_7_4` |
-| 120132 | Rational Number Operations — Mastery | TEKS 7.3 | `SLUG_teks_7_3` |
-| 120133 | Multi-Step Equations and Inequalities | TEKS 7.10-7.11 | `SLUG_teks_7_10_7_11` |
-| 120134 | Percent and Financial Mathematics | TEKS 7.4, 7.13 | `SLUG_teks_7_4_7_13` |
-| 120135 | Geometry — Similarity and Proportions | TEKS 7.5 | `SLUG_teks_7_5` |
-| 120136 | Geometry — Circles and 3D Figures | TEKS 7.8-7.9 | `SLUG_teks_7_8_7_9` |
-| 120137 | Statistics and Probability — Advanced | TEKS 7.6, 7.12 | `SLUG_teks_7_6_7_12` |
-| 120138 | Introduction to Algebra — Functions | TEKS 7.4 | `SLUG_teks_7_4` |
-| 120139 | Advanced Novel Study and Literary Analysis | TEKS 7.7-7.8 | `SLUG_teks_7_7_7_8` |
-| 120140 | Advanced Poetry and Dramatic Analysis | TEKS 7.7 | `SLUG_teks_7_7` |
-| 120141 | Rhetoric and Persuasion | TEKS 7.9-7.10 | `SLUG_teks_7_9_7_10` |
-| 120142 | Advanced Vocabulary and Academic Language | TEKS 7.3 | `SLUG_teks_7_3` |
-| 120143 | Advanced Argumentative Writing | TEKS 7.11 | `SLUG_teks_7_11` |
-| 120144 | Literary Analysis Essay | TEKS 7.11 | `SLUG_teks_7_11` |
-| 120145 | Advanced Research and Synthesis | TEKS 7.12 | `SLUG_teks_7_12` |
-| 120146 | Advanced Grammar, Style, and Oral Communication | TEKS 7.1-7.2, 7.5 | `SLUG_teks_7_1_7_2_7_5` |
-| 120147 | Real Numbers and Number Theory | TEKS 8.2 | `SLUG_teks_8_2` |
-| 120148 | Linear Equations and Systems — Advanced | TEKS 8.8-8.9 | `SLUG_teks_8_8_8_9` |
-| 120149 | Functions and Function Notation | TEKS 8.5 | `SLUG_teks_8_5` |
-| 120150 | Slope and Linear Relationships | TEKS 8.4-8.5 | `SLUG_teks_8_4_8_5` |
-| 120151 | Transformations and Congruence | TEKS 8.10 | `SLUG_teks_8_10` |
-| 120152 | Pythagorean Theorem — Advanced Applications | TEKS 8.6-8.7 | `SLUG_teks_8_6_8_7` |
-| 120153 | Statistics — Bivariate Data | TEKS 8.11-8.12 | `SLUG_teks_8_11_8_12` |
-| 120154 | Introduction to Algebra I Concepts | TEKS 8.1-8.12 | `SLUG_teks_8_1_8_12` |
-| 120155 | Advanced Literary Analysis — Complex Texts | TEKS 8.7-8.8 | `SLUG_teks_8_7_8_8` |
-| 120156 | Comparative Literature Analysis | TEKS 8.7 | `SLUG_teks_8_7` |
-| 120157 | Advanced Rhetoric and Argumentation | TEKS 8.9-8.10 | `SLUG_teks_8_9_8_10` |
-| 120158 | Advanced Vocabulary and Academic Discourse | TEKS 8.3 | `SLUG_teks_8_3` |
-| 120159 | Advanced Argumentative Writing | TEKS 8.11 | `SLUG_teks_8_11` |
-| 120160 | Literary Analysis — AP Preparation | TEKS 8.11 | `SLUG_teks_8_11` |
-| 120161 | Independent Research Paper | TEKS 8.12 | `SLUG_teks_8_12` |
-| 120162 | Media Literacy, Rhetoric, and Advanced Communication | TEKS 8.1-8.2, 8.5-8.6 | `SLUG_teks_8_1_8_2_8_5_8_6` |
-| 150001 | Scientific Investigation & STEM Thinking | TEKS 6.1-6.3 | `SLUG_teks_6_1_6_3` |
-| 150002 | Properties of Matter & Atomic Structure | TEKS 6.5 | `SLUG_teks_6_5` |
-| 150003 | Energy Transformations | TEKS 6.9 | `SLUG_teks_6_9` |
-| 150004 | Earth's Layers & Plate Tectonics | TEKS 6.10 | `SLUG_teks_6_10` |
-| 150005 | Weathering, Erosion & Soil Science | TEKS 6.11 | `SLUG_teks_6_11` |
-| 150006 | Ecosystems & Biodiversity | TEKS 6.12 | `SLUG_teks_6_12` |
-| 150007 | Cells & Life Processes | TEKS 6.12 | `SLUG_teks_6_12` |
-| 150008 | Space Science & Earth in the Universe | TEKS 6.11 | `SLUG_teks_6_11` |
-| 150009 | Geographic Tools & World Regions | TEKS 6.1-6.3 | `SLUG_teks_6_1_6_3` |
-| 150010 | Ancient Civilisations & Cultural Foundations | TEKS 6.4-6.5 | `SLUG_teks_6_4_6_5` |
-| 150011 | World Religions & Cultural Diffusion | TEKS 6.6 | `SLUG_teks_6_6` |
-| 150012 | Economic Systems & Global Trade | TEKS 6.7-6.8 | `SLUG_teks_6_7_6_8` |
-| 150013 | Government Systems & Political Philosophy | TEKS 6.9-6.10 | `SLUG_teks_6_9_6_10` |
-| 150014 | Human Rights & Global Issues | TEKS 6.11 | `SLUG_teks_6_11` |
-| 150015 | Primary Sources & Historical Analysis | TEKS 6.12 | `SLUG_teks_6_12` |
-| 150016 | Research, Writing & Social Studies Skills | TEKS 6.13 | `SLUG_teks_6_13` |
-| 150017 | Scientific Methods & Advanced Inquiry | TEKS 7.1-7.3 | `SLUG_teks_7_1_7_3` |
-| 150018 | Cell Biology & Biochemistry | TEKS 7.12 | `SLUG_teks_7_12` |
-| 150019 | Genetics & Heredity | TEKS 7.14 | `SLUG_teks_7_14` |
-| 150020 | Evolution & Natural Selection | TEKS 7.13 | `SLUG_teks_7_13` |
-| 150021 | Human Body Systems | TEKS 7.12 | `SLUG_teks_7_12` |
-| 150022 | Ecosystems & Environmental Science | TEKS 7.11 | `SLUG_teks_7_11` |
-| 150023 | Earth's History & Geological Time | TEKS 7.10 | `SLUG_teks_7_10` |
-| 150024 | Chemistry of Life & Matter | TEKS 7.6 | `SLUG_teks_7_6` |
-| 150025 | Pre-Columbian Texas & Native Peoples | TEKS 7.1 | `SLUG_teks_7_1` |
-| 150026 | European Exploration & Colonisation | TEKS 7.2 | `SLUG_teks_7_2` |
-| 150027 | Mexican Texas & the Road to Revolution | TEKS 7.3 | `SLUG_teks_7_3` |
-| 150028 | The Republic of Texas | TEKS 7.4 | `SLUG_teks_7_4` |
-| 150029 | Texas in the Civil War & Reconstruction | TEKS 7.5 | `SLUG_teks_7_5` |
-| 150030 | Texas in the Industrial Age | TEKS 7.6 | `SLUG_teks_7_6` |
-| 150031 | 20th Century Texas | TEKS 7.7 | `SLUG_teks_7_7` |
-| 150032 | Texas Government, Geography & Economy | TEKS 7.8-7.10 | `SLUG_teks_7_8_7_10` |
-| 150033 | Scientific Reasoning & STEM Applications | TEKS 8.1-8.3 | `SLUG_teks_8_1_8_3` |
-| 150034 | Matter, Atomic Theory & Chemical Bonding | TEKS 8.5 | `SLUG_teks_8_5` |
-| 150035 | Chemical Reactions & Stoichiometry | TEKS 8.5 | `SLUG_teks_8_5` |
-| 150036 | Motion, Forces & Newton's Laws | TEKS 8.6 | `SLUG_teks_8_6` |
-| 150037 | Energy, Work & Power | TEKS 8.6 | `SLUG_teks_8_6` |
-| 150038 | Waves, Sound & Light | TEKS 8.7 | `SLUG_teks_8_7` |
-| 150039 | Electricity & Magnetism | TEKS 8.8 | `SLUG_teks_8_8` |
-| 150040 | Earth Systems & Climate Science | TEKS 8.9-8.11 | `SLUG_teks_8_9_8_11` |
-| 150041 | Colonial America & the Road to Revolution | TEKS 8.1 | `SLUG_teks_8_1` |
-| 150042 | The American Revolution & Founding Documents | TEKS 8.2 | `SLUG_teks_8_2` |
-| 150043 | The Constitution & Bill of Rights | TEKS 8.3 | `SLUG_teks_8_3` |
-| 150044 | The Early Republic & Westward Expansion | TEKS 8.4 | `SLUG_teks_8_4` |
-| 150045 | Jacksonian Democracy & Reform Movements | TEKS 8.5 | `SLUG_teks_8_5` |
-| 150046 | Sectionalism & the Road to Civil War | TEKS 8.6 | `SLUG_teks_8_6` |
-| 150047 | The Civil War | TEKS 8.7 | `SLUG_teks_8_7` |
-| 150048 | Reconstruction & Its Legacy | TEKS 8.8 | `SLUG_teks_8_8` |
-| 180001 | Counting and Cardinality | PREK-MATH-U1 | `SLUG_prek_math_u1` |
-| 180002 | Shapes and Spatial Sense | PREK-MATH-U2 | `SLUG_prek_math_u2` |
-| 180003 | Patterns and Sorting | PREK-MATH-U3 | `SLUG_prek_math_u3` |
-| 180004 | Comparing and Measuring | PREK-MATH-U4 | `SLUG_prek_math_u4` |
-| 180005 | Numbers 1 to 20 | PREK-MATH-U5 | `SLUG_prek_math_u5` |
-| 180006 | Print Awareness | PREK-ELA-U1 | `SLUG_prek_ela_u1` |
-| 180007 | Phonological Awareness | PREK-ELA-U2 | `SLUG_prek_ela_u2` |
-| 180008 | Letter Recognition | PREK-ELA-U3 | `SLUG_prek_ela_u3` |
-| 180009 | Vocabulary and Oral Language | PREK-ELA-U4 | `SLUG_prek_ela_u4` |
-| 180010 | Early Writing | PREK-ELA-U5 | `SLUG_prek_ela_u5` |
-| 180011 | My Five Senses | PREK-SCI-U1 | `SLUG_prek_sci_u1` |
-| 180012 | Living and Non-Living Things | PREK-SCI-U2 | `SLUG_prek_sci_u2` |
-| 180013 | Weather and Seasons | PREK-SCI-U3 | `SLUG_prek_sci_u3` |
-| 180014 | Earth Materials | PREK-SCI-U4 | `SLUG_prek_sci_u4` |
-| 180015 | All About Me | PREK-SS-U1 | `SLUG_prek_ss_u1` |
-| 180016 | My Family and Community | PREK-SS-U2 | `SLUG_prek_ss_u2` |
-| 180017 | My World | PREK-SS-U3 | `SLUG_prek_ss_u3` |
-| 180018 | Celebrations and Traditions | PREK-SS-U4 | `SLUG_prek_ss_u4` |
-| 180019 | Counting to 100 | K-MATH-U1 | `SLUG_k_math_u1` |
-| 180020 | Addition Foundations | K-MATH-U2 | `SLUG_k_math_u2` |
-| 180021 | Subtraction Foundations | K-MATH-U3 | `SLUG_k_math_u3` |
-| 180022 | Shapes and Geometry | K-MATH-U4 | `SLUG_k_math_u4` |
-| 180023 | Measurement and Data | K-MATH-U5 | `SLUG_k_math_u5` |
-| 180024 | Teen Numbers | K-MATH-U6 | `SLUG_k_math_u6` |
-| 180025 | Phonics: Short Vowels | K-ELA-U1 | `SLUG_k_ela_u1` |
-| 180026 | Sight Words | K-ELA-U2 | `SLUG_k_ela_u2` |
-| 180027 | Reading Comprehension Foundations | K-ELA-U3 | `SLUG_k_ela_u3` |
-| 180028 | Writing Sentences | K-ELA-U4 | `SLUG_k_ela_u4` |
-| 180029 | Phonics: Consonant Blends | K-ELA-U5 | `SLUG_k_ela_u5` |
-| 180030 | Living Things | K-SCI-U1 | `SLUG_k_sci_u1` |
-| 180031 | Weather and Sky | K-SCI-U2 | `SLUG_k_sci_u2` |
-| 180032 | Properties of Objects | K-SCI-U3 | `SLUG_k_sci_u3` |
-| 180033 | Earth Resources | K-SCI-U4 | `SLUG_k_sci_u4` |
-| 180034 | Community Helpers | K-SS-U1 | `SLUG_k_ss_u1` |
-| 180035 | Maps and Globes | K-SS-U2 | `SLUG_k_ss_u2` |
-| 180036 | National Symbols | K-SS-U3 | `SLUG_k_ss_u3` |
-| 180037 | Needs and Wants | K-SS-U4 | `SLUG_k_ss_u4` |
-| 180038 | Place Value: Tens and Ones | G1-MATH-U1 | `SLUG_g1_math_u1` |
-| 180039 | Addition within 20 | G1-MATH-U2 | `SLUG_g1_math_u2` |
-| 180040 | Subtraction within 20 | G1-MATH-U3 | `SLUG_g1_math_u3` |
-| 180041 | Measurement and Time | G1-MATH-U4 | `SLUG_g1_math_u4` |
-| 180042 | Geometry | G1-MATH-U5 | `SLUG_g1_math_u5` |
-| 180043 | Data and Graphs | G1-MATH-U6 | `SLUG_g1_math_u6` |
-| 180044 | Phonics: Long Vowels and Vowel Teams | G1-ELA-U1 | `SLUG_g1_ela_u1` |
-| 180045 | Sight Words Grade 1 | G1-ELA-U2 | `SLUG_g1_ela_u2` |
-| 180046 | Reading Comprehension: Fiction | G1-ELA-U3 | `SLUG_g1_ela_u3` |
-| 180047 | Reading Comprehension: Nonfiction | G1-ELA-U4 | `SLUG_g1_ela_u4` |
-| 180048 | Writing: Narratives and Opinions | G1-ELA-U5 | `SLUG_g1_ela_u5` |
-| 180049 | Grammar and Conventions | G1-ELA-U6 | `SLUG_g1_ela_u6` |
-| 180050 | Properties of Matter | G1-SCI-U1 | `SLUG_g1_sci_u1` |
-| 180051 | Plants and Their Needs | G1-SCI-U2 | `SLUG_g1_sci_u2` |
-| 180052 | Animals and Their Needs | G1-SCI-U3 | `SLUG_g1_sci_u3` |
-| 180053 | Earth Materials and Sky | G1-SCI-U4 | `SLUG_g1_sci_u4` |
-| 180054 | Family History and Traditions | G1-SS-U1 | `SLUG_g1_ss_u1` |
-| 180055 | Community and Government | G1-SS-U2 | `SLUG_g1_ss_u2` |
-| 180056 | Maps and Geography | G1-SS-U3 | `SLUG_g1_ss_u3` |
-| 180057 | Economics: Goods and Services | G1-SS-U4 | `SLUG_g1_ss_u4` |
-| 180058 | Place Value to 1000 | G2-MATH-U1 | `SLUG_g2_math_u1` |
-| 180059 | Addition within 100 | G2-MATH-U2 | `SLUG_g2_math_u2` |
-| 180060 | Subtraction within 100 | G2-MATH-U3 | `SLUG_g2_math_u3` |
-| 180061 | Multiplication Foundations | G2-MATH-U4 | `SLUG_g2_math_u4` |
-| 180062 | Measurement: Length and Time | G2-MATH-U5 | `SLUG_g2_math_u5` |
-| 180063 | Geometry and Fractions | G2-MATH-U6 | `SLUG_g2_math_u6` |
-| 180064 | Money and Data | G2-MATH-U7 | `SLUG_g2_math_u7` |
-| 180065 | Phonics: Digraphs and Diphthongs | G2-ELA-U1 | `SLUG_g2_ela_u1` |
-| 180066 | Fluency and Sight Words | G2-ELA-U2 | `SLUG_g2_ela_u2` |
-| 180067 | Reading Comprehension: Fiction | G2-ELA-U3 | `SLUG_g2_ela_u3` |
-| 180068 | Reading Comprehension: Nonfiction | G2-ELA-U4 | `SLUG_g2_ela_u4` |
-| 180069 | Writing: Informational and Narrative | G2-ELA-U5 | `SLUG_g2_ela_u5` |
-| 180070 | Grammar: Parts of Speech | G2-ELA-U6 | `SLUG_g2_ela_u6` |
-| 180071 | Life Cycles | G2-SCI-U1 | `SLUG_g2_sci_u1` |
-| 180072 | Habitats and Ecosystems | G2-SCI-U2 | `SLUG_g2_sci_u2` |
-| 180073 | Properties and Changes of Matter | G2-SCI-U3 | `SLUG_g2_sci_u3` |
-| 180074 | Earth Changing Surface | G2-SCI-U4 | `SLUG_g2_sci_u4` |
-| 180075 | Government and Citizenship | G2-SS-U1 | `SLUG_g2_ss_u1` |
-| 180076 | Economics: Supply and Demand | G2-SS-U2 | `SLUG_g2_ss_u2` |
-| 180077 | Geography of Texas and the U.S. | G2-SS-U3 | `SLUG_g2_ss_u3` |
-| 180078 | History: American Heroes and Holidays | G2-SS-U4 | `SLUG_g2_ss_u4` |
-
-## Extracted Codes Not Yet in Standards Table (97 units)
-
-These units had extractable TEKS codes but those codes are not yet seeded in the `standards` table.
-Add them to `seed-phase1b.mjs` and re-run.
-
-| Unit ID | Unit Title | Extracted Code |
-|---|---|---|
-| 30002 | Reading Foundations & Comprehension | `110.39(b)(6)` |
-| 30003 | Literary Analysis: Fiction & Poetry | `110.39(b)(7)` |
-| 30004 | Informational & Expository Texts | `110.39(b)(8)` |
-| 30005 | Vocabulary & Academic Language | `110.39(b)(3)` |
-| 30006 | Grammar & Conventions | `110.39(b)(11)` |
-| 30007 | Narrative Writing | `110.39(b)(10)` |
-| 30008 | Expository & Argumentative Writing | `110.39(b)(10)` |
-| 30009 | Research & Synthesis | `110.39(b)(9)` |
-| 30010 | Cell Structure & Function | `112.34(b)(4)` |
-| 30011 | Cell Processes | `112.34(b)(5)` |
-| 30012 | Genetics & Heredity | `112.34(b)(6)` |
-| 30013 | Evolution & Natural Selection | `112.34(b)(7)` |
-| 30014 | Ecology & Ecosystems | `112.34(b)(12)` |
-| 30015 | Classification of Living Things | `112.34(b)(8)` |
-| 30016 | Human Body Systems | `112.34(b)(10)` |
-| 30017 | Scientific Investigations & Lab Skills | `112.34(b)(2)` |
-| 30018 | Thinking Geographically | `113.44(c)(1)` |
-| 30019 | Population & Migration | `113.44(c)(2)` |
-| 30020 | Cultural Patterns & Processes | `113.44(c)(3)` |
-| 30021 | Political Organization of Space | `113.44(c)(4)` |
-| 30022 | Agriculture & Rural Land Use | `113.44(c)(5)` |
-| 30023 | Industrialization & Economic Development | `113.44(c)(6)` |
-| 30024 | Cities & Urban Land Use | `113.44(c)(7)` |
-| 30025 | Reflexive Verbs & Daily Routines | `114.24(c)(1)` |
-| 30026 | Preterite Tense | `114.24(c)(2)` |
-| 30027 | Imperfect Tense | `114.24(c)(3)` |
-| 30028 | Direct & Indirect Object Pronouns | `114.24(c)(4)` |
-| 30029 | Subjunctive Mood | `114.24(c)(5)` |
-| 30030 | Future & Conditional Tenses | `114.24(c)(6)` |
-| 30031 | Reading & Cultural Competency | `114.24(c)(7)` |
-| 30032 | Place Value & Number Sense | `111.5(b)(2)` |
-| 30033 | Addition & Subtraction | `111.5(b)(3)` |
-| 30034 | Multiplication Concepts | `111.5(b)(4)` |
-| 30035 | Division Concepts | `111.5(b)(4)` |
-| 30036 | Fractions | `111.5(b)(3)` |
-| 30037 | Geometry | `111.5(b)(6)` |
-| 30038 | Measurement & Data | `111.5(b)(7)` |
-| 30039 | Phonics & Word Study | `110.5(b)(2)` |
-| 30040 | Reading Comprehension: Fiction | `110.5(b)(6)` |
-| 30041 | Reading Comprehension: Non-Fiction | `110.5(b)(8)` |
-| 30042 | Vocabulary Development | `110.5(b)(3)` |
-| 30043 | Grammar & Mechanics | `110.5(b)(11)` |
-| 30044 | Writing: Narrative | `110.5(b)(10)` |
-| 30045 | Writing: Informational & Opinion | `110.5(b)(10)` |
-| 30046 | Matter & Its Properties | `112.14(b)(5)` |
-| 30047 | Energy: Heat, Light & Sound | `112.14(b)(6)` |
-| 30048 | Force & Motion | `112.14(b)(7)` |
-| 30049 | Life Science: Plants | `112.14(b)(9)` |
-| 30050 | Life Science: Animals | `112.14(b)(10)` |
-| 30051 | Earth Science: Weather & Climate | `112.14(b)(8)` |
-| 30052 | Scientific Investigation | `112.14(b)(2)` |
-| 30053 | Communities & Culture | `113.14(b)(1)` |
-| 30106 | Geography & Maps | `113.14(b)(4)` |
-| 30107 | Texas History & Government | `113.14(b)(2)` |
-| 30108 | Economics: Goods & Services | `113.14(b)(5)` |
-| 30109 | Citizenship & Civics | `113.14(b)(3)` |
-| 30110 | American History & Symbols | `113.14(b)(2)` |
-| 60001 | Atomic Structure & Properties | `112.35(c)(2)` |
-| 60003 | Molecular & Ionic Compound Structure | `112.35(c)(3)` |
-| 60004 | Intermolecular Forces & Properties | `112.35(c)(4)` |
-| 60005 | Chemical Reactions | `112.35(c)(5)` |
-| 60006 | Kinetics | `112.35(c)(6)` |
-| 60007 | Thermodynamics | `112.35(c)(7)` |
-| 60008 | Equilibrium | `112.35(c)(8)` |
-| 60009 | Acids & Bases | `112.35(c)(9)` |
-| 60010 | Electrochemistry | `112.35(c)(10)` |
-| 60011 | Organic Chemistry Fundamentals | `112.35(c)(11)` |
-| 60026 | Exploring One-Variable Data | `111.47(c)(1)` |
-| 60027 | Exploring Two-Variable Data | `111.47(c)(2)` |
-| 60028 | Collecting Data | `111.47(c)(3)` |
-| 60029 | Probability & Random Variables | `111.47(c)(4)` |
-| 60030 | Sampling Distributions | `111.47(c)(5)` |
-| 60031 | Inference for Categorical Data: Proportions | `111.47(c)(6)` |
-| 60032 | Inference for Quantitative Data: Means | `111.47(c)(7)` |
-| 60033 | Inference for Categorical Data: Chi-Square | `111.47(c)(8)` |
-| 60034 | Inference for Quantitative Data: Slopes | `111.47(c)(9)` |
-| 60035 | Normal & Binomial Distributions | `111.47(c)(10)` |
-| 60050 | Close Reading & Textual Evidence | `110.39(c)(1)` |
-| 60051 | Character, Conflict & Narrative Structure | `110.39(c)(2)` |
-| 60052 | Setting, Atmosphere & Symbolism | `110.39(c)(3)` |
-| 60053 | Point of View & Narrative Voice | `110.39(c)(4)` |
-| 60054 | Poetry Analysis: Form & Structure | `110.39(c)(5)` |
-| 60055 | Poetry Analysis: Figurative Language & Imagery | `110.39(c)(6)` |
-| 60056 | Drama & Dramatic Conventions | `110.39(c)(7)` |
-| 60057 | Thematic Analysis & Interpretation | `110.39(c)(8)` |
-| 60062 | Personal Finance Foundations | `118.44(c)(1)` |
-| 60063 | Banking, Credit & Debt Management | `118.44(c)(2)` |
-| 60064 | Investing & Wealth Building | `118.44(c)(3)` |
-| 60065 | Insurance & Risk Management | `118.44(c)(4)` |
-| 60066 | Taxes & Government Finance | `118.44(c)(5)` |
-| 60067 | Entrepreneurship & Business Planning | `118.44(c)(6)` |
-| 60068 | Marketing & Consumer Behavior | `118.44(c)(7)` |
-| 60069 | Business Operations & Management | `118.44(c)(8)` |
-| 60070 | Accounting & Financial Statements | `118.44(c)(9)` |
-| 60071 | Economics & Business Cycles | `118.44(c)(10)` |
-| 60072 | Business Ethics & Social Responsibility | `118.44(c)(11)` |
-| 60073 | Capstone: Business Plan Presentation | `118.44(c)(12)` |
+> **Algebra I is the flagship course and STAAR EOC anchor.** All Algebra I units
+> appear below. These must be resolved first.
 
 ---
-*This file is auto-generated by `server/seed-phase1c-backfill.mjs`. Re-run after adding standards to update.*
+
+## Gap Standards by Course
+
+### Algebra I
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 37 | `SLUG_alg1_algebraic_reasoning_and_number_properties` | Aligned to TEKS Algebra I — algebraic reasoning and number properties | — | 1 |
+| 48 | `SLUG_alg1_comprehensive_review_across_all_strands` | Aligned to TEKS Algebra I — comprehensive review across all strands | — | 1 |
+| 47 | `SLUG_alg1_data_analysis_and_statistical_reasoning` | Aligned to TEKS Algebra I — data analysis and statistical reasoning | — | 1 |
+| 43 | `SLUG_alg1_exponents_and_exponential_functions` | Aligned to TEKS Algebra I — exponents and exponential functions | — | 1 |
+| 45 | `SLUG_alg1_factoring_polynomials` | Aligned to TEKS Algebra I — factoring polynomials | — | 1 |
+| 40 | `SLUG_alg1_functions_and_their_representations` | Aligned to TEKS Algebra I — functions and their representations | — | 1 |
+| 41 | `SLUG_alg1_linear_functions_and_graphing` | Aligned to TEKS Algebra I — linear functions and graphing | — | 1 |
+| 44 | `SLUG_alg1_polynomial_operations` | Aligned to TEKS Algebra I — polynomial operations | — | 1 |
+| 46 | `SLUG_alg1_quadratic_functions_and_equations` | Aligned to TEKS Algebra I — quadratic functions and equations | — | 1 |
+| 38 | `SLUG_alg1_solving_linear_equations` | Aligned to TEKS Algebra I — solving linear equations | — | 1 |
+| 39 | `SLUG_alg1_solving_linear_inequalities` | Aligned to TEKS Algebra I — solving linear inequalities | — | 1 |
+| 42 | `SLUG_alg1_systems_of_linear_equations` | Aligned to TEKS Algebra I — systems of linear equations | — | 1 |
+
+### AP Calculus BC
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 64 | `SLUG_ap_calc_bc_exam` | AP Calc BC Exam | — | 1 |
+| 63 | `SLUG_ap_calc_bc_frq` | AP Calc BC FRQ | — | 1 |
+| 53 | `SLUG_ap_calc_bc_unit_1` | AP Calc BC Unit 1 | — | 1 |
+| 62 | `SLUG_ap_calc_bc_unit_10` | AP Calc BC Unit 10 | — | 1 |
+| 54 | `SLUG_ap_calc_bc_unit_2` | AP Calc BC Unit 2 | — | 1 |
+| 55 | `SLUG_ap_calc_bc_unit_3` | AP Calc BC Unit 3 | — | 1 |
+| 56 | `SLUG_ap_calc_bc_unit_4` | AP Calc BC Unit 4 | — | 1 |
+| 57 | `SLUG_ap_calc_bc_unit_5` | AP Calc BC Unit 5 | — | 1 |
+| 58 | `SLUG_ap_calc_bc_unit_6` | AP Calc BC Unit 6 | — | 1 |
+| 59 | `SLUG_ap_calc_bc_unit_7` | AP Calc BC Unit 7 | — | 1 |
+| 60 | `SLUG_ap_calc_bc_unit_8` | AP Calc BC Unit 8 | — | 1 |
+| 61 | `SLUG_ap_calc_bc_unit_9` | AP Calc BC Unit 9 | — | 1 |
+
+### AP Chemistry
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 50 | `SLUG_ap_chem_exam` | AP Chem Exam | — | 1 |
+| 49 | `SLUG_ap_chem_frq` | AP Chem FRQ | — | 1 |
+
+### AP Literature & Composition
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 68 | `SLUG_ap_lit_exam` | AP Lit Exam | — | 1 |
+| 67 | `SLUG_ap_lit_q1` | AP Lit Q1 | — | 1 |
+| 66 | `SLUG_ap_lit_q2` | AP Lit Q2 | — | 1 |
+| 65 | `SLUG_ap_lit_q3` | AP Lit Q3 | — | 1 |
+
+### AP Statistics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 52 | `SLUG_ap_stat_exam` | AP Stat Exam | — | 1 |
+| 51 | `SLUG_ap_stat_frq` | AP Stat FRQ | — | 1 |
+
+### Grade 1 Language Arts
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 266 | `SLUG_g1_ela_u1` | G1-ELA-U1 | — | 1 |
+| 267 | `SLUG_g1_ela_u2` | G1-ELA-U2 | — | 1 |
+| 268 | `SLUG_g1_ela_u3` | G1-ELA-U3 | — | 1 |
+| 269 | `SLUG_g1_ela_u4` | G1-ELA-U4 | — | 1 |
+| 270 | `SLUG_g1_ela_u5` | G1-ELA-U5 | — | 1 |
+| 271 | `SLUG_g1_ela_u6` | G1-ELA-U6 | — | 1 |
+
+### Grade 1 Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 260 | `SLUG_g1_math_u1` | G1-MATH-U1 | — | 1 |
+| 261 | `SLUG_g1_math_u2` | G1-MATH-U2 | — | 1 |
+| 262 | `SLUG_g1_math_u3` | G1-MATH-U3 | — | 1 |
+| 263 | `SLUG_g1_math_u4` | G1-MATH-U4 | — | 1 |
+| 264 | `SLUG_g1_math_u5` | G1-MATH-U5 | — | 1 |
+| 265 | `SLUG_g1_math_u6` | G1-MATH-U6 | — | 1 |
+
+### Grade 1 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 272 | `SLUG_g1_sci_u1` | G1-SCI-U1 | — | 1 |
+| 273 | `SLUG_g1_sci_u2` | G1-SCI-U2 | — | 1 |
+| 274 | `SLUG_g1_sci_u3` | G1-SCI-U3 | — | 1 |
+| 275 | `SLUG_g1_sci_u4` | G1-SCI-U4 | — | 1 |
+
+### Grade 1 Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 276 | `SLUG_g1_ss_u1` | G1-SS-U1 | — | 1 |
+| 277 | `SLUG_g1_ss_u2` | G1-SS-U2 | — | 1 |
+| 278 | `SLUG_g1_ss_u3` | G1-SS-U3 | — | 1 |
+| 279 | `SLUG_g1_ss_u4` | G1-SS-U4 | — | 1 |
+
+### Grade 2 Language Arts
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 287 | `SLUG_g2_ela_u1` | G2-ELA-U1 | — | 1 |
+| 288 | `SLUG_g2_ela_u2` | G2-ELA-U2 | — | 1 |
+| 289 | `SLUG_g2_ela_u3` | G2-ELA-U3 | — | 1 |
+| 290 | `SLUG_g2_ela_u4` | G2-ELA-U4 | — | 1 |
+| 291 | `SLUG_g2_ela_u5` | G2-ELA-U5 | — | 1 |
+| 292 | `SLUG_g2_ela_u6` | G2-ELA-U6 | — | 1 |
+
+### Grade 2 Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 280 | `SLUG_g2_math_u1` | G2-MATH-U1 | — | 1 |
+| 281 | `SLUG_g2_math_u2` | G2-MATH-U2 | — | 1 |
+| 282 | `SLUG_g2_math_u3` | G2-MATH-U3 | — | 1 |
+| 283 | `SLUG_g2_math_u4` | G2-MATH-U4 | — | 1 |
+| 284 | `SLUG_g2_math_u5` | G2-MATH-U5 | — | 1 |
+| 285 | `SLUG_g2_math_u6` | G2-MATH-U6 | — | 1 |
+| 286 | `SLUG_g2_math_u7` | G2-MATH-U7 | — | 1 |
+
+### Grade 2 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 293 | `SLUG_g2_sci_u1` | G2-SCI-U1 | — | 1 |
+| 294 | `SLUG_g2_sci_u2` | G2-SCI-U2 | — | 1 |
+| 295 | `SLUG_g2_sci_u3` | G2-SCI-U3 | — | 1 |
+| 296 | `SLUG_g2_sci_u4` | G2-SCI-U4 | — | 1 |
+
+### Grade 2 Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 297 | `SLUG_g2_ss_u1` | G2-SS-U1 | — | 1 |
+| 298 | `SLUG_g2_ss_u2` | G2-SS-U2 | — | 1 |
+| 299 | `SLUG_g2_ss_u3` | G2-SS-U3 | — | 1 |
+| 300 | `SLUG_g2_ss_u4` | G2-SS-U4 | — | 1 |
+
+### Kindergarten Language Arts
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 247 | `SLUG_k_ela_u1` | K-ELA-U1 | — | 1 |
+| 248 | `SLUG_k_ela_u2` | K-ELA-U2 | — | 1 |
+| 249 | `SLUG_k_ela_u3` | K-ELA-U3 | — | 1 |
+| 250 | `SLUG_k_ela_u4` | K-ELA-U4 | — | 1 |
+| 251 | `SLUG_k_ela_u5` | K-ELA-U5 | — | 1 |
+
+### Kindergarten Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 241 | `SLUG_k_math_u1` | K-MATH-U1 | — | 1 |
+| 242 | `SLUG_k_math_u2` | K-MATH-U2 | — | 1 |
+| 243 | `SLUG_k_math_u3` | K-MATH-U3 | — | 1 |
+| 244 | `SLUG_k_math_u4` | K-MATH-U4 | — | 1 |
+| 245 | `SLUG_k_math_u5` | K-MATH-U5 | — | 1 |
+| 246 | `SLUG_k_math_u6` | K-MATH-U6 | — | 1 |
+
+### Kindergarten Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 252 | `SLUG_k_sci_u1` | K-SCI-U1 | — | 1 |
+| 253 | `SLUG_k_sci_u2` | K-SCI-U2 | — | 1 |
+| 254 | `SLUG_k_sci_u3` | K-SCI-U3 | — | 1 |
+| 255 | `SLUG_k_sci_u4` | K-SCI-U4 | — | 1 |
+
+### Kindergarten Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 256 | `SLUG_k_ss_u1` | K-SS-U1 | — | 1 |
+| 257 | `SLUG_k_ss_u2` | K-SS-U2 | — | 1 |
+| 258 | `SLUG_k_ss_u3` | K-SS-U3 | — | 1 |
+| 259 | `SLUG_k_ss_u4` | K-SS-U4 | — | 1 |
+
+### Pre-K Language Arts
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 228 | `SLUG_prek_ela_u1` | PREK-ELA-U1 | — | 1 |
+| 229 | `SLUG_prek_ela_u2` | PREK-ELA-U2 | — | 1 |
+| 230 | `SLUG_prek_ela_u3` | PREK-ELA-U3 | — | 1 |
+| 231 | `SLUG_prek_ela_u4` | PREK-ELA-U4 | — | 1 |
+| 232 | `SLUG_prek_ela_u5` | PREK-ELA-U5 | — | 1 |
+
+### Pre-K Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 223 | `SLUG_prek_math_u1` | PREK-MATH-U1 | — | 1 |
+| 224 | `SLUG_prek_math_u2` | PREK-MATH-U2 | — | 1 |
+| 225 | `SLUG_prek_math_u3` | PREK-MATH-U3 | — | 1 |
+| 226 | `SLUG_prek_math_u4` | PREK-MATH-U4 | — | 1 |
+| 227 | `SLUG_prek_math_u5` | PREK-MATH-U5 | — | 1 |
+
+### Pre-K Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 233 | `SLUG_prek_sci_u1` | PREK-SCI-U1 | — | 1 |
+| 234 | `SLUG_prek_sci_u2` | PREK-SCI-U2 | — | 1 |
+| 235 | `SLUG_prek_sci_u3` | PREK-SCI-U3 | — | 1 |
+| 236 | `SLUG_prek_sci_u4` | PREK-SCI-U4 | — | 1 |
+
+### Pre-K Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 237 | `SLUG_prek_ss_u1` | PREK-SS-U1 | — | 1 |
+| 238 | `SLUG_prek_ss_u2` | PREK-SS-U2 | — | 1 |
+| 239 | `SLUG_prek_ss_u3` | PREK-SS-U3 | — | 1 |
+| 240 | `SLUG_prek_ss_u4` | PREK-SS-U4 | — | 1 |
+
+### SAT Prep: Score 1500+
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 72 | `SLUG_sat_math` | SAT Math | — | 4 |
+| 69 | `SLUG_sat_overview` | SAT Overview | — | 1 |
+| 74 | `SLUG_sat_practice` | SAT Practice | — | 2 |
+| 70 | `SLUG_sat_reading` | SAT Reading | — | 2 |
+| 73 | `SLUG_sat_strategies` | SAT Strategies | — | 1 |
+| 71 | `SLUG_sat_writing` | SAT Writing | — | 2 |
+
+### Grade 6 Technology Applications, Grade 7 Technology Applications, Grade 8 Technology Applications
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 165 | `SLUG_teks_126_14_b_1` | TEKS 126.14.b.1 | — | 3 |
+| 166 | `SLUG_teks_126_14_b_2` | TEKS 126.14.b.2 | — | 3 |
+| 167 | `SLUG_teks_126_14_b_3` | TEKS 126.14.b.3 | — | 3 |
+| 168 | `SLUG_teks_126_14_b_4` | TEKS 126.14.b.4 | — | 3 |
+| 169 | `SLUG_teks_126_14_b_5` | TEKS 126.14.b.5 | — | 3 |
+| 170 | `SLUG_teks_126_14_b_6` | TEKS 126.14.b.6 | — | 3 |
+
+### Grade 4 Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 90 | `SLUG_teks_4_1` | TEKS 4.1 | — | 1 |
+| 92 | `SLUG_teks_4_14_4_17` | TEKS 4.14-4.17 | — | 1 |
+| 93 | `SLUG_teks_4_18_4_20` | TEKS 4.18-4.20 | — | 1 |
+| 91 | `SLUG_teks_4_9_4_11` | TEKS 4.9-4.11 | — | 1 |
+
+### Grade 4 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 85 | `SLUG_teks_4_1_4_2` | TEKS 4.1-4.2 | — | 1 |
+| 86 | `SLUG_teks_4_5` | TEKS 4.5 | — | 1 |
+| 87 | `SLUG_teks_4_6` | TEKS 4.6 | — | 2 |
+| 88 | `SLUG_teks_4_7` | TEKS 4.7 | — | 1 |
+| 89 | `SLUG_teks_4_8` | TEKS 4.8 | — | 2 |
+
+### Grade 4 English Language Arts & Reading
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 82 | `SLUG_teks_4_11` | TEKS 4.11 | — | 3 |
+| 83 | `SLUG_teks_4_12` | TEKS 4.12 | — | 1 |
+| 84 | `SLUG_teks_4_6_4_13` | TEKS 4.6, 4.13 | — | 1 |
+| 81 | `SLUG_teks_4_9_4_10` | TEKS 4.9-4.10 | — | 1 |
+
+### Grade 4 KAP English Language Arts
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 136 | `SLUG_teks_4_11_kap` | TEKS 4.11 KAP | — | 3 |
+| 137 | `SLUG_teks_4_12_kap` | TEKS 4.12 KAP | — | 1 |
+| 138 | `SLUG_teks_4_6_kap` | TEKS 4.6 KAP | — | 1 |
+| 134 | `SLUG_teks_4_7_4_8_kap` | TEKS 4.7-4.8 KAP | — | 1 |
+| 135 | `SLUG_teks_4_9_4_10_kap` | TEKS 4.9-4.10 KAP | — | 1 |
+
+### Grade 4 Mathematics, Grade 4 Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 75 | `SLUG_teks_4_2` | TEKS 4.2 | — | 3 |
+
+### Grade 4 KAP Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 122 | `SLUG_teks_4_2_kap` | TEKS 4.2 KAP | — | 2 |
+| 123 | `SLUG_teks_4_4_kap` | TEKS 4.4 KAP | — | 2 |
+| 125 | `SLUG_teks_4_5_kap` | TEKS 4.5 KAP | — | 1 |
+| 126 | `SLUG_teks_4_7_4_9_kap` | TEKS 4.7-4.9 KAP | — | 1 |
+| 127 | `SLUG_teks_4_kap` | TEKS 4 KAP | — | 1 |
+
+### Grade 4 English Language Arts & Reading, Grade 4 Mathematics, Grade 4 Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 77 | `SLUG_teks_4_3` | TEKS 4.3 | — | 4 |
+
+### Grade 4 KAP English Language Arts, Grade 4 KAP Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 124 | `SLUG_teks_4_3_kap` | TEKS 4.3 KAP | — | 2 |
+
+### Grade 4 Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 76 | `SLUG_teks_4_4` | TEKS 4.4 | — | 3 |
+| 78 | `SLUG_teks_4_5_4_8` | TEKS 4.5-4.8 | — | 1 |
+
+### Grade 4 English Language Arts & Reading, Grade 4 Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 80 | `SLUG_teks_4_7_4_8` | TEKS 4.7-4.8 | — | 2 |
+
+### Grade 4 Mathematics, Grade 4 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 79 | `SLUG_teks_4_9` | TEKS 4.9 | — | 2 |
+
+### Grade 5 Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 115 | `SLUG_teks_5_1` | TEKS 5.1 | — | 1 |
+| 116 | `SLUG_teks_5_15_5_20` | TEKS 5.15-5.20 | — | 1 |
+| 114 | `SLUG_teks_5_8_5_9` | TEKS 5.8-5.9 | — | 1 |
+
+### Grade 5 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 110 | `SLUG_teks_5_1_5_2` | TEKS 5.1-5.2 | — | 1 |
+| 113 | `SLUG_teks_5_8` | TEKS 5.8 | — | 2 |
+
+### Grade 5 English Language Arts & Reading
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 107 | `SLUG_teks_5_11` | TEKS 5.11 | — | 3 |
+| 108 | `SLUG_teks_5_12` | TEKS 5.12 | — | 1 |
+| 109 | `SLUG_teks_5_6_5_13` | TEKS 5.6, 5.13 | — | 1 |
+| 105 | `SLUG_teks_5_7_5_8` | TEKS 5.7-5.8 | — | 1 |
+| 106 | `SLUG_teks_5_9_5_10` | TEKS 5.9-5.10 | — | 1 |
+
+### Grade 5 KAP English Language Arts
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 141 | `SLUG_teks_5_11_kap` | TEKS 5.11 KAP | — | 3 |
+| 142 | `SLUG_teks_5_12_kap` | TEKS 5.12 KAP | — | 1 |
+| 143 | `SLUG_teks_5_6_kap` | TEKS 5.6 KAP | — | 1 |
+| 139 | `SLUG_teks_5_7_5_8_kap` | TEKS 5.7-5.8 KAP | — | 1 |
+| 140 | `SLUG_teks_5_9_5_10_kap` | TEKS 5.9-5.10 KAP | — | 1 |
+
+### Grade 5 Mathematics, Grade 5 Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 99 | `SLUG_teks_5_2` | TEKS 5.2 | — | 2 |
+| 101 | `SLUG_teks_5_4` | TEKS 5.4 | — | 2 |
+
+### Grade 5 KAP Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 128 | `SLUG_teks_5_2_5_3_kap` | TEKS 5.2-5.3 KAP | — | 1 |
+| 130 | `SLUG_teks_5_4_kap` | TEKS 5.4 KAP | — | 2 |
+| 131 | `SLUG_teks_5_5_5_6_kap` | TEKS 5.5-5.6 KAP | — | 1 |
+| 133 | `SLUG_teks_5_9_kap` | TEKS 5.9 KAP | — | 1 |
+| 132 | `SLUG_teks_5_kap` | TEKS 5 KAP | — | 2 |
+
+### Grade 5 English Language Arts & Reading, Grade 5 Mathematics, Grade 5 Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 100 | `SLUG_teks_5_3` | TEKS 5.3 | — | 5 |
+
+### Grade 5 KAP English Language Arts, Grade 5 KAP Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 129 | `SLUG_teks_5_3_kap` | TEKS 5.3 KAP | — | 2 |
+
+### Grade 5 Science, Grade 5 Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 111 | `SLUG_teks_5_5` | TEKS 5.5 | — | 2 |
+| 112 | `SLUG_teks_5_6` | TEKS 5.6 | — | 3 |
+
+### Grade 5 Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 102 | `SLUG_teks_5_5_5_6` | TEKS 5.5-5.6 | — | 1 |
+
+### Grade 5 Mathematics, Grade 5 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 103 | `SLUG_teks_5_7` | TEKS 5.7 | — | 2 |
+| 104 | `SLUG_teks_5_9` | TEKS 5.9 | — | 2 |
+
+### Grade 6 Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 163 | `SLUG_teks_6_1` | TEKS 6.1 | — | 5 |
+| 162 | `SLUG_teks_6_3_6_4` | TEKS 6.3-6.4 | — | 1 |
+| 164 | `SLUG_teks_6_9_6_14` | TEKS 6.9-6.14 | — | 1 |
+
+### Grade 6 English Language Arts & Reading, Grade 6 KAP English Language Arts
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 157 | `SLUG_teks_6_1_6_2_6_5` | TEKS 6.1-6.2, 6.5 | — | 2 |
+| 153 | `SLUG_teks_6_7` | TEKS 6.7 | — | 2 |
+
+### Grade 6 KAP Science, Grade 6 KAP Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 214 | `SLUG_teks_6_1_6_3` | TEKS 6.1-6.3 | — | 2 |
+
+### Grade 6 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 158 | `SLUG_teks_6_1_6_4` | TEKS 6.1-6.4 | — | 1 |
+
+### Grade 6 KAP Science, Grade 6 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 161 | `SLUG_teks_6_10` | TEKS 6.10 | — | 3 |
+| 159 | `SLUG_teks_6_5` | TEKS 6.5 | — | 2 |
+| 160 | `SLUG_teks_6_9` | TEKS 6.9 | — | 2 |
+
+### Grade 6 English Language Arts & Reading, Grade 6 KAP English Language Arts, Grade 6 KAP Science, Grade 6 KAP Social Studies, Grade 6 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 155 | `SLUG_teks_6_11` | TEKS 6.11 | — | 8 |
+
+### Grade 6 English Language Arts & Reading, Grade 6 KAP English Language Arts, Grade 6 KAP Science, Grade 6 KAP Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 156 | `SLUG_teks_6_12` | TEKS 6.12 | — | 5 |
+
+### Grade 6 KAP Mathematics, Grade 6 Mathematics, Grade 6 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 151 | `SLUG_teks_6_12_6_13` | TEKS 6.12-6.13 | — | 3 |
+| 150 | `SLUG_teks_6_8` | TEKS 6.8 | — | 3 |
+
+### Grade 6 KAP Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 216 | `SLUG_teks_6_13` | TEKS 6.13 | — | 1 |
+| 215 | `SLUG_teks_6_6` | TEKS 6.6 | — | 1 |
+
+### Grade 6 KAP Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 211 | `SLUG_teks_6_14` | TEKS 6.14 | — | 1 |
+
+### Grade 6 Mathematics, Grade 6 Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 146 | `SLUG_teks_6_2` | TEKS 6.2 | — | 2 |
+
+### Grade 6 English Language Arts & Reading, Grade 6 KAP English Language Arts, Grade 6 KAP Mathematics, Grade 6 Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 147 | `SLUG_teks_6_3` | TEKS 6.3 | — | 4 |
+
+### Grade 6 KAP Mathematics, Grade 6 Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 145 | `SLUG_teks_6_4` | TEKS 6.4 | — | 2 |
+| 149 | `SLUG_teks_6_4_6_6` | TEKS 6.4-6.6 | — | 2 |
+| 148 | `SLUG_teks_6_7_6_9` | TEKS 6.7-6.9 | — | 2 |
+
+### Grade 6 KAP Mathematics, Grade 6 KAP Social Studies, Grade 6 Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 144 | `SLUG_teks_6_4_6_5` | TEKS 6.4-6.5 | — | 3 |
+
+### Grade 6 English Language Arts & Reading, Grade 6 KAP English Language Arts, Grade 6 KAP Social Studies
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 152 | `SLUG_teks_6_7_6_8` | TEKS 6.7-6.8 | — | 3 |
+| 154 | `SLUG_teks_6_9_6_10` | TEKS 6.9-6.10 | — | 3 |
+
+### Grade 7 KAP Social Studies — Texas History, Grade 7 Social Studies — Texas History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 188 | `SLUG_teks_7_1` | TEKS 7.1 | — | 2 |
+| 189 | `SLUG_teks_7_2` | TEKS 7.2 | — | 2 |
+
+### Grade 7 English Language Arts & Reading, Grade 7 KAP English Language Arts
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 183 | `SLUG_teks_7_1_7_2_7_5` | TEKS 7.1-7.2, 7.5 | — | 2 |
+| 178 | `SLUG_teks_7_7_7_8` | TEKS 7.7-7.8 | — | 2 |
+| 180 | `SLUG_teks_7_9_7_10` | TEKS 7.9-7.10 | — | 2 |
+
+### Grade 7 KAP Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 217 | `SLUG_teks_7_1_7_3` | TEKS 7.1-7.3 | — | 1 |
+
+### Grade 7 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 184 | `SLUG_teks_7_1_7_4` | TEKS 7.1-7.4 | — | 1 |
+| 187 | `SLUG_teks_7_5_7_13` | TEKS 7.5, 7.13 | — | 1 |
+
+### Grade 7 KAP Science, Grade 7 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 186 | `SLUG_teks_7_10` | TEKS 7.10 | — | 2 |
+| 185 | `SLUG_teks_7_14` | TEKS 7.14 | — | 2 |
+
+### Grade 7 KAP Mathematics, Grade 7 Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 173 | `SLUG_teks_7_10_7_11` | TEKS 7.10-7.11 | — | 2 |
+| 176 | `SLUG_teks_7_6_7_12` | TEKS 7.6, 7.12 | — | 2 |
+| 175 | `SLUG_teks_7_8_7_9` | TEKS 7.8-7.9 | — | 2 |
+
+### Grade 7 English Language Arts & Reading, Grade 7 KAP English Language Arts, Grade 7 KAP Science, Grade 7 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 181 | `SLUG_teks_7_11` | TEKS 7.11 | — | 6 |
+| 182 | `SLUG_teks_7_12` | TEKS 7.12 | — | 7 |
+
+### Grade 7 KAP Science, Grade 7 Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 177 | `SLUG_teks_7_13` | TEKS 7.13 | — | 2 |
+
+### Grade 7 English Language Arts & Reading, Grade 7 KAP English Language Arts, Grade 7 KAP Mathematics, Grade 7 KAP Social Studies — Texas History, Grade 7 Mathematics, Grade 7 Social Studies — Texas History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 172 | `SLUG_teks_7_3` | TEKS 7.3 | — | 6 |
+
+### Grade 7 KAP Mathematics, Grade 7 KAP Social Studies — Texas History, Grade 7 Mathematics, Grade 7 Social Studies — Texas History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 171 | `SLUG_teks_7_4` | TEKS 7.4 | — | 6 |
+| 174 | `SLUG_teks_7_5` | TEKS 7.5 | — | 4 |
+
+### Grade 7 KAP Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 212 | `SLUG_teks_7_4_7_13` | TEKS 7.4, 7.13 | — | 1 |
+
+### Grade 7 KAP Science, Grade 7 KAP Social Studies — Texas History, Grade 7 Social Studies — Texas History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 190 | `SLUG_teks_7_6` | TEKS 7.6 | — | 3 |
+
+### Grade 7 English Language Arts & Reading, Grade 7 KAP English Language Arts, Grade 7 KAP Social Studies — Texas History, Grade 7 Social Studies — Texas History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 179 | `SLUG_teks_7_7` | TEKS 7.7 | — | 4 |
+
+### Grade 7 KAP Social Studies — Texas History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 218 | `SLUG_teks_7_8_7_10` | TEKS 7.8-7.10 | — | 1 |
+
+### Grade 7 Social Studies — Texas History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 191 | `SLUG_teks_7_8_7_14` | TEKS 7.8-7.14 | — | 1 |
+
+### Grade 8 KAP Social Studies — U.S. History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 222 | `SLUG_teks_8_1` | TEKS 8.1 | — | 1 |
+
+### Grade 8 KAP Mathematics (Algebra I Prep)
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 213 | `SLUG_teks_8_1_8_12` | TEKS 8.1-8.12 | — | 1 |
+
+### Grade 8 Social Studies — U.S. History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 208 | `SLUG_teks_8_1_8_2` | TEKS 8.1-8.2 | — | 1 |
+| 210 | `SLUG_teks_8_5_8_6` | TEKS 8.5-8.6 | — | 1 |
+
+### Grade 8 English Language Arts & Reading, Grade 8 KAP English Language Arts
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 205 | `SLUG_teks_8_1_8_2_8_5_8_6` | TEKS 8.1-8.2, 8.5-8.6 | — | 2 |
+| 203 | `SLUG_teks_8_11` | TEKS 8.11 | — | 4 |
+| 204 | `SLUG_teks_8_12` | TEKS 8.12 | — | 2 |
+| 201 | `SLUG_teks_8_9_8_10` | TEKS 8.9-8.10 | — | 2 |
+
+### Grade 8 KAP Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 219 | `SLUG_teks_8_1_8_3` | TEKS 8.1-8.3 | — | 1 |
+| 221 | `SLUG_teks_8_9_8_11` | TEKS 8.9-8.11 | — | 1 |
+
+### Grade 8 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 206 | `SLUG_teks_8_1_8_4` | TEKS 8.1-8.4 | — | 1 |
+
+### Grade 8 KAP Mathematics (Algebra I Prep), Grade 8 Mathematics, Grade 8 Social Studies — U.S. History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 197 | `SLUG_teks_8_10` | TEKS 8.10 | — | 3 |
+| 199 | `SLUG_teks_8_11_8_12` | TEKS 8.11-8.12 | — | 3 |
+
+### Grade 8 KAP Mathematics (Algebra I Prep), Grade 8 KAP Social Studies — U.S. History, Grade 8 Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 192 | `SLUG_teks_8_2` | TEKS 8.2 | — | 3 |
+
+### Grade 8 English Language Arts & Reading, Grade 8 KAP English Language Arts, Grade 8 KAP Social Studies — U.S. History, Grade 8 Social Studies — U.S. History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 202 | `SLUG_teks_8_3` | TEKS 8.3 | — | 4 |
+
+### Grade 8 KAP Social Studies — U.S. History, Grade 8 Social Studies — U.S. History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 209 | `SLUG_teks_8_4` | TEKS 8.4 | — | 2 |
+
+### Grade 8 KAP Mathematics (Algebra I Prep), Grade 8 Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 193 | `SLUG_teks_8_4_8_5` | TEKS 8.4-8.5 | — | 2 |
+| 198 | `SLUG_teks_8_6_8_7` | TEKS 8.6, 8.7 | — | 2 |
+
+### Grade 8 KAP Mathematics (Algebra I Prep), Grade 8 KAP Science, Grade 8 KAP Social Studies — U.S. History, Grade 8 Mathematics, Grade 8 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 196 | `SLUG_teks_8_5` | TEKS 8.5 | — | 7 |
+
+### Grade 8 KAP Science, Grade 8 KAP Social Studies — U.S. History, Grade 8 Science
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 207 | `SLUG_teks_8_6` | TEKS 8.6 | — | 5 |
+
+### Grade 8 English Language Arts & Reading, Grade 8 KAP English Language Arts, Grade 8 KAP Science, Grade 8 KAP Social Studies — U.S. History, Grade 8 Science, Grade 8 Social Studies — U.S. History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 200 | `SLUG_teks_8_7` | TEKS 8.7 | — | 7 |
+
+### Grade 8 English Language Arts & Reading, Grade 8 KAP English Language Arts, Grade 8 Mathematics
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 194 | `SLUG_teks_8_7_8_8` | TEKS 8.7-8.8 | — | 3 |
+
+### Grade 8 KAP Science, Grade 8 KAP Social Studies — U.S. History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 220 | `SLUG_teks_8_8` | TEKS 8.8 | — | 2 |
+
+### Grade 8 KAP Mathematics (Algebra I Prep), Grade 8 Mathematics, Grade 8 Science, Grade 8 Social Studies — U.S. History
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 195 | `SLUG_teks_8_8_8_9` | TEKS 8.8-8.9 | — | 4 |
+
+### Grade 4 Technology Applications
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 94 | `SLUG_teks_tech_4_1` | TEKS Tech 4.1 | — | 1 |
+| 96 | `SLUG_teks_tech_4_3` | TEKS Tech 4.3 | — | 3 |
+| 97 | `SLUG_teks_tech_4_4` | TEKS Tech 4.4 | — | 1 |
+| 95 | `SLUG_teks_tech_4_5` | TEKS Tech 4.5 | — | 2 |
+| 98 | `SLUG_teks_tech_4_6` | TEKS Tech 4.6 | — | 1 |
+
+### Grade 5 Technology Applications
+
+| Standard ID | Slug Code | Description | Grade | Units |
+|---|---|---|---|---|
+| 117 | `SLUG_teks_tech_5_1` | TEKS Tech 5.1 | — | 1 |
+| 119 | `SLUG_teks_tech_5_3` | TEKS Tech 5.3 | — | 3 |
+| 120 | `SLUG_teks_tech_5_4` | TEKS Tech 5.4 | — | 1 |
+| 118 | `SLUG_teks_tech_5_5` | TEKS Tech 5.5 | — | 2 |
+| 121 | `SLUG_teks_tech_5_6` | TEKS Tech 5.6 | — | 1 |
+
+---
+
+## How to Resolve a Gap
+
+1. Look up the canonical TEKS code for the standard (e.g. `A.5(A)` for Algebra I linear equations).
+2. Update the `standards` row:
+   ```sql
+   UPDATE standards SET code = 'A.5(A)', isCanonical = 1 WHERE id = <id>;
+   ```
+3. After all Algebra I gaps are resolved, re-run the backfill:
+   ```
+   node scripts/phase1c-backfill.mjs
+   ```
+
+---
+
+*This file is auto-generated by `scripts/phase1c-backfill.mjs`. Do not edit manually.*
