@@ -1986,3 +1986,14 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Update QUESTION_BANK_HEALTH.md — 6,152 total questions, 0 thin, 0 empty
 - [x] No courses remain thin after this pass; no manual authoring backlog required
 - [x] Save checkpoint 4D — 824/824 tests passing, TypeScript exit 0
+
+### Phase 4E — CA_CCSS Crosswalk (TEKS → California Common Core)
+- [x] Audit CA_CCSS framework (id) and existing Algebra I standards in DB
+- [x] Seed any missing CA_CCSS Algebra I standards (34 CCSS standards seeded into framework id=3)
+- [x] Run crosswalk seeder targeting all TEKS Algebra I codes against CA_CCSS framework
+- [x] Auto-commit exact and partial rows (19 exact + 17 partial = 36 rows)
+- [x] Produce docs/CROSSWALK_CONFIDENCE_REPORT_CA.md (separate from NY report)
+- [x] Present approximate and none rows to founder for approval before committing
+- [x] After founder approval: commit approved approximate rows (4 rows at weight 0.50); permanently exclude none rows (A.1(A)x2, A.1(B), A.10(C))
+- [x] Write server/phase4e.test.ts covering CA_CCSS crosswalk completeness (36 tests)
+- [x] Run full test suite (860/860 passing), TypeScript exit 0, save Phase 4E checkpoint

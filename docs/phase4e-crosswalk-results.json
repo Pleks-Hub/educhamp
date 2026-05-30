@@ -1,0 +1,400 @@
+{
+  "exact": [
+    {
+      "teksCode": "A.10(B)",
+      "teksId": 13,
+      "ccssCode": "HSA-APR.A.1",
+      "ccssId": 60006,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "The TEKS standard explicitly states 'Multiply polynomials of degree one and degree two,' which directly aligns with the CCSS standard 'Add, Subtract, and Multiply Polynomials'."
+    },
+    {
+      "teksCode": "A.10(D)",
+      "teksId": 15,
+      "ccssCode": "HSA-APR.A.1",
+      "ccssId": 60006,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards address the manipulation of polynomial expressions, with the TEKS standard specifically mentioning the distributive property for rewriting expressions, which is a fundamental operation in adding, subtracting, and multiplying polynomials as described in HSA-APR.A.1."
+    },
+    {
+      "teksCode": "A.10(F)",
+      "teksId": 17,
+      "ccssCode": "HSA-SSE.A.2",
+      "ccssId": 60004,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "The TEKS standard directly aligns with the CCSS standard by focusing on using the structure of an expression (difference of two squares) to rewrite it."
+    },
+    {
+      "teksCode": "A.11(A)",
+      "teksId": 22,
+      "ccssCode": "HSN-RN.A.2",
+      "ccssId": 60002,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "The TEKS standard focuses on simplifying numerical radical expressions involving square roots, which directly aligns with the CCSS standard's emphasis on rewriting expressions involving radicals."
+    },
+    {
+      "teksCode": "A.11(B)",
+      "teksId": 23,
+      "ccssCode": "HSN-RN.A.2",
+      "ccssId": 60002,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "The TEKS standard directly aligns with the CCSS standard by focusing on simplifying expressions using laws of exponents, including rational exponents, which is explicitly covered in HSN-RN.A.2."
+    },
+    {
+      "teksCode": "A.12(B)",
+      "teksId": 26,
+      "ccssCode": "HSF-IF.A.2",
+      "ccssId": 60021,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards focus on using function notation and evaluating functions for inputs in their domains."
+    },
+    {
+      "teksCode": "A.2(B)",
+      "teksId": 2,
+      "ccssCode": "HSA-CED.A.2",
+      "ccssId": 60009,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards focus on creating linear equations in two variables to represent relationships from various given information."
+    },
+    {
+      "teksCode": "A.2(B)",
+      "teksId": 41,
+      "ccssCode": "HSA-CED.A.2",
+      "ccssId": 60009,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards focus on creating linear equations in two variables to represent relationships, with the TEKS standard specifically mentioning various forms of linear equations."
+    },
+    {
+      "teksCode": "A.2(C)",
+      "teksId": 3,
+      "ccssCode": "HSA-CED.A.2",
+      "ccssId": 60009,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards focus on creating equations in two variables to represent relationships, with the TEKS standard specifically mentioning linear equations from tables, graphs, and verbal descriptions."
+    },
+    {
+      "teksCode": "A.2(C)",
+      "teksId": 38,
+      "ccssCode": "HSA-CED.A.2",
+      "ccssId": 60009,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards focus on creating linear equations in two variables from various representations, including tables, graphs, and verbal descriptions."
+    },
+    {
+      "teksCode": "A.3(C)",
+      "teksId": 42,
+      "ccssCode": "HSA-REI.C.6",
+      "ccssId": 60016,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards focus on solving systems of two linear equations with two variables."
+    },
+    {
+      "teksCode": "A.3(F)",
+      "teksId": 21,
+      "ccssCode": "HSA-REI.D.11",
+      "ccssId": 60018,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards focus on the graphical solution of systems of linear equations, where the intersection point represents the solution."
+    },
+    {
+      "teksCode": "A.4(A)",
+      "teksId": 24,
+      "ccssCode": "HSS-ID.C.8",
+      "ccssId": 60033,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards focus on calculating and interpreting the correlation coefficient between two quantitative variables using technology."
+    },
+    {
+      "teksCode": "A.4(A)",
+      "teksId": 46,
+      "ccssCode": "HSF-IF.C.7",
+      "ccssId": 60024,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards focus on graphing various types of functions and showing key features of their graphs."
+    },
+    {
+      "teksCode": "A.5(A)",
+      "teksId": 4,
+      "ccssCode": "HSA-REI.B.3",
+      "ccssId": 60013,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards focus on solving linear equations in one variable, including those requiring the distributive property and variables on both sides."
+    },
+    {
+      "teksCode": "A.5(B)",
+      "teksId": 5,
+      "ccssCode": "HSA-REI.B.3",
+      "ccssId": 60013,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards focus on solving linear inequalities in one variable, including those requiring the distributive property and variables on both sides."
+    },
+    {
+      "teksCode": "A.5(C)",
+      "teksId": 6,
+      "ccssCode": "HSA-REI.C.6",
+      "ccssId": 60016,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards focus on solving systems of linear equations, aligning in concept, scope, and rigor."
+    },
+    {
+      "teksCode": "A.7(A)",
+      "teksId": 10,
+      "ccssCode": "HSF-IF.C.7",
+      "ccssId": 60024,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "The TEKS standard directly aligns with the CCSS standard, which focuses on graphing functions and showing key features, including those specific to quadratic functions."
+    },
+    {
+      "teksCode": "A.7(C)",
+      "teksId": 11,
+      "ccssCode": "HSF-BF.B.3",
+      "ccssId": 60026,
+      "alignmentType": "exact",
+      "alignmentWeight": 1,
+      "rationale": "Both standards address understanding the effects of transformations on the graph of a function, specifically involving scaling, translations, and reflections."
+    }
+  ],
+  "partial": [
+    {
+      "teksCode": "A.10(A)",
+      "teksId": 12,
+      "ccssCode": "HSA-APR.A.1",
+      "ccssId": 60006,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard specifically mentions adding and subtracting polynomials of degree one and two, while the CCSS standard covers adding, subtracting, and multiplying polynomials generally, making the TEKS a subset of the CCSS."
+    },
+    {
+      "teksCode": "A.10(E)",
+      "teksId": 16,
+      "ccssCode": "HSA-SSE.B.3",
+      "ccssId": 60005,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard specifically addresses factoring trinomials, which is a method of rewriting expressions to reveal properties, aligning with the broader scope of HSA-SSE.B.3."
+    },
+    {
+      "teksCode": "A.12(C)",
+      "teksId": 27,
+      "ccssCode": "HSF-LE.A.2",
+      "ccssId": 60028,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard focuses on identifying terms of sequences using recursive processes, which aligns with the CCSS standard's emphasis on constructing arithmetic and geometric sequences, often defined recursively."
+    },
+    {
+      "teksCode": "A.2(A)",
+      "teksId": 40,
+      "ccssCode": "HSF-IF.A.1",
+      "ccssId": 60020,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard explicitly mentions determining domain and range for linear functions and real-world situations, which is a key aspect of understanding function notation and the domain of a function as described in HSF-IF.A.1, though the CCSS standard is broader in scope."
+    },
+    {
+      "teksCode": "A.2(D)",
+      "teksId": 28,
+      "ccssCode": "HSA-CED.A.2",
+      "ccssId": 60009,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard specifically addresses direct variation, which is a type of linear relationship, while the CCSS standard is broader, covering the creation of equations in two or more variables to represent relationships, including direct variation."
+    },
+    {
+      "teksCode": "A.2(E)",
+      "teksId": 29,
+      "ccssCode": "HSG-GPE.B.5",
+      "ccssId": 60030,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard focuses on writing the equation of a parallel line through a given point, which directly applies the concept of parallel lines and their slopes, a concept proven in the CCSS standard."
+    },
+    {
+      "teksCode": "A.2(F)",
+      "teksId": 30,
+      "ccssCode": "HSG-GPE.B.5",
+      "ccssId": 60030,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard involves writing equations of lines, specifically perpendicular ones, while the CCSS standard focuses on proving the slope criteria for parallel and perpendicular lines, which is a foundational concept for the TEKS."
+    },
+    {
+      "teksCode": "A.2(H)",
+      "teksId": 39,
+      "ccssCode": "HSA-CED.A.2",
+      "ccssId": 60009,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard focuses on writing linear inequalities from various representations, while HSA-CED.A.2 broadly covers creating equations in two or more variables to represent relationships, which can include inequalities but is not as specific to linear inequalities or the given representations."
+    },
+    {
+      "teksCode": "A.3(C)",
+      "teksId": 20,
+      "ccssCode": "HSF-IF.C.7",
+      "ccssId": 60024,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard focuses on graphing linear functions and identifying key features, which aligns with the CCSS standard's emphasis on graphing functions and showing key features, though the CCSS standard is broader in scope."
+    },
+    {
+      "teksCode": "A.4(C)",
+      "teksId": 25,
+      "ccssCode": "HSS-ID.B.6",
+      "ccssId": 60031,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard focuses on writing linear equations to fit data and make predictions, which aligns with the CCSS standard's emphasis on representing data on scatter plots and fitting functions to the data, though the CCSS standard is broader in the types of functions."
+    },
+    {
+      "teksCode": "A.5(A)",
+      "teksId": 43,
+      "ccssCode": "HSF-IF.A.2",
+      "ccssId": 60021,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The CCSS standard HSF-IF.A.2 focuses on using function notation and evaluating functions for inputs in their domains, which partially aligns with determining the domain and range of exponential functions."
+    },
+    {
+      "teksCode": "A.6(A)",
+      "teksId": 7,
+      "ccssCode": "HSF-IF.B.4",
+      "ccssId": 60022,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "While HSF-IF.B.4 focuses on interpreting key features of graphs and tables, which includes domain and range, it is not specific to quadratic functions or representing domain and range using inequalities."
+    },
+    {
+      "teksCode": "A.6(C)",
+      "teksId": 9,
+      "ccssCode": "HSA-CED.A.2",
+      "ccssId": 60009,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard focuses specifically on writing quadratic equations from solutions and graphs, which is a specific application of creating equations in two or more variables as described in the CCSS standard."
+    },
+    {
+      "teksCode": "A.6(D)",
+      "teksId": 45,
+      "ccssCode": "HSF-BF.A.1",
+      "ccssId": 60025,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard specifically addresses writing a quadratic function from three points, which is a specific instance of the broader CCSS standard of writing a function that describes a relationship between two quantities."
+    },
+    {
+      "teksCode": "A.7(A)",
+      "teksId": 47,
+      "ccssCode": "HSF-IF.C.7",
+      "ccssId": 60024,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard focuses on graphing quadratic functions and identifying their key attributes, which directly aligns with the CCSS standard's requirement to graph functions and show key features, though the CCSS standard is broader in scope."
+    },
+    {
+      "teksCode": "A.8(B)",
+      "teksId": 19,
+      "ccssCode": "HSS-ID.B.6",
+      "ccssId": 60031,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard focuses on using technology for regression to write linear, quadratic, and exponential functions from data, while the CCSS standard covers representing data on a scatter plot and describing relationships, which is a foundational step for regression analysis."
+    },
+    {
+      "teksCode": "A.6(B)",
+      "teksId": 8,
+      "ccssCode": "HSA-CED.A.2",
+      "ccssId": 60009,
+      "alignmentType": "partial",
+      "alignmentWeight": 0.75,
+      "rationale": "The TEKS standard focuses on writing quadratic equations from specific information and converting between forms, which aligns with creating equations in two variables, but the CCSS standard is broader in scope."
+    }
+  ],
+  "approximate": [
+    {
+      "teksCode": "A.1(G)",
+      "teksId": 48,
+      "ccssCode": "HSA-REI.A.1",
+      "ccssId": 60012,
+      "alignmentType": "approximate",
+      "alignmentWeight": 0.5,
+      "rationale": "While the TEKS standard is a comprehensive review of mathematical communication across all strands, HSA-REI.A.1 is the closest match as it specifically addresses explaining and justifying steps in solving equations, which is a core part of mathematical communication in Algebra I."
+    },
+    {
+      "teksCode": "A.2(A)",
+      "teksId": 1,
+      "ccssCode": "HSF-IF.A.1",
+      "ccssId": 60020,
+      "alignmentType": "approximate",
+      "alignmentWeight": 0.5,
+      "rationale": "The CCSS standard focuses on understanding function notation and the fundamental concept of a function's domain, while the TEKS standard specifically addresses determining and representing the domain and range of linear functions in various contexts."
+    },
+    {
+      "teksCode": "A.6(B)",
+      "teksId": 44,
+      "ccssCode": "HSF-BF.A.1",
+      "ccssId": 60025,
+      "alignmentType": "approximate",
+      "alignmentWeight": 0.5,
+      "rationale": "The TEKS standard focuses on writing equations of parabolas from given attributes, which is a specific application of writing a function that describes a relationship, as covered in the CCSS standard."
+    },
+    {
+      "teksCode": "A.8(A)",
+      "teksId": 18,
+      "ccssCode": "HSS-ID.B.6",
+      "ccssId": 60031,
+      "alignmentType": "approximate",
+      "alignmentWeight": 0.5,
+      "rationale": "The TEKS standard focuses on analyzing data to select appropriate models (linear, quadratic, exponential), while the CCSS standard is about representing data on a scatter plot and describing the relationship, which is a foundational step but doesn't explicitly cover model selection among different types."
+    },
+    {
+      "teksCode": "A.6(B)",
+      "teksId": 44,
+      "ccssCode": "HSF-BF.A.1",
+      "ccssId": 60025,
+      "alignmentType": "approximate",
+      "alignmentWeight": 0.5,
+      "rationale": "The TEKS standard focuses on writing equations of parabolas from given attributes, which is a specific application of writing functions that describe relationships, as covered in HSF-BF.A.1, but with a more detailed scope."
+    }
+  ],
+  "none": [
+    {
+      "teksCode": "A.1(A)",
+      "teksId": 31,
+      "rationale": "The TEKS standard A.1(A) is a process standard focused on applying mathematics to real-world problems, which is a overarching theme in CCSS rather than a specific content standard."
+    },
+    {
+      "teksCode": "A.1(A)",
+      "teksId": 37,
+      "rationale": "The TEKS standard A.1(A) is a process standard focusing on applying mathematics to real-world problems, which does not have a direct equivalent in the provided content-specific CCSS standards."
+    },
+    {
+      "teksCode": "A.1(B)",
+      "teksId": 32,
+      "rationale": "The TEKS standard describes a general problem-solving model applicable across all mathematical domains, which does not directly align with any specific content-focused CCSS Algebra I standard."
+    },
+    {
+      "teksCode": "A.10(C)",
+      "teksId": 14,
+      "rationale": "There is no direct CCSS standard that specifically addresses the division of polynomials as described in the TEKS standard."
+    }
+  ],
+  "errors": []
+}
