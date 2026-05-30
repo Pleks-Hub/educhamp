@@ -1820,3 +1820,13 @@
 - [x] Mode badge shown in sidebar and chat header via existing mode display system
 - [x] Write misconception_drill tests in server/misconception-drill.test.ts (595/595 passing)
 - [x] Run full test suite (595/595 passing), update todo.md, save checkpoint
+
+### Phase 3 — Gap Standards Resolution & District Pipeline (May 30, 2026)
+- [x] Audit BACKFILL_GAPS.md and DB: count gap standards by course, understand slug patterns
+- [x] Build LLM-assisted bulk matching script (scripts/resolve-gaps.mjs) — map narrative slugs to canonical TEKS codes
+- [x] Run resolve-gaps.mjs and apply resolved codes to standards table (isCanonical=true)
+- [x] Fix Unit 12 multi-standard mapping: assign A.1(A)–A.7(C) cross-strand TEKS codes
+- [x] Re-run phase1c-backfill.mjs to update unitStandards and masteryRecords with resolved standardIds
+- [x] Regenerate docs/BACKFILL_GAPS.md: 0 gaps remaining
+- [x] Write server/phase3.test.ts covering gap resolution, Unit 12 mapping, and backfill correctness
+- [x] Run full test suite (634/634 passing), update todo.md, save checkpoint
