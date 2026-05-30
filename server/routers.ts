@@ -890,13 +890,14 @@ export const appRouter = router({
         const response = await invokeLLM({ messages });
         const assistantMessage = response.choices[0]?.message?.content ?? "I'm having trouble responding right now. Please try again.";
 
-        // Update session messages
+        // Update session messages — cap at 100 messages (50 turns) to prevent unbounded growth (P1-10)
         if (session) {
+          const MAX_STORED_MESSAGES = 100;
           const newMessages = [
             ...history,
             { role: "user" as const, content: input.message, timestamp: Date.now() },
             { role: "assistant" as const, content: assistantMessage, timestamp: Date.now() },
-          ];
+          ].slice(-MAX_STORED_MESSAGES);
           await updateTutorSessionMessages(session.id, newMessages);
         }
 

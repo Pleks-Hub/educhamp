@@ -30,7 +30,13 @@ export const users = mysqlTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
   lastActiveAt: timestamp("lastActiveAt"),                  // updated on login + lesson/quiz activity
-});
+}, (t) => ({
+  // P1-7: indexes for high-traffic lookup patterns
+  emailIdx: index("users_email_idx").on(t.email),
+  statusIdx: index("users_status_idx").on(t.status),
+  roleIdx: index("users_role_idx").on(t.role),
+  lastActiveIdx: index("users_last_active_idx").on(t.lastActiveAt),
+}));
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
@@ -261,7 +267,11 @@ export const parentChildren = mysqlTable("parentChildren", {
   relationship: varchar("relationship", { length: 64 }).default("parent"), // parent, guardian, teacher
   enrolledAt: timestamp("enrolledAt").defaultNow().notNull(),
   isActive: boolean("isActive").notNull().default(true),
-});
+}, (t) => ({
+  // P1-7: indexes for parent-child lookups
+  parentIdIdx: index("parentChildren_parentId_idx").on(t.parentId),
+  childIdIdx: index("parentChildren_childId_idx").on(t.childId),
+}));
 
 export type ParentChild = typeof parentChildren.$inferSelect;
 export type InsertParentChild = typeof parentChildren.$inferInsert;
@@ -337,7 +347,11 @@ export const tutorSessions = mysqlTable("tutorSessions", {
   messages: json("messages").$type<TutorMessage[]>().notNull().default([]),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, (t) => ({
+  // P1-7: index for per-user session lookups
+  userIdIdx: index("tutorSessions_userId_idx").on(t.userId),
+  userUpdatedIdx: index("tutorSessions_userId_updatedAt_idx").on(t.userId, t.updatedAt),
+}));
 
 export type TutorSession = typeof tutorSessions.$inferSelect;
 

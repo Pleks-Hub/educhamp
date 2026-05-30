@@ -301,12 +301,15 @@ class SDKServer {
       throw ForbiddenError("User not found");
     }
 
-    // P0 security: block suspended or deleted accounts
-    if ((user as any).status === "suspended") {
-      throw ForbiddenError("Your account has been suspended. Please contact support.");
+    // P0-1: block suspended, deleted, deactivated, or archived accounts
+    if (user.status === "suspended") {
+      throw ForbiddenError("Your account has been suspended. Please contact support@educhamp.app.");
     }
-    if ((user as any).status === "deleted") {
-      throw ForbiddenError("This account no longer exists.");
+    if (user.status === "deleted" || user.status === "archived") {
+      throw ForbiddenError("Account not found.");
+    }
+    if (user.status === "deactivated") {
+      throw ForbiddenError("Your account has been deactivated. Please contact support@educhamp.app.");
     }
 
     await db.upsertUser({

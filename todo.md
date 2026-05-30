@@ -1697,3 +1697,20 @@
 - [x] Timed exam practice mode: submitQuiz procedure skips mastery/XP/gamification in practice mode
 - [x] Timed exam practice mode: show "Practice Mode" badge on quiz UI and results screen
 - [x] Tests for all Sprint 63 features (sprint63.test.ts — 29 tests, 401 total passing)
+
+## Security Hardening — ASA Review (May 29 2026)
+
+### P0 Critical
+- [x] P0-1: Suspended/deleted user auth bypass — VERIFIED: sdk.ts blocks suspended/deactivated/archived/deleted users
+- [x] P0-2: Helmet HTTP security headers — VERIFIED: helmet() already applied in index.ts with HSTS, X-Frame-Options, X-Content-Type-Options
+- [x] P0-3: Rate limiting — VERIFIED: express-rate-limit applied (120/min global, 10/min chatbot, 10/15min 2FA)
+- [x] P0-4: Server-side RBAC enforcement — checkAdminPermission() added to db.ts; applied to deleteUser, updateUserRole, publishCmsContent, assignRole, upsertSetting
+- [x] P0-5: Register heartbeat crons — grade-promotion (monthly), inactivity-monitor (daily), weekly-parent-digest (weekly), invite-expiry (daily) all registered via CLI
+
+### P1 High Priority
+- [x] P1-7: DB indexes — migration 0033 applied: users (email, status, role), parentChildren (parentId, childId), tutorSessions (userId, userId+updatedAt)
+- [x] P1-8: ErrorBoundary — VERIFIED: stack trace only shown in DEV mode (import.meta.env.DEV guard)
+- [x] P1-9: listUsers server-side search — VERIFIED: getAllUsers() uses SQL LIKE on name+email; admin router passes input.search
+- [x] P1-10: Tutor session history cap — capped at 100 messages (.slice(-100)) in routers.ts
+- [x] P1-11: robots.txt — VERIFIED: already present, disallows /admin, /api/, /quiz, /diagnostic, /parent/, /profile, /billing
+- [x] P1-12: Body-parser limit — reduced from 2 MB to 1 MB in index.ts

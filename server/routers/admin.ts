@@ -52,6 +52,7 @@ import {
   getUserRoles,
   getUserPermissions,
   seedDefaultRoles,
+  checkAdminPermission,
   // Sprint 40: Inactivity
   getInactiveStudents,
   getInactivityStats,
@@ -117,6 +118,10 @@ export const adminRouter = router({
   updateUserRole: adminProcedure
     .input(z.object({ userId: z.number(), role: z.enum(["admin", "user"]) }))
     .mutation(async ({ ctx, input }) => {
+      // P0-4: RBAC — only super-admin or users with users:update_role permission
+      if (!(await checkAdminPermission(ctx.user.id, ctx.user.role, "users", "update_role"))) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You do not have permission to change user roles." });
+      }
       await updateUserRole(input.userId, input.role);
       await logAdminAction(ctx.user.id, "user.role_change", "user", input.userId, {
         newRole: input.role,
@@ -153,6 +158,10 @@ export const adminRouter = router({
   deleteUser: adminProcedure
     .input(z.object({ userId: z.number() }))
     .mutation(async ({ ctx, input }) => {
+      // P0-4: RBAC — only super-admin or users with users:delete permission
+      if (!(await checkAdminPermission(ctx.user.id, ctx.user.role, "users", "delete"))) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You do not have permission to delete users." });
+      }
       await deleteUser(input.userId);
       await logAdminAction(ctx.user.id, "user.delete", "user", input.userId, {
         deletedBy: ctx.user.id,
@@ -257,6 +266,10 @@ export const adminRouter = router({
       description: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // P0-4: RBAC — only super-admin or users with settings:update permission
+      if (!(await checkAdminPermission(ctx.user.id, ctx.user.role, "settings", "update"))) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You do not have permission to update platform settings." });
+      }
       await upsertPlatformSetting(input.key, input.value, input.description, ctx.user.id);
       await logAdminAction(ctx.user.id, "setting.update", "setting", null, {
         key: input.key,
@@ -303,6 +316,10 @@ export const adminRouter = router({
     publish: adminProcedure
       .input(z.object({ key: z.string(), changeNote: z.string().optional() }))
       .mutation(async ({ ctx, input }) => {
+        // P0-4: RBAC — only super-admin or users with cms:publish permission
+        if (!(await checkAdminPermission(ctx.user.id, ctx.user.role, "cms", "publish"))) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not have permission to publish CMS content." });
+        }
         await publishCmsContent(input.key, ctx.user.id, input.changeNote);
         await logAdminAction(ctx.user.id, "cms.publish", "cms", null, { key: input.key, changeNote: input.changeNote });
         return { success: true };
@@ -377,6 +394,10 @@ export const adminRouter = router({
     assignRole: adminProcedure
       .input(z.object({ userId: z.number(), roleId: z.number() }))
       .mutation(async ({ ctx, input }) => {
+        // P0-4: RBAC — only super-admin or users with rbac:assign permission
+        if (!(await checkAdminPermission(ctx.user.id, ctx.user.role, "rbac", "assign"))) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not have permission to assign roles." });
+        }
         await assignRoleToUser(input.userId, input.roleId, ctx.user.id);
         await logAdminAction(ctx.user.id, "rbac.assignRole", "user", input.userId, {
           roleId: input.roleId,

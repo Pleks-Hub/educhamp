@@ -2681,3 +2681,60 @@ export async function processCourseRequestToken(
 
   return { success: true };
 }
+
+// ─── P0-4: Server-side RBAC permission check ─────────────────────────────────
+
+/**
+ * Check whether a user has a specific granular permission via their assigned
+ * admin roles.  Returns true if:
+ *   1. The user has role === "admin" (super-admin bypass), OR
+ *   2. The user has an active role assignment that grants resource+action.
+ *
+ * Usage:
+ *   const allowed = await checkAdminPermission(ctx.user.id, ctx.user.role, "users", "delete");
+ *   if (!allowed) throw new TRPCError({ code: "FORBIDDEN", message: "..." });
+ */
+export async function checkAdminPermission(
+  userId: number,
+  userRole: string,
+  resource: string,
+  action: string
+): Promise<boolean> {
+  // Super-admin (role === "admin") has all permissions
+  if (userRole === "admin") return true;
+
+  const db = await getDb();
+  if (!db) return false;
+
+  const { adminRoleAssignments, rolePermissions } = await import("../drizzle/schema");
+
+  // Get active role assignments for this user
+  const assignments = await db
+    .select({ roleId: adminRoleAssignments.roleId })
+    .from(adminRoleAssignments)
+    .where(
+      and(
+        eq(adminRoleAssignments.userId, userId),
+        eq(adminRoleAssignments.isActive, true)
+      )
+    );
+
+  if (assignments.length === 0) return false;
+
+  const roleIds = assignments.map((a) => a.roleId);
+
+  // Check if any of those roles has the required permission
+  const match = await db
+    .select({ id: rolePermissions.id })
+    .from(rolePermissions)
+    .where(
+      and(
+        inArray(rolePermissions.roleId, roleIds),
+        eq(rolePermissions.resource, resource),
+        eq(rolePermissions.action, action)
+      )
+    )
+    .limit(1);
+
+  return match.length > 0;
+}

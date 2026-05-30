@@ -85,9 +85,9 @@ async function startServer() {
   // ── Resend webhook (must be registered BEFORE express.json) ──────────────────────────────────────────────────
   registerResendWebhook(app);
 
-  // 2 MB body limit — no raw file bytes go through tRPC (all uploads use S3 pre-signed URLs)
-  app.use(express.json({ limit: "2mb" }));
-  app.use(express.urlencoded({ limit: "2mb", extended: true }));
+  // 1 MB body limit — no raw file bytes go through tRPC (all uploads use S3 pre-signed URLs) (P1-12 DoS mitigation)
+  app.use(express.json({ limit: "1mb" }));
+  app.use(express.urlencoded({ limit: "1mb", extended: true }));
 
   // ── Rate limiting ──────────────────────────────────────────────────────────
   // 2FA challenge: strict limit to prevent brute-force
