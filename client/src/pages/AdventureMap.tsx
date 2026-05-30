@@ -32,7 +32,7 @@ export default function AdventureMap() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  const { data: units, isLoading: unitsLoading } = trpc.curriculum.getUnits.useQuery(undefined, {
+  const { data: units, isLoading: unitsLoading, isError: unitsError } = trpc.curriculum.getUnits.useQuery(undefined, {
     staleTime: 60_000,
   });
 
@@ -98,7 +98,7 @@ export default function AdventureMap() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Map className="w-6 h-6 text-emerald-500" />
+          <Map className="w-6 h-6 text-emerald-500" aria-hidden="true" />
           Adventure Map
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
@@ -126,9 +126,14 @@ export default function AdventureMap() {
           ))}
         </div>
 
-        {unitNodes.length === 0 && (
+        {unitsError && (
           <div className="text-center py-16">
-            <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+            <p className="text-destructive text-sm">Unable to load your adventure map. Please refresh the page.</p>
+          </div>
+        )}
+        {unitNodes.length === 0 && !unitsError && (
+          <div className="text-center py-16">
+            <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" aria-hidden="true" />
             <p className="text-muted-foreground">No units found. Enrol in a course to begin your adventure!</p>
             <Button className="mt-4" onClick={() => setLocation("/courses")}>Browse Courses</Button>
           </div>
@@ -201,6 +206,10 @@ function MapNode({ node, index, onNavigate }: { node: UnitNode; index: number; o
           node.status !== "locked" && "cursor-pointer hover:shadow-md",
         )}
         onClick={onNavigate}
+        role={node.status !== "locked" ? "button" : undefined}
+        tabIndex={node.status !== "locked" ? 0 : undefined}
+        onKeyDown={(e) => e.key === "Enter" && onNavigate()}
+        aria-label={node.status !== "locked" ? `Go to Unit ${node.unitNumber}: ${node.title}` : undefined}
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -213,7 +222,7 @@ function MapNode({ node, index, onNavigate }: { node: UnitNode; index: number; o
             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{node.description}</p>
           </div>
           {config.icon && (
-            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", config.nodeClass)}>
+            <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", config.nodeClass)} aria-hidden="true">
               {config.icon}
             </div>
           )}

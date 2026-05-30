@@ -124,7 +124,7 @@ function QuestionCard({
       </div>
 
       {/* Question text */}
-      <p className="text-base font-medium leading-relaxed">{item.questionText}</p>
+      <p className="text-base font-medium leading-relaxed" role="heading" aria-level={3}>{item.questionText}</p>
 
       {/* Answer input */}
       {isMultipleChoice ? (
@@ -161,6 +161,7 @@ function QuestionCard({
           placeholder="Type your answer here…"
           disabled={disabled}
           className="text-sm"
+          aria-label="Your answer"
         />
       )}
     </div>
@@ -550,6 +551,8 @@ export default function ExamPrep() {
                 <button
                   key={item.id}
                   onClick={() => setCurrentIndex(i)}
+                  aria-label={`Go to question ${i + 1}${answers[item.id] ? " (answered)" : ""}`}
+                  aria-current={i === currentIndex ? "true" : undefined}
                   className={`h-6 w-6 rounded-full text-xs font-medium transition-all border
                     ${i === currentIndex
                       ? "bg-indigo-600 text-white border-indigo-600 scale-110"

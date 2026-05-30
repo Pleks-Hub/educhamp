@@ -1997,3 +1997,24 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] After founder approval: commit approved approximate rows (4 rows at weight 0.50); permanently exclude none rows (A.1(A)x2, A.1(B), A.10(C))
 - [x] Write server/phase4e.test.ts covering CA_CCSS crosswalk completeness (36 tests)
 - [x] Run full test suite (860/860 passing), TypeScript exit 0, save Phase 4E checkpoint
+
+### Production Readiness Sprint 1 — UI/UX Consistency & Accessibility Audit ✓ COMPLETE
+
+#### Critical fixes (WCAG failures, broken keyboard access, missing h1)
+- [x] Home: Add aria-label to NotificationBell icon button; fix heading hierarchy (h2/h3 for section titles)
+- [x] Tutor: Add missing h1 page title; add aria-label to all icon-only buttons; add aria-label to textarea
+- [x] Diagnostic: Fix multiple-h1 issue; add aria-expanded to toggle button; add error handling for tRPC queries
+- [x] Quiz: Fix multiple-h1 issue; add label to short-answer input (htmlFor/id pair)
+- [x] Skills: Add aria-label/label to search input and unit filter select; add error state
+- [x] ParentDashboard: Add aria-label to icon-only buttons; add htmlFor/id to invite inputs; add aria-label to copy and remove buttons
+- [x] Profile: Add aria-label to icon-only copy button
+- [x] ExamPrep: Fix heading hierarchy (role=heading on question text); add aria-label to navigator dots; add aria-label to short-answer input
+- [x] AdventureMap: Add keyboard navigation and aria-label to interactive card; add aria-hidden to decorative icons
+
+#### Moderate fixes (semantic HTML, empty/error states, contrast)
+- [x] Curriculum: Replace p tags used as section headings with h3
+- [x] Progress: Add error handling for tRPC queries
+- [x] GamificationHub: Add error state for profile query
+- [x] RewardsMarketplace: Fix color contrast for disabled button and affordability hint (semantic tokens)
+- [x] Diagnostic: Fix "Worked Solution" p-as-heading to h4
+- [x] AdventureMap: Add aria-hidden to decorative status icon in card

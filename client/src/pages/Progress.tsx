@@ -63,10 +63,10 @@ export default function ProgressPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  const { data: dashboard, isLoading: dashLoading } = trpc.progress.getDashboard.useQuery(undefined, {
+  const { data: dashboard, isLoading: dashLoading, isError: dashError } = trpc.progress.getDashboard.useQuery(undefined, {
     enabled: !!user,
   });
-  const { data: masteryData, isLoading: masteryLoading } = trpc.progress.getMastery.useQuery(undefined, {
+  const { data: masteryData, isLoading: masteryLoading, isError: masteryError } = trpc.progress.getMastery.useQuery(undefined, {
     enabled: !!user,
   });
 
@@ -77,6 +77,17 @@ export default function ProgressPage() {
           <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto" />
           <h2 className="text-lg font-semibold">Sign in to view progress</h2>
           <Button onClick={() => { window.location.href = getLoginUrl(); }}>Sign in</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (dashError || masteryError) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-3 max-w-sm">
+          <p className="text-destructive text-sm">Unable to load your progress data. Please refresh the page.</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>Refresh</Button>
         </div>
       </div>
     );

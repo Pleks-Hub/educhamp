@@ -362,9 +362,9 @@ export default function Curriculum() {
               {unitsWithLessons ? (
                 unitsWithLessons.map((unit) => (
                   <div key={unit.id} className="space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1">
                       Unit {unit.unitNumber} · {unit.title}
-                    </p>
+                    </h3>
                     {unit.lessons.length === 0 ? (
                       <p className="text-xs text-muted-foreground px-2">No lessons yet</p>
                     ) : (

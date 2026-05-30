@@ -743,10 +743,13 @@ export default function Tutor() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
         <div className="h-14 border-b flex items-center px-4 gap-3 bg-background shrink-0">
+          {/* Visually-hidden h1 for screen readers */}
+          <h1 className="sr-only">AI Tutor — EduBot</h1>
           <button
             onClick={() => setSidebarOpen((v) => !v)}
             className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-muted transition-colors shrink-0"
             title="Toggle sidebar"
+            aria-label="Toggle tutor sidebar"
           >
             <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
@@ -756,7 +759,7 @@ export default function Tutor() {
                 <ModeIcon className="h-3.5 w-3.5" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold leading-tight">{currentModeConfig.label} Mode</p>
+                <h2 className="text-sm font-semibold leading-tight">{currentModeConfig.label} Mode</h2>
                 <p className="text-xs text-muted-foreground truncate">{currentModeConfig.description}</p>
               </div>
               {currentUnit && (
@@ -771,7 +774,7 @@ export default function Tutor() {
                 <History className="h-3.5 w-3.5" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold leading-tight">Session History</p>
+                <h2 className="text-sm font-semibold leading-tight">Session History</h2>
                 <p className="text-xs text-muted-foreground">Browse and export past sessions</p>
               </div>
             </>
@@ -1023,6 +1026,7 @@ export default function Tutor() {
                     ? "Ask for a misconception-targeting question…"
                     : `Ask anything about ${courseLabel}…`
                 }
+                aria-label="Message EduBot"
                 className="flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 text-sm min-h-[36px] max-h-32 py-1 px-0 placeholder:text-muted-foreground/60"
                 rows={1}
                 disabled={isStreaming}

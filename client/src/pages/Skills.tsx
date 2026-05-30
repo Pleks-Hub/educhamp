@@ -41,7 +41,7 @@ export default function Skills() {
   const [search, setSearch] = useState("");
   const [unitFilter, setUnitFilter] = useState("all");
 
-  const { data: skills, isLoading } = trpc.curriculum.getAllSkills.useQuery(undefined, { enabled: !!user });
+  const { data: skills, isLoading, isError: skillsError } = trpc.curriculum.getAllSkills.useQuery(undefined, { enabled: !!user });
   const { data: masteryData } = trpc.progress.getMastery.useQuery(undefined, { enabled: !!user });
   const { data: units } = trpc.curriculum.getUnits.useQuery();
   const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!user });
@@ -78,6 +78,17 @@ export default function Skills() {
     return groups;
   }, [filtered]);
 
+  if (skillsError) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-3 max-w-sm">
+          <p className="text-destructive text-sm">Unable to load skills. Please refresh the page.</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>Refresh</Button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-4 page-enter">
@@ -104,8 +115,10 @@ export default function Skills() {
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-48">
+          <label htmlFor="skills-search" className="sr-only">Search skills</label>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
+            id="skills-search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search skills..."
@@ -113,7 +126,7 @@ export default function Skills() {
           />
         </div>
         <Select value={unitFilter} onValueChange={setUnitFilter}>
-          <SelectTrigger className="w-40 h-9 text-sm">
+          <SelectTrigger className="w-40 h-9 text-sm" aria-label="Filter by unit">
             <SelectValue placeholder="All Units" />
           </SelectTrigger>
           <SelectContent>

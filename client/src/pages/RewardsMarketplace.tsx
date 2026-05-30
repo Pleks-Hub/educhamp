@@ -165,7 +165,7 @@ export default function RewardsMarketplace() {
 
                   {/* Affordability hint */}
                   {!canAfford && (
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       You need {(reward.xpCost - totalXp).toLocaleString()} more XP
                     </p>
                   )}
@@ -174,9 +174,9 @@ export default function RewardsMarketplace() {
                   <Button
                     className={cn(
                       "w-full gap-1.5",
-                      canAfford
+                        canAfford
                         ? "bg-violet-600 hover:bg-violet-700"
-                        : "bg-slate-200 text-slate-500 cursor-not-allowed",
+                        : "bg-muted text-muted-foreground cursor-not-allowed",
                     )}
                     disabled={!canAfford || isRedeeming}
                     onClick={() => canAfford && handleRedeem(reward.id)}
@@ -198,11 +198,11 @@ export default function RewardsMarketplace() {
       )}
 
       {/* How it works */}
-      <Card className="bg-slate-50 border-slate-200">
+      <Card className="bg-muted/40 border-border">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-slate-600">How rewards work</CardTitle>
+          <CardTitle className="text-sm text-foreground">How rewards work</CardTitle>
         </CardHeader>
-        <CardContent className="text-xs text-slate-500 space-y-1.5">
+        <CardContent className="text-xs text-muted-foreground space-y-1.5">
           <div className="flex items-start gap-2">
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
             <span>Earn XP by completing lessons, passing quizzes, and keeping your learning streak.</span>

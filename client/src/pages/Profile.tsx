@@ -88,6 +88,7 @@ function TwoFactorSetup({ onDone }: { onDone: () => void }) {
               variant="ghost"
               className="shrink-0"
               onClick={() => { navigator.clipboard.writeText(qrData.secret); toast.success("Secret copied!"); }}
+              aria-label="Copy authenticator secret"
             >
               <Copy className="h-3.5 w-3.5" />
             </Button>

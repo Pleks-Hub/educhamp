@@ -165,12 +165,12 @@ function EnrolChildModal({ open, onClose, onSuccess }: { open: boolean; onClose:
                   <span className="font-medium">How it works:</span> Generate a secure invite link and share it with your child. They sign in with their own account and get automatically linked to yours.
                 </div>
                 <div className="space-y-2">
-                  <Label>Child's Name <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input placeholder="e.g. Emma" value={inviteChildName} onChange={e => setInviteChildName(e.target.value)} />
+                  <Label htmlFor="invite-child-name">Child's Name <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Input id="invite-child-name" placeholder="e.g. Emma" value={inviteChildName} onChange={e => setInviteChildName(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Child's Email <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input type="email" placeholder="student@example.com" value={inviteChildEmail} onChange={e => setInviteChildEmail(e.target.value)} />
+                  <Label htmlFor="invite-child-email">Child's Email <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Input id="invite-child-email" type="email" placeholder="student@example.com" value={inviteChildEmail} onChange={e => setInviteChildEmail(e.target.value)} />
                 </div>
                 <Button
                   className="w-full"
@@ -192,7 +192,7 @@ function EnrolChildModal({ open, onClose, onSuccess }: { open: boolean; onClose:
                   <Label>Invite Link</Label>
                   <div className="flex gap-2">
                     <Input readOnly value={generatedInviteUrl} className="font-mono text-xs" />
-                    <Button variant="outline" size="sm" onClick={copyInviteLink}>
+                    <Button variant="outline" size="sm" onClick={copyInviteLink} aria-label={copiedInvite ? "Copied!" : "Copy invite link"}>
                       {copiedInvite ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </div>
@@ -925,6 +925,7 @@ function ChildCoursesPanel({ childId, childName }: { childId: number; childName:
                       size="icon"
                       className="h-7 w-7 text-muted-foreground hover:text-red-600 shrink-0"
                       onClick={() => { setRemovingCourse({ id: cp.courseId, title: cp.courseTitle }); setRemoveDialogOpen(true); }}
+                      aria-label={`Remove ${cp.courseTitle}`}
                     >
                       <X className="h-3.5 w-3.5" />
                     </Button>

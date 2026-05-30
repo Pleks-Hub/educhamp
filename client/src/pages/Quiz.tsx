@@ -624,8 +624,9 @@ export default function Quiz() {
 
           {currentQ.questionType === "short_answer" && (
             <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">Your answer:</Label>
+              <Label htmlFor={`short-answer-${currentQ.id}`} className="text-sm text-muted-foreground">Your answer:</Label>
               <Input
+                id={`short-answer-${currentQ.id}`}
                 value={currentAnswer}
                 onChange={(e) => setAnswers((prev) => ({ ...prev, [String(currentQ.id)]: e.target.value }))}
                 placeholder="Type your answer..."

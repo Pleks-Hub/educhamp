@@ -20,7 +20,7 @@ export default function GamificationHub() {
   const { user } = useAuth();
   const utils = trpc.useUtils();
 
-  const { data: profile, isLoading } = trpc.gamification.getProfile.useQuery(undefined, {
+  const { data: profile, isLoading, isError: profileError } = trpc.gamification.getProfile.useQuery(undefined, {
     enabled: !!user,
     staleTime: 15_000,
   });
@@ -52,6 +52,17 @@ export default function GamificationHub() {
 
   // Bootstrap on first load if no profile data
   const hasData = profile && (profile.xp?.totalXp ?? 0) >= 0;
+
+  if (profileError) {
+    return (
+      <div className="container max-w-4xl py-8 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center space-y-3 max-w-sm">
+          <p className="text-destructive text-sm">Unable to load your achievements. Please refresh the page.</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>Refresh</Button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
