@@ -189,6 +189,7 @@ function DashboardLayoutContent({
   const [courseSwitcherOpen, setCourseSwitcherOpen] = useState(false);
   const dashboardQuery = trpc.progress.getDashboard.useQuery(undefined, {
     staleTime: 60_000,
+    enabled: !!user,
   });
   const activeCourseTitle = dashboardQuery.data?.courseTitle;
 
@@ -196,6 +197,7 @@ function DashboardLayoutContent({
   const pendingRequestsQuery = trpc.parent.getPendingCourseRequests.useQuery(undefined, {
     staleTime: 30_000,
     retry: false,
+    enabled: !!user,
   });
   const pendingRequestCount = pendingRequestsQuery.data?.length ?? 0;
 
@@ -211,6 +213,7 @@ function DashboardLayoutContent({
   const subscriptionQuery = trpc.payment.getMySubscription.useQuery(undefined, {
     staleTime: 5 * 60_000,
     retry: false,
+    enabled: !!user,
   });
   const sub = subscriptionQuery.data;
   const isTrialing = sub?.status === "trialing" && sub?.trialEnd != null;
