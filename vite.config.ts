@@ -248,7 +248,10 @@ export default defineConfig({
     emptyOutDir: true,
     // Target es2019 for broad Safari 14+ / Chrome 79+ / Firefox 67+ compatibility
     target: ["es2019", "safari14", "chrome79", "firefox67", "edge79"],
-    chunkSizeWarningLimit: 600,
+    // Raise the warning limit: large Shiki/WASM chunks are async-loaded by
+    // StreamdownRenderer and never block initial paint — the 600 kB default
+    // produces noisy false positives for those deferred language-grammar chunks.
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {},
   },
   server: {

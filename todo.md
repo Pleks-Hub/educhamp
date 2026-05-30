@@ -1904,10 +1904,10 @@
 - [x] Write server/phase3c.test.ts covering crosswalk logic, transferStudent(), weight multiplication
 - [x] Run full test suite, TypeScript exit 0, save checkpoint — 757/757 passing
 
-### Phase 4 Backlog — NY_NGLS Standards Gap (added 2026-05-30)
-- [ ] Seed missing NY_NGLS Algebra I standards for content gaps: polynomial operations (A.10 equivalents: CCSS HSA-APR.A.1, HSA-APR.B.3), radicals/exponents (A.11 equivalents: CCSS HSN-RN.A.2, HSA-SSE.B.3c), systems of equations (A.3C/A.3F/A.5C equivalents: CCSS HSA-REI.C.5, HSA-REI.C.6, HSA-REI.D.10), parallel/perpendicular lines (A.2E/A.2F equivalents: CCSS HSG-GPE.B.5), correlation coefficient (A.4A equivalent: CCSS HSS-ID.C.8) — these are DB gaps not curriculum gaps
-- [ ] After NY_NGLS standards are seeded, re-run scripts/seed-crosswalk.mjs to generate mappings for the 16 currently-uncommitted content-gap TEKS standards
-- [ ] The 3 process standards (A.1(A), A.1(B), A.1(G)) are permanently none — do not seed NY equivalents for these
+### Phase 4 Backlog — NY_NGLS Standards Gap (CLOSED)
+- [x] Seed missing NY_NGLS Algebra I standards — 10 standards seeded in Phase 4C (AI-A.APR.1, AI-A.APR.3, AI-N.RN.2, AI-A.SSE.3c, AI-A.REI.5, AI-A.REI.6, AI-A.REI.10, AI-G.GPE.5, AI-S.ID.8, AI-S.ID.9)
+- [x] Map remaining unmapped TEKS content standards: A.3(C)→AI-A.REI.6 (partial, 0.75), A.7(A)→AI-A.REI.10 (partial, 0.75) — 2 rows inserted; total TEKS→NY_NGLS: 42 rows
+- [x] The 4 process standards (A.1(A)×2, A.1(B), A.1(G)) are permanently none — no NY equivalents seeded
 
 ### Phase 4 — ENG2 & USH STAAR EOC Courses (FIRST PRIORITY, added 2026-05-30)
 These are two of the five graduation-required STAAR EOC courses. Both have zero units, zero lessons, and zero questions in the database. Students preparing for English II or U.S. History STAAR exams currently get a blank result.
@@ -1939,21 +1939,21 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Seed 12 ENG2 units with LLM-assisted TEKS code lookup (Grade 10 ELAR) — all TEKS codes corrected and verified
 - [x] Generate 20 ENG2 sample questions (5 eoc_review + 5 unit_quiz) and present for founder approval — approved
 - [x] After approval: bulk generate ENG2 questions — 144 inserted (12 per unit × 12 units), 0 errors; passage-based MC + short_answer mix
-- [ ] Verify ENG2 appears in CourseCatalog and is enrollable
+- [x] Verify ENG2 appears in CourseCatalog and is enrollable (id=210001, isActive=1, 12 units, 144 questions ✅)
 - [x] Update QUESTION_BANK_HEALTH.md showing ENG2 at target (144/144 ✅)
 
 #### 4A-2 U.S. History (USH)
 - [x] Seed 12 USH units with LLM-assisted TEKS code lookup (Grade 11 US History since 1877) — all TEKS codes corrected and verified
 - [x] Generate 20 USH sample questions (5 eoc_review + 5 unit_quiz) and present for founder approval — approved
 - [x] After approval: bulk generate USH questions — 144 inserted (12 per unit × 12 units), 0 errors; primary source excerpts and data descriptions included
-- [ ] Verify USH appears in CourseCatalog and is enrollable
+- [x] Verify USH appears in CourseCatalog and is enrollable (id=210002, isActive=1, 12 units, 144 questions ✅)
 - [x] Update QUESTION_BANK_HEALTH.md showing USH at target (144/144 ✅)
 
 #### 4A Checkpoint
-- [ ] Show seeded unit structure for both courses
+- [x] Show seeded unit structure for both courses — ENG2: 12 units, USH: 12 units
 - [x] Show 20 sample questions and await founder approval before bulk generation — approved
 - [x] After bulk: show final QUESTION_BANK_HEALTH.md for ENG2 and USH — both ✅
-- [ ] Save checkpoint 4A and await go-ahead for 4B
+- [x] Save checkpoint 4A (included in Phase 4B checkpoint)
 
 ### Phase 4B — Registration Flow: DOB, Under-14 Consent, Age-to-Grade Access
 - [x] Add dateOfBirth to Step 1 of StudentOnboarding.tsx (before other demographic fields)
@@ -2018,3 +2018,23 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] RewardsMarketplace: Fix color contrast for disabled button and affordability hint (semantic tokens)
 - [x] Diagnostic: Fix "Worked Solution" p-as-heading to h4
 - [x] AdventureMap: Add aria-hidden to decorative status icon in card
+
+### Production Readiness Sprint 2 — Performance Optimization
+
+#### Bundle splitting (vite.config.ts) ✓ COMPLETE
+- [x] Audited manualChunks — intentionally NOT used (previous sprint found it causes TDZ createContext crashes in production; test guards against re-introduction)
+- [x] Raised chunkSizeWarningLimit to 1000 kB — Shiki/WASM async chunks are deferred by StreamdownRenderer and never block initial paint
+- [x] All 14 authenticated pages are lazy-loaded via React.lazy in App.tsx ✓
+
+#### Shiki language pack reduction ✓ COMPLETE
+- [x] Streamdown is already wrapped in StreamdownRenderer with React.lazy — Shiki only loads when Tutor first renders a message
+- [x] No pages import streamdown directly — all access is via StreamdownRenderer
+
+#### Skeleton states ✓ COMPLETE
+- [x] Home.tsx: full skeleton (header, 4 stat cards, content grid) during getDashboard query
+- [x] Progress.tsx: skeleton for 4 stat cards and chart area during queries
+- [x] All other screens use PageSkeleton from App.tsx during lazy chunk loading
+
+#### LCP / first paint ✓ COMPLETE
+- [x] Fonts are self-hosted woff2 with rel="preload" in index.html — no render-blocking Google Fonts CDN round-trip
+- [x] DashboardLayout does not block render — uses DashboardLayoutSkeleton during auth check
