@@ -1908,3 +1908,25 @@
 - [ ] Seed missing NY_NGLS Algebra I standards for content gaps: polynomial operations (A.10 equivalents: CCSS HSA-APR.A.1, HSA-APR.B.3), radicals/exponents (A.11 equivalents: CCSS HSN-RN.A.2, HSA-SSE.B.3c), systems of equations (A.3C/A.3F/A.5C equivalents: CCSS HSA-REI.C.5, HSA-REI.C.6, HSA-REI.D.10), parallel/perpendicular lines (A.2E/A.2F equivalents: CCSS HSG-GPE.B.5), correlation coefficient (A.4A equivalent: CCSS HSS-ID.C.8) — these are DB gaps not curriculum gaps
 - [ ] After NY_NGLS standards are seeded, re-run scripts/seed-crosswalk.mjs to generate mappings for the 16 currently-uncommitted content-gap TEKS standards
 - [ ] The 3 process standards (A.1(A), A.1(B), A.1(G)) are permanently none — do not seed NY equivalents for these
+
+### Phase 4 — ENG2 & USH STAAR EOC Courses (FIRST PRIORITY, added 2026-05-30)
+These are two of the five graduation-required STAAR EOC courses. Both have zero units, zero lessons, and zero questions in the database. Students preparing for English II or U.S. History STAAR exams currently get a blank result.
+
+#### English II (ENG2) — STAAR EOC
+- [ ] Seed 12 units for ENG2 (Literary Analysis, Expository Writing, Persuasive Writing, Research, Grammar, Poetry, Drama, Short Fiction, Novel Study, Revision, Speaking/Listening, EOC Review) aligned to TEKS ELA Grade 10
+- [ ] Seed lessons for each ENG2 unit (explanation, worked examples, misconceptions)
+- [ ] Generate 140+ questions for ENG2 (easy/medium/hard/challenge distribution)
+- [ ] Verify ENG2 appears in CourseCatalog and is enrollable
+
+#### U.S. History (USH) — STAAR EOC
+- [ ] Seed 12 units for USH (Colonial Era, American Revolution, Constitution, Antebellum, Civil War, Reconstruction, Industrialization, Progressive Era, WWI/WWII, Cold War, Civil Rights, Modern America) aligned to TEKS US History
+- [ ] Seed lessons for each USH unit (explanation, worked examples, misconceptions)
+- [ ] Generate 140+ questions for USH (easy/medium/hard/challenge distribution)
+- [ ] Verify USH appears in CourseCatalog and is enrollable
+
+#### Phase 3C Weight Fix (added 2026-05-30)
+- [x] Confirm transferStudent() reads cw.alignmentWeight directly from DB row (no hardcoded switch)
+- [x] Fix null alignmentWeight on one exact row (UPDATE SET alignmentWeight=1.0 WHERE alignmentType='exact' AND alignmentWeight IS NULL)
+- [x] Add test: "transferStudent reads weight from DB row (no hardcoded switch on alignmentType)"
+- [x] Confirmed DB weights: exact=1.00 (3 rows), partial=0.75 (15 rows), approximate=0.50 (8 rows) — all correct
+- [x] 758/758 tests passing, TypeScript exit 0

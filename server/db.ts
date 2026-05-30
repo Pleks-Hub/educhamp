@@ -3381,7 +3381,10 @@ export async function transferStudent(input: TransferStudentInput): Promise<Tran
       continue;
     }
 
-    const weight = cw.alignmentWeight ?? 0.5;
+    // Read weight directly from the DB row — no hardcoded fallback.
+    // All crosswalk rows must have an explicit alignmentWeight; null rows are
+    // skipped by the guard above (alignmentWeight ?? 0) === 0.
+    const weight = cw.alignmentWeight!;
     const transferredScore = Math.round(row.score * weight);
 
     try {

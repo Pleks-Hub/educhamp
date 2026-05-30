@@ -185,6 +185,18 @@ describe("db.ts transferStudent", () => {
     expect(db).toContain("transferLog");
     expect(db).toContain("alignmentWeight");
   });
+
+  it("transferStudent reads weight from DB row (no hardcoded switch on alignmentType)", () => {
+    const db = readFileSync(join(__dirname, "db.ts"), "utf-8");
+    // Must use cw.alignmentWeight from the DB row directly
+    expect(db).toContain("cw.alignmentWeight");
+    // Must NOT contain a switch statement that derives weight from alignmentType enum
+    // (the old bug was: switch(cw.alignmentType) { case 'partial': weight = 0.85 ... })
+    expect(db).not.toMatch(/switch\s*\(.*alignmentType/);
+    // Must NOT contain hardcoded 0.85 or 0.70 weights
+    expect(db).not.toContain("0.85");
+    expect(db).not.toContain("0.70");
+  });
 });
 
 // ── 8. AdminDashboard.tsx District Transfer tab ───────────────────────────────
