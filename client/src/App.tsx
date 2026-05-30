@@ -46,6 +46,7 @@ const GamificationHub = lazy(() => import("./pages/GamificationHub"));
 const RewardsMarketplace = lazy(() => import("./pages/RewardsMarketplace"));
 const AdventureMap = lazy(() => import("./pages/AdventureMap"));
 const ConsentApproval = lazy(() => import("./pages/ConsentApproval"));
+const ExamPrep = lazy(() => import("./pages/ExamPrep"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -98,6 +99,7 @@ function Router() {
                 <Route path="/curriculum/unit/:unitNumber/lesson/:lessonId" component={LessonDetail} />
                 <Route path="/curriculum/unit/:unitNumber/quiz" component={Quiz} />
                 <Route path="/tutor" component={Tutor} />
+                <Route path="/exam-prep" component={ExamPrep} />
                 <Route path="/diagnostic" component={Diagnostic} />
                 <Route path="/diagnostic/early" component={EarlyDiagnostic} />
                 <Route path="/course-welcome" component={CourseWelcome} />

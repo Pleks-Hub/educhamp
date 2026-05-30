@@ -1232,6 +1232,119 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+
+  // ─── Exam Prep ─────────────────────────────────────────────────────────────
+  examPrep: router({
+    /**
+     * Start an exam prep session: calls buildExamReview() and returns the
+     * question set with template metadata. Correct answers are stripped from
+     * the response so they cannot be read from the network tab.
+     */
+    start: studentProcedure
+      .input(z.object({ courseId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const { buildExamReview } = await import("./db");
+        const result = await buildExamReview(ctx.user.id, input.courseId);
+        if (!result) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "No exam template found for this course. Please check back later.",
+          });
+        }
+        // Strip correct answers before sending to client
+        const clientItems = result.items.map((item) => ({
+          id: item.id,
+          questionText: item.questionText,
+          questionType: item.questionType,
+          choices: item.choices,
+          skillTag: item.skillTag,
+          difficulty: item.difficulty,
+          unitId: item.unitId,
+          unitTitle: item.unitTitle,
+        }));
+        return {
+          templateId: result.templateId,
+          templateName: result.templateName,
+          assessmentRegime: result.assessmentRegime,
+          itemCount: result.itemCount,
+          timeLimitMinutes: result.timeLimitMinutes,
+          thinBankWarning: result.thinBankWarning,
+          studentNote: result.studentNote,
+          items: clientItems,
+        };
+      }),
+
+    /**
+     * Submit answers for an exam prep session.
+     * Accepts an array of { questionId, answer } pairs, grades them server-side
+     * against the question bank, and returns per-question feedback + summary.
+     */
+    submit: studentProcedure
+      .input(
+        z.object({
+          courseId: z.number(),
+          answers: z.array(
+            z.object({
+              questionId: z.number(),
+              answer: z.string(),
+            })
+          ),
+          timeTakenSeconds: z.number().optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const db = await getDb();
+        if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+        const { quizQuestions } = await import("../drizzle/schema");
+        const { inArray } = await import("drizzle-orm");
+
+        const questionIds = input.answers.map((a) => a.questionId);
+        if (questionIds.length === 0) return { results: [], score: 0, total: 0, percentage: 0 };
+
+        // Fetch correct answers from DB
+        const questions = await db
+          .select({
+            id: quizQuestions.id,
+            correctAnswer: quizQuestions.correctAnswer,
+            explanation: quizQuestions.explanation,
+            questionText: quizQuestions.questionText,
+            difficulty: quizQuestions.difficulty,
+            skillTag: quizQuestions.skillTag,
+          })
+          .from(quizQuestions)
+          .where(inArray(quizQuestions.id, questionIds));
+
+        const qMap = new Map(questions.map((q) => [q.id, q]));
+
+        let correct = 0;
+        const results = input.answers.map((a) => {
+          const q = qMap.get(a.questionId);
+          if (!q) return { questionId: a.questionId, isCorrect: false, correctAnswer: "", explanation: "", difficulty: "medium" as const, skillTag: "" };
+          const isCorrect = a.answer.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase();
+          if (isCorrect) correct++;
+          return {
+            questionId: a.questionId,
+            isCorrect,
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation,
+            difficulty: q.difficulty as "easy" | "medium" | "hard" | "challenge",
+            skillTag: q.skillTag,
+          };
+        });
+
+        const total = results.length;
+        const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+        // Award XP: 5 XP per correct answer
+        if (correct > 0) {
+          try {
+            await awardXp(ctx.user.id, "exam_prep_session", correct * 5);
+          } catch { /* non-fatal */ }
+        }
+
+        return { results, score: correct, total, percentage };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

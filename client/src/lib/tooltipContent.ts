@@ -36,6 +36,10 @@ export const NAV_TOOLTIPS: Record<string, TooltipEntry> = {
     title: "AI Tutor",
     description: "Chat with EduBot, your personal AI tutor. Ask questions, request explanations, practise problems, or get an exam review — in any mode.",
   },
+  examPrep: {
+    title: "Exam Prep",
+    description: "Practice with official exam-style questions drawn from your course content. Questions are difficulty-weighted, graded instantly, and explained in detail.",
+  },
   progress: {
     title: "Progress",
     description: "View your mastery scores, quiz history, and skill-level charts across all units. Track improvement over time.",

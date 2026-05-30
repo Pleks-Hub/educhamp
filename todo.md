@@ -1849,3 +1849,16 @@
 - [x] Add GET /api/courses/:courseId/next-lesson endpoint
 - [x] Write server/phase3a.test.ts covering template seeding, buildExamReview, exam_prep mode, next-lesson endpoint
 - [x] Run full test suite, update todo.md, save checkpoint, deliver 3A demo
+
+### Phase 3B — Exam Prep UI Page (May 30, 2026)
+- [x] Add examPrep.start tRPC procedure (strips correctAnswer, returns template metadata)
+- [x] Add examPrep.submit tRPC procedure (server-side grading, XP award)
+- [x] Build ExamPrep.tsx page — session start screen with hero card
+- [x] Build ExamPrep.tsx — timed question renderer with navigator dots
+- [x] Build ExamPrep.tsx — per-question review with answer comparison and explanations
+- [x] Build ExamPrep.tsx — summary card with score by difficulty and by skill
+- [x] Register /exam-prep route in App.tsx
+- [x] Add Exam Prep sidebar nav item in DashboardLayout.tsx
+- [x] Add examPrep tooltip to tooltipContent.ts
+- [x] Write server/phase3b.test.ts (20 tests covering start, submit, route registration)
+- [x] Run full test suite (688/688 passing), update todo.md, save checkpoint
