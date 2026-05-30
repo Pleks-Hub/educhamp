@@ -126,6 +126,31 @@ export const appRouter = router({
       // Flatten to the shape the frontend expects (same as the old Skill type)
       return rows.map((r) => r.skill);
     }),
+
+    /**
+     * Returns all units for a course with their lessons nested inside.
+     * Used by the lesson navigator in the five-mode course dashboard.
+     */
+    getUnitsWithLessons: protectedProcedure
+      .input(z.object({ courseId: z.number() }))
+      .query(async ({ input }) => {
+        const courseUnits = await getUnitsForCourse(input.courseId);
+        const unitsWithLessons = await Promise.all(
+          courseUnits.map(async (unit) => {
+            const unitLessons = await getLessonsByUnit(unit.id);
+            return {
+              ...unit,
+              lessons: unitLessons.map((l) => ({
+                id: l.id,
+                lessonNumber: l.lessonNumber,
+                title: l.title,
+                sortOrder: l.sortOrder,
+              })),
+            };
+          })
+        );
+        return unitsWithLessons;
+      }),
   }),
 
   // ─── Progress ────────────────────────────────────────────────────────────────
@@ -1342,9 +1367,38 @@ export const appRouter = router({
           } catch { /* non-fatal */ }
         }
 
-        return { results, score: correct, total, percentage };
+                return { results, score: correct, total, percentage };
+      }),
+
+    /**
+     * Lightweight query for the mode selector tile: returns EOC template name,
+     * item count, and standards coverage without building a full question set.
+     */
+    getInfo: studentProcedure
+      .input(z.object({ courseId: z.number() }))
+      .query(async ({ ctx: _ctx, input }) => {
+        const db = await getDb();
+        if (!db) return null;
+        const { assessmentTemplates } = await import("../drizzle/schema");
+        const { eq, and } = await import("drizzle-orm");
+        const templates = await db
+          .select()
+          .from(assessmentTemplates)
+          .where(
+            and(
+              eq(assessmentTemplates.courseId, input.courseId),
+              eq(assessmentTemplates.assessmentRegime, "staar_eoc")
+            )
+          )
+          .limit(1);
+        const template = templates[0];
+        if (!template) return null;
+        return {
+          templateName: template.name,
+          itemCount: template.itemCount,
+          assessmentRegime: template.assessmentRegime,
+        };
       }),
   }),
 });
-
 export type AppRouter = typeof appRouter;

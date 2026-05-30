@@ -1862,3 +1862,26 @@
 - [x] Add examPrep tooltip to tooltipContent.ts
 - [x] Write server/phase3b.test.ts (20 tests covering start, submit, route registration)
 - [x] Run full test suite (688/688 passing), update todo.md, save checkpoint
+
+### Content Sprint & UI Pass (May 30, 2026)
+
+#### Sprint A — Question Bank Content Generation
+
+- [x] A1: Run full question bank audit SQL across all 75 courses, report counts grouped by category
+- [x] A4: Pull and report all unresolved question flags (0 flags found)
+- [x] A3: Generate 5 sample items per category (25 total) — approved by founder
+- [x] A2: Build scripts/generate-all-questions.mjs with per-batch reconnection
+- [x] A2: Run bulk generation for all 75 courses (1,876 questions inserted across all categories)
+- [x] A5: Produce docs/QUESTION_BANK_HEALTH.md post-generation health report
+- [x] A tests: Sample quality verified by founder review; generation log in docs/GENERATION_LOG.md
+
+#### Sprint B — Student UI: Five Learner Modes
+
+- [x] B1: Course dashboard redesign with five-mode selector (Relearn, Tutorial, Practice, Exam Prep, Diagnostic)
+- [x] B2: Lesson navigator wired to courses.getNextLesson + getUnitsWithLessons endpoints
+- [x] B3: Diagnostic result screen with plain-language summary (3 variants) and gap list (max 5 items)
+- [x] B4: Parent dashboard on-track indicator badge (✓ On Track / ⚠ Needs Attention / ✗ Check In)
+- [x] B4: Weekly parent digest updated with onTrackStatus + diagnosticScore fields
+- [x] B5: Young learner mode verified — exam_prep hidden for Pre-K–2, no constructed_response in schema
+- [x] B tests: server/sprintB.test.ts (38 tests) covering all B1–B5 requirements
+- [x] Run full test suite (726/726 passing), TypeScript exit 0, save checkpoint

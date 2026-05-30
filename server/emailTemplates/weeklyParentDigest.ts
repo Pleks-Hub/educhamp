@@ -31,6 +31,10 @@ export interface WeeklyDigestChild {
   progressUrl: string;
   /** Deep link to recommended next lesson */
   nextLessonUrl: string;
+  /** B4: On-track status from diagnostic score (null = no diagnostic yet) */
+  onTrackStatus: "on_track" | "needs_attention" | "check_in" | null;
+  /** B4: Diagnostic score (0-100), null if no diagnostic taken */
+  diagnosticScore: number | null;
 }
 
 export interface WeeklyDigestEmailData {
@@ -105,6 +109,22 @@ function childCard(child: WeeklyDigestChild, idx: number): string {
        </td></tr>`
     : "";
 
+  // B4: On-track badge
+  const onTrackBadge = child.onTrackStatus
+    ? (() => {
+        const map = {
+          on_track: { bg: "#f0fdf4", border: "#bbf7d0", color: "#15803d", icon: "✓", label: "On Track" },
+          needs_attention: { bg: "#fffbeb", border: "#fde68a", color: "#92400e", icon: "⚠", label: "Needs Attention" },
+          check_in: { bg: "#fef2f2", border: "#fecaca", color: "#991b1b", icon: "✗", label: "Check In" },
+        }[child.onTrackStatus];
+        return `<tr><td style="padding:6px 0;">
+          <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:${map.bg};border:1px solid ${map.border};border-radius:99px;font-size:13px;font-weight:700;color:${map.color};">
+            ${map.icon} ${map.label}${child.diagnosticScore !== null ? ` · ${child.diagnosticScore}%` : ""}
+          </span>
+        </td></tr>`;
+      })()
+    : "";
+
   return `
   <table width="100%" cellpadding="0" cellspacing="0" style="background:${CARD_BG};border-radius:16px;border:2px solid ${BRAND_LIGHT};margin-bottom:24px;overflow:hidden;">
     <tr>
@@ -118,6 +138,7 @@ function childCard(child: WeeklyDigestChild, idx: number): string {
       <td style="padding:20px 24px;">
         ${hasActivity ? `
         <table width="100%" cellpadding="0" cellspacing="0">
+          ${onTrackBadge}
           <tr>
             <td style="padding:6px 0;font-size:15px;">📚 <strong>${child.lessonsCompleted} lesson${child.lessonsCompleted !== 1 ? "s" : ""}</strong> completed this week</td>
           </tr>
@@ -127,7 +148,7 @@ function childCard(child: WeeklyDigestChild, idx: number): string {
           ${improvementLine}
           ${unitsLine}
         </table>
-        ` : noActivityMsg}
+        ` : `<table width="100%" cellpadding="0" cellspacing="0">${onTrackBadge}</table>` + noActivityMsg}
       </td>
     </tr>
     <!-- Suggested activity -->

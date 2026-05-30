@@ -24,6 +24,7 @@ import {
   userMastery,
   unitProgress,
   units,
+  diagnosticAttempts,
 } from "../../drizzle/schema";
 import { and, eq, gte, inArray, desc } from "drizzle-orm";
 import { notifyOwner } from "../_core/notification";
@@ -227,6 +228,20 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
 
         const showedImprovement = weekLessons.length > prevWeekLessons.length;
 
+        // B4: Fetch latest diagnostic score for on-track indicator
+        const latestDiag = await db
+          .select({ overallScore: diagnosticAttempts.overallScore })
+          .from(diagnosticAttempts)
+          .where(eq(diagnosticAttempts.userId, childUser.id))
+          .orderBy(desc(diagnosticAttempts.completedAt))
+          .limit(1)
+          .then((r) => r[0] ?? null);
+        const diagScore = latestDiag?.overallScore ?? null;
+        const onTrackStatus: "on_track" | "needs_attention" | "check_in" | null =
+          diagScore === null ? null :
+          diagScore >= 75 ? "on_track" :
+          diagScore >= 60 ? "needs_attention" : "check_in";
+
         digestChildren.push({
           name: childUser.name ?? "Your learner",
           grade,
@@ -240,6 +255,8 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
           suggestedActivity: pickActivity(grade, childUser.id),
           progressUrl: `${appUrl}/parent`,
           nextLessonUrl: `${appUrl}/curriculum`,
+          onTrackStatus,
+          diagnosticScore: diagScore,
         });
       }
 

@@ -1572,8 +1572,28 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
               </button>
             </div>
             <p className="text-sm text-muted-foreground">{child.email} · Grade {child.grade ?? "—"}{child.school ? ` · ${child.school}` : ""}</p>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-xs text-muted-foreground capitalize">{child.relationship}</span>
+              {/* B4: On-track indicator based on diagnostic score */}
+              {child.placement?.score !== undefined && child.placement.score !== null ? (
+                <Badge
+                  variant="outline"
+                  className={`text-xs font-bold ${
+                    child.placement.score >= 75
+                      ? "bg-green-50 text-green-700 border-green-200"
+                      : child.placement.score >= 60
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-red-50 text-red-700 border-red-200"
+                  }`}
+                >
+                  {child.placement.score >= 75 ? "✓ On Track" : child.placement.score >= 60 ? "⚠ Needs Attention" : "✗ Check In"}
+                  {" · "}{child.placement.score}%
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs text-muted-foreground">
+                  No diagnostic yet
+                </Badge>
+              )}
               {child.overallMastery !== null && (
                 <Badge variant="outline" className={`text-xs ${masteryColor(child.overallMastery)}`}>
                   {child.masteryLabel} · {child.overallMastery}%

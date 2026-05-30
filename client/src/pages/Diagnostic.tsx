@@ -511,6 +511,32 @@ export default function Diagnostic() {
     const firstActionableUnitResult = dashboard?.units?.find(
       (u: any) => u.status === "in_progress" || u.status === "quiz_unlocked"
     ) ?? dashboard?.units?.[0];
+
+    // ── B3: Plain-language summary ──────────────────────────────────────────
+    const score = result.overallScore;
+    const gapUnits = result.unitResults
+      .filter((u) => u.status !== "likely_mastered")
+      .slice(0, 5);
+    const firstGap = gapUnits[0];
+    const worstStrand = result.unitResults
+      .filter((u) => u.status !== "likely_mastered")
+      .sort((a, b) => (a.correct / (a.total || 1)) - (b.correct / (b.total || 1)))[0];
+
+    let summaryText: string;
+    if (score >= 90) {
+      summaryText = `You're doing great — you've mastered ${score}% of what your class has covered.`;
+    } else if (score >= 70) {
+      summaryText = `You're mostly on track at ${score}%. Focus on: ${worstStrand?.unitTitle ?? "your weakest unit"}.`;
+    } else {
+      summaryText = `You've mastered ${score}% of what your class has covered. Let's work through ${gapUnits.length} gap${gapUnits.length !== 1 ? "s" : ""}, starting with ${firstGap?.unitTitle ?? "your first unit"}.`;
+    }
+
+    const scoreColorClass =
+      score >= 80 ? "text-green-600 bg-green-50 border-green-200" :
+      score >= 60 ? "text-amber-600 bg-amber-50 border-amber-200" :
+      "text-red-600 bg-red-50 border-red-200";
+    const scoreLabel = score >= 80 ? "On Track" : score >= 60 ? "Needs Attention" : "Needs Help";
+
     const filteredAnswers = result.gradedAnswers.filter((a) => {
       if (reviewFilter === "correct" && !a.correct) return false;
       if (reviewFilter === "wrong" && a.correct) return false;
@@ -529,27 +555,63 @@ export default function Diagnostic() {
           <p className="text-muted-foreground text-sm mt-1">Completed {new Date().toLocaleDateString()}</p>
         </div>
 
-        {/* Score Summary */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Card className="border shadow-sm">
-            <CardContent className="p-4 text-center">
-              <p className="text-3xl font-bold text-foreground">{result.overallScore}%</p>
-              <p className="text-xs text-muted-foreground mt-1">Overall Score</p>
-            </CardContent>
-          </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4 text-center">
-              <p className="text-3xl font-bold text-green-600">{correctCount}</p>
-              <p className="text-xs text-muted-foreground mt-1">Correct</p>
-            </CardContent>
-          </Card>
-          <Card className="border shadow-sm">
-            <CardContent className="p-4 text-center">
-              <p className="text-3xl font-bold text-red-500">{wrongCount}</p>
-              <p className="text-xs text-muted-foreground mt-1">Incorrect</p>
-            </CardContent>
-          </Card>
+        {/* B3: Colour-coded score + plain-language summary */}
+        <div className={`rounded-xl border-2 p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 ${scoreColorClass}`}>
+          <div className="flex flex-col items-center shrink-0">
+            <span className="text-5xl font-extrabold leading-none">{score}%</span>
+            <span className={`mt-1 text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border ${scoreColorClass}`}>{scoreLabel}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold leading-relaxed">{summaryText}</p>
+            <div className="flex gap-4 mt-2 text-xs opacity-80">
+              <span>✓ {correctCount} correct</span>
+              <span>✗ {wrongCount} incorrect</span>
+            </div>
+          </div>
         </div>
+
+        {/* B3: Gap list — up to 5 gaps with "Work on this" CTA */}
+        {gapUnits.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold flex items-center gap-2">
+                <span className="h-5 w-5 rounded-full bg-red-100 text-red-700 text-xs font-bold flex items-center justify-center">{gapUnits.length}</span>
+                Gaps to Address
+              </h2>
+              <p className="text-xs text-muted-foreground">Showing up to 5 · ordered by priority</p>
+            </div>
+            {gapUnits.map((gap, idx) => (
+              <div
+                key={gap.unitNumber}
+                className={`flex items-center gap-3 p-3 rounded-xl border bg-card transition-all duration-150 ${
+                  idx === 0 ? "border-primary/30 bg-primary/5 ring-1 ring-primary/20" : ""
+                }`}
+              >
+                {idx === 0 && (
+                  <span className="shrink-0 text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">Next to fix</span>
+                )}
+                <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                  gap.status === "partial_understanding" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                }`}>
+                  {gap.unitNumber}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{gap.unitTitle}</p>
+                  <p className="text-xs text-muted-foreground">{gap.correct}/{gap.total} correct · {gap.recommendation}</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant={idx === 0 ? "default" : "outline"}
+                  className="shrink-0 text-xs h-7 px-2.5 gap-1"
+                  onClick={() => setLocation(`/tutor?mode=relearn&unitNumber=${gap.unitNumber}`)}
+                >
+                  <ArrowRight className="h-3 w-3" />
+                  Work on this
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Placement Recommendation */}
         <Card className="border border-primary/20 bg-primary/5">
