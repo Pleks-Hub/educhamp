@@ -1973,11 +1973,11 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Save checkpoint 4B and await go-ahead for 4C — 792/792 tests passing, TypeScript exit 0
 
 ### Phase 4C — NY_NGLS Standard Seeding and Crosswalk Completion
-- [ ] Seed missing NY_NGLS Algebra I standards (polynomial ops, radicals/exponents, systems, parallel/perp lines, correlation) using LLM-assisted seeder
-- [ ] Re-run scripts/seed-crosswalk.mjs targeting only the 19 previously uncommitted TEKS codes
-- [ ] Produce updated docs/CROSSWALK_CONFIDENCE_REPORT.md
-- [ ] Auto-commit exact and partial; flag approximate/none for founder review
-- [ ] Save checkpoint 4C and await approval on any approximate/none mappings
+- [x] Seed missing NY_NGLS Algebra I standards (polynomial ops, radicals/exponents, systems, parallel/perp lines, correlation) using LLM-assisted seeder — 10 standards inserted (AI-A.APR.1, AI-A.APR.3, AI-N.RN.2, AI-A.SSE.3c, AI-A.REI.5, AI-A.REI.6, AI-A.REI.10, AI-G.GPE.5, AI-S.ID.8, AI-S.ID.9)
+- [x] Re-run scripts/seed-crosswalk.mjs targeting only the 19 previously uncommitted TEKS codes — 14 rows inserted (10 exact + 4 partial; 0 approximate/none in Phase 4C batch)
+- [x] Produce updated docs/CROSSWALK_CONFIDENCE_REPORT.md — 40 total rows: 13 exact, 19 partial, 8 approximate
+- [x] Auto-commit exact and partial; flag approximate/none for founder review — all 14 Phase 4C rows are exact/partial, no new approximate/none
+- [x] Save checkpoint 4C and await approval — 824/824 tests passing, TypeScript exit 0
 
 ### Phase 4D — Thin Course Second Pass
 - [ ] Pull current thin course list from docs/QUESTION_BANK_HEALTH.md
