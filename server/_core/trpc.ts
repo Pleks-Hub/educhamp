@@ -28,6 +28,7 @@ const requireUser = t.middleware(async opts => {
 export const protectedProcedure = t.procedure.use(requireUser);
 
 // studentProcedure: blocks parent/guardian accounts from taking quizzes, diagnostics, or accumulating mastery
+// Also enforces the COPPA gate: students under 13 with pending/denied/expired consent are blocked.
 export const studentProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;
@@ -41,6 +42,51 @@ export const studentProcedure = t.procedure.use(
         code: "FORBIDDEN",
         message: "Parent accounts cannot take quizzes, assessments, or accumulate mastery scores. Please use a student account.",
       });
+    }
+
+    // COPPA gate: check if this student requires parental consent
+    try {
+      const { getPlatformSettings, getUserProfile, isCoppaGrade, hasParentalConsent, getLatestParentalConsent } = await import("../db");
+      const settings = await getPlatformSettings();
+      const gateEnabled = settings.find((s) => s.key === "COPPA_GATE_ENABLED")?.value === "true";
+      if (gateEnabled) {
+        const profile = await getUserProfile(ctx.user.id);
+        if (profile && isCoppaGrade(profile.gradeLevel)) {
+          const approved = await hasParentalConsent(ctx.user.id);
+          if (!approved) {
+            const latest = await getLatestParentalConsent(ctx.user.id);
+            const isExpired = latest && (latest.status === "expired" || latest.expiresAt < new Date());
+            const isDenied = latest?.status === "denied";
+            if (isDenied) {
+              throw new TRPCError({
+                code: "FORBIDDEN",
+                message: "COPPA_CONSENT_DENIED",
+              });
+            }
+            if (isExpired) {
+              throw new TRPCError({
+                code: "FORBIDDEN",
+                message: "COPPA_CONSENT_EXPIRED",
+              });
+            }
+            if (latest?.status === "pending") {
+              throw new TRPCError({
+                code: "FORBIDDEN",
+                message: "COPPA_CONSENT_PENDING",
+              });
+            }
+            // No request yet — block with not_requested
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: "COPPA_CONSENT_REQUIRED",
+            });
+          }
+        }
+      }
+    } catch (err) {
+      // Re-throw TRPCErrors (COPPA gate); swallow DB errors to avoid blocking on infra failure
+      if (err instanceof TRPCError) throw err;
+      console.error("[COPPA gate] DB error (non-blocking):", err);
     }
 
     return next({

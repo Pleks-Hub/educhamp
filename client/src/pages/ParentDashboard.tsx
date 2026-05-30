@@ -1546,6 +1546,67 @@ function LearningInsightsPanel({ childId }: { childId: number }) {
 
 // ─── Child Detail Panel ───────────────────────────────────────────────────────
 
+// ─── Grade Override Inline Component ─────────────────────────────────
+
+const GRADE_OPTIONS = [
+  "Kindergarten", "Grade 1", "Grade 2", "Grade 3", "Grade 4",
+  "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9",
+  "Grade 10", "Grade 11", "Grade 12",
+];
+
+function GradeOverrideInline({ child }: { child: ChildSummary }) {
+  const [editing, setEditing] = useState(false);
+  const [selected, setSelected] = useState(child.grade ?? "");
+  const utils = trpc.useUtils();
+  const setGrade = trpc.parent.setChildGradeLevel.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Grade updated to ${data.gradeLevel}`);
+      utils.parent.listChildren.invalidate();
+      setEditing(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (!editing) {
+    return (
+      <p className="text-sm text-muted-foreground flex items-center gap-1.5 flex-wrap">
+        {child.email} · Grade {child.grade ?? "—"}
+        {child.school ? ` · ${child.school}` : ""}
+        <button
+          className="text-primary underline text-xs ml-1 hover:no-underline"
+          onClick={() => { setSelected(child.grade ?? ""); setEditing(true); }}
+        >
+          Change grade
+        </button>
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+      <Select value={selected} onValueChange={setSelected}>
+        <SelectTrigger className="h-7 text-xs w-36">
+          <SelectValue placeholder="Select grade" />
+        </SelectTrigger>
+        <SelectContent>
+          {GRADE_OPTIONS.map((g) => (
+            <SelectItem key={g} value={g} className="text-xs">{g}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        size="sm"
+        className="h-7 px-2 text-xs"
+        disabled={!selected || setGrade.isPending}
+        onClick={() => setGrade.mutate({ childId: child.childId, gradeLevel: selected })}
+      >
+        {setGrade.isPending ? "Saving…" : "Save"}
+      </Button>
+      <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => setEditing(false)}>Cancel</button>
+    </div>
+  );
+}
+
 function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: () => void }) {
   const [editOpen, setEditOpen] = useState(false);
   const utils = trpc.useUtils();
@@ -1571,7 +1632,7 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
                 <Pencil className="h-3.5 w-3.5" />
               </button>
             </div>
-            <p className="text-sm text-muted-foreground">{child.email} · Grade {child.grade ?? "—"}{child.school ? ` · ${child.school}` : ""}</p>
+            <GradeOverrideInline child={child} />
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-xs text-muted-foreground capitalize">{child.relationship}</span>
               {/* B4: On-track indicator based on diagnostic score */}

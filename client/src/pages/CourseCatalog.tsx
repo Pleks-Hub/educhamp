@@ -96,7 +96,15 @@ export default function CourseCatalog() {
   const [subjectFilter, setSubjectFilter] = useState("all");
   const [requestingId, setRequestingId] = useState<number | null>(null);
 
-  const catalogQuery    = trpc.admin.getCourseCatalog.useQuery();
+  // Use courses.getEligible so the catalog is filtered to the student's grade window (±2 grades).
+  // Falls back to admin.getCourseCatalog for admin/parent accounts which don't have a grade profile.
+  const eligibleQuery = trpc.courses.getEligible.useQuery(undefined, {
+    enabled: !!user && user.accountType === "student",
+  });
+  const adminCatalogQuery = trpc.admin.getCourseCatalog.useQuery(undefined, {
+    enabled: !!user && user.accountType !== "student",
+  });
+  const catalogQuery = user?.accountType === "student" ? eligibleQuery : adminCatalogQuery;
   const myRequestsQuery = trpc.courses.getMyCourseRequests.useQuery();
   const utils = trpc.useUtils();
 
@@ -395,9 +403,7 @@ export default function CourseCatalog() {
                   className={`relative rounded-xl border p-4 transition-all hover:shadow-md ${
                     course.isRecommended
                       ? "border-indigo-200 bg-indigo-50/50 ring-1 ring-indigo-200"
-                      : course.isGradeAppropriate
-                      ? "border-slate-200 bg-white hover:border-slate-300"
-                      : "border-slate-100 bg-slate-50/50 opacity-75"
+                      : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   {/* Subject badge + status badges */}
@@ -412,11 +418,7 @@ export default function CourseCatalog() {
                           <Sparkles className="h-2.5 w-2.5 mr-0.5" /> Recommended
                         </Badge>
                       )}
-                      {!course.isGradeAppropriate && (
-                        <Badge variant="outline" className="text-slate-400 text-[10px]">
-                          Outside grade range
-                        </Badge>
-                      )}
+
                     </div>
                   </div>
 

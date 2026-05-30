@@ -1128,6 +1128,29 @@ export const appRouter = router({
      * Returns the first lesson that has no lessonProgress row (or completed=false).
      * If all lessons are complete, returns null.
      */
+    /**
+     * Returns all active courses filtered to the student's grade window (±2 grades).
+     * AP and SAT courses are always included. Includes enrollment status.
+     * Used by CourseCatalog to enforce age-to-grade access.
+     */
+    getEligible: protectedProcedure.query(async ({ ctx }) => {
+      const { getAllCourses, getUserCourseEnrollments, getUserProfile } = await import("./db");
+      const { isCourseEligible } = await import("./utils/age");
+      const all = await getAllCourses();
+      const enrollments = await getUserCourseEnrollments(ctx.user.id);
+      const profile = await getUserProfile(ctx.user.id);
+      const enrolledIds = new Set(enrollments.map((e) => e.enrollment.courseId));
+      const studentGrade = profile?.gradeLevel ?? null;
+      return all
+        .filter((c) => c.isActive)
+        .filter((c) => isCourseEligible(c.gradeLevel, studentGrade))
+        .map((c) => ({
+          ...c,
+          isEnrolled: enrolledIds.has(c.id),
+          isRecommended: studentGrade !== null && c.gradeLevel === studentGrade,
+        }));
+    }),
+
     getNextLesson: protectedProcedure
       .input(z.object({ courseId: z.number() }))
       .query(async ({ ctx, input }) => {

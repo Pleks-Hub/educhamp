@@ -529,6 +529,29 @@ export const parentRouter = router({
     const all = await getAllCourses();
     return all.map((c) => ({ id: c.id, title: c.title, description: c.description }));
   }),
+
+  /**
+   * Parent: override the grade level for a linked child.
+   * This controls which courses the child can access in the catalog (\u00b12 grade window).
+   * Only a linked parent may call this for their own children.
+   */
+  setChildGradeLevel: protectedProcedure
+    .input(
+      z.object({
+        childId: z.number(),
+        gradeLevel: z.string().max(32),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { getParentChildLink, upsertUserProfile } = await import("../db");
+      // Verify the caller is a linked parent of this child
+      const link = await getParentChildLink(ctx.user.id, input.childId);
+      if (!link) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You are not linked to this student." });
+      }
+      await upsertUserProfile(input.childId, { gradeLevel: input.gradeLevel });
+      return { success: true, gradeLevel: input.gradeLevel };
+    }),
 });
 
 // ─── Public token-based approve/reject endpoint ───────────────────────────────

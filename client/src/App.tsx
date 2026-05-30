@@ -46,6 +46,7 @@ const GamificationHub = lazy(() => import("./pages/GamificationHub"));
 const RewardsMarketplace = lazy(() => import("./pages/RewardsMarketplace"));
 const AdventureMap = lazy(() => import("./pages/AdventureMap"));
 const ConsentApproval = lazy(() => import("./pages/ConsentApproval"));
+const CoppaConsentWaiting = lazy(() => import("./pages/CoppaConsentWaiting"));
 const ExamPrep = lazy(() => import("./pages/ExamPrep"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
@@ -81,6 +82,7 @@ function Router() {
         <Route path="/verify-2fa" component={Verify2FA} />
         <Route path="/consent/approve" component={ConsentApproval} />
         <Route path="/consent/deny" component={ConsentApproval} />
+        <Route path="/consent/waiting" component={CoppaConsentWaiting} />
 
         {/* Admin console — standalone, no sidebar */}
         <Route path="/admin" component={AdminDashboard} />

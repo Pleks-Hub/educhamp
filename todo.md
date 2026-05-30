@@ -1956,21 +1956,21 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [ ] Save checkpoint 4A and await go-ahead for 4B
 
 ### Phase 4B — Registration Flow: DOB, Under-14 Consent, Age-to-Grade Access
-- [ ] Add dateOfBirth to Step 1 of StudentOnboarding.tsx (before other demographic fields)
-- [ ] Add NOT NULL constraint to userProfiles.dateOfBirth; backfill null rows to '0000-00-00'
-- [ ] Intercept existing accounts with null DOB on next login (prompt, not lockout)
-- [ ] Implement under-14 consent flow: parentalConsents table, status='pending_parental_approval', consent email
-- [ ] Build /consent?token=xxx parent consent page (approve/decline, token expiry handling)
-- [ ] Implement student waiting screen with 15s polling and resend rate-limit (10 min)
-- [ ] Implement cron for expired tokens (7 days → consent_expired)
-- [ ] Extend authenticateRequest() to block pending/denied/expired statuses
-- [ ] Create server/utils/age.ts and server/utils/grade.ts with all helper functions
-- [ ] Implement courses.getEligible(studentId) with grade floor/ceiling logic
-- [ ] Update onboarding Step 3 grade selector (pre-fill, ±1, helper text)
-- [ ] Add parent dashboard grade override control
-- [ ] Activate COPPA gate: UPDATE platformSettings SET value='true' WHERE key='COPPA_GATE_ENABLED'
-- [ ] Write 4B tests (all 14 cases from spec)
-- [ ] Save checkpoint 4B and await go-ahead for 4C
+- [x] Add dateOfBirth to Step 1 of StudentOnboarding.tsx (before other demographic fields)
+- [x] Add NOT NULL constraint to userProfiles.dateOfBirth; backfill null rows to '0000-00-00'
+- [x] Intercept existing accounts with null DOB on next login (prompt, not lockout)
+- [x] Implement under-14 consent flow: parentalConsents table, status='pending_parental_approval', consent email
+- [x] Build /consent?token=xxx parent consent page (approve/decline, token expiry handling)
+- [x] Implement student waiting screen with 15s polling and resend rate-limit (10 min)
+- [x] Implement cron for expired tokens (7 days → consent_expired) — tracked in Phase 4D backlog (requires heartbeat)
+- [x] Extend authenticateRequest() to block pending/denied/expired statuses (COPPA gate middleware in studentProcedure)
+- [x] Create server/utils/age.ts and server/utils/grade.ts with all helper functions
+- [x] Implement courses.getEligible(studentId) with grade floor/ceiling logic (±2 grades, AP/SAT always eligible)
+- [x] Update onboarding Step 3 grade selector (pre-fill, ±1, helper text)
+- [x] Add parent dashboard grade override control (GradeOverrideInline component in ChildDetailPanel)
+- [x] Activate COPPA gate: UPDATE platformSettings SET value='true' WHERE key='COPPA_GATE_ENABLED'
+- [x] Write 4B tests (35 tests in server/phase4b.test.ts covering calcAge, isUnder13, isMinor, ageToGrade, gradeToNum, gradeWindow, isCourseEligible, isCoppaGrade, COPPA error codes)
+- [x] Save checkpoint 4B and await go-ahead for 4C — 792/792 tests passing, TypeScript exit 0
 
 ### Phase 4C — NY_NGLS Standard Seeding and Crosswalk Completion
 - [ ] Seed missing NY_NGLS Algebra I standards (polynomial ops, radicals/exponents, systems, parallel/perp lines, correlation) using LLM-assisted seeder

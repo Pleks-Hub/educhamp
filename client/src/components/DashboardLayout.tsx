@@ -93,10 +93,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
+  // COPPA gate: check consent status for student accounts
+  const consentQuery = trpc.coppa.consentStatus.useQuery(undefined, {
+    enabled: !!user && user.accountType === "student",
+    staleTime: 30_000,
+  });
+
   if (loading) return <DashboardLayoutSkeleton />;
 
   if (!user) {
     return <Redirect to="/landing" />;
+  }
+
+  // If COPPA gate is active and consent is required but not approved, redirect to waiting page
+  if (
+    user.accountType === "student" &&
+    consentQuery.data?.required &&
+    consentQuery.data?.status !== "approved" &&
+    consentQuery.data?.status !== "not_required"
+  ) {
+    return <Redirect to="/consent/waiting" />;
   }
 
   return (
