@@ -1,0 +1,2 @@
+ALTER TABLE `standardCrosswalk` MODIFY COLUMN `alignmentType` enum('exact','partial','approximate','none','related') NOT NULL DEFAULT 'partial';--> statement-breakpoint
+ALTER TABLE `standardCrosswalk` ADD `alignmentWeight` float;

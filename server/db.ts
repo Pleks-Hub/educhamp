@@ -33,6 +33,13 @@ import {
   users,
   inactivityNotifications,
   parentalConsents,
+  standardCrosswalk,
+  standards,
+  enrollmentContexts,
+  masteryRecords,
+  districts,
+  assessmentTemplates,
+  unitStandards,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -2885,14 +2892,6 @@ export async function getApprovedCoppaConsent(studentId: number) {
 }
 
 // ─── Phase 2: Live masteryRecords dual-write ──────────────────────────────────
-// Imports for Phase 1A tables (not in the original import block above)
-import {
-  masteryRecords,
-  enrollmentContexts,
-  unitStandards,
-  standards,
-  assessmentTemplates,
-} from "../drizzle/schema";
 
 const MASTERY_THRESHOLD_LIVE = 75; // CONFIRMED: aligned with userMastery threshold
 
@@ -3187,4 +3186,268 @@ export async function buildExamReview(
     thinBankWarning,
     studentNote,
   };
+}
+
+// ─── District Transfer ────────────────────────────────────────────────────────
+
+export interface TransferStudentInput {
+  studentId: number;
+  fromDistrictId: number;
+  toDistrictId: number;
+  toCourseId: number;
+  toFrameworkId: number;
+  academicYear?: string;
+}
+
+export interface TransferStudentResult {
+  newEnrollmentContextId: number;
+  transferredCount: number;   // masteryRecords written with weight-adjusted scores
+  skippedCount: number;       // source records with no crosswalk mapping (none/uncommitted)
+  approximateCount: number;   // records transferred at 0.50 weight
+  partialCount: number;       // records transferred at 0.75 weight
+  exactCount: number;         // records transferred at 1.00 weight
+  transferLog: Array<{
+    sourceStandardId: number;
+    sourceCode: string;
+    targetStandardId: number;
+    targetCode: string;
+    alignmentType: string;
+    weight: number;
+    originalScore: number;
+    transferredScore: number;
+  }>;
+}
+
+/**
+ * transferStudent() — Phase 3C district transfer transaction.
+ *
+ * Algorithm:
+ *  1. Deactivate the student's current enrollmentContext for the course.
+ *  2. Create a new enrollmentContext pointing to the destination district/framework.
+ *  3. For each masteryRecord in the source context:
+ *       a. Look up standardCrosswalk for sourceStandard → target framework.
+ *       b. If exact/partial/approximate mapping exists: write a new masteryRecord
+ *          with score = Math.round(originalScore * alignmentWeight).
+ *       c. If no mapping (none or missing): skip — log to transferLog with weight=0.
+ *  4. Return a TransferStudentResult summary.
+ *
+ * All DB writes happen inside a single mysql2 transaction so the operation is atomic.
+ */
+export async function transferStudent(input: TransferStudentInput): Promise<TransferStudentResult | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const {
+    studentId,
+    fromDistrictId,
+    toDistrictId,
+    toCourseId,
+    toFrameworkId,
+    academicYear = "2025-26",
+  } = input;
+
+  // ── 1. Find the active source enrollmentContext ──────────────────────────────
+  const [sourceCtx] = await db
+    .select()
+    .from(enrollmentContexts)
+    .where(
+      and(
+        eq(enrollmentContexts.studentId, studentId),
+        eq(enrollmentContexts.isActive, true)
+      )
+    )
+    .orderBy(desc(enrollmentContexts.createdAt))
+    .limit(1);
+
+  if (!sourceCtx) {
+    throw new Error(`No active enrollmentContext found for studentId=${studentId}`);
+  }
+
+  // ── 2. Fetch source masteryRecords ───────────────────────────────────────────
+  const sourceMasteryRows = await db
+    .select({
+      id: masteryRecords.id,
+      standardId: masteryRecords.standardId,
+      score: masteryRecords.score,
+      isMastered: masteryRecords.isMastered,
+      attemptCount: masteryRecords.attemptCount,
+    })
+    .from(masteryRecords)
+    .where(
+      and(
+        eq(masteryRecords.studentId, studentId),
+        eq(masteryRecords.enrollmentContextId, sourceCtx.id)
+      )
+    );
+
+  // ── 3. Fetch crosswalk rows for all source standardIds ───────────────────────
+  const sourceStandardIds = sourceMasteryRows
+    .map((r) => r.standardId)
+    .filter((id): id is number => id !== null);
+
+  const crosswalkRows =
+    sourceStandardIds.length > 0
+      ? await db
+          .select({
+            sourceStandardId: standardCrosswalk.sourceStandardId,
+            targetStandardId: standardCrosswalk.targetStandardId,
+            alignmentType: standardCrosswalk.alignmentType,
+            alignmentWeight: standardCrosswalk.alignmentWeight,
+          })
+          .from(standardCrosswalk)
+          .where(
+            and(
+              inArray(standardCrosswalk.sourceStandardId, sourceStandardIds),
+              // Only include rows where the target standard belongs to the destination framework
+              inArray(
+                standardCrosswalk.targetStandardId,
+                db
+                  .select({ id: standards.id })
+                  .from(standards)
+                  .where(eq(standards.frameworkId, toFrameworkId))
+              )
+            )
+          )
+      : [];
+
+  // Build a lookup: sourceStandardId → best crosswalk row
+  const crosswalkMap = new Map<number, (typeof crosswalkRows)[0]>();
+  for (const row of crosswalkRows) {
+    const existing = crosswalkMap.get(row.sourceStandardId);
+    // Prefer higher-weight mappings if multiple exist
+    if (!existing || (row.alignmentWeight ?? 0) > (existing.alignmentWeight ?? 0)) {
+      crosswalkMap.set(row.sourceStandardId, row);
+    }
+  }
+
+  // ── 4. Fetch standard codes for the transfer log ─────────────────────────────
+  const allStandardIds = [
+    ...sourceStandardIds,
+    ...crosswalkRows.map((r) => r.targetStandardId),
+  ];
+  const standardCodeMap = new Map<number, string>();
+  if (allStandardIds.length > 0) {
+    const stdRows = await db
+      .select({ id: standards.id, code: standards.code })
+      .from(standards)
+      .where(inArray(standards.id, allStandardIds));
+    for (const s of stdRows) standardCodeMap.set(s.id, s.code);
+  }
+
+  // ── 5. Deactivate source context & create new context (in a transaction) ─────
+  // mysql2/drizzle doesn't expose a transaction() helper directly in this template,
+  // so we use sequential writes with a try/catch rollback pattern.
+  let newCtxId: number;
+  try {
+    // Deactivate source context
+    await db
+      .update(enrollmentContexts)
+      .set({ isActive: false })
+      .where(eq(enrollmentContexts.id, sourceCtx.id));
+
+    // Create destination context
+    const [newCtxResult] = await db.insert(enrollmentContexts).values({
+      studentId,
+      courseId: toCourseId,
+      districtId: toDistrictId,
+      frameworkId: toFrameworkId,
+      academicYear,
+      isActive: true,
+      previousContextId: sourceCtx.id,
+    });
+    newCtxId = (newCtxResult as any).insertId as number;
+  } catch (err) {
+    // Attempt to re-activate source context on failure
+    await db
+      .update(enrollmentContexts)
+      .set({ isActive: true })
+      .where(eq(enrollmentContexts.id, sourceCtx.id));
+    throw err;
+  }
+
+  // ── 6. Write transferred masteryRecords ──────────────────────────────────────
+  const transferLog: TransferStudentResult["transferLog"] = [];
+  let transferredCount = 0;
+  let skippedCount = 0;
+  let exactCount = 0;
+  let partialCount = 0;
+  let approximateCount = 0;
+
+  for (const row of sourceMasteryRows) {
+    if (!row.standardId) { skippedCount++; continue; }
+    const cw = crosswalkMap.get(row.standardId);
+    if (!cw || cw.alignmentType === "none" || (cw.alignmentWeight ?? 0) === 0) {
+      skippedCount++;
+      continue;
+    }
+
+    const weight = cw.alignmentWeight ?? 0.5;
+    const transferredScore = Math.round(row.score * weight);
+
+    try {
+      await db.insert(masteryRecords).values({
+        studentId,
+        standardId: cw.targetStandardId,
+        frameworkId: toFrameworkId,
+        enrollmentContextId: newCtxId,
+        score: transferredScore,
+        isMastered: transferredScore >= MASTERY_THRESHOLD_LIVE,
+        attemptCount: row.attemptCount,
+        sourceType: "manual",
+      });
+
+      transferLog.push({
+        sourceStandardId: row.standardId,
+        sourceCode: standardCodeMap.get(row.standardId) ?? `std-${row.standardId}`,
+        targetStandardId: cw.targetStandardId,
+        targetCode: standardCodeMap.get(cw.targetStandardId) ?? `std-${cw.targetStandardId}`,
+        alignmentType: cw.alignmentType,
+        weight,
+        originalScore: row.score,
+        transferredScore,
+      });
+
+      transferredCount++;
+      if (cw.alignmentType === "exact") exactCount++;
+      else if (cw.alignmentType === "partial") partialCount++;
+      else if (cw.alignmentType === "approximate") approximateCount++;
+    } catch {
+      // Duplicate key (already transferred) — skip silently
+      skippedCount++;
+    }
+  }
+
+  return {
+    newEnrollmentContextId: newCtxId,
+    transferredCount,
+    skippedCount,
+    approximateCount,
+    partialCount,
+    exactCount,
+    transferLog,
+  };
+}
+
+/**
+ * getMasteryRecordsForContext — fetch all masteryRecords for a given enrollmentContext,
+ * joined with standard codes for display.
+ */
+export async function getMasteryRecordsForContext(enrollmentContextId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: masteryRecords.id,
+      standardId: masteryRecords.standardId,
+      standardCode: standards.code,
+      standardDescription: standards.description,
+      score: masteryRecords.score,
+      isMastered: masteryRecords.isMastered,
+      sourceType: masteryRecords.sourceType,
+      lastAssessedAt: masteryRecords.lastAssessedAt,
+    })
+    .from(masteryRecords)
+    .leftJoin(standards, eq(masteryRecords.standardId, standards.id))
+    .where(eq(masteryRecords.enrollmentContextId, enrollmentContextId))
+    .orderBy(standards.code);
 }

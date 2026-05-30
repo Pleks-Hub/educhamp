@@ -10,11 +10,11 @@
 | Metric | Value |
 |---|---|
 | Questions before generation | 3,094 |
-| Questions added | +1,876 |
-| Questions after generation | **4,970** |
+| Questions added | +2,434 |
+| Questions after generation | **5,528** |
 | Active courses | 74 |
-| Healthy courses (≥ target) | 45 |
-| Thin courses (< target) | 27 |
+| Healthy courses (≥ target) | 56 |
+| Thin courses (< target) | 16 |
 | Empty courses (0 questions) | 2 |
 
 ---
@@ -23,7 +23,7 @@
 
 ### Advanced Placement (AP)
 
-**Target per course:** 70 | **Courses:** 6 | **Avg items:** 106
+**Target per course:** 70 | **Courses:** 6 | **Avg items:** 110
 
 | Status | Count |
 |---|---|
@@ -41,18 +41,18 @@
 | AP Calculus BC | AP | 120 | 47 | 52 | 21 | ✅ |
 | AP Statistics | AP | 120 | 52 | 61 | 7 | ✅ |
 | AP Chemistry | AP | 120 | 52 | 58 | 10 | ✅ |
-| AP Human Geography | 9 | 42 | 17 | 18 | 7 | ⚠ |
+| AP Human Geography | 9 | 65 | 21 | 27 | 13 | ⚠ |
 
 </details>
 
 ### K-12 Regular
 
-**Target per course:** 70 | **Courses:** 54 | **Avg items:** 66
+**Target per course:** 70 | **Courses:** 54 | **Avg items:** 71
 
 | Status | Count |
 |---|---|
-| ✅ Healthy (≥ 70) | 38 |
-| ⚠ Thin (< 70) | 16 |
+| ✅ Healthy (≥ 70) | 42 |
+| ⚠ Thin (< 70) | 12 |
 | ❌ Empty (0) | 0 |
 
 <details>
@@ -60,14 +60,14 @@
 
 | Course | Grade | Items | Easy | Med | Hard | Status |
 |---|---|---|---|---|---|---|
-| Kindergarten Language Arts | Kindergarten | 45 | 20 | 15 | 10 | ⚠ |
-| Pre-K Language Arts | Pre-K | 45 | 21 | 14 | 10 | ⚠ |
+| Kindergarten Language Arts | Kindergarten | 71 | 26 | 27 | 16 | ✅ |
+| Pre-K Language Arts | Pre-K | 73 | 27 | 26 | 16 | ✅ |
 | Kindergarten Mathematics | Kindergarten | 54 | 24 | 18 | 12 | ⚠ |
-| Pre-K Mathematics | Pre-K | 45 | 20 | 15 | 10 | ⚠ |
-| Kindergarten Science | Kindergarten | 36 | 16 | 12 | 8 | ⚠ |
-| Pre-K Science | Pre-K | 36 | 16 | 12 | 8 | ⚠ |
-| Kindergarten Social Studies | Kindergarten | 36 | 16 | 12 | 8 | ⚠ |
-| Pre-K Social Studies | Pre-K | 36 | 16 | 12 | 8 | ⚠ |
+| Pre-K Mathematics | Pre-K | 85 | 30 | 30 | 20 | ✅ |
+| Kindergarten Science | Kindergarten | 67 | 24 | 24 | 16 | ⚠ |
+| Pre-K Science | Pre-K | 68 | 24 | 24 | 16 | ⚠ |
+| Kindergarten Social Studies | Kindergarten | 68 | 24 | 24 | 16 | ⚠ |
+| Pre-K Social Studies | Pre-K | 68 | 24 | 24 | 16 | ⚠ |
 | 3rd Grade ELA | 3 | 63 | 35 | 14 | 14 | ⚠ |
 | 3rd Grade Math | 3 | 63 | 33 | 16 | 14 | ⚠ |
 | 3rd Grade Science | 3 | 63 | 35 | 14 | 14 | ⚠ |
@@ -112,7 +112,7 @@
 | Grade 8 Science | 8 | 72 | 32 | 24 | 16 | ✅ |
 | Grade 8 KAP Social Studies — U.S. History | 8 | 72 | 32 | 24 | 16 | ✅ |
 | Grade 8 Social Studies — U.S. History | 8 | 80 | 35 | 43 | 2 | ✅ |
-| Grade 8 Technology Applications | 8 | 54 | 24 | 24 | 6 | ⚠ |
+| Grade 8 Technology Applications | 8 | 100 | 36 | 42 | 16 | ✅ |
 | Spanish 2 | 9 | 63 | 30 | 22 | 11 | ⚠ |
 
 </details>
@@ -138,12 +138,12 @@
 
 ### Early Childhood (PK–2)
 
-**Target per course:** 50 | **Courses:** 8 | **Avg items:** 36
+**Target per course:** 50 | **Courses:** 8 | **Avg items:** 69
 
 | Status | Count |
 |---|---|
-| ✅ Healthy (≥ 50) | 0 |
-| ⚠ Thin (< 50) | 8 |
+| ✅ Healthy (≥ 50) | 7 |
+| ⚠ Thin (< 50) | 1 |
 | ❌ Empty (0) | 0 |
 
 <details>
@@ -151,14 +151,14 @@
 
 | Course | Grade | Items | Easy | Med | Hard | Status |
 |---|---|---|---|---|---|---|
-| Grade 1 Language Arts | 1 | 42 | 18 | 12 | 12 | ⚠ |
-| Grade 1 Mathematics | 1 | 42 | 18 | 12 | 12 | ⚠ |
-| Grade 1 Science | 1 | 28 | 12 | 8 | 8 | ⚠ |
-| Grade 1 Social Studies | 1 | 28 | 12 | 8 | 8 | ⚠ |
-| Grade 2 Language Arts | 2 | 42 | 18 | 12 | 12 | ⚠ |
-| Grade 2 Mathematics | 2 | 49 | 21 | 14 | 14 | ⚠ |
-| Grade 2 Science | 2 | 28 | 12 | 8 | 8 | ⚠ |
-| Grade 2 Social Studies | 2 | 28 | 12 | 8 | 8 | ⚠ |
+| Grade 1 Language Arts | 1 | 59 | 20 | 18 | 20 | ✅ |
+| Grade 1 Mathematics | 1 | 90 | 30 | 30 | 24 | ✅ |
+| Grade 1 Science | 1 | 60 | 20 | 20 | 16 | ✅ |
+| Grade 1 Social Studies | 1 | 31 | 14 | 8 | 8 | ⚠ |
+| Grade 2 Language Arts | 2 | 90 | 30 | 30 | 24 | ✅ |
+| Grade 2 Mathematics | 2 | 105 | 35 | 35 | 28 | ✅ |
+| Grade 2 Science | 2 | 60 | 20 | 20 | 16 | ✅ |
+| Grade 2 Social Studies | 2 | 60 | 20 | 20 | 16 | ✅ |
 
 </details>
 
@@ -200,27 +200,27 @@ The following courses have zero questions and need immediate attention:
 
 ### Thin Courses (Priority: Medium)
 
-27 courses are below their minimum target. The most critical are:
+16 courses are below their minimum target. The most critical are:
 
 | Course | Current | Target | Gap |
 |---|---|---|---|
-| Kindergarten Science (K-SCI) | 36 | 70 | 34 |
-| Pre-K Science (PREK-SCI) | 36 | 70 | 34 |
-| Kindergarten Social Studies (K-SS) | 36 | 70 | 34 |
-| Pre-K Social Studies (PREK-SS) | 36 | 70 | 34 |
-| Grade 1 Science (G1-SCI) | 28 | 50 | 22 |
-| Grade 1 Social Studies (G1-SS) | 28 | 50 | 22 |
-| Grade 2 Science (G2-SCI) | 28 | 50 | 22 |
-| Grade 2 Social Studies (G2-SS) | 28 | 50 | 22 |
-| AP Human Geography (APHG) | 42 | 70 | 28 |
-| Kindergarten Language Arts (K-ELA) | 45 | 70 | 25 |
-| Pre-K Language Arts (PREK-ELA) | 45 | 70 | 25 |
-| Pre-K Mathematics (PREK-MATH) | 45 | 70 | 25 |
+| Grade 1 Social Studies (G1-SS) | 31 | 50 | 19 |
 | English I (ENG1) | 96 | 140 | 44 |
 | Biology I (BIO1) | 96 | 140 | 44 |
 | Kindergarten Mathematics (K-MATH) | 54 | 70 | 16 |
+| 3rd Grade Social Studies (GR3SS) | 54 | 70 | 16 |
+| Grade 6 Technology Applications (G6TECH) | 54 | 70 | 16 |
+| Grade 7 Technology Applications (G7TECH) | 54 | 70 | 16 |
+| 3rd Grade ELA (GR3ELA) | 63 | 70 | 7 |
+| 3rd Grade Math (GR3MATH) | 63 | 70 | 7 |
+| 3rd Grade Science (GR3SCI) | 63 | 70 | 7 |
+| Spanish 2 (SPA2) | 63 | 70 | 7 |
+| AP Human Geography (APHG) | 65 | 70 | 5 |
+| Kindergarten Science (K-SCI) | 67 | 70 | 3 |
+| Pre-K Science (PREK-SCI) | 68 | 70 | 2 |
+| Kindergarten Social Studies (K-SS) | 68 | 70 | 2 |
 
-_...and 12 more thin courses._
+_...and 1 more thin courses._
 
 ### Difficulty Distribution
 

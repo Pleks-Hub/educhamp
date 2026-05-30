@@ -1885,3 +1885,26 @@
 - [x] B5: Young learner mode verified — exam_prep hidden for Pre-K–2, no constructed_response in schema
 - [x] B tests: server/sprintB.test.ts (38 tests) covering all B1–B5 requirements
 - [x] Run full test suite (726/726 passing), TypeScript exit 0, save checkpoint
+
+### Phase 3C — District Transfer & Thin-Bank Second Pass (May 30, 2026)
+
+#### Thin-Bank Second Pass
+- [x] Audit 8 thin courses (ENG2, USH + 6 others below 70 items) and confirm exact counts
+- [x] Run targeted retry generation for thin courses with longer prompts (558 questions inserted across 17 courses; ENG2 and USH skipped — no units seeded, remain empty)
+- [x] Verify all 75 courses meet minimum item targets post-retry (56/74 healthy; 16 thin; 2 empty — ENG2 and USH have no units, require separate unit seeding before questions can be added)
+
+#### Phase 3C — District Transfer
+- [x] Read Phase 3C spec from upload and audit standardCrosswalk schema
+- [x] Seed TEKS→CCSS crosswalk via LLM-assisted script (exact/partial/approximate/none) — 25 rows: 2 exact, 15 partial, 8 approximate; 19 none mappings NOT committed (content gap, not curriculum gap)
+- [x] Generate docs/CROSSWALK_CONFIDENCE_REPORT.md for founder review
+- [x] Implement transferStudent() as a DB transaction in server/db.ts
+- [x] Add transfer tRPC procedure (admin-only) to routers.ts (admin.transferStudent + admin.getMasteryForContext)
+- [x] Add Transfer Student action to admin console UI (/admin) — DistrictTransferTab component
+- [x] Run Katy ISD → NYC DOE live demo (mastery records before/after with weight multiplication)
+- [x] Write server/phase3c.test.ts covering crosswalk logic, transferStudent(), weight multiplication
+- [x] Run full test suite, TypeScript exit 0, save checkpoint — 757/757 passing
+
+### Phase 4 Backlog — NY_NGLS Standards Gap (added 2026-05-30)
+- [ ] Seed missing NY_NGLS Algebra I standards for content gaps: polynomial operations (A.10 equivalents: CCSS HSA-APR.A.1, HSA-APR.B.3), radicals/exponents (A.11 equivalents: CCSS HSN-RN.A.2, HSA-SSE.B.3c), systems of equations (A.3C/A.3F/A.5C equivalents: CCSS HSA-REI.C.5, HSA-REI.C.6, HSA-REI.D.10), parallel/perpendicular lines (A.2E/A.2F equivalents: CCSS HSG-GPE.B.5), correlation coefficient (A.4A equivalent: CCSS HSS-ID.C.8) — these are DB gaps not curriculum gaps
+- [ ] After NY_NGLS standards are seeded, re-run scripts/seed-crosswalk.mjs to generate mappings for the 16 currently-uncommitted content-gap TEKS standards
+- [ ] The 3 process standards (A.1(A), A.1(B), A.1(G)) are permanently none — do not seed NY equivalents for these

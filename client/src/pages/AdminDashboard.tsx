@@ -33,7 +33,7 @@ import {
   Inbox, Send, XCircle, Filter, Building2, Phone, Calendar, Sparkles,
   ChevronLeft, ChevronDown, ChevronUp, Star, Tag, CreditCard,
   MailX, ShieldOff, ShieldCheck, RotateCcw, Download, Trophy, Zap, Award,
-  Flag, MailCheck, CheckSquare, AlertCircle, Server,
+  Flag, MailCheck, CheckSquare, AlertCircle, Server, ArrowRightLeft,
 } from "lucide-react";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -2507,6 +2507,7 @@ export default function AdminDashboard() {
             </NavTooltip>
             <NavTooltip content="Email Settings — configure sender identity, test delivery, and domain verification">
               <TabsTrigger value="emailsettings" className="gap-2"><MailCheck className="h-4 w-4" /> Email Settings</TabsTrigger>
+              <TabsTrigger value="districttransfer" className="gap-2"><ArrowRightLeft className="h-4 w-4" /> District Transfer</TabsTrigger>
             </NavTooltip>
           </TabsList>
 
@@ -2529,6 +2530,7 @@ export default function AdminDashboard() {
           <TabsContent value="gamification"><GamificationAdminTab /></TabsContent>
           <TabsContent value="flaggedquestions"><FlaggedQuestionsTab /></TabsContent>
           <TabsContent value="emailsettings"><EmailSettingsTab /></TabsContent>
+          <TabsContent value="districttransfer"><DistrictTransferTab /></TabsContent>
         </Tabs>
       </div>
     </div>
@@ -3260,6 +3262,238 @@ function EmailSettingsTab() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+
+// ─── District Transfer Tab ────────────────────────────────────────────────────
+function DistrictTransferTab() {
+  const [studentId, setStudentId] = useState<number | "">("");
+  const [fromDistrictId, setFromDistrictId] = useState<number | "">("");
+  const [toDistrictId, setToDistrictId] = useState<number | "">("");
+  const [toCourseId, setToCourseId] = useState<number | "">("");
+  const [toFrameworkId, setToFrameworkId] = useState<number | "">("");
+  const [academicYear, setAcademicYear] = useState("2025-26");
+  const [transferResult, setTransferResult] = useState<any>(null);
+  const [beforeRecords, setBeforeRecords] = useState<any[]>([]);
+  const [afterRecords, setAfterRecords] = useState<any[]>([]);
+  const [showDemo, setShowDemo] = useState(false);
+
+  const { data: districts = [] } = trpc.admin.listDistricts.useQuery();
+  const { data: courses = [] } = trpc.admin.listCourses.useQuery();
+
+  const masteryCtx = trpc.admin.getStudentMasteryContext.useQuery(
+    { studentId: Number(studentId) },
+    { enabled: Number(studentId) > 0 }
+  );
+
+  const afterCtx = trpc.admin.getMasteryForContext.useQuery(
+    { enrollmentContextId: transferResult?.newEnrollmentContextId ?? 0 },
+    { enabled: !!transferResult?.newEnrollmentContextId }
+  );
+
+  const transfer = trpc.admin.transferStudent.useMutation({
+    onSuccess: (data) => {
+      setTransferResult(data);
+      setBeforeRecords(masteryCtx.data?.masteryRecords ?? []);
+    },
+  });
+
+  // Sync after records when query resolves
+  const afterData = afterCtx.data;
+  useState(() => {
+    if (afterData) setAfterRecords(afterData as any[]);
+  });
+
+  const handleTransfer = () => {
+    if (!studentId || !fromDistrictId || !toDistrictId || !toCourseId || !toFrameworkId) return;
+    transfer.mutate({
+      studentId: Number(studentId),
+      fromDistrictId: Number(fromDistrictId),
+      toDistrictId: Number(toDistrictId),
+      toCourseId: Number(toCourseId),
+      toFrameworkId: Number(toFrameworkId),
+      academicYear,
+    });
+  };
+
+  const alignmentColor = (type: string) => {
+    if (type === "exact") return "text-emerald-600 bg-emerald-50";
+    if (type === "partial") return "text-blue-600 bg-blue-50";
+    if (type === "approximate") return "text-amber-600 bg-amber-50";
+    return "text-slate-500 bg-slate-50";
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ArrowRightLeft className="h-5 w-5 text-primary" />
+            District Transfer
+          </CardTitle>
+          <CardDescription>
+            Transfer a student's mastery records from one district to another using the standard crosswalk.
+            Exact mappings transfer at 100%, partial at 75%, approximate at 50%. Standards with no mapping are not transferred.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Student ID</label>
+              <Input
+                type="number"
+                placeholder="Enter student user ID"
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value ? Number(e.target.value) : "")}
+              />
+              {masteryCtx.data?.context && (
+                <p className="text-xs text-muted-foreground">
+                  Active context: {masteryCtx.data.masteryRecords.length} mastery records found
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Academic Year</label>
+              <Input
+                placeholder="e.g. 2025-26"
+                value={academicYear}
+                onChange={(e) => setAcademicYear(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">From District</label>
+              <Select value={fromDistrictId.toString()} onValueChange={(v) => setFromDistrictId(Number(v))}>
+                <SelectTrigger><SelectValue placeholder="Select source district" /></SelectTrigger>
+                <SelectContent>
+                  {districts.map((d: any) => (
+                    <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">To District</label>
+              <Select value={toDistrictId.toString()} onValueChange={(v) => setToDistrictId(Number(v))}>
+                <SelectTrigger><SelectValue placeholder="Select destination district" /></SelectTrigger>
+                <SelectContent>
+                  {districts.map((d: any) => (
+                    <SelectItem key={d.id} value={d.id.toString()}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Destination Course</label>
+              <Select value={toCourseId.toString()} onValueChange={(v) => setToCourseId(Number(v))}>
+                <SelectTrigger><SelectValue placeholder="Select destination course" /></SelectTrigger>
+                <SelectContent>
+                  {(courses as any[]).map((c: any) => (
+                    <SelectItem key={c.id} value={c.id.toString()}>{c.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Destination Framework ID</label>
+              <Input
+                type="number"
+                placeholder="Framework ID (e.g. 2 for NY_NGLS)"
+                value={toFrameworkId}
+                onChange={(e) => setToFrameworkId(e.target.value ? Number(e.target.value) : "")}
+              />
+              <p className="text-xs text-muted-foreground">1 = TEKS, 2 = NY_NGLS, 3 = CCSS</p>
+            </div>
+          </div>
+
+          <Button
+            onClick={handleTransfer}
+            disabled={transfer.isPending || !studentId || !fromDistrictId || !toDistrictId || !toCourseId || !toFrameworkId}
+            className="gap-2"
+          >
+            {transfer.isPending ? (
+              <><span className="animate-spin">⟳</span> Transferring...</>
+            ) : (
+              <><ArrowRightLeft className="h-4 w-4" /> Execute Transfer</>
+            )}
+          </Button>
+
+          {transfer.isError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              Transfer failed: {transfer.error?.message}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Transfer Result */}
+      {transferResult && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-emerald-700 flex items-center gap-2">
+              <CheckSquare className="h-5 w-5" /> Transfer Complete
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-3 bg-emerald-50 rounded-lg">
+                <div className="text-2xl font-bold text-emerald-700">{transferResult.transferredCount}</div>
+                <div className="text-xs text-muted-foreground">Transferred</div>
+              </div>
+              <div className="text-center p-3 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-700">{transferResult.exactCount}</div>
+                <div className="text-xs text-muted-foreground">Exact (×1.00)</div>
+              </div>
+              <div className="text-center p-3 bg-amber-50 rounded-lg">
+                <div className="text-2xl font-bold text-amber-700">{transferResult.partialCount + transferResult.approximateCount}</div>
+                <div className="text-xs text-muted-foreground">Partial/Approx</div>
+              </div>
+              <div className="text-center p-3 bg-slate-50 rounded-lg">
+                <div className="text-2xl font-bold text-slate-600">{transferResult.skippedCount}</div>
+                <div className="text-xs text-muted-foreground">Skipped (no mapping)</div>
+              </div>
+            </div>
+
+            {/* Transfer Log */}
+            {transferResult.transferLog?.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Transfer Log — Weight Multiplication Visible</h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-muted">
+                        <th className="p-2 text-left border">Source Standard</th>
+                        <th className="p-2 text-left border">Target Standard</th>
+                        <th className="p-2 text-center border">Alignment</th>
+                        <th className="p-2 text-center border">Weight</th>
+                        <th className="p-2 text-center border">Original Score</th>
+                        <th className="p-2 text-center border">Transferred Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {transferResult.transferLog.map((row: any, i: number) => (
+                        <tr key={i} className="border-b hover:bg-muted/30">
+                          <td className="p-2 border font-mono">{row.sourceCode}</td>
+                          <td className="p-2 border font-mono">{row.targetCode}</td>
+                          <td className="p-2 border text-center">
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${alignmentColor(row.alignmentType)}`}>
+                              {row.alignmentType}
+                            </span>
+                          </td>
+                          <td className="p-2 border text-center font-mono">×{row.weight.toFixed(2)}</td>
+                          <td className="p-2 border text-center">{row.originalScore}</td>
+                          <td className="p-2 border text-center font-semibold">{row.transferredScore}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

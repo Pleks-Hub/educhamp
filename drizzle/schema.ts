@@ -1426,7 +1426,8 @@ export const standardCrosswalk = mysqlTable("standardCrosswalk", {
   id: int("id").autoincrement().primaryKey(),
   sourceStandardId: int("sourceStandardId").notNull(),
   targetStandardId: int("targetStandardId").notNull(),
-  alignmentType: mysqlEnum("alignmentType", ["exact", "partial", "related"]).notNull().default("partial"),
+  alignmentType: mysqlEnum("alignmentType", ["exact", "partial", "approximate", "none", "related"]).notNull().default("partial"),
+  alignmentWeight: float("alignmentWeight"),                  // 1.0=exact, 0.75=partial, 0.50=approximate, 0.0=none
   alignmentScore: float("alignmentScore"),                    // 0.0–1.0 confidence
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

@@ -260,6 +260,13 @@
       "when": 1780130049934,
       "tag": "0036_silky_gauntlet",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1780155053089,
+      "tag": "0037_empty_quentin_quire",
+      "breakpoints": true
     }
   ]
 }

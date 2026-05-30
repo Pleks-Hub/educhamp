@@ -60,6 +60,9 @@ import {
   getStudentInactivityNotifications,
   hasInactivityNotificationBeenSent,
   updateLastActiveAt,
+  // Phase 3C: District Transfer
+  transferStudent,
+  getMasteryRecordsForContext,
 } from "../db";
 import { sendEmail } from "../emailService";
 import { buildInactivityEmail } from "../emailTemplates/inactivityNotification";
@@ -1372,5 +1375,90 @@ export const adminRouter = router({
         domainId: input.domainId,
       });
       return { success: true, data };
+    }),
+
+  // ─── Phase 3C: District Transfer ──────────────────────────────────────────
+
+  /**
+   * List all active districts for the transfer form selector.
+   */
+  listDistricts: adminProcedure.query(async () => {
+    const { getDb } = await import("../db");
+    const { districts } = await import("../../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+    const db = await getDb();
+    if (!db) return [];
+    return db
+      .select({
+        id: districts.id,
+        name: districts.name,
+        shortName: districts.shortName,
+        stateId: districts.stateId,
+        defaultFrameworkId: districts.defaultFrameworkId,
+      })
+      .from(districts)
+      .where(eq(districts.isActive, true))
+      .orderBy(districts.name);
+  }),
+
+  /**
+   * Get mastery records for a student's active enrollment context.
+   * Used to show the before-state in the transfer comparison.
+   */
+  getStudentMasteryContext: adminProcedure
+    .input(z.object({ studentId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const { getDb } = await import("../db");
+      const { enrollmentContexts } = await import("../../drizzle/schema");
+      const { eq, and, desc } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return { context: null, masteryRecords: [] };
+      const [ctx] = await db
+        .select()
+        .from(enrollmentContexts)
+        .where(and(eq(enrollmentContexts.studentId, input.studentId), eq(enrollmentContexts.isActive, true)))
+        .orderBy(desc(enrollmentContexts.createdAt))
+        .limit(1);
+      if (!ctx) return { context: null, masteryRecords: [] };
+      const records = await getMasteryRecordsForContext(ctx.id);
+      return { context: ctx, masteryRecords: records };
+    }),
+
+  /**
+   * Transfer a student from one district to another.
+   * Deactivates the current enrollmentContext, creates a new one,
+   * and writes weight-adjusted masteryRecords via the crosswalk.
+   */
+  transferStudent: adminProcedure
+    .input(
+      z.object({
+        studentId: z.number().int().positive(),
+        fromDistrictId: z.number().int().positive(),
+        toDistrictId: z.number().int().positive(),
+        toCourseId: z.number().int().positive(),
+        toFrameworkId: z.number().int().positive(),
+        academicYear: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await transferStudent(input);
+      if (!result) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Transfer failed" });
+      await logAdminAction(ctx.user.id, "student.district.transfer", "user", input.studentId, {
+        fromDistrictId: input.fromDistrictId,
+        toDistrictId: input.toDistrictId,
+        toCourseId: input.toCourseId,
+        transferredCount: result.transferredCount,
+        skippedCount: result.skippedCount,
+      });
+      return result;
+    }),
+
+  /**
+   * Get mastery records for a specific enrollmentContext (for after-state comparison).
+   */
+  getMasteryForContext: adminProcedure
+    .input(z.object({ enrollmentContextId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      return getMasteryRecordsForContext(input.enrollmentContextId);
     }),
 });
