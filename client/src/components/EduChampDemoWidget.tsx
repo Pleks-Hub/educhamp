@@ -79,11 +79,11 @@ const SCRIPTS: Record<ModeId, DemoFrame[]> = {
     { type: "progress", text: "Skill Mastery: Factoring Polynomials", delay: 1000, extra: { pct: 85 } },
   ],
   exam: [
-    { type: "bot",      text: "Welcome to Exam Prep Mode! 🏆 I'll simulate STAAR/EOC-style questions with timed conditions.", delay: 0 },
+    { type: "bot",      text: "Welcome to Exam Prep Mode! 🏆 I'll simulate exam-style questions with timed conditions.", delay: 0 },
     { type: "bot",      text: "You have **45 minutes** for 10 questions. I'll track your time and flag areas to review. Let's go!", delay: 1200 },
     { type: "question", text: "**Q1 (Multi-step):** A rectangle has length (2x + 3) and width (x − 1). Which expression represents the area?", delay: 1400, extra: { choices: ["A: 2x² + x − 3", "B: 2x² − 3", "C: 3x + 2", "D: 2x² + 5x − 3"], correct: 0 } },
     { type: "user",     text: "A: 2x² + x − 3", delay: 2000 },
-    { type: "feedback_correct", text: "✅ Correct! (2x+3)(x−1) = 2x² − 2x + 3x − 3 = 2x² + x − 3. STAAR-level thinking!", delay: 800 },
+    { type: "feedback_correct", text: "✅ Correct! (2x+3)(x−1) = 2x² − 2x + 3x − 3 = 2x² + x − 3. Excellent thinking!", delay: 800 },
     { type: "question", text: "**Q2 (Data Analysis):** A scatter plot shows r = −0.87. What does this indicate?", delay: 1200, extra: { choices: ["A: Strong positive correlation", "B: No correlation", "C: Strong negative correlation", "D: Weak negative correlation"], correct: 2 } },
     { type: "user",     text: "C: Strong negative correlation", delay: 1800 },
     { type: "feedback_correct", text: "✅ Excellent! r = −0.87 is close to −1, indicating a strong negative linear relationship.", delay: 800 },
@@ -229,7 +229,7 @@ export function EduChampDemoWidget({ variant = "full", initialMode, hideTabs = f
               {activeMode === "tutor" ? "Mathematics · Unit 5: Linear Functions" :
                activeMode === "quiz"  ? "Mathematics · Unit 2: Equations" :
                activeMode === "practice" ? "Grade 3 Math · Unit 4: Fractions" :
-               "STAAR/EOC Review · Multi-Subject"}
+               "Exam Review · Multi-Subject"}
             </p>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">

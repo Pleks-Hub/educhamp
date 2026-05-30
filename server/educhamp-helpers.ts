@@ -130,7 +130,7 @@ export type StudentContext = {
     title: string;             // e.g. "AP Chemistry"
     subject: string;           // e.g. "science"
     gradeLevel: string;        // e.g. "AP" | "9" | "3"
-    teksCode?: string | null;  // e.g. "TEKS 112.39"
+    teksCode?: string | null;  // e.g. "112.39" (standards code)
     courseCode: string;        // e.g. "APCHEM"
     preferredName?: string | null; // student's preferred name / nickname
     aiWelcomeMessage?: string | null; // custom welcome message set by student/parent
@@ -233,7 +233,7 @@ ${rows}`;
   let learningObjectivesSection = "";
   if (ctx?.learningObjectives) {
     learningObjectivesSection = `
-## Current Unit Learning Objectives (TEKS Alignment)
+## Current Unit Learning Objectives (Standards Alignment)
 ${ctx.learningObjectives}`;
   }
   const modeInstructions = MODE_INSTRUCTIONS[mode];
@@ -315,7 +315,7 @@ ${recentFive.map((q) => `- Unit ${q.unitNumber}: **${q.score}%** (${getMasteryLa
   if (ctx?.parentGoalContext?.goalDetail || ctx?.parentGoalContext?.signupReason) {
     const categoryMap: Record<string, string> = {
       grade_improvement: "Grade Improvement",
-      test_prep: "Test Preparation (STAAR/SAT/ACT)",
+      test_prep: "Test Preparation (state exams, SAT, ACT, AP)",
       enrichment: "Enrichment & Extension",
       remediation: "Remediation & Gap Filling",
       homeschool_supplement: "Homeschool Supplement",
@@ -330,7 +330,7 @@ ${recentFive.map((q) => `- Unit ${q.unitNumber}: **${q.score}%** (${getMasteryLa
 ${ctx.parentGoalContext.signupReason ? `- **Parent's Reason**: "${ctx.parentGoalContext.signupReason}"` : ""}
 ${ctx.parentGoalContext.goalDetail ? `- **Personalised Goal**: ${ctx.parentGoalContext.goalDetail}` : ""}
 
-> Use this context to align your tutoring focus with the parent's objective. For example, if the goal is test prep, emphasise STAAR-aligned problem types. If remediation, slow down and build foundations.`;
+> Use this context to align your tutoring focus with the parent's objective. For example, if the goal is test prep, emphasise exam-aligned problem types. If remediation, slow down and build foundations.`;
   }
 
   // ── Student demographics ──────────────────────────────────────────────────
@@ -349,7 +349,7 @@ ${ctx.parentGoalContext.goalDetail ? `- **Personalised Goal**: ${ctx.parentGoalC
   const course = ctx?.courseContext;
   const courseTitle = course?.title ?? "the current course";
   const courseCode = course?.courseCode ?? "";
-  const courseTeks = course?.teksCode ? `\n- **TEKS Standard**: ${course.teksCode}` : "";
+  const courseStandard = course?.teksCode ? `\n- **Standards Code**: ${course.teksCode}` : "";
   const gradeLabel = course?.gradeLevel === "AP" ? "AP / Advanced" : course?.gradeLevel ? `Grade ${course.gradeLevel}` : "";
   const subjectMap: Record<string, string> = {
     math: "Mathematics",
@@ -365,7 +365,7 @@ ${ctx.parentGoalContext.goalDetail ? `- **Personalised Goal**: ${ctx.parentGoalC
 
   // Course-specific subject expertise line
   const subjectExpertise = course
-    ? `You are an expert ${gradeLabel ? gradeLabel + " " : ""}${subjectLabel} tutor${course.teksCode ? " following " + course.teksCode : ""}. You are deeply knowledgeable about ${courseTitle} and all its units, concepts, vocabulary, and problem types.`
+    ? `You are an expert ${gradeLabel ? gradeLabel + " " : ""}${subjectLabel} tutor${course.teksCode ? " following standards " + course.teksCode : ""}. You are deeply knowledgeable about ${courseTitle} and all its units, concepts, vocabulary, and problem types.`
     : "You are an expert academic tutor across all subjects.";
 
   // Course-specific skill ID format
@@ -444,7 +444,7 @@ Hey [Name]! Let's count together! 🤝
 
 ## Student Information
 - **Name**: ${displayName}
-- **Course**: ${courseTitle}${gradeLabel ? " ("+gradeLabel+")" : ""}${courseTeks}
+- **Course**: ${courseTitle}${gradeLabel ? " (" + gradeLabel + ")" : ""}${courseStandard}
 - **Current Unit**: ${currentUnitTitle || "General " + courseTitle}${ctx?.currentUnitNumber ? ` (Unit ${ctx.currentUnitNumber})` : ""}${demographicsSection}
 
 ## Current Mode: ${mode.toUpperCase().replace("_", " ")}
@@ -465,7 +465,7 @@ ${youngLearnerSection}${parentLedSection}${gamificationSection}
 3. Format subject-specific expressions, formulas, and notation clearly and correctly for ${subjectLabel}
 4. Never make the student feel bad for not knowing something
 5. Connect ${courseTitle} concepts to real-world applications whenever possible
-6. Follow the Texas Essential Knowledge and Skills (TEKS) standards for this course
+6. Follow the academic standards framework for this course (state or national standards as applicable)
 7. ALWAYS use the student's actual mastery and placement data to personalise your response — never give generic answers when you have specific data
 8. If the student asks about a topic outside ${courseTitle}, follow the Out-of-Course Redirection instructions above
 

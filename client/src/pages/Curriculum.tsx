@@ -74,9 +74,9 @@ export default function Curriculum() {
       ? `Grade ${courseGradeLevel}`
       : "";
   const subjectLabel = SUBJECT_LABELS[courseSubject] ?? courseSubject;
-  const teksLabel = courseTeksCode ? `${courseTeksCode}` : "TEKS-aligned";
+  const teksLabel = courseTeksCode ? `${courseTeksCode}` : "Standards-aligned";
 
-  // Subtitle parts: e.g. "Grade 9 · Mathematics · TEKS 111.39"
+  // Subtitle parts: e.g. "Grade 9 · Mathematics · 111.39"
   const subtitleParts = [gradeLabel, subjectLabel, teksLabel].filter(Boolean);
 
   return (

@@ -37,7 +37,7 @@ const STUDENT_STEPS: TourStep[] = [
     icon: <GraduationCap className="h-10 w-10 text-primary" />,
     title: "Welcome to EduChamp!",
     description:
-      "EduChamp is your personalised learning companion for Katy ISD courses. You can study multiple subjects, track your progress, and get help from an AI tutor — all in one place.",
+      "EduChamp is your personalised learning companion. You can study multiple subjects, track your progress, and get help from an AI tutor — all in one place.",
     badge: "Let's get started",
     badgeColor: "bg-primary text-primary-foreground",
   },
@@ -101,7 +101,7 @@ const PARENT_STEPS: TourStep[] = [
     icon: <GraduationCap className="h-10 w-10 text-primary" />,
     title: "Welcome to EduChamp!",
     description:
-      "EduChamp helps you monitor and support your child's learning journey across all their Katy ISD courses. Here's a quick overview of what you can do.",
+      "EduChamp helps you monitor and support your child's learning journey across all their courses. Here's a quick overview of what you can do.",
     badge: "Parent & Guardian Guide",
     badgeColor: "bg-primary text-primary-foreground",
   },

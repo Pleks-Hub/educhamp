@@ -32,6 +32,7 @@ import {
   userProfiles,
   users,
   inactivityNotifications,
+  parentalConsents,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -2737,4 +2738,148 @@ export async function checkAdminPermission(
     .limit(1);
 
   return match.length > 0;
+}
+
+// ─── COPPA Parental Consent ───────────────────────────────────────────────────
+
+/** COPPA_GRADES: grade levels that require parental consent (roughly ages ≤ 12) */
+export const COPPA_GRADES = new Set([
+  "Pre-K", "Kindergarten", "1", "2", "3", "4", "5", "6",
+  "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6",
+  "1st Grade", "2nd Grade", "3rd Grade", "4th Grade", "5th Grade", "6th Grade",
+]);
+
+export function isCoppaGrade(gradeLevel?: string | null): boolean {
+  if (!gradeLevel) return false;
+  return COPPA_GRADES.has(gradeLevel.trim());
+}
+
+/** Create a new parental consent request and return the token. */
+export async function createParentalConsentRequest(
+  studentId: number,
+  parentEmail: string,
+  parentName?: string
+): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const { nanoid } = await import("nanoid");
+  const token = nanoid(48);
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  await db.insert(parentalConsents).values({
+    studentId,
+    parentEmail: parentEmail.toLowerCase().trim(),
+    parentName: parentName ?? null,
+    token,
+    status: "pending",
+    expiresAt,
+  });
+  return token;
+}
+
+/** Look up a consent request by token. */
+export async function getParentalConsentByToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(parentalConsents)
+    .where(eq(parentalConsents.token, token))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+/** Get the latest consent record for a student. */
+export async function getLatestParentalConsent(studentId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(parentalConsents)
+    .where(eq(parentalConsents.studentId, studentId))
+    .orderBy(desc(parentalConsents.requestedAt))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+/** Check if a student has an approved consent (or is grandfathered via parentChildren). */
+export async function hasParentalConsent(studentId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  // Grandfathered: student already has an active parent link
+  const existingLink = await db
+    .select({ id: parentChildren.id })
+    .from(parentChildren)
+    .where(and(eq(parentChildren.childId, studentId), eq(parentChildren.isActive, true)))
+    .limit(1);
+  if (existingLink.length > 0) return true;
+  // Check for an approved consent record
+  const approved = await db
+    .select({ id: parentalConsents.id })
+    .from(parentalConsents)
+    .where(and(eq(parentalConsents.studentId, studentId), eq(parentalConsents.status, "approved")))
+    .limit(1);
+  return approved.length > 0;
+}
+
+/** Approve a consent request by token. */
+export async function approveParentalConsent(token: string, ipAddress?: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const consent = await getParentalConsentByToken(token);
+  if (!consent) return null;
+  if (consent.status !== "pending") return consent;
+  if (consent.expiresAt < new Date()) {
+    await db
+      .update(parentalConsents)
+      .set({ status: "expired", respondedAt: new Date() })
+      .where(eq(parentalConsents.token, token));
+    return null;
+  }
+  await db
+    .update(parentalConsents)
+    .set({ status: "approved", respondedAt: new Date(), ipAddress: ipAddress ?? null })
+    .where(eq(parentalConsents.token, token));
+  return { ...consent, status: "approved" as const };
+}
+
+/** Deny a consent request by token. */
+export async function denyParentalConsent(token: string, ipAddress?: string) {
+  const db = await getDb();
+  if (!db) return null;
+  await db
+    .update(parentalConsents)
+    .set({ status: "denied", respondedAt: new Date(), ipAddress: ipAddress ?? null })
+    .where(eq(parentalConsents.token, token));
+  return true;
+}
+
+/** Get all pending consents (for admin view). */
+export async function getPendingParentalConsents() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(parentalConsents)
+    .where(eq(parentalConsents.status, "pending"))
+    .orderBy(desc(parentalConsents.requestedAt));
+}
+
+/** Get a single platform setting value by key. Returns null if not found. */
+export async function getPlatformSetting(key: string): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(platformSettings).where(eq(platformSettings.key, key)).limit(1);
+  return rows[0]?.value ?? null;
+}
+
+/** Get the approved parental consent record for a student (COPPA gate). */
+export async function getApprovedCoppaConsent(studentId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select()
+    .from(parentalConsents)
+    .where(and(eq(parentalConsents.studentId, studentId), eq(parentalConsents.status, "approved")))
+    .limit(1);
+  return rows[0] ?? null;
 }

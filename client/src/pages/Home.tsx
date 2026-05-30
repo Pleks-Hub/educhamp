@@ -202,7 +202,7 @@ function EmptyEnrollmentState({ onBrowse }: { onBrowse: () => void }) {
           Browse &amp; Enrol in Courses
         </Button>
         <p className="text-xs text-muted-foreground">
-          70+ courses available: Pre-K through Grade 12, AP, and SAT Prep — ACA and KAP pathways
+          70+ courses available: Pre-K through Grade 12, AP, and SAT Prep
         </p>
       </CardContent>
     </Card>
@@ -575,7 +575,7 @@ export default function Home() {
             {greeting}, {firstName} 👋
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {dashboard?.courseTitle ?? "EduChamp"} · Katy ISD ·{" "}
+            {dashboard?.courseTitle ?? "EduChamp"} ·{" "}
             {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
           </p>
           {!hasDiagnosticForActiveCourse && enrolledCount > 0 && (

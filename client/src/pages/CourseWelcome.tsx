@@ -151,7 +151,7 @@ export default function CourseWelcome() {
             )}
             {totalUnits > 0 && (
               <p className="text-sm text-muted-foreground">
-                {totalUnits} units · Katy ISD · TEKS-aligned
+                {totalUnits} units · Standards-aligned curriculum
               </p>
             )}
           </div>

@@ -132,7 +132,7 @@ export const onboardingRouter = router({
     .mutation(async ({ ctx, input }) => {
       const categoryLabels: Record<string, string> = {
         grade_improvement: "improving their child's grades",
-        test_prep: "preparing for standardized tests (STAAR, SAT, ACT)",
+        test_prep: "preparing for standardized tests (SAT, ACT, AP, or state assessments)",
         enrichment: "enriching their child's math skills beyond the classroom",
         remediation: "addressing learning gaps and catching up across subjects",
         homeschool_supplement: "supplementing their homeschool curriculum with structured EduChamp content",

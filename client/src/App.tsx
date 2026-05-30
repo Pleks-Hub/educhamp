@@ -45,6 +45,7 @@ const EarlyDiagnostic = lazy(() => import("./pages/EarlyDiagnostic"));
 const GamificationHub = lazy(() => import("./pages/GamificationHub"));
 const RewardsMarketplace = lazy(() => import("./pages/RewardsMarketplace"));
 const AdventureMap = lazy(() => import("./pages/AdventureMap"));
+const ConsentApproval = lazy(() => import("./pages/ConsentApproval"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -77,6 +78,8 @@ function Router() {
         <Route path="/checkout/success" component={CheckoutSuccess} />
         <Route path="/course-request/result" component={CourseRequestResult} />
         <Route path="/verify-2fa" component={Verify2FA} />
+        <Route path="/consent/approve" component={ConsentApproval} />
+        <Route path="/consent/deny" component={ConsentApproval} />
 
         {/* Admin console — standalone, no sidebar */}
         <Route path="/admin" component={AdminDashboard} />

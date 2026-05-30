@@ -719,7 +719,7 @@ export default function Diagnostic() {
       <div className="p-6 space-y-6 page-enter max-w-2xl">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Placement Diagnostic</h1>
-          <p className="text-muted-foreground text-sm mt-1">{courseTitle} · Katy ISD</p>
+          <p className="text-muted-foreground text-sm mt-1">{courseTitle}</p>
         </div>
 
         <Card className="border shadow-sm">

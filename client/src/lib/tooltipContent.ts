@@ -128,7 +128,7 @@ export const ADMIN_TAB_TOOLTIPS: Record<string, TooltipEntry> = {
   },
   courses: {
     title: "Courses",
-    description: "Manage available courses — edit titles, descriptions, TEKS alignment, and active status. View enrolled users per course.",
+    description: "Manage available courses — edit titles, descriptions, standards alignment, and active status. View enrolled users per course.",
   },
   settings: {
     title: "Platform Settings",

@@ -31,7 +31,7 @@ export default function ForgotPassword() {
           </div>
           <div className="text-center">
             <h1 className="text-xl font-bold">EduChamp</h1>
-            <p className="text-xs text-muted-foreground">Adaptive Learning · Katy ISD</p>
+            <p className="text-xs text-muted-foreground">Adaptive Learning · Pre-K through Grade 12</p>
           </div>
         </div>
 

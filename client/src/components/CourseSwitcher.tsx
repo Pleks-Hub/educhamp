@@ -159,7 +159,7 @@ export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
               Course Catalogue
             </DialogTitle>
             <DialogDescription className="text-sm mt-1">
-              Browse Katy ISD courses by grade level. Enrol and switch your active course at any time.
+              Browse all courses by grade level. Enrol and switch your active course at any time.
             </DialogDescription>
           </DialogHeader>
 
@@ -242,7 +242,7 @@ export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
                                   )}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
-                                  {course.description ?? `${SUBJECT_LABELS[course.subject] ?? course.subject} — Katy ISD`}
+                                  {course.description ?? `${SUBJECT_LABELS[course.subject] ?? course.subject}`}
                                 </p>
                                 {course.teksCode && (
                                   <p className="text-[10px] text-muted-foreground/60 mt-1">{course.teksCode}</p>

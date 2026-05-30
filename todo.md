@@ -1714,3 +1714,56 @@
 - [x] P1-10: Tutor session history cap — capped at 100 messages (.slice(-100)) in routers.ts
 - [x] P1-11: robots.txt — VERIFIED: already present, disallows /admin, /api/, /quiz, /diagnostic, /parent/, /profile, /billing
 - [x] P1-12: Body-parser limit — reduced from 2 MB to 1 MB in index.ts
+
+## Phase 1 — Multi-District Data Layer + COPPA + De-Katy (Sprint 64)
+
+### Phase 1 Planning
+- [x] Write docs/PHASE1_MIGRATION_PLAN.md covering mastery migration, teksAlignment extraction, COPPA gate design
+
+### Phase 1A — New Schema Tables
+- [x] Add standardFrameworks, standards, standardCrosswalk tables (migration)
+- [x] Add countries, states tables (migration)
+- [x] Add districts, schools tables (migration)
+- [x] Add tracks table (migration)
+- [x] Add pacingGuides, pacingWindows tables (migration)
+- [x] Add resourceAdoptions table (migration)
+- [x] Add learningObjectives, objectivePrerequisites tables (migration)
+- [x] Add assessmentTemplates table (migration)
+- [x] Add enrollmentContexts table (migration)
+- [x] Add masteryRecords table (migration)
+- [x] Add unitStandards join table (migration)
+- [x] Apply all migrations via webdev_execute_sql
+
+### Phase 1B — Seed Data
+- [ ] Seed USA / TX / TEKS framework / Katy ISD district + tracks + pacing guide + resource adoption
+- [ ] Seed TX / HISD district + tracks + pacing guide + daily quiz assessment template
+- [ ] Seed NY / NYC-DOE district + NY_NGLS framework + tracks + Regents assessment template
+- [ ] Seed sample standards for TEKS Algebra I and NY_NGLS Algebra I (crosswalk demo set)
+- [ ] Seed StandardCrosswalk rows (TEKS ALG1 ↔ NY_NGLS ALG1, sample set)
+
+### Phase 1C — Backfill Migration
+- [ ] Add frameworkId column to existing courses table; backfill all existing courses to TEKS
+- [ ] Extract TEKS codes from units.teksAlignment free-text; create standards rows; populate unitStandards
+- [ ] Create default enrollmentContext rows for all existing students (Katy ISD, TEKS, 2025-26)
+- [ ] Backfill masteryRecords from existing userMastery rows
+
+### Phase 1D — COPPA Age Gate (parallel sprint)
+- [x] Add parentalConsents table (migration)
+- [x] Add age gate to StudentOnboarding: grade ≤ 6 triggers parental consent required screen
+- [x] Add consent-required guard on AI tutor access
+- [x] Add parent consent approval flow (email + consent record)
+- [x] Add consent status display in parent dashboard
+
+### Phase 1E — De-Katy (Landing Page + Marketing Chatbot)
+- [x] Replace all ~20 Katy/TEKS/STAAR/ACA/KAP references in LandingPage.tsx
+- [x] Update CourseSwitcher.tsx: remove Katy ISD fallback description
+- [x] Update Home.tsx: remove Katy ISD welcome copy
+- [x] Update GuidedTour.tsx: remove Katy ISD tour step copy
+- [x] Update EduChampDemoWidget.tsx: remove STAAR/EOC hard-coding
+- [x] Update StudentOnboarding.tsx: remove Katy ISD default placeholder
+- [x] Update LANDING_SYSTEM_PROMPT in landing.ts
+- [x] Update Stripe plan descriptions: remove TEKS-aligned curriculum references
+- [x] Update onboarding goal generation prompt: remove STAAR from goal category options
+
+### Phase 1 Tests
+- [x] Write phase1.test.ts covering schema integrity, backfill correctness, COPPA gate, de-Katy copy

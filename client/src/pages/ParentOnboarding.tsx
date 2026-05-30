@@ -18,7 +18,7 @@ import {
 
 const GOAL_CATEGORIES = [
   { value: "grade_improvement", label: "Grade Improvement", desc: "Help my child get better grades in their courses" },
-  { value: "test_prep", label: "Test Preparation", desc: "Prepare for STAAR, SAT, or ACT exams" },
+  { value: "test_prep", label: "Test Preparation", desc: "Prepare for standardised exams (SAT, ACT, AP, or state assessments)" },
   { value: "enrichment", label: "Enrichment", desc: "Go beyond the classroom with advanced content" },
   { value: "remediation", label: "Remediation", desc: "Fill learning gaps and catch up on missed concepts" },
   { value: "homeschool_supplement", label: "Homeschool Supplement", desc: "Structured curriculum for home education (Pre-K through Grade 12 & AP)" },
@@ -228,7 +228,7 @@ export default function ParentOnboarding() {
               <div>
                 <Label>Tell us more about your goal</Label>
                 <Textarea
-                  placeholder="e.g. My daughter is struggling with linear equations and I want her to pass the STAAR test in May..."
+                  placeholder="e.g. My daughter is struggling with linear equations and I want her to improve before her end-of-year assessment..."
                   value={signupReason}
                   onChange={e => setSignupReason(e.target.value)}
                   rows={4}

@@ -211,7 +211,7 @@ export default function CourseCatalog() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Full Course Catalogue</h1>
         <p className="text-slate-500 mt-1">
-          Browse 70+ courses from Pre-K through Grade 12, AP, and SAT Prep — all aligned to Katy ISD TEKS.
+          Browse 70+ courses from Pre-K through Grade 12, AP, and SAT Prep — all standards-aligned.
         </p>
         <div className="flex flex-wrap gap-2 mt-3">
           {recommendedCount > 0 && (

@@ -47,11 +47,14 @@ const GRADE_LEVELS = [
   { value: "Grade 12", label: "Grade 12", minAge: 17, maxAge: 19 },
 ];
 
+// Grades that require COPPA parental consent (≤ Grade 6, roughly age ≤ 12)
+const COPPA_GRADES = new Set(["Pre-K", "Kindergarten", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6"]);
+
 const STUDENT_GOALS = [
   { value: "improve_grades", label: "Improve my grades", desc: "I want to raise my GPA and perform better in class." },
   { value: "catch_up", label: "Catch up on missed content", desc: "I need to fill gaps from previous grades or missed lessons." },
   { value: "get_ahead", label: "Get ahead of my class", desc: "I want to learn content before it's taught in school." },
-  { value: "exam_prep", label: "Prepare for exams", desc: "STAAR, AP exams, SAT, or other standardised tests." },
+  { value: "exam_prep", label: "Prepare for exams", desc: "AP exams, SAT, ACT, or other standardised tests." },
   { value: "enrichment", label: "Explore new subjects", desc: "I'm curious and want to learn beyond my current curriculum." },
   { value: "other", label: "Other", desc: "Something else — I'll describe it." },
 ];
@@ -160,10 +163,25 @@ export default function StudentOnboarding() {
     }
   }, [gradeSuggestion]);
 
+  // COPPA gate state
+  const [coppaConsentEmail, setCoppaConsentEmail] = useState("");
+  const [coppaConsentSent, setCoppaConsentSent] = useState(false);
+  const [coppaEmailError, setCoppaEmailError] = useState("");
+
+  // Whether this student's grade requires COPPA consent
+  const requiresCoppaConsent = gradeLevel ? COPPA_GRADES.has(gradeLevel) : false;
+
   const saveProfile = trpc.onboarding.saveStudentProfile.useMutation();
   const acceptInvite = trpc.onboarding.acceptStudentInvite.useMutation();
   const completeOnboarding = trpc.onboarding.completeOnboarding.useMutation();
   const inviteParent = trpc.onboarding.inviteParent.useMutation();
+  const requestCoppaConsent = trpc.coppa.requestConsent.useMutation({
+    onSuccess: () => {
+      setCoppaConsentSent(true);
+      toast.success("Consent request sent! Ask your parent to check their email.");
+    },
+    onError: (err) => toast.error(err.message),
+  });
   const resendParentInvite = trpc.onboarding.resendParentInvite.useMutation({
     onSuccess: (data) => {
       setParentInviteResult(data);
@@ -197,6 +215,23 @@ export default function StudentOnboarding() {
       gender: gender || undefined,
     });
     setStep(2);
+  }
+
+  async function handleSendCoppaConsent() {
+    setCoppaEmailError("");
+    if (!coppaConsentEmail) {
+      setCoppaEmailError("Please enter your parent or guardian's email address.");
+      return;
+    }
+    // Validate parent email ≠ student email (COPPA requirement)
+    if (user?.email && coppaConsentEmail.toLowerCase().trim() === user.email.toLowerCase().trim()) {
+      setCoppaEmailError("The parent email must be different from your own login email.");
+      return;
+    }
+    await requestCoppaConsent.mutateAsync({
+      parentEmail: coppaConsentEmail.trim(),
+      origin: window.location.origin,
+    });
   }
 
   async function handleSendParentInvite() {
@@ -411,11 +446,11 @@ export default function StudentOnboarding() {
                 <>
                   <div>
                     <Label>School Name <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                    <Input placeholder="e.g. Katy High School" value={schoolName} onChange={e => setSchoolName(e.target.value)} />
+                    <Input placeholder="e.g. Lincoln High School" value={schoolName} onChange={e => setSchoolName(e.target.value)} />
                   </div>
                   <div>
                     <Label>School District <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                    <Input placeholder="e.g. Katy ISD" value={schoolDistrict} onChange={e => setSchoolDistrict(e.target.value)} />
+                    <Input placeholder="e.g. Metro School District" value={schoolDistrict} onChange={e => setSchoolDistrict(e.target.value)} />
                   </div>
                 </>
               )}
@@ -423,7 +458,7 @@ export default function StudentOnboarding() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>City <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input placeholder="e.g. Katy" value={city} onChange={e => setCity(e.target.value)} />
+                  <Input placeholder="e.g. Springfield" value={city} onChange={e => setCity(e.target.value)} />
                 </div>
                 <div>
                   <Label>Gender <span className="text-muted-foreground text-xs">(optional)</span></Label>
@@ -480,8 +515,98 @@ export default function StudentOnboarding() {
           </Card>
         )}
 
+        {/* COPPA Consent Gate — shown before Step 2 when grade ≤ 6 */}
+        {step === 2 && requiresCoppaConsent && !coppaConsentSent && (
+          <Card className="border-amber-300">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5 text-amber-600" />
+                <CardTitle>Parental Consent Required</CardTitle>
+              </div>
+              <CardDescription>
+                Students in Grade 6 or below need a parent or guardian to approve their account before they can access lessons and the AI tutor.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+                <p className="font-medium mb-1">Why is this required?</p>
+                <p>Under the Children's Online Privacy Protection Act (COPPA), we must obtain verifiable parental consent before collecting personal data from children under 13. We apply this gate to Grade 6 and below to be safe.</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="coppa-email">
+                  Parent or Guardian Email <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="coppa-email"
+                  type="email"
+                  placeholder="parent@example.com"
+                  value={coppaConsentEmail}
+                  onChange={e => { setCoppaConsentEmail(e.target.value); setCoppaEmailError(""); }}
+                  className={coppaEmailError ? "border-red-400" : ""}
+                />
+                {coppaEmailError && (
+                  <p className="text-xs text-red-600 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" /> {coppaEmailError}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  We will send a one-click approval link to this address. Your parent must approve before you can start learning.
+                </p>
+              </div>
+              <Button
+                className="w-full bg-amber-600 hover:bg-amber-700"
+                onClick={handleSendCoppaConsent}
+                disabled={requestCoppaConsent.isPending}
+              >
+                {requestCoppaConsent.isPending ? (
+                  <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Sending…</>
+                ) : (
+                  <><Mail className="h-4 w-4 mr-2" /> Send Consent Request to Parent</>
+                )}
+              </Button>
+              <Button variant="ghost" className="w-full text-xs text-muted-foreground" onClick={() => setStep(1)}>
+                <ArrowLeft className="h-3 w-3 mr-1" /> Back
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* COPPA Consent Sent Confirmation */}
+        {step === 2 && requiresCoppaConsent && coppaConsentSent && (
+          <Card className="border-green-300">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <CardTitle>Consent Request Sent!</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-sm text-green-800 space-y-2">
+                <p>A consent approval email has been sent to <strong>{coppaConsentEmail}</strong>.</p>
+                <p>Ask your parent to check their inbox and click the approval link. Once they approve, you can log back in and start learning.</p>
+              </div>
+              <div className="rounded-lg bg-slate-50 border p-3 text-xs text-muted-foreground space-y-1">
+                <p className="font-medium">What happens next?</p>
+                <ul className="list-disc list-inside space-y-0.5 pl-1">
+                  <li>Your parent clicks the link in the email</li>
+                  <li>They review and approve the consent form</li>
+                  <li>Your account is unlocked automatically</li>
+                  <li>Log back in to start your first lesson</li>
+                </ul>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => { setCoppaConsentSent(false); setCoppaConsentEmail(""); }}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" /> Use a different email address
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Step 2: Invite Parent */}
-        {step === 2 && (
+        {step === 2 && (!requiresCoppaConsent || coppaConsentSent) && (
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">

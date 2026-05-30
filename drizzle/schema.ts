@@ -1386,3 +1386,283 @@ export const questionFlags = mysqlTable("questionFlags", {
 }));
 export type QuestionFlag = typeof questionFlags.$inferSelect;
 export type InsertQuestionFlag = typeof questionFlags.$inferInsert;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PHASE 1A — Multi-District Data Layer
+// All tables below are additive. No existing tables are modified.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Standard Frameworks ─────────────────────────────────────────────────────
+export const standardFrameworks = mysqlTable("standardFrameworks", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 32 }).notNull().unique(),   // e.g. "TEKS", "NY_NGLS", "CCSS"
+  name: varchar("name", { length: 256 }).notNull(),           // e.g. "Texas Essential Knowledge and Skills"
+  stateCode: varchar("stateCode", { length: 8 }),             // e.g. "TX", "NY"
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type StandardFramework = typeof standardFrameworks.$inferSelect;
+
+// ─── Standards ────────────────────────────────────────────────────────────────
+export const standards = mysqlTable("standards", {
+  id: int("id").autoincrement().primaryKey(),
+  frameworkId: int("frameworkId").notNull(),
+  code: varchar("code", { length: 64 }).notNull(),            // e.g. "A.5(A)" or "alg1_solving_linear_equations"
+  description: text("description").notNull(),
+  gradeLevel: varchar("gradeLevel", { length: 16 }),          // e.g. "9", "3", "K"
+  subject: varchar("subject", { length: 64 }),                // e.g. "math", "english"
+  strand: varchar("strand", { length: 128 }),                 // e.g. "Algebraic Reasoning"
+  isCanonical: boolean("isCanonical").notNull().default(true),// false = extracted slug, needs human review
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  frameworkCodeIdx: index("standards_framework_code_idx").on(t.frameworkId, t.code),
+  frameworkGradeIdx: index("standards_framework_grade_idx").on(t.frameworkId, t.gradeLevel),
+}));
+export type Standard = typeof standards.$inferSelect;
+
+// ─── Standard Crosswalk ───────────────────────────────────────────────────────
+export const standardCrosswalk = mysqlTable("standardCrosswalk", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceStandardId: int("sourceStandardId").notNull(),
+  targetStandardId: int("targetStandardId").notNull(),
+  alignmentType: mysqlEnum("alignmentType", ["exact", "partial", "related"]).notNull().default("partial"),
+  alignmentScore: float("alignmentScore"),                    // 0.0–1.0 confidence
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  sourceIdx: index("crosswalk_source_idx").on(t.sourceStandardId),
+  targetIdx: index("crosswalk_target_idx").on(t.targetStandardId),
+}));
+export type StandardCrosswalk = typeof standardCrosswalk.$inferSelect;
+
+// ─── Countries ────────────────────────────────────────────────────────────────
+export const countries = mysqlTable("countries", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 8 }).notNull().unique(),    // e.g. "US"
+  name: varchar("name", { length: 128 }).notNull(),
+});
+export type Country = typeof countries.$inferSelect;
+
+// ─── States / Provinces ───────────────────────────────────────────────────────
+export const states = mysqlTable("states", {
+  id: int("id").autoincrement().primaryKey(),
+  countryId: int("countryId").notNull(),
+  code: varchar("code", { length: 8 }).notNull(),             // e.g. "TX", "NY"
+  name: varchar("name", { length: 128 }).notNull(),
+  defaultFrameworkId: int("defaultFrameworkId"),              // FK → standardFrameworks.id (nullable)
+  assessmentRegime: varchar("assessmentRegime", { length: 64 }),// e.g. "staar_eoc", "ny_regents"
+}, (t) => ({
+  countryStateUnique: uniqueIndex("states_country_code_unique").on(t.countryId, t.code),
+}));
+export type State = typeof states.$inferSelect;
+
+// ─── Districts ────────────────────────────────────────────────────────────────
+export const districts = mysqlTable("districts", {
+  id: int("id").autoincrement().primaryKey(),
+  stateId: int("stateId").notNull(),
+  name: varchar("name", { length: 256 }).notNull(),
+  shortName: varchar("shortName", { length: 64 }),            // e.g. "Katy ISD", "HISD"
+  ncescode: varchar("ncescode", { length: 16 }),              // NCES district ID
+  defaultFrameworkId: int("defaultFrameworkId"),
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  stateIdx: index("districts_state_idx").on(t.stateId),
+}));
+export type District = typeof districts.$inferSelect;
+
+// ─── Schools ──────────────────────────────────────────────────────────────────
+export const schools = mysqlTable("schools", {
+  id: int("id").autoincrement().primaryKey(),
+  districtId: int("districtId").notNull(),
+  name: varchar("name", { length: 256 }).notNull(),
+  ncescode: varchar("ncescode", { length: 16 }),
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  districtIdx: index("schools_district_idx").on(t.districtId),
+}));
+export type School = typeof schools.$inferSelect;
+
+// ─── Tracks ───────────────────────────────────────────────────────────────────
+export const tracks = mysqlTable("tracks", {
+  id: int("id").autoincrement().primaryKey(),
+  districtId: int("districtId").notNull(),
+  courseId: int("courseId").notNull(),
+  code: varchar("code", { length: 32 }).notNull(),            // e.g. "KAP", "ACA", "REGULAR"
+  localLabel: varchar("localLabel", { length: 128 }).notNull(),// e.g. "KAP Math", "ACA", "Regular"
+  trackType: mysqlEnum("trackType", ["advanced", "regular", "remedial", "honors", "ap"]).notNull().default("regular"),
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  districtCourseIdx: index("tracks_district_course_idx").on(t.districtId, t.courseId),
+}));
+export type Track = typeof tracks.$inferSelect;
+
+// ─── Pacing Guides ────────────────────────────────────────────────────────────
+export const pacingGuides = mysqlTable("pacingGuides", {
+  id: int("id").autoincrement().primaryKey(),
+  districtId: int("districtId").notNull(),
+  courseId: int("courseId").notNull(),
+  trackId: int("trackId"),                                    // NULL = applies to all tracks
+  academicYear: varchar("academicYear", { length: 16 }).notNull(),// e.g. "2025-26"
+  name: varchar("name", { length: 256 }).notNull(),
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  districtCourseYearIdx: index("pacing_district_course_year_idx").on(t.districtId, t.courseId, t.academicYear),
+}));
+export type PacingGuide = typeof pacingGuides.$inferSelect;
+
+// ─── Pacing Windows ───────────────────────────────────────────────────────────
+export const pacingWindows = mysqlTable("pacingWindows", {
+  id: int("id").autoincrement().primaryKey(),
+  pacingGuideId: int("pacingGuideId").notNull(),
+  unitId: int("unitId").notNull(),
+  startDate: timestamp("startDate").notNull(),
+  endDate: timestamp("endDate").notNull(),
+  weekNumber: int("weekNumber"),
+  notes: text("notes"),
+}, (t) => ({
+  guideUnitIdx: uniqueIndex("pacing_windows_guide_unit_unique").on(t.pacingGuideId, t.unitId),
+  guideDateIdx: index("pacing_windows_guide_date_idx").on(t.pacingGuideId, t.endDate),
+}));
+export type PacingWindow = typeof pacingWindows.$inferSelect;
+
+// ─── Resource Adoptions ───────────────────────────────────────────────────────
+export const resourceAdoptions = mysqlTable("resourceAdoptions", {
+  id: int("id").autoincrement().primaryKey(),
+  districtId: int("districtId").notNull(),
+  courseId: int("courseId").notNull(),
+  resourceName: varchar("resourceName", { length: 256 }).notNull(),// e.g. "Algebra Nation", "Big Ideas Math"
+  publisher: varchar("publisher", { length: 256 }),
+  edition: varchar("edition", { length: 64 }),
+  adoptionYear: int("adoptionYear"),
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  districtCourseIdx: index("resource_adoptions_district_course_idx").on(t.districtId, t.courseId),
+}));
+export type ResourceAdoption = typeof resourceAdoptions.$inferSelect;
+
+// ─── Learning Objectives ──────────────────────────────────────────────────────
+export const learningObjectives = mysqlTable("learningObjectives", {
+  id: int("id").autoincrement().primaryKey(),
+  standardId: int("standardId").notNull(),
+  description: text("description").notNull(),
+  masteryThreshold: int("masteryThreshold").notNull().default(75),// confirmed threshold (pending founder decision)
+  bloomsLevel: mysqlEnum("bloomsLevel", ["remember", "understand", "apply", "analyze", "evaluate", "create"]),
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  standardIdx: index("objectives_standard_idx").on(t.standardId),
+}));
+export type LearningObjective = typeof learningObjectives.$inferSelect;
+
+// ─── Objective Prerequisites ──────────────────────────────────────────────────
+export const objectivePrerequisites = mysqlTable("objectivePrerequisites", {
+  id: int("id").autoincrement().primaryKey(),
+  objectiveId: int("objectiveId").notNull(),
+  prerequisiteObjectiveId: int("prerequisiteObjectiveId").notNull(),
+}, (t) => ({
+  objPrereqUnique: uniqueIndex("obj_prereq_unique").on(t.objectiveId, t.prerequisiteObjectiveId),
+}));
+export type ObjectivePrerequisite = typeof objectivePrerequisites.$inferSelect;
+
+// ─── Assessment Templates ─────────────────────────────────────────────────────
+export const assessmentTemplates = mysqlTable("assessmentTemplates", {
+  id: int("id").autoincrement().primaryKey(),
+  stateId: int("stateId"),                                    // NULL = generic
+  courseId: int("courseId").notNull(),
+  assessmentRegime: varchar("assessmentRegime", { length: 64 }).notNull(),// e.g. "staar_eoc", "ny_regents"
+  name: varchar("name", { length: 256 }).notNull(),
+  itemCount: int("itemCount").notNull().default(54),
+  timeLimitMinutes: int("timeLimitMinutes"),
+  difficultyDistribution: json("difficultyDistribution").$type<Record<string, number>>(),
+  // e.g. { "easy": 0.3, "medium": 0.5, "hard": 0.2 }
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  stateRegimeCourseIdx: index("assessment_templates_state_regime_course_idx").on(t.stateId, t.assessmentRegime, t.courseId),
+}));
+export type AssessmentTemplate = typeof assessmentTemplates.$inferSelect;
+
+// ─── Enrollment Contexts ──────────────────────────────────────────────────────
+export const enrollmentContexts = mysqlTable("enrollmentContexts", {
+  id: int("id").autoincrement().primaryKey(),
+  studentId: int("studentId").notNull(),
+  courseId: int("courseId").notNull(),
+  districtId: int("districtId"),                              // NULL = homeschool / no district
+  stateId: int("stateId"),
+  frameworkId: int("frameworkId").notNull(),
+  trackId: int("trackId"),                                    // NULL = no specific track
+  pacingGuideId: int("pacingGuideId"),                        // NULL = no pacing guide
+  academicYear: varchar("academicYear", { length: 16 }).notNull().default("2025-26"),
+  gradeLevel: varchar("gradeLevel", { length: 8 }),
+  hasIep: boolean("hasIep").notNull().default(false),
+  isEl: boolean("isEl").notNull().default(false),             // English Learner
+  isGt: boolean("isGt").notNull().default(false),             // Gifted & Talented
+  isActive: boolean("isActive").notNull().default(true),
+  previousContextId: int("previousContextId"),                // chain for transfer history
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  studentCourseYearUnique: uniqueIndex("enrollment_ctx_student_course_year_unique").on(t.studentId, t.courseId, t.academicYear),
+  studentActiveIdx: index("enrollment_ctx_student_active_idx").on(t.studentId, t.isActive),
+}));
+export type EnrollmentContext = typeof enrollmentContexts.$inferSelect;
+
+// ─── Mastery Records ──────────────────────────────────────────────────────────
+export const masteryRecords = mysqlTable("masteryRecords", {
+  id: int("id").autoincrement().primaryKey(),
+  studentId: int("studentId").notNull(),
+  objectiveId: int("objectiveId"),                            // NULL during Phase 1 backfill (standard-level only)
+  standardId: int("standardId"),                              // NULL if objective-level only
+  frameworkId: int("frameworkId").notNull(),
+  enrollmentContextId: int("enrollmentContextId").notNull(),
+  score: int("score").notNull().default(0),                   // 0–100
+  isMastered: boolean("isMastered").notNull().default(false), // score >= masteryThreshold (75, pending founder decision)
+  attemptCount: int("attemptCount").notNull().default(0),
+  lastAssessedAt: timestamp("lastAssessedAt").defaultNow(),
+  sourceType: mysqlEnum("sourceType", ["quiz", "diagnostic", "manual", "backfill"]).notNull().default("backfill"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  studentObjUnique: uniqueIndex("mastery_student_obj_unique").on(t.studentId, t.objectiveId, t.enrollmentContextId),
+  studentStdIdx: index("mastery_student_std_idx").on(t.studentId, t.standardId),
+  studentObjIdx: index("mastery_student_obj_idx").on(t.studentId, t.objectiveId),
+}));
+export type MasteryRecord = typeof masteryRecords.$inferSelect;
+
+// ─── Unit Standards (join table) ──────────────────────────────────────────────
+export const unitStandards = mysqlTable("unitStandards", {
+  id: int("id").autoincrement().primaryKey(),
+  unitId: int("unitId").notNull(),
+  standardId: int("standardId").notNull(),
+  isPrimary: boolean("isPrimary").notNull().default(false),   // true = the main standard for this unit
+}, (t) => ({
+  unitStandardUnique: uniqueIndex("unit_standards_unique").on(t.unitId, t.standardId),
+  unitIdx: index("unit_standards_unit_idx").on(t.unitId),
+  standardIdx: index("unit_standards_standard_idx").on(t.standardId),
+}));
+export type UnitStandard = typeof unitStandards.$inferSelect;
+
+// ─── Parental Consents (COPPA) ────────────────────────────────────────────────
+export const parentalConsents = mysqlTable("parentalConsents", {
+  id: int("id").autoincrement().primaryKey(),
+  studentId: int("studentId").notNull(),
+  parentEmail: varchar("parentEmail", { length: 320 }).notNull(),
+  parentName: varchar("parentName", { length: 256 }),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  status: mysqlEnum("status", ["pending", "approved", "denied", "expired"]).notNull().default("pending"),
+  requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+  respondedAt: timestamp("respondedAt"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  ipAddress: varchar("ipAddress", { length: 64 }),
+}, (t) => ({
+  studentIdx: index("parental_consents_student_idx").on(t.studentId),
+  tokenIdx: index("parental_consents_token_idx").on(t.token),
+  statusIdx: index("parental_consents_status_idx").on(t.status),
+}));
+export type ParentalConsent = typeof parentalConsents.$inferSelect;

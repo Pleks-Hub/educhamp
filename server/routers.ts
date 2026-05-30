@@ -11,6 +11,7 @@ import { newsletterRouter } from "./routers/newsletter";
 import { paymentRouter } from "./routers/payment";
 import { gamificationRouter } from "./routers/gamification";
 import { questionFlagsRouter } from "./routers/questionFlags";
+import { coppaRouter } from "./routers/coppa";
 import { awardXp } from "./gamification/xp";
 import { checkAndAwardBadges } from "./gamification/badges";
 import { recordActivity } from "./gamification/streaks";
@@ -77,6 +78,7 @@ export const appRouter = router({
   payment: paymentRouter,
   gamification: gamificationRouter,
   questionFlags: questionFlagsRouter,
+  coppa: coppaRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

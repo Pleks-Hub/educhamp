@@ -852,7 +852,7 @@ function CourseDetail({ course, units, onUpdate }: { course: any; units: any[]; 
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div><span className="text-muted-foreground">Subject:</span> <strong>{course.subject}</strong></div>
           <div><span className="text-muted-foreground">Grade Level:</span> <strong>{course.gradeLevel}</strong></div>
-          <div><span className="text-muted-foreground">TEKS Code:</span> <strong>{course.teksCode ?? "—"}</strong></div>
+          <div><span className="text-muted-foreground">Standards Code:</span> <strong>{course.teksCode ?? "—"}</strong></div>
           <div><span className="text-muted-foreground">Sort Order:</span> <strong>{course.sortOrder}</strong></div>
         </div>
 

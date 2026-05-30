@@ -44,7 +44,7 @@ export const PLANS: Record<
       "Up to 3 student accounts",
       "All Family Plan features",
       "All 70+ courses (Pre-K through Grade 12 + AP)",
-      "STAAR & SAT/ACT exam prep",
+      "State assessment & SAT/ACT exam prep",
       "Priority AI Tutor",
       "Advanced analytics",
       "Co-parent access",

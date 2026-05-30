@@ -122,6 +122,30 @@ export function registerTutorStreamRoute(app: Express) {
       }
     }
 
+    // ── COPPA consent guard ─────────────────────────────────────────────────
+    // If COPPA_GATE_ENABLED is true, students in Grade 6 or below must have an
+    // approved parental consent record before the AI tutor can respond.
+    // Grandfathering: existing students with a parent link are exempt.
+    if (studentDemographics?.gradeLevel) {
+      const COPPA_GRADES = new Set(["Pre-K", "Kindergarten", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6"]);
+      if (COPPA_GRADES.has(studentDemographics.gradeLevel)) {
+        const { getPlatformSetting, getParentsByChildId, getApprovedCoppaConsent } = await import("./db");
+        const gateEnabled = await getPlatformSetting("COPPA_GATE_ENABLED").catch(() => null);
+        if (gateEnabled === "true") {
+          // Grandfathering: skip gate if student already has a parent link
+          const parents = await getParentsByChildId(contextUserId).catch(() => []);
+          const isGrandfathered = parents.length > 0;
+          if (!isGrandfathered) {
+            const consent = await getApprovedCoppaConsent(contextUserId).catch(() => null);
+            if (!consent) {
+              res.status(403).json({ error: "COPPA_CONSENT_REQUIRED", message: "Parental consent is required before using the AI tutor. Please ask a parent to approve your account." });
+              return;
+            }
+          }
+        }
+      }
+    }
+
     if (!message || !rawMode) {
       res.status(400).json({ error: "message and mode are required" });
       return;
@@ -210,7 +234,7 @@ export function registerTutorStreamRoute(app: Express) {
           const lessons = await getLessonsByUnit(currentUnit.id);
           currentUnitLessons = lessons.map((l) => ({
             title: l.title,
-            // Use teksAlignment as the learning objective (TEKS standard alignment)
+            // Use teksAlignment as the learning objective (standards alignment code)
             learningObjectives: l.teksAlignment ?? "",
           }));
         } catch {

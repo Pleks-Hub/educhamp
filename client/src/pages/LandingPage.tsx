@@ -383,7 +383,7 @@ export default function LandingPage() {
     { icon: BarChart3, title: "Adaptive Placement Tests", desc: "A 57-question diagnostic placement test identifies exactly where each student stands across all units and builds a fully personalized learning roadmap from day one." },
     { icon: GraduationCap, title: "Mastery-Based Progression", desc: "Students advance by demonstrating mastery, not just completing lessons — ensuring no knowledge gaps are left behind at any grade level." },
     { icon: Users, title: "Parent & Guardian Dashboard", desc: "Real-time visibility into progress, quiz scores, AI tutor sessions, skill gaps, and learning goals — with co-parent sharing and detailed performance reports." },
-    { icon: BookOpen, title: "70+ Courses, Pre-K–Grade 12", desc: "From Pre-K foundational skills to AP Calculus BC, AP Chemistry, SAT Prep, and beyond — all aligned to Katy ISD TEKS and AP College Board standards." },
+    { icon: BookOpen, title: "70+ Courses, Pre-K–Grade 12", desc: "From Pre-K foundational skills to AP Calculus BC, AP Chemistry, SAT Prep, and beyond — all standards-aligned and mapped to AP College Board frameworks." },
     { icon: Zap, title: "Instant Feedback & Insights", desc: "Every quiz and exercise provides immediate, detailed feedback. AI-driven skill gap analysis highlights exactly where to focus next." },
   ];
 
@@ -475,16 +475,16 @@ export default function LandingPage() {
   const faqs = [
     { q: "Is EduChamp free to use?", a: "EduChamp offers a free tier to get started. Sign up to explore the platform — no credit card required. Paid plans (Family at $19.99/mo and Premium Family at $29.99/mo) unlock unlimited AI tutor sessions, all courses, and the parent dashboard." },
     { q: "What is the difference between the Family and Premium Family plans?", a: "The Family Plan ($19.99/mo) covers up to 3 students with access to all 70+ courses, unlimited AI tutoring, and the parent dashboard. The Premium Family Plan ($29.99/mo) adds diagnostic assessments, exam prep modules, priority AI sessions, and custom learning paths. Both plans can be cancelled at any time." },
-    { q: "Do you offer plans for schools and school districts?", a: "Yes. The ISD / School License is a per-seat annual contract designed for campuses and districts. It includes teacher and admin dashboards, custom TEKS alignment, bulk content management, and a performance analytics API. Contact schools@educhamp.app for pricing and a demo." },
+    { q: "Do you offer plans for schools and school districts?", a: "Yes. The School / District License is a per-seat annual contract designed for campuses and districts. It includes teacher and admin dashboards, custom standards alignment, bulk content management, and a performance analytics API. Contact schools@educhamp.app for pricing and a demo." },
     { q: "What grade levels are supported?", a: "EduChamp supports students from Pre-K through Grade 12, including all major AP courses and SAT preparation. The catalogue covers early childhood (Pre-K–Grade 2), elementary (Grades 3–5), middle school (Grades 6–8), high school (Grades 9–12), and advanced AP/SAT tracks — over 70 courses in total." },
-    { q: "What is the difference between ACA and KAP courses?", a: "ACA (Academic) courses follow the standard Katy ISD grade-level curriculum. KAP (Katy Advanced Program) courses are accelerated, enriched variants for students who are ready for a more challenging academic pathway. Both pathways are available across core subjects from elementary through middle school." },
+    { q: "Does EduChamp support advanced or accelerated learners?", a: "Yes. Many subjects offer both standard and advanced variants. Advanced courses cover the same core standards at a deeper level and at a faster pace, designed for students who are ready for a more challenging academic pathway. Both tracks are available across core subjects from elementary through high school." },
     { q: "How does course enrollment work?", a: "During onboarding, parents select the student's grade level and the system automatically recommends and enrols the student in the appropriate core courses. Students can also browse the full catalogue and self-enrol in additional subjects, subject to grade and prerequisite validation." },
     { q: "What is EduBot?", a: "EduBot is EduChamp's AI learning coach — a friendly, named AI tutor that introduces itself at the start of every session, explains its role, and guides students through lessons, practice, quizzes, and exam review. EduBot is scoped to the student's active course and will politely redirect any off-topic questions back to the current subject." },
     { q: "Can my child sign up without me?", a: "Students aged 16 and over can sign up independently and optionally invite a parent or guardian. Students under 16 are required to have a parent or guardian complete or approve the registration before course access is granted — ensuring appropriate oversight for younger learners." },
     { q: "How does the placement test work?", a: "Each course has a 57-question adaptive diagnostic that maps your child's knowledge across all units. It takes about 25–35 minutes and immediately generates a personalised learning plan showing which units to tackle first, which to review, and which are already mastered." },
     { q: "Is the AI tutor safe for kids?", a: "Yes. EduBot is scoped to academic content only and will not engage in off-topic conversations. All sessions are logged and visible to parents in the Parent Dashboard. EduBot will redirect any questions about other subjects back to the active course." },
     { q: "Can parents monitor multiple children?", a: "Yes. The Parent Dashboard supports multiple children, with per-child progress cards, mastery breakdowns, quiz history, skill gap analysis, study goals, and co-parent sharing. Parents can also invite a co-parent or guardian to view a child's progress." },
-    { q: "Which standards are courses aligned to?", a: "All courses are aligned to Katy ISD TEKS (Texas Essential Knowledge and Skills) standards. AP courses additionally follow AP College Board guidelines, and SAT Prep is aligned to College Board SAT standards." },
+    { q: "Which standards are courses aligned to?", a: "Courses are aligned to the state academic standards for the enrolled student's district or region. AP courses additionally follow AP College Board guidelines, and SAT Prep is aligned to College Board SAT standards. Contact your administrator or our team to confirm the standards framework for your district." },
     { q: "Can students take multiple courses at once?", a: "Yes. Students can be enrolled in multiple courses simultaneously and switch between them from the Course Switcher. Each course has its own independent placement test, learning path, mastery tracking, and AI tutor context." },
     { q: "What happens after a student completes all units in a course?", a: "Once a student achieves a passing quiz score across all units, the course is marked complete. The student can then enrol in the next grade-level course or an advanced variant, guided by the course recommendation engine." },
   ];
@@ -579,12 +579,12 @@ export default function LandingPage() {
                 </span>
               </h1>
               <p className="text-lg text-slate-300 mb-6 leading-relaxed max-w-lg">
-                EduChamp's AI tutor EduBot and adaptive placement tests create a personalised learning path for every student — from Pre-K foundational skills to AP Calculus, AP Chemistry, and SAT Prep. Supporting Pre-K through Grade 12 with 70+ courses aligned to Katy ISD TEKS.
+                EduChamp's AI tutor EduBot and adaptive placement tests create a personalised learning path for every student — from Pre-K foundational skills to AP Calculus, AP Chemistry, and SAT Prep. Supporting Pre-K through Grade 12 with 70+ courses aligned to your state's academic standards.
               </p>
               {/* Trust micro-badges */}
               <div className="flex flex-wrap gap-3 mb-8">
                 {[
-                  { icon: Shield, label: "TEKS Aligned" },
+                  { icon: Shield, label: "Standards Aligned" },
                   { icon: Brain, label: "AI-Powered" },
                   { icon: Trophy, label: "Mastery-Based" },
                   { icon: Users, label: "Parent Dashboard" },
@@ -685,7 +685,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Full Course Catalogue</h2>
-            <p className="text-slate-500 max-w-2xl mx-auto">Browse all courses by grade level — from Pre-K foundational skills to AP Calculus, AP Chemistry, and SAT Prep. All courses are aligned to Katy ISD TEKS and AP College Board standards with both ACA (standard) and KAP (advanced) pathways.</p>
+            <p className="text-slate-500 max-w-2xl mx-auto">Browse all courses by grade level — from Pre-K foundational skills to AP Calculus, AP Chemistry, and SAT Prep. All courses are aligned to state academic standards and AP College Board guidelines, with both standard and advanced pathways available.</p>
           </div>
 
           {/* Subject filter pills */}
@@ -904,7 +904,7 @@ export default function LandingPage() {
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-violet-400"> to Every Classroom</span>
             </h2>
             <p className="text-slate-300 text-lg max-w-2xl mx-auto leading-relaxed">
-              EduChamp gives ISD administrators, curriculum directors, and campus principals a single platform to deploy adaptive AI tutoring across every grade and subject — fully aligned to TEKS.
+              EduChamp gives district administrators, curriculum directors, and campus principals a single platform to deploy adaptive AI tutoring across every grade and subject — fully aligned to your state's academic standards.
             </p>
           </div>
 
@@ -919,7 +919,7 @@ export default function LandingPage() {
               {
                 icon: <LayoutDashboard className="h-6 w-6" />,
                 title: "District-Wide Control",
-                desc: "Bulk enrollment, teacher dashboards, and custom TEKS alignment — managed from a single admin console.",
+                desc: "Bulk enrollment, teacher dashboards, and custom standards alignment — managed from a single admin console.",
               },
               {
                 icon: <Brain className="h-6 w-6" />,
@@ -947,12 +947,12 @@ export default function LandingPage() {
 
             {/* Left: district trust signals */}
             <div>
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-6">Trusted by districts across Texas</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-6">Trusted by districts and schools nationwide</p>
               {/* Placeholder district logo strip */}
               <div className="flex flex-wrap gap-4 mb-8">
                 {[
-                  "Katy ISD", "Spring ISD", "Cypress-Fairbanks ISD",
-                  "Humble ISD", "Conroe ISD", "Alief ISD",
+                  "Partner District A", "Partner District B", "Partner District C",
+                  "Partner District D", "Partner District E", "Partner District F",
                 ].map((name) => (
                   <div key={name} className="flex items-center gap-2 bg-white/8 border border-white/10 rounded-lg px-4 py-2">
                     <Building2 className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
@@ -965,7 +965,7 @@ export default function LandingPage() {
                 {[
                   { value: "70+", label: "Courses" },
                   { value: "Pre-K–12", label: "Grade range" },
-                  { value: "TEKS", label: "Aligned" },
+                  { value: "Multi-state", label: "Standards" },
                 ].map((s) => (
                   <div key={s.label} className="text-center bg-white/5 border border-white/10 rounded-xl py-4">
                     <p className="text-2xl font-extrabold text-white">{s.value}</p>
@@ -987,7 +987,7 @@ export default function LandingPage() {
               <ul className="space-y-2 mb-7">
                 {[
                   "Live platform walkthrough with your team",
-                  "Custom TEKS alignment review",
+                  "Custom standards alignment review",
                   "Pilot program design & pricing",
                   "Implementation timeline & support plan",
                 ].map((item) => (
@@ -1140,12 +1140,12 @@ export default function LandingPage() {
                 </div>
                 <p className="text-slate-400 text-sm">Annual contract · Volume pricing</p>
               </div>
-              <p className="text-sm text-slate-600 mb-6 leading-relaxed">Purpose-built for school districts and campuses — with teacher dashboards, custom TEKS alignment, and bulk content management.</p>
+              <p className="text-sm text-slate-600 mb-6 leading-relaxed">Purpose-built for school districts and campuses — with teacher dashboards, custom standards alignment, and bulk content management.</p>
               <ul className="space-y-3 mb-8 flex-1">
                 {[
                   "Unlimited student seats",
                   "Teacher & admin dashboards",
-                  "Custom TEKS alignment",
+                  "Custom standards alignment",
                   "Bulk content management",
                   "Performance analytics API",
                   "Dedicated onboarding support",
@@ -1190,11 +1190,11 @@ export default function LandingPage() {
                   { feature: 'Weekly progress reports', family: '✓', premium: '✓', isd: '✓' },
                   { feature: 'Advanced skill gap analysis', family: '—', premium: '✓', isd: '✓' },
                   { feature: 'Teacher dashboards', family: '—', premium: '—', isd: '✓' },
-                  { feature: 'Custom TEKS alignment', family: '—', premium: '—', isd: '✓' },
+                  { feature: 'Custom standards alignment', family: '—', premium: '—', isd: '✓' },
                   { feature: 'Bulk content management', family: '—', premium: '—', isd: '✓' },
                   { feature: 'Performance analytics API', family: '—', premium: '—', isd: '✓' },
                   { feature: 'Dedicated onboarding support', family: '—', premium: '—', isd: '✓' },
-                  { feature: 'TEKS-aligned curriculum', family: '✓', premium: '✓', isd: '✓' },
+                  { feature: 'Standards-aligned curriculum', family: '✓', premium: '✓', isd: '✓' },
                   { feature: 'Cancel anytime', family: '✓', premium: '✓', isd: 'Annual contract' },
                 ].map((row, i) => (
                   <tr key={row.feature} className={`border-b border-slate-100 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
@@ -1219,7 +1219,7 @@ export default function LandingPage() {
             <div className="flex items-center gap-2"><Shield className="h-4 w-4 text-indigo-500" /> No credit card required to start</div>
             <div className="flex items-center gap-2"><Trophy className="h-4 w-4 text-amber-500" /> 30-day satisfaction guarantee</div>
             <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-emerald-500" /> Cancel anytime, no lock-in</div>
-            <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-indigo-500" /> TEKS-aligned curriculum</div>
+            <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-indigo-500" /> Standards-aligned curriculum</div>
           </div>
         </div>
       </section>
