@@ -10,12 +10,12 @@
 | Metric | Value |
 |---|---|
 | Questions before generation | 3,094 |
-| Questions added | +2,434 |
-| Questions after generation | **5,528** |
+| Questions added | +2,722 |
+| Questions after generation | **5,816** |
 | Active courses | 74 |
-| Healthy courses (≥ target) | 56 |
+| Healthy courses (≥ target) | 58 |
 | Thin courses (< target) | 16 |
-| Empty courses (0 questions) | 2 |
+| Empty courses (0 questions) | 0 |
 
 ---
 
@@ -164,13 +164,13 @@
 
 ### STAAR EOC
 
-**Target per course:** 140 | **Courses:** 5 | **Avg items:** 76
+**Target per course:** 140 | **Courses:** 5 | **Avg items:** 134
 
 | Status | Count |
 |---|---|
-| ✅ Healthy (≥ 140) | 1 |
+| ✅ Healthy (≥ 140) | 3 |
 | ⚠ Thin (< 140) | 2 |
-| ❌ Empty (0) | 2 |
+| ❌ Empty (0) | 0 |
 
 <details>
 <summary>Per-course breakdown (5 courses)</summary>
@@ -180,23 +180,14 @@
 | English I | 9 | 96 | 45 | 35 | 16 | ⚠ |
 | Algebra I | 9 | 190 | 94 | 56 | 36 | ✅ |
 | Biology I | 9 | 96 | 45 | 35 | 16 | ⚠ |
-| English II | 10 | 0 | 0 | 0 | 0 | ❌ |
-| U.S. History | 11 | 0 | 0 | 0 | 0 | ❌ |
+| English II | 10 | 144 | 60 | 48 | 36 | ✅ |
+| U.S. History | 11 | 144 | 60 | 48 | 36 | ✅ |
 
 </details>
 
 ---
 
 ## Recommended Next Actions
-
-### Empty Courses (Priority: High)
-
-The following courses have zero questions and need immediate attention:
-
-| Course | Category | Target |
-|---|---|---|
-| English II (ENG2) | STAAR EOC | 140 |
-| U.S. History (USH) | STAAR EOC | 140 |
 
 ### Thin Courses (Priority: Medium)
 

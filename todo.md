@@ -1930,3 +1930,59 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Add test: "transferStudent reads weight from DB row (no hardcoded switch on alignmentType)"
 - [x] Confirmed DB weights: exact=1.00 (3 rows), partial=0.75 (15 rows), approximate=0.50 (8 rows) — all correct
 - [x] 758/758 tests passing, TypeScript exit 0
+
+## Phase 4 — Full Spec (2026-05-30)
+
+### Phase 4A — ENG2 and USH Full Content Seeding (FIRST PRIORITY)
+
+#### 4A-1 English II (ENG2)
+- [x] Seed 12 ENG2 units with LLM-assisted TEKS code lookup (Grade 10 ELAR) — all TEKS codes corrected and verified
+- [x] Generate 20 ENG2 sample questions (5 eoc_review + 5 unit_quiz) and present for founder approval — approved
+- [x] After approval: bulk generate ENG2 questions — 144 inserted (12 per unit × 12 units), 0 errors; passage-based MC + short_answer mix
+- [ ] Verify ENG2 appears in CourseCatalog and is enrollable
+- [x] Update QUESTION_BANK_HEALTH.md showing ENG2 at target (144/144 ✅)
+
+#### 4A-2 U.S. History (USH)
+- [x] Seed 12 USH units with LLM-assisted TEKS code lookup (Grade 11 US History since 1877) — all TEKS codes corrected and verified
+- [x] Generate 20 USH sample questions (5 eoc_review + 5 unit_quiz) and present for founder approval — approved
+- [x] After approval: bulk generate USH questions — 144 inserted (12 per unit × 12 units), 0 errors; primary source excerpts and data descriptions included
+- [ ] Verify USH appears in CourseCatalog and is enrollable
+- [x] Update QUESTION_BANK_HEALTH.md showing USH at target (144/144 ✅)
+
+#### 4A Checkpoint
+- [ ] Show seeded unit structure for both courses
+- [x] Show 20 sample questions and await founder approval before bulk generation — approved
+- [x] After bulk: show final QUESTION_BANK_HEALTH.md for ENG2 and USH — both ✅
+- [ ] Save checkpoint 4A and await go-ahead for 4B
+
+### Phase 4B — Registration Flow: DOB, Under-14 Consent, Age-to-Grade Access
+- [ ] Add dateOfBirth to Step 1 of StudentOnboarding.tsx (before other demographic fields)
+- [ ] Add NOT NULL constraint to userProfiles.dateOfBirth; backfill null rows to '0000-00-00'
+- [ ] Intercept existing accounts with null DOB on next login (prompt, not lockout)
+- [ ] Implement under-14 consent flow: parentalConsents table, status='pending_parental_approval', consent email
+- [ ] Build /consent?token=xxx parent consent page (approve/decline, token expiry handling)
+- [ ] Implement student waiting screen with 15s polling and resend rate-limit (10 min)
+- [ ] Implement cron for expired tokens (7 days → consent_expired)
+- [ ] Extend authenticateRequest() to block pending/denied/expired statuses
+- [ ] Create server/utils/age.ts and server/utils/grade.ts with all helper functions
+- [ ] Implement courses.getEligible(studentId) with grade floor/ceiling logic
+- [ ] Update onboarding Step 3 grade selector (pre-fill, ±1, helper text)
+- [ ] Add parent dashboard grade override control
+- [ ] Activate COPPA gate: UPDATE platformSettings SET value='true' WHERE key='COPPA_GATE_ENABLED'
+- [ ] Write 4B tests (all 14 cases from spec)
+- [ ] Save checkpoint 4B and await go-ahead for 4C
+
+### Phase 4C — NY_NGLS Standard Seeding and Crosswalk Completion
+- [ ] Seed missing NY_NGLS Algebra I standards (polynomial ops, radicals/exponents, systems, parallel/perp lines, correlation) using LLM-assisted seeder
+- [ ] Re-run scripts/seed-crosswalk.mjs targeting only the 19 previously uncommitted TEKS codes
+- [ ] Produce updated docs/CROSSWALK_CONFIDENCE_REPORT.md
+- [ ] Auto-commit exact and partial; flag approximate/none for founder review
+- [ ] Save checkpoint 4C and await approval on any approximate/none mappings
+
+### Phase 4D — Thin Course Second Pass
+- [ ] Pull current thin course list from docs/QUESTION_BANK_HEALTH.md
+- [ ] For each thin course: identify shortfall by assessmentType, run targeted generation with longer prompts
+- [ ] Re-run health check and confirm all courses at or above minimum
+- [ ] Update QUESTION_BANK_HEALTH.md
+- [ ] Log any courses still thin after 3 passes as needing manual authoring
+- [ ] Save checkpoint 4D
