@@ -395,7 +395,7 @@ export async function getOrCreateTutorSession(
   userId: number,
   unitId: number | null,
   lessonId: number | null,
-  mode: "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary" | "misconception_drill"
+  mode: "teach" | "practice" | "quiz" | "exam_review" | "exam_prep" | "remediation" | "parent_summary" | "misconception_drill"
 ) {
   const db = await getDb();
   if (!db) return null;
@@ -2891,6 +2891,7 @@ import {
   enrollmentContexts,
   unitStandards,
   standards,
+  assessmentTemplates,
 } from "../drizzle/schema";
 
 const MASTERY_THRESHOLD_LIVE = 75; // CONFIRMED: aligned with userMastery threshold
@@ -2989,4 +2990,201 @@ export async function writeMasteryRecordsForUnit(
   } catch {
     // Non-fatal: masteryRecords dual-write failure must never break the primary scoring path
   }
+}
+
+
+// ─── Phase 3A: Exam Review Generator ─────────────────────────────────────────
+export type ExamReviewItem = {
+  id: number;
+  questionText: string;
+  questionType: string;
+  choices: { label: string; text: string }[] | null;
+  correctAnswer: string;
+  explanation: string;
+  skillTag: string;
+  difficulty: "easy" | "medium" | "hard" | "challenge";
+  unitId: number;
+  unitTitle: string;
+};
+
+export type ExamReviewResult = {
+  templateId: number;
+  templateName: string;
+  assessmentRegime: string;
+  itemCount: number;
+  timeLimitMinutes: number | null;
+  items: ExamReviewItem[];
+  thinBankWarning: boolean;
+  studentNote: string;
+};
+
+/**
+ * Build an exam review session for a student.
+ *
+ * Resolution chain:
+ * 1. Get active enrollmentContext for (studentId, courseId) — determines pacing guide
+ * 2. Pacing gate: include only units whose pacing window end_date <= today (fallback: all units)
+ * 3. Look up assessmentTemplate by (assessmentRegime='staar_eoc', courseId)
+ * 4. Sample quizQuestions from gated units using difficultyDistribution from template
+ * 5. If bank is thin (< 80% of itemCount), log THIN_BANK_WARNING and return what's available
+ */
+export async function buildExamReview(
+  studentId: number,
+  courseId: number
+): Promise<ExamReviewResult | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  // Step 1: Get active enrollmentContext
+  const ctxRows = await db
+    .select({ id: enrollmentContexts.id, pacingGuideId: enrollmentContexts.pacingGuideId })
+    .from(enrollmentContexts)
+    .where(
+      and(
+        eq(enrollmentContexts.studentId, studentId),
+        eq(enrollmentContexts.courseId, courseId),
+        eq(enrollmentContexts.isActive, true)
+      )
+    )
+    .limit(1);
+
+  const enrollmentContextId = ctxRows[0]?.id ?? null;
+  const pacingGuideId = ctxRows[0]?.pacingGuideId ?? null;
+
+  // Step 2: Get all units for this course
+  const allUnits = await db
+    .select({ id: units.id, title: units.title, unitNumber: units.unitNumber })
+    .from(units)
+    .where(eq(units.courseId, courseId))
+    .orderBy(units.unitNumber);
+
+  if (allUnits.length === 0) return null;
+
+  // Step 3: Pacing gate — if pacingGuide exists, filter to units covered so far
+  let gatedUnitIds: number[] = allUnits.map((u) => u.id);
+  if (pacingGuideId) {
+    try {
+      const today = new Date();
+      const windowRows = await db.execute(
+        sql`SELECT unitId FROM pacingWindows
+            WHERE pacingGuideId = ${pacingGuideId}
+              AND endDate <= ${today}
+            ORDER BY unitId`
+      );
+      const windowUnitIds = (windowRows[0] as unknown as { unitId: number }[]).map((r) => r.unitId);
+      if (windowUnitIds.length > 0) {
+        // Intersect with allUnits to ensure we only include units that belong to this course
+        const allUnitIdSet = new Set(allUnits.map((u) => u.id));
+        const filtered = windowUnitIds.filter((id) => allUnitIdSet.has(id));
+        if (filtered.length > 0) gatedUnitIds = filtered;
+        // else fallback to all units (pacing guide has no windows yet)
+      }
+    } catch {
+      // Pacing gate failure is non-fatal — fall back to all units
+    }
+  }
+
+  // Step 4: Look up assessmentTemplate
+  const templateRows = await db
+    .select()
+    .from(assessmentTemplates)
+    .where(
+      and(
+        eq(assessmentTemplates.courseId, courseId),
+        eq(assessmentTemplates.assessmentRegime, "staar_eoc"),
+        eq(assessmentTemplates.isActive, true)
+      )
+    )
+    .limit(1);
+
+  if (templateRows.length === 0) return null;
+  const template = templateRows[0];
+
+  const diffDist = (template.difficultyDistribution as Record<string, number>) ?? {
+    easy: 0.3,
+    medium: 0.5,
+    hard: 0.2,
+  };
+  const totalItems = template.itemCount;
+
+  // Step 5: Sample questions from gated units using difficulty distribution
+  const unitMap = new Map(allUnits.map((u) => [u.id, u]));
+  const allQuestions = await db
+    .select({
+      id: quizQuestions.id,
+      questionText: quizQuestions.questionText,
+      questionType: quizQuestions.questionType,
+      choices: quizQuestions.choices,
+      correctAnswer: quizQuestions.correctAnswer,
+      explanation: quizQuestions.explanation,
+      skillTag: quizQuestions.skillTag,
+      difficulty: quizQuestions.difficulty,
+      unitId: quizQuestions.unitId,
+    })
+    .from(quizQuestions)
+    .where(inArray(quizQuestions.unitId, gatedUnitIds))
+    .orderBy(sql`RAND()`);
+
+  // Group by difficulty
+  const byDiff: Record<string, typeof allQuestions> = { easy: [], medium: [], hard: [], challenge: [] };
+  for (const q of allQuestions) byDiff[q.difficulty].push(q);
+
+  // Allocate items by distribution
+  const items: ExamReviewItem[] = [];
+  const diffKeys = ["easy", "medium", "hard"] as const;
+  for (const diff of diffKeys) {
+    const ratio = diffDist[diff] ?? 0;
+    const needed = Math.round(totalItems * ratio);
+    const pool = byDiff[diff];
+    const selected = pool.slice(0, needed);
+    for (const q of selected) {
+      const unit = unitMap.get(q.unitId);
+      items.push({
+        ...q,
+        choices: q.choices as ExamReviewItem["choices"],
+        difficulty: q.difficulty as ExamReviewItem["difficulty"],
+        unitTitle: unit?.title ?? "",
+      });
+    }
+  }
+
+  // Fill remaining slots from any difficulty if we're short
+  if (items.length < totalItems) {
+    const usedIds = new Set(items.map((i) => i.id));
+    const remaining = allQuestions.filter((q) => !usedIds.has(q.id));
+    for (const q of remaining) {
+      if (items.length >= totalItems) break;
+      const unit = unitMap.get(q.unitId);
+      items.push({
+        ...q,
+        choices: q.choices as ExamReviewItem["choices"],
+        difficulty: q.difficulty as ExamReviewItem["difficulty"],
+        unitTitle: unit?.title ?? "",
+      });
+    }
+  }
+
+  const thinBankWarning = items.length < Math.floor(totalItems * 0.8);
+  if (thinBankWarning) {
+    console.warn(
+      `[THIN_BANK_WARNING] buildExamReview: courseId=${courseId} studentId=${studentId} ` +
+        `requested=${totalItems} available=${items.length} (${gatedUnitIds.length} gated units)`
+    );
+  }
+
+  const studentNote =
+    items.length < totalItems
+      ? `This review includes ${items.length} questions (full exam is ${totalItems}). More questions will be available as your course content grows.`
+      : `This ${totalItems}-question review covers the material from your course so far. Good luck!`;
+
+  return {
+    templateId: template.id,
+    templateName: template.name,
+    assessmentRegime: template.assessmentRegime,
+    itemCount: totalItems,
+    timeLimitMinutes: template.timeLimitMinutes,
+    items: items.slice(0, totalItems),
+    thinBankWarning,
+    studentNote,
+  };
 }

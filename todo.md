@@ -1830,3 +1830,22 @@
 - [x] Regenerate docs/BACKFILL_GAPS.md: 0 gaps remaining
 - [x] Write server/phase3.test.ts covering gap resolution, Unit 12 mapping, and backfill correctness
 - [x] Run full test suite (634/634 passing), update todo.md, save checkpoint
+
+### Phase 3A — STAAR EOC Exam Review Generator (May 30, 2026)
+- [x] Audit existing STAAR_ALG1 assessmentTemplate and question bank schema
+- [x] Seed 4 missing EOC assessment templates: STAAR_BIO, STAAR_ENG1, STAAR_ENG2, STAAR_USH
+- [x] Implement buildExamReview(studentId, courseId) in db.ts
+- [x] buildExamReview: get active enrollmentContext
+- [x] buildExamReview: pacing gate (units with end_date <= today, fallback to all units)
+- [x] buildExamReview: look up assessmentTemplate by assessment_regime + course_id
+- [x] buildExamReview: sample questionBankItems matching item_count + difficulty_distribution
+- [x] buildExamReview: THIN_BANK_WARNING log when bank is thin, no error
+- [x] buildExamReview: return item set, template metadata, student-facing note
+- [x] Add exam_prep to TutorMode type in educhamp-helpers.ts
+- [x] Add exam_prep MODE_INSTRUCTIONS with ## Exam Review Session prompt injection
+- [x] Add exam_prep to tutorSessions.mode enum in schema.ts + migration
+- [x] Add exam_prep to VALID_MODES in tutorStream.ts and z.enum in routers.ts
+- [x] Wire buildExamReview() into tutorStream.ts when mode=exam_prep and courseId is passed
+- [x] Add GET /api/courses/:courseId/next-lesson endpoint
+- [x] Write server/phase3a.test.ts covering template seeding, buildExamReview, exam_prep mode, next-lesson endpoint
+- [x] Run full test suite, update todo.md, save checkpoint, deliver 3A demo

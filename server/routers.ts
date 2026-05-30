@@ -862,7 +862,7 @@ export const appRouter = router({
       .input(
         z.object({
           message: z.string().min(1).max(2000),
-          mode: z.enum(["teach", "practice", "quiz", "exam_review", "remediation", "parent_summary", "misconception_drill"]),
+          mode: z.enum(["teach", "practice", "quiz", "exam_review", "exam_prep", "remediation", "parent_summary", "misconception_drill"]),
           unitId: z.number().optional(),
           unitNumber: z.number().optional(),
           lessonId: z.number().optional(),
@@ -940,7 +940,7 @@ export const appRouter = router({
       .input(z.object({
         unitId: z.number().optional(),
         lessonId: z.number().optional(),
-        mode: z.enum(["teach", "practice", "quiz", "exam_review", "remediation", "parent_summary", "misconception_drill"]),
+        mode: z.enum(["teach", "practice", "quiz", "exam_review", "exam_prep", "remediation", "parent_summary", "misconception_drill"]),
       }))
       .query(async ({ ctx, input }) => {
         return getOrCreateTutorSession(
@@ -962,7 +962,7 @@ export const appRouter = router({
       .input(
         z.object({
           unitId: z.number().optional(),
-          mode: z.enum(["teach", "practice", "quiz", "exam_review", "remediation", "parent_summary", "misconception_drill"]).optional(),
+          mode: z.enum(["teach", "practice", "quiz", "exam_review", "exam_prep", "remediation", "parent_summary", "misconception_drill"]).optional(),
           fromDate: z.date().optional(),
           toDate: z.date().optional(),
           limit: z.number().min(1).max(100).default(20),
@@ -1095,6 +1095,39 @@ export const appRouter = router({
           rejectedAt: r.request.rejectedAt,
           createdAt: r.request.createdAt,
         }));
+      }),
+
+    /**
+     * Returns the next unstarted lesson for the authenticated student in a given course.
+     * Iterates units in sortOrder, then lessons in sortOrder within each unit.
+     * Returns the first lesson that has no lessonProgress row (or completed=false).
+     * If all lessons are complete, returns null.
+     */
+    getNextLesson: protectedProcedure
+      .input(z.object({ courseId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const { getUnitsForCourse, getLessonsByUnit, getLessonProgressForUser } = await import("./db");
+        const courseUnits = await getUnitsForCourse(input.courseId);
+        for (const unit of courseUnits) {
+          const unitLessons = await getLessonsByUnit(unit.id);
+          if (unitLessons.length === 0) continue;
+          const progressRows = await getLessonProgressForUser(ctx.user.id, unit.id);
+          const completedIds = new Set(progressRows.filter((p) => p.completed).map((p) => p.lessonId));
+          const nextLesson = unitLessons.find((l) => !completedIds.has(l.id));
+          if (nextLesson) {
+            return {
+              lessonId: nextLesson.id,
+              lessonNumber: nextLesson.lessonNumber,
+              lessonTitle: nextLesson.title,
+              unitId: unit.id,
+              unitNumber: unit.unitNumber,
+              unitTitle: unit.title,
+              courseId: input.courseId,
+            };
+          }
+        }
+        // All lessons complete
+        return null;
       }),
   }),
 

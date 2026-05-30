@@ -34,9 +34,9 @@ import { CourseContextBanner } from "@/components/CourseContextBanner";
 import { NavTooltip } from "@/components/NavTooltip";
 import { TUTOR_TOOLTIPS } from "@/lib/tooltipContent";
 
-// parent_summary is a parent-only mode; students see only the 6 learning modes
-type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary" | "misconception_drill";
-const STUDENT_MODES: TutorMode[] = ["teach", "practice", "quiz", "exam_review", "remediation", "misconception_drill"];
+// parent_summary is a parent-only mode; students see only the 7 learning modes
+type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "exam_prep" | "remediation" | "parent_summary" | "misconception_drill";
+const STUDENT_MODES: TutorMode[] = ["teach", "practice", "quiz", "exam_review", "exam_prep", "remediation", "misconception_drill"];
 
 function getModes(courseLabel: string): {
   id: TutorMode;
@@ -126,6 +126,19 @@ function getModes(courseLabel: string): {
       ],
     },
     {
+      id: "exam_prep",
+      label: "Exam Prep",
+      icon: Sparkles,
+      description: "STAAR EOC exam questions from the official bank",
+      color: "bg-indigo-100 text-indigo-700 border-indigo-200",
+      starters: [
+        "Start my STAAR exam prep session",
+        "Give me exam-style questions from this course",
+        "I want to practice with official exam questions",
+        "Run me through a full exam prep session",
+      ],
+    },
+    {
       id: "misconception_drill",
       label: "Misconception Drill",
       icon: Brain,
@@ -155,6 +168,7 @@ const MODE_LABELS: Record<string, string> = {
   practice: "Practice",
   quiz: "Quiz",
   exam_review: "Exam Review",
+  exam_prep: "Exam Prep",
   remediation: "Remediation",
   parent_summary: "Parent Summary",
   misconception_drill: "Misconception Drill",
@@ -608,6 +622,8 @@ export default function Tutor() {
   const safeMode: TutorMode = (isStudent && mode === "parent_summary") ? "teach" : mode;
   // Show the quick-action chip when in misconception_drill mode with a lesson context
   const showMisconceptionChip = safeMode !== "misconception_drill" && !!lessonIdParam;
+  // Show exam prep chip when a courseId is in context and mode isn't already exam_prep
+  const showExamPrepChip = safeMode !== "exam_prep" && !lessonIdParam;
   const currentModeConfig = MODES.find((m: { id: TutorMode }) => m.id === safeMode) ?? MODES[0];
   const ModeIcon = currentModeConfig.icon;
 
@@ -964,6 +980,21 @@ export default function Tutor() {
                 <span className="text-[10px] text-muted-foreground">Switch to misconception drill mode for this lesson</span>
               </div>
             )}
+            {/* Exam Prep quick-action chip — shown when no lesson context and mode isn't already exam_prep */}
+            {showExamPrepChip && (
+              <div className="mb-2 flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    handleModeChange("exam_prep");
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-medium transition-all shadow-sm"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  Start Exam Prep
+                </button>
+                <span className="text-[10px] text-muted-foreground">Practice with official exam-style questions</span>
+              </div>
+            )}
             <div className="flex gap-2 items-end bg-muted/40 border border-border rounded-2xl px-3 py-2 focus-within:border-primary/50 focus-within:bg-background transition-all">
               <Textarea
                 ref={textareaRef}
@@ -984,6 +1015,8 @@ export default function Tutor() {
                     ? "Ask to be quizzed on a topic or unit…"
                     : mode === "exam_review"
                     ? "Ask for an exam review plan or practice questions…"
+                    : mode === "exam_prep"
+                    ? "Start your STAAR exam prep session or answer a question…"
                     : mode === "remediation"
                     ? "Tell me what you're struggling with…"
                     : mode === "misconception_drill"

@@ -253,6 +253,13 @@
       "when": 1780126188839,
       "tag": "0035_curved_bloodaxe",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1780130049934,
+      "tag": "0036_silky_gauntlet",
+      "breakpoints": true
     }
   ]
 }

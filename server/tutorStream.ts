@@ -34,9 +34,9 @@ import {
   getActiveCourseIdForUser,
 } from "./db";
 
-type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary" | "misconception_drill"; // local alias
+type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "exam_prep" | "remediation" | "parent_summary" | "misconception_drill"; // local alias
 
-const VALID_MODES = new Set<string>(["teach", "practice", "quiz", "exam_review", "remediation", "parent_summary", "misconception_drill"]);
+const VALID_MODES = new Set<string>(["teach", "practice", "quiz", "exam_review", "exam_prep", "remediation", "parent_summary", "misconception_drill"]);
 
 function resolveApiUrl(): string {
   const base = ENV.forgeApiUrl || "https://api.manus.im";

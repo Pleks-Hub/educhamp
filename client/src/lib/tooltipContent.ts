@@ -254,6 +254,10 @@ export const TUTOR_TOOLTIPS: Record<string, TooltipEntry> = {
     title: "Misconception Drill Mode",
     description: "EduBot generates practice questions specifically designed to expose and correct common mistakes for your current lesson. Great for catching errors before a quiz.",
   },
+  modeExamPrep: {
+    title: "Exam Prep Mode",
+    description: "EduBot walks you through official STAAR EOC exam-style questions one at a time, grades your responses, explains the correct reasoning, and gives a final score summary. Ideal for focused exam practice.",
+  },
 };
 
 // ─── Diagnostic Test ─────────────────────────────────────────────────────────

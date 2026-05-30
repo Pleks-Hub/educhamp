@@ -343,7 +343,7 @@ export const tutorSessions = mysqlTable("tutorSessions", {
   userId: int("userId").notNull(),
   unitId: int("unitId"),
   lessonId: int("lessonId"),
-  mode: mysqlEnum("mode", ["teach", "practice", "quiz", "exam_review", "remediation", "parent_summary", "misconception_drill"]).notNull().default("teach"),
+  mode: mysqlEnum("mode", ["teach", "practice", "quiz", "exam_review", "exam_prep", "remediation", "parent_summary", "misconception_drill"]).notNull().default("teach"),
   messages: json("messages").$type<TutorMessage[]>().notNull().default([]),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
