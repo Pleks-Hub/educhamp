@@ -395,7 +395,7 @@ export async function getOrCreateTutorSession(
   userId: number,
   unitId: number | null,
   lessonId: number | null,
-  mode: "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary"
+  mode: "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary" | "misconception_drill"
 ) {
   const db = await getDb();
   if (!db) return null;

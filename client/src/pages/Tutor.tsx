@@ -34,9 +34,9 @@ import { CourseContextBanner } from "@/components/CourseContextBanner";
 import { NavTooltip } from "@/components/NavTooltip";
 import { TUTOR_TOOLTIPS } from "@/lib/tooltipContent";
 
-// parent_summary is a parent-only mode; students see only the 5 learning modes
-type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary";
-const STUDENT_MODES: TutorMode[] = ["teach", "practice", "quiz", "exam_review", "remediation"];
+// parent_summary is a parent-only mode; students see only the 6 learning modes
+type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary" | "misconception_drill";
+const STUDENT_MODES: TutorMode[] = ["teach", "practice", "quiz", "exam_review", "remediation", "misconception_drill"];
 
 function getModes(courseLabel: string): {
   id: TutorMode;
@@ -125,6 +125,19 @@ function getModes(courseLabel: string): {
         "Create a summary of my strengths and areas to improve",
       ],
     },
+    {
+      id: "misconception_drill",
+      label: "Misconception Drill",
+      icon: Brain,
+      description: "Practice questions targeting common mistakes",
+      color: "bg-orange-100 text-orange-700 border-orange-200",
+      starters: [
+        "Give me a question that tests a common misconception in this lesson",
+        "Quiz me on the mistakes students usually make here",
+        "I want to practice the tricky parts of this topic",
+        "Show me a question designed to catch common errors",
+      ],
+    },
   ];
 }
 
@@ -144,6 +157,7 @@ const MODE_LABELS: Record<string, string> = {
   exam_review: "Exam Review",
   remediation: "Remediation",
   parent_summary: "Parent Summary",
+  misconception_drill: "Misconception Drill",
 };
 
 interface HistoryPanelProps {
@@ -381,6 +395,7 @@ export default function Tutor() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const unitParam = params.get("unit") ? parseInt(params.get("unit")!, 10) : undefined;
+  const lessonIdParam = params.get("lesson") ? parseInt(params.get("lesson")!, 10) : undefined;
   const childIdParam = params.get("childId") ? parseInt(params.get("childId")!, 10) : undefined;
   const modeParam = params.get("mode") as TutorMode | null;
 
@@ -515,6 +530,7 @@ export default function Tutor() {
               mode: safeMode,
               unitId: currentUnit?.id,
               unitNumber: selectedUnit,
+              lessonId: lessonIdParam,
               sessionId: sessionId ?? undefined,
               childId: childIdParam,
             }),
@@ -590,6 +606,8 @@ export default function Tutor() {
 
   // If a student somehow has parent_summary mode set, reset to teach
   const safeMode: TutorMode = (isStudent && mode === "parent_summary") ? "teach" : mode;
+  // Show the quick-action chip when in misconception_drill mode with a lesson context
+  const showMisconceptionChip = safeMode !== "misconception_drill" && !!lessonIdParam;
   const currentModeConfig = MODES.find((m: { id: TutorMode }) => m.id === safeMode) ?? MODES[0];
   const ModeIcon = currentModeConfig.icon;
 
@@ -931,6 +949,21 @@ export default function Tutor() {
         {/* ── Input Area ─────────────────────────────────────────────────────── */}
         <div className="border-t bg-background px-4 py-3 shrink-0">
           <div className="max-w-3xl mx-auto">
+            {/* Misconception Drill quick-action chip — shown when a lesson is in context and mode isn't already misconception_drill */}
+            {showMisconceptionChip && (
+              <div className="mb-2 flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    handleModeChange("misconception_drill");
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-medium transition-all shadow-sm"
+                >
+                  <Brain className="h-3 w-3" />
+                  Practice on misconceptions
+                </button>
+                <span className="text-[10px] text-muted-foreground">Switch to misconception drill mode for this lesson</span>
+              </div>
+            )}
             <div className="flex gap-2 items-end bg-muted/40 border border-border rounded-2xl px-3 py-2 focus-within:border-primary/50 focus-within:bg-background transition-all">
               <Textarea
                 ref={textareaRef}
@@ -953,6 +986,8 @@ export default function Tutor() {
                     ? "Ask for an exam review plan or practice questions…"
                     : mode === "remediation"
                     ? "Tell me what you're struggling with…"
+                    : mode === "misconception_drill"
+                    ? "Ask for a misconception-targeting question…"
                     : `Ask anything about ${courseLabel}…`
                 }
                 className="flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 text-sm min-h-[36px] max-h-32 py-1 px-0 placeholder:text-muted-foreground/60"

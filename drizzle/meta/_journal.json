@@ -246,6 +246,13 @@
       "when": 1780115626312,
       "tag": "0034_dark_norman_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1780126188839,
+      "tag": "0035_curved_bloodaxe",
+      "breakpoints": true
     }
   ]
 }

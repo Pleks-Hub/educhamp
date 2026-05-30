@@ -302,10 +302,21 @@ export default function LessonDetail() {
           {misconceptions.length > 0 && (
             <Card className="border border-amber-200 bg-amber-50/50">
               <CardHeader className="pb-2 pt-4 px-5">
-                <CardTitle className="text-sm font-semibold text-amber-800 flex items-center gap-2">
-                  <XCircle className="h-4 w-4" />
-                  Common Misconceptions
-                </CardTitle>
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-sm font-semibold text-amber-800 flex items-center gap-2">
+                    <XCircle className="h-4 w-4" />
+                    Common Misconceptions
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 text-orange-700 border-orange-200 bg-orange-50 hover:bg-orange-100 hover:border-orange-300 shrink-0"
+                    onClick={() => setLocation(`/tutor?unit=${unitNumber}&lesson=${lessonId}&mode=misconception_drill`)}
+                  >
+                    <Brain className="h-3.5 w-3.5" />
+                    Practice on these
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="px-5 pb-4">
                 <ul className="space-y-2">

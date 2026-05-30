@@ -31,7 +31,7 @@ export function getAdaptivePath(score: number): string {
 
 // ─── AI Tutor System Prompts ──────────────────────────────────────────────────
 
-export type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary";
+export type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "remediation" | "parent_summary" | "misconception_drill";
 
 /**
  * Returns true for grades that require the Young Learner Mode persona.
@@ -203,6 +203,19 @@ const MODE_INSTRUCTIONS: Record<TutorMode, string> = {
 - Celebrate small wins and incremental progress explicitly
 - After each concept, ask a simple check question before moving on
 - Connect new learning to things the student already knows`,
+
+  misconception_drill: `You are in MISCONCEPTION DRILL mode. Your goal is to give the student ONE targeted practice question that directly tests a COMMON MISCONCEPTION from the current lesson.
+
+**Rules:**
+- Present exactly ONE question — no more. Keep it concise.
+- The question must be designed so that a student who holds the misconception will get it wrong, while a student who understands correctly will get it right.
+- After the student answers: reveal whether they are correct, explain WHY the misconception leads to the wrong answer, and reinforce the correct reasoning with a brief explanation.
+- If the student is correct: celebrate, then briefly explain what the common mistake would have been and why it is wrong — this reinforces their correct understanding.
+- If the student is incorrect: be gentle and non-judgmental. Explain the misconception clearly, show the correct approach, and offer a follow-up question to confirm understanding.
+- Reference the specific misconception by name or description so the student knows exactly what thinking pattern to watch out for.
+- Keep the total interaction to 2-3 exchanges maximum — this is a QUICK drill, not a full lesson.
+- After the drill is complete, suggest the student try another misconception drill or switch to Practice mode for more varied questions.
+- IMPORTANT: Base your question EXCLUSIVELY on the misconceptions listed in the ## Lesson Content section above. Do NOT invent misconceptions not listed there.`,
 
   parent_summary: `You are in PARENT SUMMARY mode. Your goal is to provide a COMPREHENSIVE, CLEAR progress report for parents and guardians.
 - Write in plain, jargon-free language that any parent can understand

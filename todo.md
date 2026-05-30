@@ -1735,17 +1735,17 @@
 - [x] Apply all migrations via webdev_execute_sql
 
 ### Phase 1B — Seed Data
-- [ ] Seed USA / TX / TEKS framework / Katy ISD district + tracks + pacing guide + resource adoption
-- [ ] Seed TX / HISD district + tracks + pacing guide + daily quiz assessment template
-- [ ] Seed NY / NYC-DOE district + NY_NGLS framework + tracks + Regents assessment template
-- [ ] Seed sample standards for TEKS Algebra I and NY_NGLS Algebra I (crosswalk demo set)
-- [ ] Seed StandardCrosswalk rows (TEKS ALG1 ↔ NY_NGLS ALG1, sample set)
+- [x] Seed USA / TX / TEKS framework / Katy ISD district + tracks + pacing guide + resource adoption
+- [x] Seed TX / HISD district + tracks + pacing guide + daily quiz assessment template
+- [x] Seed NY / NYC-DOE district + NY_NGLS framework + tracks + Regents assessment template
+- [x] Seed sample standards for TEKS Algebra I and NY_NGLS Algebra I (crosswalk demo set)
+- [x] Seed StandardCrosswalk rows (TEKS ALG1 ↔ NY_NGLS ALG1, sample set)
 
 ### Phase 1C — Backfill Migration
-- [ ] Add frameworkId column to existing courses table; backfill all existing courses to TEKS
-- [ ] Extract TEKS codes from units.teksAlignment free-text; create standards rows; populate unitStandards
-- [ ] Create default enrollmentContext rows for all existing students (Katy ISD, TEKS, 2025-26)
-- [ ] Backfill masteryRecords from existing userMastery rows
+- [x] Add frameworkId column to existing courses table; backfill all existing courses to TEKS
+- [x] Extract TEKS codes from units.teksAlignment free-text; create standards rows; populate unitStandards
+- [x] Create default enrollmentContext rows for all existing students (Katy ISD, TEKS, 2025-26)
+- [x] Backfill masteryRecords from existing userMastery rows
 
 ### Phase 1D — COPPA Age Gate (parallel sprint)
 - [x] Add parentalConsents table (migration)
@@ -1809,3 +1809,14 @@
 #### Phase 2 — Tests & Checkpoint
 - [x] Write server/phase2.test.ts covering lesson injection, TEKS gap resolution, and dual-write logic
 - [x] Run full test suite (578/578 passing), update todo.md, save checkpoint
+
+### Misconception Drill Feature (May 30, 2026)
+- [x] Add misconception_drill to tutor mode enum (schema + routers.ts z.enum)
+- [x] Add misconception_drill system prompt section to buildTutorSystemPrompt in educhamp-helpers.ts
+- [x] Update tutorStream.ts to handle misconception_drill mode (inject misconceptions list from lesson)
+- [x] Add "Practice on misconceptions" quick-action chip to Tutor.tsx chat UI
+- [x] Chip only visible when a lessonId is in context and mode is not already misconception_drill
+- [x] Clicking chip switches mode to misconception_drill (handleModeChange)
+- [x] Mode badge shown in sidebar and chat header via existing mode display system
+- [x] Write misconception_drill tests in server/misconception-drill.test.ts (595/595 passing)
+- [x] Run full test suite (595/595 passing), update todo.md, save checkpoint

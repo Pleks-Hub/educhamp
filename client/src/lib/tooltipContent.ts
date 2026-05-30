@@ -250,6 +250,10 @@ export const TUTOR_TOOLTIPS: Record<string, TooltipEntry> = {
     title: "Parent Summary Mode",
     description: "EduBot generates a plain-language progress summary for parents — covering mastery scores, strengths, gaps, and recommended next steps.",
   },
+  modeMisconceptionDrill: {
+    title: "Misconception Drill Mode",
+    description: "EduBot generates practice questions specifically designed to expose and correct common mistakes for your current lesson. Great for catching errors before a quiz.",
+  },
 };
 
 // ─── Diagnostic Test ─────────────────────────────────────────────────────────

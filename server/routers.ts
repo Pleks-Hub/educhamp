@@ -862,7 +862,7 @@ export const appRouter = router({
       .input(
         z.object({
           message: z.string().min(1).max(2000),
-          mode: z.enum(["teach", "practice", "quiz", "exam_review", "remediation", "parent_summary"]),
+          mode: z.enum(["teach", "practice", "quiz", "exam_review", "remediation", "parent_summary", "misconception_drill"]),
           unitId: z.number().optional(),
           unitNumber: z.number().optional(),
           lessonId: z.number().optional(),
@@ -940,7 +940,7 @@ export const appRouter = router({
       .input(z.object({
         unitId: z.number().optional(),
         lessonId: z.number().optional(),
-        mode: z.enum(["teach", "practice", "quiz", "exam_review", "remediation", "parent_summary"]),
+        mode: z.enum(["teach", "practice", "quiz", "exam_review", "remediation", "parent_summary", "misconception_drill"]),
       }))
       .query(async ({ ctx, input }) => {
         return getOrCreateTutorSession(
@@ -962,7 +962,7 @@ export const appRouter = router({
       .input(
         z.object({
           unitId: z.number().optional(),
-          mode: z.enum(["teach", "practice", "quiz", "exam_review", "remediation", "parent_summary"]).optional(),
+          mode: z.enum(["teach", "practice", "quiz", "exam_review", "remediation", "parent_summary", "misconception_drill"]).optional(),
           fromDate: z.date().optional(),
           toDate: z.date().optional(),
           limit: z.number().min(1).max(100).default(20),

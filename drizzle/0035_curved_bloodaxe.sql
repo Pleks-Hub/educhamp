@@ -1,0 +1,1 @@
+ALTER TABLE `tutorSessions` MODIFY COLUMN `mode` enum('teach','practice','quiz','exam_review','remediation','parent_summary','misconception_drill') NOT NULL DEFAULT 'teach';
