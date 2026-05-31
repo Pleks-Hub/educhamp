@@ -492,6 +492,8 @@ export default function Tutor() {
     "there";
   const customWelcome = (personalization as any)?.aiWelcomeMessage as string | undefined;
   const courseLabel = dashboard?.courseTitle ?? "your course";
+  const courseGradeLevel = dashboard?.courseGradeLevel ?? "";
+  const isEarlyChildhoodCourse = ["Pre-K", "Kindergarten", "K"].includes(courseGradeLevel.trim());
   const isStudent = !user || user.accountType === "student" || !user.accountType;
   // Visible modes: students see 5 learning modes; parents/teachers see all 6
   const MODES = getModes(courseLabel);
@@ -902,7 +904,7 @@ export default function Tutor() {
         </div>
 
         {/* ── Parent-Led Learning Mode Banner ─────────────────────────────── */}
-        {activeTab === "chat" && (personalization as any)?.parentLedMode && (
+        {activeTab === "chat" && (personalization as any)?.parentLedMode && isEarlyChildhoodCourse && (
           <div className="mx-4 mt-3 mb-0 rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-4 py-3 flex items-start gap-3 text-sm">
             <span className="text-xl shrink-0 mt-0.5">👨‍👩‍👧</span>
             <div className="space-y-1 min-w-0">
