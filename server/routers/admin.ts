@@ -1461,4 +1461,131 @@ export const adminRouter = router({
     .query(async ({ input }) => {
       return getMasteryRecordsForContext(input.enrollmentContextId);
     }),
+
+  // ─── System Health ─────────────────────────────────────────────────────────
+
+  /**
+   * Returns server health metrics: uptime, DB ping, memory usage, Node version.
+   */
+  getSystemHealth: adminProcedure.query(async () => {
+    const { getDb } = await import("../db");
+    const startPing = Date.now();
+    let dbPingMs: number | null = null;
+    let dbStatus: "ok" | "error" = "error";
+    try {
+      const db = await getDb();
+      if (db) {
+        await db.execute("SELECT 1");
+        dbPingMs = Date.now() - startPing;
+        dbStatus = "ok";
+      }
+    } catch {
+      dbStatus = "error";
+    }
+    const mem = process.memoryUsage();
+    return {
+      uptimeSeconds: Math.floor(process.uptime()),
+      nodeVersion: process.version,
+      env: process.env.NODE_ENV ?? "unknown",
+      dbStatus,
+      dbPingMs,
+      memoryRssMb: Math.round(mem.rss / 1024 / 1024),
+      memoryHeapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+      memoryHeapTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
+      checkedAt: Date.now(),
+    };
+  }),
+
+  /**
+   * Returns the last N admin audit log entries for the error/activity feed.
+   */
+  getRecentAuditLog: adminProcedure
+    .input(z.object({ limit: z.number().min(1).max(200).default(50) }))
+    .query(async ({ input }) => {
+      return getAdminAuditLog(input.limit);
+    }),
+
+  // ─── User Impersonation ────────────────────────────────────────────────────
+
+  /**
+   * Start an impersonation session for the given user.
+   * Returns a short-lived token (15 min) that the frontend stores as a cookie.
+   */
+  impersonateUser: adminProcedure
+    .input(z.object({ userId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const { getDb } = await import("../db");
+      const { adminImpersonationSessions } = await import("../../drizzle/schema");
+      const crypto = await import("crypto");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const token = crypto.randomBytes(48).toString("hex");
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      await db.insert(adminImpersonationSessions).values({
+        adminId: ctx.user.id,
+        impersonatedUserId: input.userId,
+        token,
+        expiresAt,
+      });
+      await logAdminAction(ctx.user.id, "user.impersonate.start", "user", input.userId, { token: token.slice(0, 8) + "..." });
+      return { token, expiresAt: expiresAt.getTime() };
+    }),
+
+  /**
+   * End an active impersonation session.
+   */
+  endImpersonation: adminProcedure
+    .input(z.object({ token: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { getDb } = await import("../db");
+      const { adminImpersonationSessions } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db
+        .update(adminImpersonationSessions)
+        .set({ endedAt: new Date() })
+        .where(eq(adminImpersonationSessions.token, input.token));
+      await logAdminAction(ctx.user.id, "user.impersonate.end", "user", ctx.user.id, {});
+      return { success: true };
+    }),
+
+  /**
+   * Validate an impersonation token and return the impersonated user's info.
+   * Used by the ImpersonationBanner to show who is being impersonated.
+   */
+  getImpersonationInfo: protectedProcedure
+    .input(z.object({ token: z.string() }))
+    .query(async ({ input }) => {
+      const { getDb } = await import("../db");
+      const { adminImpersonationSessions } = await import("../../drizzle/schema");
+      const { users } = await import("../../drizzle/schema");
+      const { eq, and, isNull, gt } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return null;
+      const [session] = await db
+        .select()
+        .from(adminImpersonationSessions)
+        .where(
+          and(
+            eq(adminImpersonationSessions.token, input.token),
+            isNull(adminImpersonationSessions.endedAt),
+            gt(adminImpersonationSessions.expiresAt, new Date())
+          )
+        )
+        .limit(1);
+      if (!session) return null;
+      const [impersonatedUser] = await db
+        .select({ id: users.id, name: users.name, email: users.email, accountType: users.accountType })
+        .from(users)
+        .where(eq(users.id, session.impersonatedUserId))
+        .limit(1);
+      if (!impersonatedUser) return null;
+      return {
+        sessionId: session.id,
+        adminId: session.adminId,
+        impersonatedUser,
+        expiresAt: session.expiresAt.getTime(),
+      };
+    }),
 });

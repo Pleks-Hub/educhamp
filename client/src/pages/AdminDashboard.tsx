@@ -261,6 +261,15 @@ function UsersTab() {
     onSuccess: () => { toast.success("Enrolled in course"); setShowEnrollDialog(null); },
     onError: (e) => toast.error(e.message),
   });
+  const impersonateUser = trpc.admin.impersonateUser.useMutation({
+    onSuccess: ({ token, expiresAt }) => {
+      sessionStorage.setItem("educhamp-impersonation-token", token);
+      sessionStorage.setItem("educhamp-impersonation-expires", String(expiresAt));
+      toast.success("Impersonation session started — navigating to app");
+      setTimeout(() => { window.location.href = "/"; }, 800);
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const [showUserDetailDialog, setShowUserDetailDialog] = useState<number | null>(null);
 
@@ -531,7 +540,19 @@ function UsersTab() {
                           <UserPlus className="h-3.5 w-3.5 mr-2" /> Quick Enroll
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
+                        {/* Impersonate */}
+                        <DropdownMenuItem
+                          onClick={() => {
+                            if (confirm(`Log in as ${user.name ?? user.email}? You will be redirected to the app as this user. A 15-minute session will be created.`)) {
+                              impersonateUser.mutate({ userId: user.id });
+                            }
+                          }}
+                          className="text-amber-600 focus:text-amber-600"
+                        >
+                          <Eye className="h-3.5 w-3.5 mr-2" /> Log in as User
+                        </DropdownMenuItem>
                         {/* Delete */}
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-red-600 focus:text-red-600"
                           onClick={() => { if (confirm(`Delete user ${user.name ?? user.email}? This cannot be undone.`)) deleteUser.mutate({ userId: user.id }); }}
@@ -2511,6 +2532,9 @@ export default function AdminDashboard() {
             <NavTooltip content="District Transfer — move students between districts with crosswalk-weighted mastery transfer" side="bottom" delayDuration={700}>
               <TabsTrigger value="districttransfer" className="gap-2"><ArrowRightLeft className="h-4 w-4" /> District Transfer</TabsTrigger>
             </NavTooltip>
+            <NavTooltip content={{ title: "System Health", description: "Monitor server uptime, database latency, memory usage, and recent admin activity." }} side="bottom" delayDuration={700}>
+              <TabsTrigger value="system" className="gap-2"><Server className="h-4 w-4" /> System</TabsTrigger>
+            </NavTooltip>
           </TabsList>
 
           <TabsContent value="overview"><OverviewTab /></TabsContent>
@@ -2533,6 +2557,7 @@ export default function AdminDashboard() {
           <TabsContent value="flaggedquestions"><FlaggedQuestionsTab /></TabsContent>
           <TabsContent value="emailsettings"><EmailSettingsTab /></TabsContent>
           <TabsContent value="districttransfer"><DistrictTransferTab /></TabsContent>
+          <TabsContent value="system"><SystemHealthTab /></TabsContent>
         </Tabs>
       </div>
     </div>
@@ -3496,6 +3521,176 @@ function DistrictTransferTab() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+// ─── System Health Tab ────────────────────────────────────────────────────────
+
+function SystemHealthTab() {
+  const { data: health, isLoading, refetch, dataUpdatedAt } = trpc.admin.getSystemHealth.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
+  const { data: auditLog, isLoading: auditLoading } = trpc.admin.getRecentAuditLog.useQuery({ limit: 50 });
+
+  function formatUptime(seconds: number) {
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (d > 0) return `${d}d ${h}h ${m}m`;
+    if (h > 0) return `${h}h ${m}m ${s}s`;
+    return `${m}m ${s}s`;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">System Health</h2>
+        <div className="flex items-center gap-3">
+          {dataUpdatedAt > 0 && (
+            <span className="text-xs text-muted-foreground">
+              Last checked: {new Date(dataUpdatedAt).toLocaleTimeString()}
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* Metric Cards */}
+      {isLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        </div>
+      ) : health ? (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Uptime */}
+            <Card>
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Server Uptime</p>
+                    <p className="text-2xl font-bold">{formatUptime(health.uptimeSeconds)}</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10">
+                    <Activity className="h-5 w-5 text-emerald-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* DB Status */}
+            <Card>
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Database</p>
+                    <p className="text-2xl font-bold">{health.dbStatus === "ok" ? `${health.dbPingMs}ms` : "Error"}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{health.dbStatus === "ok" ? "Connected" : "Unreachable"}</p>
+                  </div>
+                  <div className={`p-2.5 rounded-xl ${health.dbStatus === "ok" ? "bg-blue-500/10" : "bg-red-500/10"}`}>
+                    <Server className={`h-5 w-5 ${health.dbStatus === "ok" ? "text-blue-600" : "text-red-600"}`} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Memory */}
+            <Card>
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Heap Memory</p>
+                    <p className="text-2xl font-bold">{health.memoryHeapUsedMb} MB</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">of {health.memoryHeapTotalMb} MB</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-violet-500/10">
+                    <BarChart3 className="h-5 w-5 text-violet-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* RSS */}
+            <Card>
+              <CardContent className="pt-5 pb-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">RSS Memory</p>
+                    <p className="text-2xl font-bold">{health.memoryRssMb} MB</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Total process</p>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-orange-500/10">
+                    <Zap className="h-5 w-5 text-orange-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Environment info */}
+          <Card>
+            <CardContent className="pt-4 pb-4">
+              <div className="flex flex-wrap gap-3 items-center text-sm">
+                <span className="text-muted-foreground">Node:</span>
+                <Badge variant="outline" className="font-mono">{health.nodeVersion}</Badge>
+                <span className="text-muted-foreground ml-2">Environment:</span>
+                <Badge variant={health.env === "production" ? "default" : "secondary"}>{health.env}</Badge>
+                <span className="text-muted-foreground ml-2">DB:</span>
+                <Badge variant={health.dbStatus === "ok" ? "outline" : "destructive"} className={health.dbStatus === "ok" ? "text-emerald-600 border-emerald-300" : ""}>
+                  {health.dbStatus === "ok" ? `✓ Connected (${health.dbPingMs}ms)` : "✗ Error"}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <p className="text-muted-foreground">Failed to load system health.</p>
+      )}
+
+      {/* Recent Admin Activity */}
+      <div>
+        <h3 className="text-base font-semibold mb-3">Recent Admin Activity</h3>
+        {auditLoading ? (
+          <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 rounded" />)}</div>
+        ) : (
+          <div className="rounded-xl border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Time</TableHead>
+                  <TableHead className="text-xs">Action</TableHead>
+                  <TableHead className="text-xs">Target</TableHead>
+                  <TableHead className="text-xs">Admin ID</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(auditLog ?? []).length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-6 text-sm">No admin activity recorded yet.</TableCell>
+                  </TableRow>
+                ) : (
+                  (auditLog ?? []).map((entry: any) => (
+                    <TableRow key={entry.id}>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(entry.createdAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-xs font-mono">{entry.action}</TableCell>
+                      <TableCell className="text-xs">
+                        {entry.targetType && entry.targetId ? `${entry.targetType} #${entry.targetId}` : "—"}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">#{entry.adminId}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

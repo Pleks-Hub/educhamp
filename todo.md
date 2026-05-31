@@ -2100,3 +2100,29 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Root cause: NavTooltip on line 2508 wrapped two TabsTrigger children (Email Settings + District Transfer) — violates React.Children.only constraint used by TooltipTrigger asChild
 - [x] Fix: split into two separate NavTooltip wrappers, each with exactly one TabsTrigger child
 - [x] 860/860 tests passing, TypeScript exit 0 (45 pre-existing admin.ts stubs unchanged)
+
+### Admin Sprint 6 — Health Check, Impersonation, TS Stubs
+
+#### System Health-Check Panel (new System tab in Admin Console)
+- [x] Server: admin.getSystemHealth procedure — returns server uptime (process.uptime), DB ping latency, memory usage (rss/heapUsed), Node version, env, last deploy timestamp from package.json
+- [x] Server: admin.getRecentErrors procedure — returns last 50 server-side error log entries (from adminAuditLog where action='error' or a dedicated errorLog table)
+- [x] UI: Add "System" tab to AdminDashboard TabsList with Server icon
+- [x] UI: SystemTab component — stat cards for uptime, DB latency, memory; Node/env badge; recent errors table with timestamp, message, stack preview
+
+#### Admin User Impersonation (Users tab)
+- [x] Server: admin.impersonateUser procedure — creates a short-lived impersonation JWT (15 min) storing { realAdminId, impersonatedUserId } in a new adminImpersonationSessions table; returns session token
+- [x] Server: admin.endImpersonation procedure — invalidates the impersonation session and returns the admin's original session
+- [x] DB: adminImpersonationSessions table (id, adminId, impersonatedUserId, token, createdAt, expiresAt, endedAt)
+- [x] Server: middleware in context.ts — detect impersonation token in cookie, inject ctx.impersonation = { realAdminId } when active
+- [x] UI: "Log in as user" button in Users tab row dropdown (Eye icon)
+- [x] UI: ImpersonationBanner — fixed top banner (red/amber) showing "Viewing as [Name] — you are an admin impersonating this user" with End Session button
+- [x] UI: ImpersonationBanner shown on all authenticated pages when impersonation cookie is active
+- [x] UI: End Session restores admin session and redirects back to /admin
+
+#### Resolve TypeScript Stubs in admin.ts (45 errors → 0)
+- [x] DB: Add districts table to drizzle/schema.ts (id, name, state, code, isActive, createdAt)
+- [x] DB: Add enrollmentContexts table to drizzle/schema.ts (id, userId, districtId, schoolName, gradeLevel, academicYear, isActive, createdAt)
+- [x] DB: Generate migration SQL and apply via webdev_execute_sql
+- [x] Server: Create server/emailTemplates/emailBase.ts with base email template helpers (header, footer, button, text block)
+- [x] Fix userId property type mismatch in tutorSessions insert in admin.ts
+- [x] Verify TypeScript exits with 0 errors (excluding no pre-existing stubs)

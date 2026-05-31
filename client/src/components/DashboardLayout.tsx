@@ -51,7 +51,7 @@ import {
   Users,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState, useCallback } from "react";
-import { X, AlertTriangle, Lock, ExternalLink } from "lucide-react";
+import { X, AlertTriangle, Lock, ExternalLink, Eye } from "lucide-react";
 import { useLocation, Redirect } from "wouter";
 import { toast } from "sonner";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -446,6 +446,9 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset className="bg-background">
+        {/* Impersonation Banner */}
+        <ImpersonationBanner />
+
         {/* Trial active banner */}
         {showTrialBanner && (() => {
           const isUrgent = trialDaysLeft <= 3;
@@ -563,5 +566,79 @@ function DashboardLayoutContent({
         onClose={() => setCourseSwitcherOpen(false)}
       />
     </>
+  );
+}
+
+// ─── Impersonation Banner ─────────────────────────────────────────────────────
+
+function ImpersonationBanner() {
+  const [token, setToken] = useState<string | null>(null);
+  const [expires, setExpires] = useState<number | null>(null);
+  const utils = trpc.useUtils();
+
+  useEffect(() => {
+    const t = sessionStorage.getItem("educhamp-impersonation-token");
+    const exp = sessionStorage.getItem("educhamp-impersonation-expires");
+    if (t && exp) {
+      const expMs = parseInt(exp, 10);
+      if (Date.now() < expMs) {
+        setToken(t);
+        setExpires(expMs);
+      } else {
+        // Expired — clean up
+        sessionStorage.removeItem("educhamp-impersonation-token");
+        sessionStorage.removeItem("educhamp-impersonation-expires");
+      }
+    }
+  }, []);
+
+  const { data: info } = trpc.admin.getImpersonationInfo.useQuery(
+    { token: token! },
+    { enabled: !!token, staleTime: 60_000, retry: false }
+  );
+
+  const endMutation = trpc.admin.endImpersonation.useMutation({
+    onSuccess: () => {
+      sessionStorage.removeItem("educhamp-impersonation-token");
+      sessionStorage.removeItem("educhamp-impersonation-expires");
+      utils.auth.me.invalidate();
+      toast.success("Impersonation session ended — returning to admin console");
+      setTimeout(() => { window.location.href = "/admin"; }, 600);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  if (!token || !info) return null;
+
+  const minsLeft = expires ? Math.max(0, Math.ceil((expires - Date.now()) / 60_000)) : 0;
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm"
+    >
+      <div className="flex items-center gap-2.5 text-amber-700 dark:text-amber-400">
+        <Eye className="h-4 w-4 shrink-0" />
+        <span className="inline-flex items-center rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
+          Admin View
+        </span>
+        <span className="hidden sm:inline">
+          Viewing as <strong>{info.impersonatedUser.name ?? info.impersonatedUser.email}</strong>
+          {" "}— this is an admin impersonation session
+        </span>
+        <span className="sm:hidden text-xs">
+          Impersonating {info.impersonatedUser.name ?? info.impersonatedUser.email}
+        </span>
+        <span className="text-xs text-amber-600 dark:text-amber-500">({minsLeft}m left)</span>
+      </div>
+      <button
+        onClick={() => endMutation.mutate({ token })}
+        disabled={endMutation.isPending}
+        className="rounded-md bg-amber-500 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-amber-600 disabled:opacity-60"
+      >
+        {endMutation.isPending ? "Ending…" : "End Session"}
+      </button>
+    </div>
   );
 }

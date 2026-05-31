@@ -1677,3 +1677,19 @@ export const parentalConsents = mysqlTable("parentalConsents", {
   statusIdx: index("parental_consents_status_idx").on(t.status),
 }));
 export type ParentalConsent = typeof parentalConsents.$inferSelect;
+
+// ─── Admin Impersonation Sessions ─────────────────────────────────────────────
+export const adminImpersonationSessions = mysqlTable("adminImpersonationSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  adminId: int("adminId").notNull(),
+  impersonatedUserId: int("impersonatedUserId").notNull(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  endedAt: timestamp("endedAt"),
+}, (t) => ({
+  adminIdx: index("imp_sessions_admin_idx").on(t.adminId),
+  tokenIdx: index("imp_sessions_token_idx").on(t.token),
+  expiresIdx: index("imp_sessions_expires_idx").on(t.expiresAt),
+}));
+export type AdminImpersonationSession = typeof adminImpersonationSessions.$inferSelect;

@@ -274,6 +274,13 @@
       "when": 1780185023526,
       "tag": "0038_nifty_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "5",
+      "when": 1780189204777,
+      "tag": "0039_busy_valeria_richards",
+      "breakpoints": true
     }
   ]
 }
