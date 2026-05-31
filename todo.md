@@ -2165,3 +2165,54 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UI: System tab — sparkline chart on heap memory card (last 20 samples, recharts AreaChart)
 - [x] Server: admin.getSystemMetricsHistory — returns last 20 health snapshots stored in memory ring buffer
 - [x] 880/880 tests passing
+
+### Admin Portal Enhancement Sprint — Parts 1-5
+
+#### Part 1 — Role Management Realignment
+- [x] Schema: extend users.role ENUM to include 'teacher', ensure 'admin' is standalone
+- [x] Schema: add lastLoginAt, lastActiveAt columns to users table
+- [x] Server: fix adminProcedure to check role === 'admin' only (no parent/student elevation)
+- [x] Server: add teacher role scaffold (same permissions as admin for course content)
+- [x] Server: Invite Admin tRPC procedure (email invite → account created with role=admin)
+- [x] Server: admin login routing — route admin users directly to /admin, not student dashboard
+- [x] UI: remove student/parent onboarding steps for admin users
+- [x] DB: new adminAuditLog event types: ADMIN_INVITED, ADMIN_ROLE_CHANGED, PARENT_LINK_ADDED, PARENT_LINK_REMOVED, QUESTION_DEACTIVATED, QUESTION_FLAGGED
+
+#### Part 2 — Session Tracking
+- [x] Schema: create userSessions table (id, userId, sessionToken, ipAddress, userAgent, deviceType, browser, os, city, region, country, loginAt, lastActiveAt, loggedOutAt, isActive)
+- [x] Install: ua-parser-js (UA parsing) + geoip-lite (local IP geolocation)
+- [x] Server: on login — create userSessions row, parse UA, geolocate IP, update users.lastLoginAt
+- [x] Server: on activity — throttled lastActiveAt update (once per 5 min per session)
+- [x] Server: on logout/expiry — set isActive=false, loggedOutAt=now()
+
+#### Part 3 — Enhanced User Detail Views
+- [x] Server: getStudentDetail procedure (profile + courses + mastery + sessions + parents)
+- [x] Server: getParentDetail procedure (profile + linked students + co-parents + sessions)
+- [x] Server: getAdminDetail procedure (profile + sessions + invitedBy)
+- [x] UI: Users tab — add Last Login, Device, Location columns
+- [x] UI: Users tab — add filters: role, last active (today/week/month/never), country
+- [x] UI: Student detail panel — 5 tabs: Profile, Courses, Mastery, Sessions, Parent/Guardian
+- [x] UI: Parent detail panel — 4 tabs: Profile, Connected Students, Co-Parents/Guardians, Sessions
+- [x] UI: Admin detail panel — profile + sessions + invitedBy + actions
+
+#### Part 4 — Parent/Guardian Relationship Management
+- [x] Schema: ALTER parentChildren ADD COLUMN relationshipType ENUM, addedByAdminId, addedAt
+- [x] Server: linkParentToStudent procedure (search by email, create if not found, set relationshipType)
+- [x] Server: removeParentLink procedure (delete row + adminAuditLog entry)
+- [x] Server: getFamilyOverview procedure (all adults + students in same family unit)
+- [x] UI: Student detail Tab 5 — Link Parent/Guardian form with relationship type selector
+- [x] UI: Family Overview card shown in student and parent panels
+
+#### Part 5 — Admin Course Management
+- [x] Schema: add flaggedByAdminAt, flagNote columns to questionBankItems
+- [x] Server: getCourses procedure (list with subject/grade/framework/unit count/question count/enrolled count)
+- [x] Server: getCourseDetail procedure (overview + units + lessons + question bank + enrolled students)
+- [x] Server: deactivateQuestion procedure (set isActive=false + adminAuditLog QUESTION_DEACTIVATED)
+- [x] Server: flagQuestion procedure (set flaggedByAdminAt + flagNote + adminAuditLog QUESTION_FLAGGED)
+- [x] Server: ensure deactivated questions excluded from examPrep.start item sampling
+- [x] UI: Courses tab in admin console — course list with search + subject/grade/status filters
+- [x] UI: Course detail page /admin/courses/:courseId — 4 tabs: Overview, Units/Lessons, Question Bank, Enrolled Students
+
+#### Tests
+- [x] server/admin-portal.test.ts — 20 test cases covering role isolation, session tracking, user detail, relationship management, course management
+- [x] All 900 tests passing

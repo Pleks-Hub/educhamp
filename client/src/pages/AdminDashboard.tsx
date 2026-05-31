@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
+import { UserDetailDialog } from "@/components/UserDetailPanel";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -232,7 +234,7 @@ function UsersTab() {
   const [page, setPage] = useState(0);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEnrollDialog, setShowEnrollDialog] = useState<number | null>(null);
-  const [newUser, setNewUser] = useState({ name: "", email: "", accountType: "student" as const, role: "user" as const });
+  const [newUser, setNewUser] = useState({ name: "", email: "", accountType: "student" as const, role: "student" as const });
 
   // Reset to page 0 when search changes
   useEffect(() => {
@@ -255,7 +257,7 @@ function UsersTab() {
   const updateStatus = trpc.admin.updateUserStatus.useMutation({ onSuccess: () => { toast.success("User status updated"); refetch(); } });
   const deleteUser = trpc.admin.deleteUser.useMutation({ onSuccess: () => { toast.success("User deleted"); refetch(); } });
   const createUser = trpc.admin.createUser.useMutation({
-    onSuccess: () => { toast.success("User created"); setShowCreateDialog(false); setNewUser({ name: "", email: "", accountType: "student", role: "user" }); refetch(); },
+    onSuccess: () => { toast.success("User created"); setShowCreateDialog(false); setNewUser({ name: "", email: "", accountType: "student", role: "student" }); refetch(); },
     onError: (e) => toast.error(e.message),
   });
   const enrollUser = trpc.admin.enrollUserInCourse.useMutation({
@@ -272,7 +274,7 @@ function UsersTab() {
     onError: (e) => toast.error(e.message),
   });
 
-  const [showUserDetailDialog, setShowUserDetailDialog] = useState<number | null>(null);
+  const [showUserDetailDialog, setShowUserDetailDialog] = useState<{ id: number; role: string } | null>(null);
 
   // Bulk selection state
   const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
@@ -477,9 +479,11 @@ function UsersTab() {
                   </TableCell>
                   <TableCell>
                     <Select value={user.role} onValueChange={(v) => updateRole.mutate({ userId: user.id, role: v as any })}>
-                      <SelectTrigger className="h-7 w-20 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-7 w-24 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="student">Student</SelectItem>
+                        <SelectItem value="parent">Parent</SelectItem>
+                        <SelectItem value="teacher">Teacher</SelectItem>
                         <SelectItem value="admin">Admin</SelectItem>
                       </SelectContent>
                     </Select>
@@ -490,9 +494,15 @@ function UsersTab() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
+                    {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : <span className="text-muted-foreground/40">Never</span>}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground max-w-[110px] truncate" title={user.deviceInfo ?? ""}>
+                    {user.deviceInfo ? user.deviceInfo.split(" ")[0] : <span className="text-muted-foreground/40">—</span>}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
                     {new Date(user.createdAt).toLocaleDateString()}
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={e => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -500,10 +510,15 @@ function UsersTab() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-52">
+                        {/* View Details */}
+                        <DropdownMenuItem onClick={() => setShowUserDetailDialog({ id: user.id, role: user.role })}>
+                          <Eye className="h-3.5 w-3.5 mr-2" /> View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                         {/* Role */}
-                        <DropdownMenuItem onClick={() => updateRole.mutate({ userId: user.id, role: user.role === "admin" ? "user" : "admin" })}>
+                        <DropdownMenuItem onClick={() => updateRole.mutate({ userId: user.id, role: user.role === "admin" ? "student" : "admin" })}>
                           <Shield className="h-3.5 w-3.5 mr-2" />
-                          {user.role === "admin" ? "Demote to User" : "Promote to Admin"}
+                          {user.role === "admin" ? "Demote to Student" : "Promote to Admin"}
                         </DropdownMenuItem>
                         {/* Account type */}
                         <DropdownMenuItem onClick={() => updateAccountType.mutate({ userId: user.id, accountType: user.accountType === "student" ? "parent" : "student" })}>
@@ -534,7 +549,7 @@ function UsersTab() {
                         )}
                         <DropdownMenuSeparator />
                         {/* Course management */}
-                        <DropdownMenuItem onClick={() => setShowUserDetailDialog(user.id)}>
+                        <DropdownMenuItem onClick={() => setShowEnrollDialog(user.id)}>
                           <BookOpen className="h-3.5 w-3.5 mr-2" /> Manage Courses
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setShowEnrollDialog(user.id)}>
@@ -666,12 +681,12 @@ function UsersTab() {
         </DialogContent>
       </Dialog>
 
-      {/* User Course Management Dialog */}
+      {/* User Detail Dialog */}
       {showUserDetailDialog !== null && (
-        <UserCourseManagementDialog
-          userId={showUserDetailDialog}
+        <UserDetailDialog
+          userId={showUserDetailDialog.id}
+          initialRole={showUserDetailDialog.role}
           onClose={() => setShowUserDetailDialog(null)}
-          courses={courses ?? []}
         />
       )}
 
@@ -854,6 +869,25 @@ function CoursesTab() {
 function CourseDetail({ course, units, onUpdate }: { course: any; units: any[]; onUpdate: (d: any) => void }) {
   const [cooldownInput, setCooldownInput] = useState<string>("");
   const [timerInput, setTimerInput] = useState<string>("");
+  const [courseDetailTab, setCourseDetailTab] = useState("overview");
+
+  const { data: courseDetail, refetch: refetchDetail } = trpc.adminDetail.getCourseDetail.useQuery(
+    { courseId: course?.id },
+    { enabled: !!course?.id && (courseDetailTab === "questions" || courseDetailTab === "enrolled") }
+  );
+
+  const deactivateQuestion = trpc.adminDetail.deactivateQuestion.useMutation({
+    onSuccess: () => { toast.success("Question deactivated"); refetchDetail(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const reactivateQuestion = trpc.adminDetail.reactivateQuestion.useMutation({
+    onSuccess: () => { toast.success("Question reactivated"); refetchDetail(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const flagQuestion = trpc.adminDetail.flagQuestion.useMutation({
+    onSuccess: () => { toast.success("Question flagged for review"); refetchDetail(); },
+    onError: (e) => toast.error(e.message),
+  });
 
   if (!course) return null;
 
@@ -870,7 +904,17 @@ function CourseDetail({ course, units, onUpdate }: { course: any; units: any[]; 
           <Badge variant="outline">{course.courseCode}</Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent>
+        <Tabs value={courseDetailTab} onValueChange={setCourseDetailTab}>
+          <TabsList className="w-full grid grid-cols-4 mb-5">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="units">Units/Lessons</TabsTrigger>
+            <TabsTrigger value="questions">Question Bank</TabsTrigger>
+            <TabsTrigger value="enrolled">Enrolled</TabsTrigger>
+          </TabsList>
+
+          {/* ── Overview ── */}
+          <TabsContent value="overview" className="space-y-5">
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div><span className="text-muted-foreground">Subject:</span> <strong>{course.subject}</strong></div>
           <div><span className="text-muted-foreground">Grade Level:</span> <strong>{course.gradeLevel}</strong></div>
@@ -994,21 +1038,101 @@ function CourseDetail({ course, units, onUpdate }: { course: any; units: any[]; 
           )}
         </div>
 
-        {/* Units */}
-        <div>
-          <h4 className="font-medium text-sm mb-2">Units ({units.length})</h4>
-          <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-            {units.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No units found.</p>
-            ) : units.map((unit: any) => (
-              <div key={unit.id} className="flex items-center gap-3 p-2 rounded-md bg-muted/40 text-sm">
-                <span className="font-mono text-xs text-muted-foreground w-8">U{unit.unitNumber}</span>
-                <span className="flex-1">{unit.title}</span>
-                {unit.teksAlignment && <Badge variant="outline" className="text-xs">{unit.teksAlignment.split("(")[0].trim()}</Badge>}
-              </div>
-            ))}
-          </div>
-        </div>
+          </TabsContent>
+
+          {/* ── Units/Lessons ── */}
+          <TabsContent value="units" className="space-y-2">
+            <h4 className="font-medium text-sm mb-2">Units ({units.length})</h4>
+            <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
+              {units.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No units found.</p>
+              ) : units.map((unit: any) => (
+                <div key={unit.id} className="p-3 rounded-md bg-muted/40 text-sm space-y-1">
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-xs text-muted-foreground w-8">U{unit.unitNumber}</span>
+                    <span className="flex-1 font-medium">{unit.title}</span>
+                    {unit.teksAlignment && <Badge variant="outline" className="text-xs">{unit.teksAlignment.split("(")[0].trim()}</Badge>}
+                  </div>
+                  {unit.lessons && unit.lessons.length > 0 && (
+                    <div className="ml-10 space-y-0.5">
+                      {unit.lessons.map((lesson: any) => (
+                        <div key={lesson.id} className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="w-6 text-right">{lesson.lessonNumber}.</span>
+                          <span>{lesson.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* ── Question Bank ── */}
+          <TabsContent value="questions" className="space-y-3">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium text-sm">Questions ({(courseDetail?.questions ?? []).length})</h4>
+            </div>
+            <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+              {(courseDetail?.questions ?? []).length === 0 ? (
+                <p className="text-xs text-muted-foreground">No questions found.</p>
+              ) : (courseDetail?.questions ?? []).map((q: any) => (
+                <div key={q.id} className={`p-3 rounded-md border text-sm ${!q.isActive ? "opacity-50 bg-muted/30" : "bg-background"}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="line-clamp-2">{q.questionText}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="outline" className="text-xs">{q.difficulty}</Badge>
+                        {q.flaggedByAdminAt && <Badge className="text-xs bg-amber-100 text-amber-800">Flagged</Badge>}
+                        {!q.isActive && <Badge variant="secondary" className="text-xs">Inactive</Badge>}
+                      </div>
+                      {q.flagNote && <p className="text-xs text-amber-700 mt-1">{q.flagNote}</p>}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      {q.isActive ? (
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => deactivateQuestion.mutate({ questionId: q.id })}>
+                          Deactivate
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => reactivateQuestion.mutate({ questionId: q.id })}>
+                          Reactivate
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="h-7 text-xs text-amber-600" onClick={() => {
+                        const note = prompt("Flag note (optional):");
+                        flagQuestion.mutate({ questionId: q.id, flagNote: note ?? undefined });
+                      }}>
+                        Flag
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* ── Enrolled Students ── */}
+          <TabsContent value="enrolled" className="space-y-2">
+            <h4 className="font-medium text-sm mb-2">Enrolled Students ({(courseDetail?.enrolledStudents ?? []).length})</h4>
+            <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
+              {(courseDetail?.enrolledStudents ?? []).length === 0 ? (
+                <p className="text-xs text-muted-foreground">No students enrolled.</p>
+              ) : (courseDetail?.enrolledStudents ?? []).map((s: any) => (
+                <div key={s.id} className="flex items-center gap-3 p-2.5 rounded-md border text-sm">
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback className="text-xs">{(s.name ?? "?").charAt(0).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{s.name ?? "Unknown"}</p>
+                    <p className="text-xs text-muted-foreground truncate">{s.email}</p>
+                  </div>
+                  <Badge variant="outline" className="text-xs shrink-0">{s.enrollmentStatus ?? "active"}</Badge>
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+
+        </Tabs>
       </CardContent>
     </Card>
   );

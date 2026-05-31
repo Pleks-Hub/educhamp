@@ -20,7 +20,7 @@ export const users = mysqlTable("users", {
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: mysqlEnum("role", ["student", "parent", "admin", "teacher"]).default("student").notNull(),
   accountType: mysqlEnum("accountType", ["student", "parent", "teacher"]).default("student").notNull(),
     grade: varchar("grade", { length: 16 }).default("9"),
   school: varchar("school", { length: 256 }),
@@ -29,7 +29,9 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+  lastLoginAt: timestamp("lastLoginAt"),                    // set on every successful login
   lastActiveAt: timestamp("lastActiveAt"),                  // updated on login + lesson/quiz activity
+  invitedByAdminId: int("invitedByAdminId"),                // admin who sent the invite (admin accounts only)
 }, (t) => ({
   // P1-7: indexes for high-traffic lookup patterns
   emailIdx: index("users_email_idx").on(t.email),
@@ -122,6 +124,10 @@ export const quizQuestions = mysqlTable("quizQuestions", {
   skillTag: varchar("skillTag", { length: 32 }).notNull(), // ALG1-U1-S1
   difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard", "challenge"]).notNull(),
   sortOrder: int("sortOrder").notNull().default(0),
+  isActive: boolean("isActive").notNull().default(true),   // admin can deactivate questions
+  flaggedByAdminId: int("flaggedByAdminId"),               // admin who flagged for review
+  flaggedByAdminAt: timestamp("flaggedByAdminAt"),         // when flagged
+  flagNote: varchar("flagNote", { length: 512 }),          // admin's flag note
 });
 
 export type QuizQuestion = typeof quizQuestions.$inferSelect;
@@ -265,6 +271,9 @@ export const parentChildren = mysqlTable("parentChildren", {
   childId: int("childId").notNull(),             // FK → users.id (child/student)
   nickname: varchar("nickname", { length: 128 }), // optional display name override
   relationship: varchar("relationship", { length: 64 }).default("parent"), // parent, guardian, teacher
+  relationshipType: mysqlEnum("relationshipType", ["parent", "co-parent", "guardian", "emergency-contact"]).notNull().default("parent"),
+  addedByAdminId: int("addedByAdminId"),         // admin who created this link (null = self-enrolled)
+  addedAt: timestamp("addedAt").defaultNow().notNull(),
   enrolledAt: timestamp("enrolledAt").defaultNow().notNull(),
   isActive: boolean("isActive").notNull().default(true),
 }, (t) => ({
@@ -1752,3 +1761,37 @@ export const emailLogsArchive = mysqlTable("emailLogsArchive", {
   toEmailIdx: index("emailLogsArchive_toEmail_idx").on(t.toEmail),
 }));
 export type EmailLogArchive = typeof emailLogsArchive.$inferSelect;
+
+// ─── User Sessions (Admin Portal — Session Tracking) ─────────────────────────
+
+/**
+ * Tracks individual login sessions for security auditing, geolocation display,
+ * and device management in the admin portal.
+ */
+export const userSessions = mysqlTable("userSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),                          // FK → users.id
+  sessionToken: varchar("sessionToken", { length: 128 }).notNull().unique(),
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  userAgent: text("userAgent"),
+  deviceType: mysqlEnum("deviceType", ["desktop", "mobile", "tablet", "unknown"]).default("unknown"),
+  browser: varchar("browser", { length: 64 }),
+  browserVersion: varchar("browserVersion", { length: 32 }),
+  os: varchar("os", { length: 64 }),
+  city: varchar("city", { length: 128 }),
+  region: varchar("region", { length: 128 }),
+  country: varchar("country", { length: 64 }),
+  countryCode: varchar("countryCode", { length: 4 }),
+  loginAt: timestamp("loginAt").defaultNow().notNull(),
+  lastActiveAt: timestamp("lastActiveAt").defaultNow().notNull(),
+  loggedOutAt: timestamp("loggedOutAt"),
+  isActive: boolean("isActive").notNull().default(true),
+}, (t) => ({
+  userIdIdx: index("userSessions_userId_idx").on(t.userId),
+  tokenIdx: index("userSessions_token_idx").on(t.sessionToken),
+  activeIdx: index("userSessions_isActive_idx").on(t.isActive),
+  loginAtIdx: index("userSessions_loginAt_idx").on(t.loginAt),
+}));
+
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = typeof userSessions.$inferInsert;

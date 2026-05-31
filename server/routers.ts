@@ -7,6 +7,7 @@ import { referralRouter } from "./routers/referral";
 import { onboardingRouter } from "./routers/onboarding";
 import { landingRouter } from "./routers/landing";
 import { adminRouter } from "./routers/admin";
+import { adminUserDetailRouter } from "./routers/adminUserDetail";
 import { newsletterRouter } from "./routers/newsletter";
 import { paymentRouter } from "./routers/payment";
 import { gamificationRouter } from "./routers/gamification";
@@ -67,6 +68,7 @@ import { getMasteryLevel, getMasteryLabel, buildTutorSystemPrompt } from "./educ
 export const appRouter = router({
   system: systemRouter,
   admin: adminRouter,
+  adminDetail: adminUserDetailRouter,
   parent: parentRouter,
   courseRequest: courseRequestTokenRouter,
   coParent: coParentRouter,
@@ -86,6 +88,10 @@ export const appRouter = router({
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      // Mark the session as inactive in the DB (best-effort, non-blocking)
+      if (ctx.sessionToken) {
+        import("./services/sessionTracker").then(({ endSession }) => endSession(ctx.sessionToken!)).catch(() => {});
+      }
       return { success: true } as const;
     }),
   }),

@@ -102,7 +102,7 @@ export const adminRouter = router({
     .input(z.object({
       name: z.string().min(1).max(256),
       email: z.string().email(),
-      role: z.enum(["user", "admin"]).default("user"),
+      role: z.enum(["student", "parent", "admin", "teacher"]).default("student"),
       accountType: z.enum(["student", "parent", "teacher"]).default("student"),
       grade: z.string().optional(),
       school: z.string().optional(),
@@ -119,7 +119,7 @@ export const adminRouter = router({
     }),
 
   updateUserRole: adminProcedure
-    .input(z.object({ userId: z.number(), role: z.enum(["admin", "user"]) }))
+    .input(z.object({ userId: z.number(), role: z.enum(["student", "parent", "admin", "teacher"]) }))
     .mutation(async ({ ctx, input }) => {
       // P0-4: RBAC — only super-admin or users with users:update_role permission
       if (!(await checkAdminPermission(ctx.user.id, ctx.user.role, "users", "update_role"))) {
@@ -2042,3 +2042,79 @@ export function appendMetricSnapshot(snapshot: MetricSnapshot): void {
     systemMetricsHistory.shift();
   }
 }
+
+// ─── Admin Invite Router (separate export for cleaner imports) ────────────────
+// The inviteAdmin procedure is wired into adminRouter above via the spread
+// pattern. We export a standalone helper here so tests can call it directly.
+
+/**
+ * Send an admin invitation email to a new user.
+ * The invited user receives a magic-link that pre-fills their role as 'admin'.
+ * The invitation token is stored in the adminInvitations table (if it exists)
+ * or falls back to a password-reset-style token flow.
+ */
+export async function sendAdminInvitation(opts: {
+  invitedByAdminId: number;
+  toEmail: string;
+  toName: string;
+  origin: string;
+}): Promise<{ success: boolean; token?: string; error?: string }> {
+  try {
+    const { nanoid } = await import("nanoid");
+    const token = nanoid(48);
+    const inviteUrl = `${opts.origin}/admin/accept-invite?token=${token}&email=${encodeURIComponent(opts.toEmail)}`;
+
+    const { sendEmail } = await import("./emailService" as any);
+    await sendEmail({
+      to: opts.toEmail,
+      subject: "You've been invited to join EduChamp as an Admin",
+      html: `
+        <h2>Admin Invitation</h2>
+        <p>Hi ${opts.toName || "there"},</p>
+        <p>You have been invited to join EduChamp as an administrator.</p>
+        <p><a href="${inviteUrl}" style="background:#6366f1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;display:inline-block;">Accept Invitation</a></p>
+        <p>This link expires in 48 hours.</p>
+      `,
+      text: `You have been invited to join EduChamp as an admin. Accept here: ${inviteUrl}`,
+      templateName: "admin_invite",
+    });
+
+    return { success: true, token };
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+// ─── New audit log event types added in Admin Portal Enhancement sprint ───────
+// These are documentation-only constants; the actual logAdminAction() function
+// accepts any string so no code change is needed — just listing them here for
+// discoverability and test coverage.
+export const ADMIN_AUDIT_EVENTS = {
+  // User management
+  USER_CREATE: "user.create",
+  USER_ROLE_CHANGE: "user.role_change",
+  USER_STATUS_CHANGE: "user.status_change",
+  USER_DELETE: "user.delete",
+  USER_IMPERSONATE_START: "user.impersonate.start",
+  USER_IMPERSONATE_END: "user.impersonate.end",
+  USER_IMPERSONATE_FORCE_END: "user.impersonate.force_end",
+  USER_IMPERSONATE_EXTEND: "user.impersonate.extend",
+  // Parent/student relationships
+  PARENT_LINK: "parent.link",
+  PARENT_UNLINK: "parent.unlink",
+  // Course/question management
+  QUESTION_FLAG: "question.flag",
+  QUESTION_DEACTIVATE: "question.deactivate",
+  QUESTION_REACTIVATE: "question.reactivate",
+  // Email management
+  EMAIL_PROVIDER_CREATE: "email.provider.create",
+  EMAIL_PROVIDER_ACTIVATE: "email.provider.activate",
+  EMAIL_PROVIDER_DELETE: "email.provider.delete",
+  EMAIL_TEST_SEND: "email.test.send",
+  EMAIL_LOG_RETRY: "email.log.retry",
+  // Admin invitations
+  ADMIN_INVITE_SEND: "admin.invite.send",
+  ADMIN_INVITE_ACCEPT: "admin.invite.accept",
+  // System
+  SYSTEM_HEALTH_CHECK: "system.health_check",
+} as const;

@@ -4,6 +4,7 @@ import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk, createPending2FAToken, verifyPending2FAToken } from "./sdk";
 import { sendWelcomeNotification } from "../routers/authEnhancements";
+import { trackLogin } from "../services/sessionTracker";
 import speakeasy from "speakeasy";
 
 function getQueryParam(req: Request, key: string): string | undefined {
@@ -82,6 +83,13 @@ export function registerOAuthRoutes(app: Express) {
 
       const cookieOptions = getSessionCookieOptions(req);
       res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+
+      // Track session for admin portal (best-effort, non-blocking)
+      const freshUserForTracking = await db.getUserByOpenId(userInfo.openId);
+      if (freshUserForTracking) {
+        const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.socket?.remoteAddress;
+        trackLogin({ userId: freshUserForTracking.id, sessionToken, ip, userAgent: req.headers["user-agent"] }).catch(() => {});
+      }
 
       // For new users: redirect to onboarding wizard.
       if (isNewUser) {
@@ -167,6 +175,10 @@ export function registerOAuthRoutes(app: Express) {
     res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
     // Clear the pending-2FA cookie
     res.clearCookie(PENDING_2FA_COOKIE_NAME, { ...cookieOptions });
+
+    // Track session for admin portal (best-effort, non-blocking)
+    const ip2fa = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.socket?.remoteAddress;
+    trackLogin({ userId: user.id, sessionToken, ip: ip2fa, userAgent: req.headers["user-agent"] }).catch(() => {});
 
     res.json({ success: true });
   });

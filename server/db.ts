@@ -564,7 +564,7 @@ export async function createChildAccount(name: string, email: string, grade: str
     name,
     email,
     loginMethod: "parent_enrolled",
-    role: "user",
+    role: "student",
     accountType: "student",
     grade,
     school: school ?? null,
@@ -1161,14 +1161,14 @@ export async function getAllUsers(limit = 100, offset = 0, search?: string) {
   return { rows, total: Number(countRow?.total ?? 0) };
 }
 
-export async function updateUserRole(userId: number, role: "admin" | "user") {
+export async function updateUserRole(userId: number, role: "admin" | "student" | "parent" | "teacher") {
   const db = await getDb();
   if (!db) return;
   await db.update(users).set({ role }).where(eq(users.id, userId));
 }
 
 // Note: users table does not have an isActive column; admin can change role to restrict access
-export async function setUserRole(userId: number, role: "user" | "admin") {
+export async function setUserRole(userId: number, role: "student" | "parent" | "admin" | "teacher") {
   const db = await getDb();
   if (!db) return;
   await db.update(users).set({ role }).where(eq(users.id, userId));
@@ -1636,7 +1636,7 @@ export async function deleteUser(userId: number) {
 export async function createUser(data: {
   name: string;
   email: string;
-  role: "user" | "admin";
+  role: "student" | "parent" | "admin" | "teacher";
   accountType: "student" | "parent" | "teacher";
   grade?: string;
   school?: string;
