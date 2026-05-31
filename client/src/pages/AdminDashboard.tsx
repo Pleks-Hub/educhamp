@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { DemoRequestsTab } from "@/components/DemoRequestsTab";
+import { LineChart, Line, AreaChart, Area, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import { NavTooltip } from "@/components/NavTooltip";
 import { ADMIN_TAB_TOOLTIPS, ADMIN_ACTION_TOOLTIPS } from "@/lib/tooltipContent";
 import { CouponManagerTab } from "@/components/admin/CouponManagerTab";
@@ -1679,6 +1680,15 @@ function EmailLogsTab() {
   const [deliveryFilter, setDeliveryFilter] = useState<"all" | "sent" | "delivered" | "opened" | "bounced" | "complained" | "failed">("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [dateRange, setDateRange] = useState<"all" | "today" | "7d" | "30d">("all");
+
+  const getDateFrom = () => {
+    const now = new Date();
+    if (dateRange === "today") { const d = new Date(now); d.setHours(0,0,0,0); return d.toISOString(); }
+    if (dateRange === "7d") return new Date(now.getTime() - 7 * 86400_000).toISOString();
+    if (dateRange === "30d") return new Date(now.getTime() - 30 * 86400_000).toISOString();
+    return undefined;
+  };
 
   // Debounce search input
   const handleSearchChange = (val: string) => {
@@ -1703,6 +1713,7 @@ function EmailLogsTab() {
     status: statusFilter,
     deliveryStatus: deliveryFilter,
     search: debouncedSearch || undefined,
+    dateFrom: getDateFrom(),
   });
 
   const statusBadge = (status: string) => {
@@ -1802,6 +1813,18 @@ function EmailLogsTab() {
             <SelectItem value="bounced">Bounced</SelectItem>
             <SelectItem value="complained">Complained</SelectItem>
             <SelectItem value="failed">Failed</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={dateRange} onValueChange={(v) => setDateRange(v as typeof dateRange)}>
+          <SelectTrigger className="w-40">
+            <Calendar className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Date range" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Time</SelectItem>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="7d">Last 7 Days</SelectItem>
+            <SelectItem value="30d">Last 30 Days</SelectItem>
           </SelectContent>
         </Select>
         <Badge variant="secondary">{data?.total ?? 0} records</Badge>
@@ -3837,6 +3860,9 @@ function SystemHealthTab() {
   const { data: health, isLoading, refetch, dataUpdatedAt } = trpc.admin.getSystemHealth.useQuery(undefined, {
     refetchInterval: 30_000,
   });
+  const { data: metricsHistory } = trpc.admin.getSystemMetricsHistory.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
   const { data: auditLog, isLoading: auditLoading } = trpc.admin.getRecentAuditLog.useQuery({ limit: 50 });
   const { data: activeSessions, isLoading: sessionsLoading, refetch: refetchSessions } = trpc.admin.getActiveImpersonationSessions.useQuery(undefined, {
     refetchInterval: 15_000,
@@ -3910,9 +3936,10 @@ function SystemHealthTab() {
               </CardContent>
             </Card>
 
-            {/* DB Status — with latency thresholds */}
+            {/* DB Status — with latency thresholds + sparkline */}
             {(() => {
               const c = dbLatencyColor(health.dbPingMs, health.dbStatus);
+              const sparkData = (metricsHistory ?? []).map(m => ({ ts: m.ts, v: m.dbPingMs }));
               return (
                 <Card className={c.card ? `border ${c.card}` : ""}>
                   <CardContent className="pt-5 pb-4">
@@ -3936,17 +3963,43 @@ function SystemHealthTab() {
                         <Server className={`h-5 w-5 ${c.iconColor}`} />
                       </div>
                     </div>
+                    {sparkData.length > 1 && (
+                      <div className="mt-3 h-10">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={sparkData}>
+                            <RechartsTooltip
+                              content={({ active, payload }) =>
+                                active && payload?.[0] ? (
+                                  <div className="rounded bg-popover px-2 py-1 text-xs shadow border">
+                                    {payload[0].value}ms
+                                  </div>
+                                ) : null
+                              }
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="v"
+                              stroke={(health.dbPingMs ?? 0) > 500 ? "#ef4444" : (health.dbPingMs ?? 0) > 100 ? "#f59e0b" : "#10b981"}
+                              strokeWidth={1.5}
+                              dot={false}
+                              isAnimationActive={false}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
             })()}
 
-            {/* Heap Memory — with usage thresholds */}
+            {/* Heap Memory — with usage thresholds + sparkline */}
             {(() => {
               const c = memoryColor(health.memoryHeapUsedMb, health.memoryHeapTotalMb);
               const pct = health.memoryHeapTotalMb > 0
                 ? Math.round((health.memoryHeapUsedMb / health.memoryHeapTotalMb) * 100)
                 : 0;
+              const sparkData = (metricsHistory ?? []).map(m => ({ ts: m.ts, v: m.heapUsedMb }));
               return (
                 <Card className={c.card ? `border ${c.card}` : ""}>
                   <CardContent className="pt-5 pb-4">
@@ -3967,7 +4020,7 @@ function SystemHealthTab() {
                       </div>
                     </div>
                     {/* Mini progress bar */}
-                    <div className="mt-3 h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${
                           pct > 90 ? "bg-red-500" : pct > 70 ? "bg-amber-500" : "bg-violet-500"
@@ -3975,6 +4028,32 @@ function SystemHealthTab() {
                         style={{ width: `${pct}%` }}
                       />
                     </div>
+                    {sparkData.length > 1 && (
+                      <div className="mt-2 h-10">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={sparkData}>
+                            <RechartsTooltip
+                              content={({ active, payload }) =>
+                                active && payload?.[0] ? (
+                                  <div className="rounded bg-popover px-2 py-1 text-xs shadow border">
+                                    {payload[0].value} MB
+                                  </div>
+                                ) : null
+                              }
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="v"
+                              stroke={pct > 90 ? "#ef4444" : pct > 70 ? "#f59e0b" : "#8b5cf6"}
+                              fill={pct > 90 ? "#ef444420" : pct > 70 ? "#f59e0b20" : "#8b5cf620"}
+                              strokeWidth={1.5}
+                              dot={false}
+                              isAnimationActive={false}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );

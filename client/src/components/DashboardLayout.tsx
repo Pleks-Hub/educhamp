@@ -486,6 +486,16 @@ function ImpersonationBanner() {
     onError: (e) => toast.error(e.message),
   });
 
+  const extendMutation = trpc.admin.extendImpersonation.useMutation({
+    onSuccess: (data) => {
+      setExpires(data.expiresAt);
+      setSecsLeft(Math.max(0, Math.ceil((data.expiresAt - Date.now()) / 1000)));
+      sessionStorage.setItem("educhamp-impersonation-expires", String(data.expiresAt));
+      toast.success("Session extended by 15 minutes");
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   // Tick every second; auto-redirect when timer hits 0
   useEffect(() => {
     if (!token || !expires) return;
@@ -539,15 +549,26 @@ function ImpersonationBanner() {
           {mm}:{ss}
         </span>
       </div>
-      <button
-        onClick={() => endMutation.mutate({ token })}
-        disabled={endMutation.isPending}
-        className={`rounded-md px-3 py-1 text-xs font-semibold text-white transition-colors disabled:opacity-60 ${
-          isUrgent ? "bg-red-500 hover:bg-red-600" : "bg-amber-500 hover:bg-amber-600"
-        }`}
-      >
-        {endMutation.isPending ? "Ending…" : "End Session"}
-      </button>
+      <div className="flex items-center gap-2">
+        {secsLeft <= 300 && (
+          <button
+            onClick={() => extendMutation.mutate({ token })}
+            disabled={extendMutation.isPending || endMutation.isPending}
+            className="rounded-md border border-current px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-60 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
+          >
+            {extendMutation.isPending ? "Extending…" : "+15 min"}
+          </button>
+        )}
+        <button
+          onClick={() => endMutation.mutate({ token })}
+          disabled={endMutation.isPending}
+          className={`rounded-md px-3 py-1 text-xs font-semibold text-white transition-colors disabled:opacity-60 ${
+            isUrgent ? "bg-red-500 hover:bg-red-600" : "bg-amber-500 hover:bg-amber-600"
+          }`}
+        >
+          {endMutation.isPending ? "Ending…" : "End Session"}
+        </button>
+      </div>
     </div>
   );
 }

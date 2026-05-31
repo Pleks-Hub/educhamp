@@ -1483,6 +1483,11 @@ export const adminRouter = router({
       dbStatus = "error";
     }
     const mem = process.memoryUsage();
+    const heapUsedMb = Math.round(mem.heapUsed / 1024 / 1024);
+    const heapTotalMb = Math.round(mem.heapTotal / 1024 / 1024);
+    const pingMs = dbPingMs ?? 0;
+    // Append to in-process ring buffer for sparklines
+    appendMetricSnapshot({ ts: Date.now(), dbPingMs: pingMs, heapUsedMb, heapTotalMb });
     return {
       uptimeSeconds: Math.floor(process.uptime()),
       nodeVersion: process.version,
@@ -1490,8 +1495,8 @@ export const adminRouter = router({
       dbStatus,
       dbPingMs,
       memoryRssMb: Math.round(mem.rss / 1024 / 1024),
-      memoryHeapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
-      memoryHeapTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
+      memoryHeapUsedMb: heapUsedMb,
+      memoryHeapTotalMb: heapTotalMb,
       checkedAt: Date.now(),
     };
   }),
@@ -1972,4 +1977,68 @@ export const adminRouter = router({
       await logAdminAction(ctx.user.id, "user.impersonate.force_end", "session", input.sessionId, {});
       return { success: true };
     }),
+
+  /**
+   * Extend an active impersonation session by 15 minutes.
+   * The caller must supply the session token (stored in sessionStorage on the frontend).
+   * Returns the new expiresAt timestamp so the banner countdown can reset.
+   */
+  extendImpersonation: protectedProcedure
+    .input(z.object({ token: z.string() }))
+    .mutation(async ({ input }) => {
+      const { getDb } = await import("../db");
+      const { adminImpersonationSessions } = await import("../../drizzle/schema");
+      const { eq, and, isNull, gt } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const [session] = await db
+        .select()
+        .from(adminImpersonationSessions)
+        .where(
+          and(
+            eq(adminImpersonationSessions.token, input.token),
+            isNull(adminImpersonationSessions.endedAt),
+            gt(adminImpersonationSessions.expiresAt, new Date())
+          )
+        )
+        .limit(1);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Active impersonation session not found" });
+      const newExpiresAt = new Date(session.expiresAt.getTime() + 15 * 60 * 1000);
+      await db
+        .update(adminImpersonationSessions)
+        .set({ expiresAt: newExpiresAt })
+        .where(eq(adminImpersonationSessions.id, session.id));
+      return { expiresAt: newExpiresAt.getTime() };
+    }),
+
+  /**
+   * Return a ring-buffer of the last 20 system health snapshots.
+   * Snapshots are taken every time getSystemHealth is called and stored in a
+   * module-level array so they persist across requests within the same process.
+   */
+  getSystemMetricsHistory: adminProcedure.query(async () => {
+    return systemMetricsHistory.slice();
+  }),
 });
+
+// ─── In-process metrics ring buffer (max 20 entries) ─────────────────────────
+type MetricSnapshot = {
+  ts: number;          // Unix ms
+  dbPingMs: number;
+  heapUsedMb: number;
+  heapTotalMb: number;
+};
+
+const MAX_METRICS_HISTORY = 20;
+const systemMetricsHistory: MetricSnapshot[] = [];
+
+/**
+ * Called by getSystemHealth to append a snapshot to the ring buffer.
+ * Exported so tests can inspect it.
+ */
+export function appendMetricSnapshot(snapshot: MetricSnapshot): void {
+  systemMetricsHistory.push(snapshot);
+  if (systemMetricsHistory.length > MAX_METRICS_HISTORY) {
+    systemMetricsHistory.shift();
+  }
+}

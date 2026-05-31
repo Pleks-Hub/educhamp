@@ -2153,3 +2153,15 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UI: Admin EmailSettingsTab — Send Test Email button wired to sendTestEmail procedure
 - [x] UI: Admin EmailSettingsTab — Email Log tab with Retry button for failed entries
 - [x] Tests: server/email.test.ts — 20 test cases (all 880 tests passing)
+
+### Admin Sprint 8 — ImpersonationBanner Extend, Email Log Filters, System Sparklines
+
+- [x] Server: admin.extendImpersonation procedure — extend active session by 15 min, return new expiresAt
+- [x] UI: ImpersonationBanner — "Extend +15 min" button (shown when <5 min remaining); calls extendImpersonation, resets countdown
+- [x] UI: Email Logs tab — search input (filter by recipient email or subject)
+- [x] UI: Email Logs tab — date range filter (Today / Last 7 days / Last 30 days / All)
+- [x] UI: Email Logs tab — status filter (All / Sent / Failed / Pending)
+- [x] UI: System tab — sparkline chart on DB latency card (last 20 pings, recharts LineChart)
+- [x] UI: System tab — sparkline chart on heap memory card (last 20 samples, recharts AreaChart)
+- [x] Server: admin.getSystemMetricsHistory — returns last 20 health snapshots stored in memory ring buffer
+- [x] 880/880 tests passing
