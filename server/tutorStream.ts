@@ -343,13 +343,21 @@ export function registerTutorStreamRoute(app: Express) {
               .join(" | ")
           : "";
 
-      // Determine Young Learner Mode and Parent-Led Mode
-      const youngLearnerGrade = studentDemographics?.gradeLevel ?? activeCourse?.gradeLevel;
-      const isYoungLearner = isYoungLearnerGrade(youngLearnerGrade);
-      // Load parent-led mode setting from profile
+      // Determine Young Learner Mode and Parent-Led Mode.
+      // The active course's grade level is the authoritative source — a student who
+      // was onboarded as Pre-K but has since switched to an advanced course (e.g.
+      // Algebra 1, Biology 1) must NOT receive simplified language or Parent-Led
+      // coaching prompts. The profile flag is only honoured when the current course
+      // is itself a Pre-K / Kindergarten course.
+      const courseGrade = activeCourse?.gradeLevel ?? null;
+      const isEarlyChildhoodCourse = isYoungLearnerGrade(courseGrade);
+      // Young Learner Mode: derive from the course grade, not the profile grade,
+      // so switching courses immediately changes the AI persona.
+      const isYoungLearner = isEarlyChildhoodCourse;
+      // Load parent-led mode setting from profile — only honour it for Pre-K/K courses
       const { getUserProfile: getProfileForMode } = await import("./db");
       const modeProfile = await getProfileForMode(contextUserId).catch(() => null);
-      const parentLedMode = modeProfile?.parentLedMode === true;
+      const parentLedMode = modeProfile?.parentLedMode === true && isEarlyChildhoodCourse;
 
       // ── Gamification context for AI motivation coach ──────────────────────────────
       const [xpSummary, streakData, badgesData] = await Promise.all([
