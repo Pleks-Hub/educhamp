@@ -2505,8 +2505,10 @@ export default function AdminDashboard() {
             <NavTooltip content="Flagged Questions — review and resolve student-reported question issues">
               <TabsTrigger value="flaggedquestions" className="gap-2"><Flag className="h-4 w-4" /> Flagged Questions</TabsTrigger>
             </NavTooltip>
-            <NavTooltip content="Email Settings — configure sender identity, test delivery, and domain verification">
+            <NavTooltip content="Email Settings — configure sender identity, test delivery, and domain verification" side="bottom" delayDuration={700}>
               <TabsTrigger value="emailsettings" className="gap-2"><MailCheck className="h-4 w-4" /> Email Settings</TabsTrigger>
+            </NavTooltip>
+            <NavTooltip content="District Transfer — move students between districts with crosswalk-weighted mastery transfer" side="bottom" delayDuration={700}>
               <TabsTrigger value="districttransfer" className="gap-2"><ArrowRightLeft className="h-4 w-4" /> District Transfer</TabsTrigger>
             </NavTooltip>
           </TabsList>

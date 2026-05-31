@@ -2094,3 +2094,9 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Amber variant when streakFreezeCount > 0; red variant when no freezes remain
 - [x] Study Now CTA navigates to /curriculum; dismiss stores per-streak key in sessionStorage (once per session per streak length)
 - [x] gamification.getStreak query added to Home.tsx (student accountType only, staleTime 5min)
+
+### Admin Module Crash Fix ✓ COMPLETE
+
+- [x] Root cause: NavTooltip on line 2508 wrapped two TabsTrigger children (Email Settings + District Transfer) — violates React.Children.only constraint used by TooltipTrigger asChild
+- [x] Fix: split into two separate NavTooltip wrappers, each with exactly one TabsTrigger child
+- [x] 860/860 tests passing, TypeScript exit 0 (45 pre-existing admin.ts stubs unchanged)
