@@ -26,6 +26,7 @@ import {
   Clock,
   Loader2,
   RotateCcw,
+  SkipForward,
   Timer,
   XCircle,
   ChevronDown,
@@ -270,6 +271,7 @@ export default function Diagnostic() {
   // Review state
   const [reviewFilter, setReviewFilter] = useState<"all" | "correct" | "wrong">("all");
   const [reviewUnit, setReviewUnit] = useState<string>("all");
+  const [showSkipDialog, setShowSkipDialog] = useState(false);
 
   // Retest: generate a unique seed per session so each attempt gets different questions
   const [sessionSeed] = useState(() => Date.now().toString() + Math.random().toString(36).slice(2));
@@ -791,6 +793,7 @@ export default function Diagnostic() {
   // ── Start screen ──────────────────────────────────────────────────────────
   if (!started) {
     return (
+      <>
       <div className="p-6 space-y-6 page-enter max-w-2xl">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Placement Diagnostic</h1>
@@ -845,9 +848,55 @@ export default function Diagnostic() {
                 Begin Diagnostic
               </Button>
             </NavTooltip>
+            <button
+              onClick={() => setShowSkipDialog(true)}
+              className="w-full text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors py-1 flex items-center justify-center gap-1"
+            >
+              <SkipForward className="h-3 w-3" />
+              Skip diagnostic — go directly to a unit
+            </button>
           </CardContent>
         </Card>
       </div>
+
+      {/* Skip-to-unit dialog */}
+      <Dialog open={showSkipDialog} onOpenChange={setShowSkipDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <SkipForward className="h-5 w-5 text-primary" />
+              Skip to a Unit
+            </DialogTitle>
+            <DialogDescription>
+              Choose a unit to start directly. Your placement will not be set and all units will remain unlocked.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-72 overflow-y-auto py-1">
+            {(dashboard?.units ?? []).map((u: any) => (
+              <button
+                key={u.unitNumber}
+                onClick={() => {
+                  setShowSkipDialog(false);
+                  setLocation(`/curriculum/unit/${u.unitNumber}`);
+                }}
+                className="w-full flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors text-left"
+              >
+                <div className="h-7 w-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
+                  {u.unitNumber}
+                </div>
+                <span className="text-sm font-medium text-foreground">{u.title}</span>
+              </button>
+            ))}
+            {(dashboard?.units ?? []).length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No units available yet.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSkipDialog(false)}>Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      </>
     );
   }
 
@@ -963,8 +1012,16 @@ export default function Diagnostic() {
           </div>
         </div>
 
-        {/* Progress */}
-        <Progress value={progressPct} className="h-1.5" />
+        {/* Progress bar with estimated time */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-muted-foreground">{answeredCount} of {totalQ} answered</span>
+            <span className="text-[10px] text-muted-foreground">
+              ~{Math.max(1, Math.round(((totalQ - currentIndex) * 45) / 60))} min remaining
+            </span>
+          </div>
+          <Progress value={progressPct} className="h-1.5" />
+        </div>
 
         {/* Question Card */}
         <Card className="border shadow-sm">

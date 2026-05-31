@@ -2061,3 +2061,18 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] TUX-4: Connection-lost state — network errors show persistent red banner with Retry button above input bar; clears on new send ✅
 - [x] TUX-5: Input character counter — shows remaining chars in amber when >3500, red when >=4000 ✅
 - [x] TUX-6: Mobile sidebar overlay — fixed z-40 sidebar with translate-x animation; z-30 backdrop dismisses on tap; desktop unchanged ✅
+
+### Production Readiness Sprint 4 — Onboarding Polish, Tutor Animations, Parent Dashboard
+
+#### Diagnostic onboarding polish
+- [x] Progress bar already exists in the question header (currentIndex / questions.length)
+- [x] Added estimated time remaining: "~N min left" shown in header (questions remaining × 36s)
+- [x] Added "Skip diagnostic — go directly to a unit" button on start screen; opens Dialog listing all units; navigates to /curriculum/unit/:n
+
+#### Tutor UX refinements
+- [x] COPPA banner uses Tailwind transition-all for enter/exit; no additional CSS needed
+- [x] Stop button now opens AlertDialog confirmation ("Stop generating? / Keep going / Stop") before calling stopStreaming()
+
+#### Parent Dashboard improvements
+- [x] Replaced text-based Mastery by Unit progress bars with Recharts BarChart (green ≥80%, amber 60-79%, red <60%; legend; tooltip with skill count)
+- [x] Added Recent Activity vertical timeline to Progress tab: quiz attempts (color-coded by score) + unit completions with dot indicators

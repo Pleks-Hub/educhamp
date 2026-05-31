@@ -22,6 +22,16 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { StreamdownRenderer } from "@/components/StreamdownRenderer";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from "recharts";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1478,27 +1488,48 @@ function LearningInsightsPanel({ childId }: { childId: number }) {
         </div>
       )}
 
-      {/* Mastery by unit */}
+      {/* Mastery by unit — Recharts bar chart */}
       {data.masteryTrend.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-primary" /> Mastery by Unit
           </h3>
-          <div className="space-y-2">
-            {data.masteryTrend.map((u) => (
-              <div key={u.unitNumber} className="flex items-center gap-3">
-                <div className="w-6 text-xs text-muted-foreground text-right shrink-0">U{u.unitNumber}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-xs text-muted-foreground">{u.skillCount} skill{u.skillCount !== 1 ? "s" : ""}</span>
-                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded border ml-2 shrink-0 ${masteryColor(u.averageScore)}`}>
-                      {u.averageScore}%
-                    </span>
-                  </div>
-                  <Progress value={u.averageScore} className="h-1.5" />
-                </div>
-              </div>
-            ))}
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart
+              data={data.masteryTrend.map((u) => ({ name: `U${u.unitNumber}`, score: u.averageScore, skills: u.skillCount }))}
+              margin={{ top: 4, right: 8, left: -24, bottom: 0 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
+                formatter={(value: number, _name: string, props: any) => [
+                  `${value}% (${props.payload.skills} skill${props.payload.skills !== 1 ? "s" : ""})`,
+                  "Mastery",
+                ]}
+              />
+              <Bar dataKey="score" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                {data.masteryTrend.map((u) => (
+                  <Cell
+                    key={u.unitNumber}
+                    fill={
+                      u.averageScore >= 80
+                        ? "hsl(142 71% 45%)"
+                        : u.averageScore >= 60
+                        ? "hsl(38 92% 50%)"
+                        : "hsl(0 84% 60%)"
+                    }
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <div className="flex items-center gap-4 justify-center mt-2">
+            <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-500 inline-block" />≥80% Mastered</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><span className="h-2.5 w-2.5 rounded-sm bg-amber-400 inline-block" />60–79% Developing</span>
+            <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground"><span className="h-2.5 w-2.5 rounded-sm bg-red-400 inline-block" />&lt;60% Needs Work</span>
           </div>
         </div>
       )}
@@ -1795,6 +1826,53 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Activity Feed */}
+          {(child.recentQuizzes.length > 0 || child.unitMastery.some((u) => u.avgMastery !== null)) && (
+            <div>
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" /> Recent Activity
+              </h3>
+              <div className="relative pl-5 space-y-3">
+                {/* Vertical timeline line */}
+                <div className="absolute left-1.5 top-1 bottom-1 w-px bg-border" aria-hidden="true" />
+                {/* Quiz attempts as timeline events */}
+                {child.recentQuizzes.slice(0, 5).map((q, i) => (
+                  <div key={i} className="relative flex items-start gap-3">
+                    <div className={`absolute -left-[13px] h-3 w-3 rounded-full border-2 border-background mt-0.5 ${
+                      q.score >= 75 ? "bg-emerald-500" : q.score >= 60 ? "bg-amber-400" : "bg-red-400"
+                    }`} aria-hidden="true" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium text-foreground">Unit {q.unitNumber} Quiz</span>
+                        <span className={`text-xs font-bold tabular-nums ${
+                          q.score >= 75 ? "text-emerald-600" : q.score >= 60 ? "text-amber-600" : "text-red-600"
+                        }`}>{q.score}%</span>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">{new Date(q.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                    </div>
+                  </div>
+                ))}
+                {/* Unit mastery milestones */}
+                {child.unitMastery
+                  .filter((u) => u.status === "completed" && u.avgMastery !== null)
+                  .slice(0, 3)
+                  .map((u) => (
+                    <div key={u.unitNumber} className="relative flex items-start gap-3">
+                      <div className="absolute -left-[13px] h-3 w-3 rounded-full border-2 border-background bg-primary mt-0.5" aria-hidden="true" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium text-foreground truncate">Unit {u.unitNumber} completed</span>
+                          <span className={`text-xs font-bold tabular-nums ${masteryColor(u.avgMastery!)}`}>{u.avgMastery}%</span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">{u.title}</span>
+                      </div>
+                    </div>
+                  ))
+                }
               </div>
             </div>
           )}

@@ -30,6 +30,16 @@ import {
   X,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useIsMobile } from "@/hooks/useMobile";
 import { toast } from "sonner";
@@ -433,6 +443,8 @@ export default function Tutor() {
   const [connectionLost, setConnectionLost] = useState(false);
   // TUX-5: last user message for retry
   const lastUserMessageRef = useRef<string>("");
+  // TUX-1 confirmation: show stop-streaming confirm dialog
+  const [showStopConfirm, setShowStopConfirm] = useState(false);
   // Use useMobile hook for reactive mobile detection (avoids SSR issues and Safari quirks)
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false); // default closed; updated in effect below
@@ -692,6 +704,7 @@ export default function Tutor() {
   }
 
   return (
+    <>
     <div className="flex h-[calc(100vh-56px)] overflow-hidden page-enter">
       {/* TUX-6: Mobile sidebar backdrop */}
       {isMobile && sidebarOpen && (
@@ -1171,7 +1184,7 @@ export default function Tutor() {
               {/* TUX-1: Stop button during streaming; send button otherwise */}
               {isStreaming ? (
                 <Button
-                  onClick={stopStreaming}
+                  onClick={() => setShowStopConfirm(true)}
                   size="sm"
                   variant="destructive"
                   className="h-9 w-9 p-0 shrink-0 rounded-xl"
@@ -1210,5 +1223,30 @@ export default function Tutor() {
         </div>
       </div>
     </div>
+
+    {/* TUX-1: Stop-streaming confirmation dialog */}
+    <AlertDialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Stop generating?</AlertDialogTitle>
+          <AlertDialogDescription>
+            EduBot is still writing a response. Stopping now will discard the partial answer. You can always ask again.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep going</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => {
+              setShowStopConfirm(false);
+              stopStreaming();
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Stop
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
