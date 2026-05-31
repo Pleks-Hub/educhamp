@@ -628,7 +628,12 @@ export const parentInviteTokens = mysqlTable("parentInviteTokens", {
   resendCount: int("resendCount").notNull().default(0),
   lastResentAt: timestamp("lastResentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  // P1-1: indexes for invite polling (polled every 30s by notification bell)
+  studentStatusIdx: index("parentInviteTokens_studentId_status_idx").on(t.studentId, t.status),
+  parentIdIdx: index("parentInviteTokens_parentId_idx").on(t.parentId),
+  statusExpiresIdx: index("parentInviteTokens_status_expiresAt_idx").on(t.status, t.expiresAt),
+}));
 export type ParentInviteToken = typeof parentInviteTokens.$inferSelect;
 
 // ─── Newsletter Subscriptions ─────────────────────────────────────────────────
@@ -806,7 +811,12 @@ export const emailLogs = mysqlTable("emailLogs", {
   deliveryStatus: mysqlEnum("deliveryStatus", ["sent", "delivered", "opened", "bounced", "complained", "failed"]).default("sent"),
   deliveryUpdatedAt: timestamp("deliveryUpdatedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  // P1-1: indexes for admin email logs tab
+  toEmailIdx: index("emailLogs_toEmail_idx").on(t.toEmail),
+  statusIdx: index("emailLogs_status_idx").on(t.status),
+  createdAtIdx: index("emailLogs_createdAt_idx").on(t.createdAt),
+}));
 export type EmailLog = typeof emailLogs.$inferSelect;
 
 /**

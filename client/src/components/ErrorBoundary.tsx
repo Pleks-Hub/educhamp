@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { AlertTriangle, RotateCcw } from "lucide-react";
+import { AlertTriangle, Home, RotateCcw } from "lucide-react";
 import { Component, ReactNode } from "react";
 
 interface Props {
@@ -9,54 +9,85 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  errorId: string | null;
 }
 
 class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorId: null };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    // Generate a short error ID for support reference (never exposes stack)
+    const errorId = Math.random().toString(36).slice(2, 9).toUpperCase();
+    return { hasError: true, error, errorId };
+  }
+
+  componentDidCatch(error: Error, info: { componentStack: string }) {
+    // Log to console in all environments for Cloud Run log capture
+    // Stack is NOT sent to the client — stays server-side in logs only
+    console.error("[ErrorBoundary]", error.message, info.componentStack);
   }
 
   render() {
     if (this.state.hasError) {
       return (
         <div className="flex items-center justify-center min-h-screen p-8 bg-background">
-          <div className="flex flex-col items-center w-full max-w-2xl p-8">
-            <AlertTriangle
-              size={48}
-              className="text-destructive mb-6 flex-shrink-0"
-            />
+          <div className="flex flex-col items-center w-full max-w-md p-8 text-center">
+            <div className="h-16 w-16 rounded-2xl bg-destructive/10 flex items-center justify-center mb-6">
+              <AlertTriangle size={32} className="text-destructive" />
+            </div>
 
-            <h2 className="text-xl mb-4">An unexpected error occurred.</h2>
+            <h2 className="text-xl font-semibold mb-2">Something went wrong</h2>
+            <p className="text-sm text-muted-foreground mb-1">
+              EduChamp ran into an unexpected error.
+            </p>
+            <p className="text-sm text-muted-foreground mb-6">
+              Try reloading the page. If the problem persists, contact{" "}
+              <a href="mailto:support@educhamp.app" className="underline hover:text-foreground">
+                support@educhamp.app
+              </a>{" "}
+              with error code{" "}
+              <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">
+                {this.state.errorId}
+              </code>.
+            </p>
 
+            {/* Dev-only stack trace — never visible in production */}
             {import.meta.env.DEV && this.state.error && (
-              <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
-                <pre className="text-sm text-muted-foreground whitespace-break-spaces">
+              <div className="p-4 w-full rounded bg-muted overflow-auto mb-6 text-left">
+                <p className="text-xs font-semibold text-muted-foreground mb-1">Dev stack trace:</p>
+                <pre className="text-xs text-muted-foreground whitespace-break-spaces">
                   {this.state.error.stack}
                 </pre>
               </div>
             )}
-            {!import.meta.env.DEV && (
-              <p className="text-sm text-muted-foreground mb-6">
-                If this keeps happening, please contact support.
-              </p>
-            )}
 
-            <button
-              onClick={() => window.location.reload()}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg",
-                "bg-primary text-primary-foreground",
-                "hover:opacity-90 cursor-pointer"
-              )}
-            >
-              <RotateCcw size={16} />
-              Reload Page
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => window.location.href = "/"}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm",
+                  "border border-border bg-background hover:bg-muted",
+                  "transition-colors cursor-pointer"
+                )}
+              >
+                <Home size={14} />
+                Go Home
+              </button>
+              <button
+                onClick={() => window.location.reload()}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm",
+                  "bg-primary text-primary-foreground",
+                  "hover:opacity-90 cursor-pointer"
+                )}
+              >
+                <RotateCcw size={14} />
+                Reload Page
+              </button>
+            </div>
           </div>
         </div>
       );

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StreamdownRenderer, useStreamdownReady } from "@/components/StreamdownRenderer";
 import {
+  AlertTriangle,
   BookOpen,
   Brain,
   ChevronDown,
@@ -18,10 +19,13 @@ import {
   Loader2,
   MessageSquare,
   RefreshCw,
+  RotateCcw,
   Send,
   Sparkles,
+  Square,
   Target,
   Users,
+  WifiOff,
   Wrench,
   X,
 } from "lucide-react";
@@ -158,6 +162,7 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  isError?: boolean; // TUX-2: marks a failed assistant response for retry UI
 };
 
 
@@ -422,6 +427,12 @@ export default function Tutor() {
   // Track whether vendor-shiki has loaded — show branded overlay on first message send
   const streamdownReady = useStreamdownReady();
   const [shikiLoadingVisible, setShikiLoadingVisible] = useState(false);
+  // TUX-3: COPPA consent required inline banner
+  const [coppaBlocked, setCoppaBlocked] = useState(false);
+  // TUX-4: connection-lost persistent banner
+  const [connectionLost, setConnectionLost] = useState(false);
+  // TUX-5: last user message for retry
+  const lastUserMessageRef = useRef<string>("");
   // Use useMobile hook for reactive mobile detection (avoids SSR issues and Safari quirks)
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false); // default closed; updated in effect below
@@ -510,6 +521,11 @@ export default function Tutor() {
     setShowScrollButton(distanceFromBottom > 120);
   }, []);
 
+  // TUX-1: Stop streaming
+  const stopStreaming = useCallback(() => {
+    streamingAbortRef.current?.abort();
+  }, []);
+
   // ── Send message ──────────────────────────────────────────────────────────────
   const sendMessage = useCallback(
     (overrideText?: string) => {
@@ -519,6 +535,13 @@ export default function Tutor() {
         toast.error("Please sign in to use the AI Tutor");
         return;
       }
+
+      // TUX-2: store last user message for retry
+      lastUserMessageRef.current = text;
+      // TUX-4: clear connection-lost banner on new send
+      setConnectionLost(false);
+      // TUX-3: clear COPPA banner on new send
+      setCoppaBlocked(false);
 
       const userMessage: Message = { role: "user", content: text, timestamp: Date.now() };
       setMessages((prev) => [...prev, userMessage]);
@@ -550,6 +573,16 @@ export default function Tutor() {
             }),
             signal: controller.signal,
           });
+
+          // TUX-3: COPPA consent required — show inline banner instead of toast
+          if (res.status === 403) {
+            const body = await res.json().catch(() => ({}));
+            if (body?.error === "COPPA_CONSENT_REQUIRED") {
+              setCoppaBlocked(true);
+              setMessages((prev) => prev.slice(0, -1)); // remove empty placeholder
+              return;
+            }
+          }
 
           if (!res.ok || !res.body) {
             throw new Error(`Server error: ${res.status}`);
@@ -592,8 +625,24 @@ export default function Tutor() {
             }
           }
         } catch (err: unknown) {
-          if ((err as Error).name !== "AbortError") {
-            toast.error("Connection error. Please try again.");
+          if ((err as Error).name === "AbortError") {
+            // User stopped streaming — remove the empty placeholder if nothing was streamed
+            setMessages((prev) => {
+              const last = prev[prev.length - 1];
+              return last?.role === "assistant" && !last.content ? prev.slice(0, -1) : prev;
+            });
+          } else {
+            // TUX-4: network error — show connection-lost banner and mark message as errored
+            setConnectionLost(true);
+            // TUX-2: mark the last assistant message as errored for retry UI
+            setMessages((prev) => {
+              const updated = [...prev];
+              const last = updated[updated.length - 1];
+              if (last?.role === "assistant") {
+                updated[updated.length - 1] = { ...last, isError: true, content: last.content || "" };
+              }
+              return updated;
+            });
           }
         } finally {
           setIsStreaming(false);
@@ -644,11 +693,25 @@ export default function Tutor() {
 
   return (
     <div className="flex h-[calc(100vh-56px)] overflow-hidden page-enter">
-      {/* ── Left Sidebar ─────────────────────────────────────────────────────── */}
+      {/* TUX-6: Mobile sidebar backdrop */}
+      {isMobile && sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-[1px]"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      {/* ── Left Sidebar ──────────────────────────────────────────────────────────────────── */}
       <aside
         className={`${
-          sidebarOpen ? "w-64" : "w-0"
-        } shrink-0 border-r bg-muted/20 flex flex-col overflow-hidden transition-all duration-200`}
+          isMobile
+            ? `fixed inset-y-0 left-0 z-40 w-72 bg-background border-r shadow-xl flex flex-col transition-transform duration-200 ${
+                sidebarOpen ? "translate-x-0" : "-translate-x-full"
+              }`
+            : `${
+                sidebarOpen ? "w-64" : "w-0"
+              } shrink-0 border-r bg-muted/20 flex flex-col overflow-hidden transition-all duration-200`
+        }`}
       >
         <div className="p-4 border-b shrink-0">
           <div className="flex items-center gap-2">
@@ -892,11 +955,34 @@ export default function Tutor() {
                     className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       msg.role === "user"
                         ? "max-w-[75%] bg-primary text-primary-foreground rounded-br-sm"
+                        : msg.isError
+                        ? "max-w-[85%] bg-destructive/5 border border-destructive/30 rounded-bl-sm shadow-sm"
                         : "max-w-[85%] bg-card border border-border rounded-bl-sm shadow-sm"
                     }`}
                   >
                     {msg.role === "assistant" ? (
-                      msg.content ? (
+                      msg.isError ? (
+                        /* TUX-2: Error state with retry button */
+                        <div className="space-y-2">
+                          {msg.content ? (
+                            <StreamdownRenderer className="prose prose-sm max-w-none dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:leading-relaxed [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-3 [&_strong]:font-semibold [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs">
+                              {msg.content}
+                            </StreamdownRenderer>
+                          ) : (
+                            <p className="text-xs text-destructive">Response failed. Please try again.</p>
+                          )}
+                          <button
+                            onClick={() => {
+                              setMessages((prev) => prev.slice(0, -1));
+                              sendMessage(lastUserMessageRef.current);
+                            }}
+                            className="flex items-center gap-1.5 text-xs text-destructive hover:text-destructive/80 font-medium transition-colors"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            Retry
+                          </button>
+                        </div>
+                      ) : msg.content ? (
                         <StreamdownRenderer className="prose prose-sm max-w-none dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:leading-relaxed [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-3 [&_strong]:font-semibold [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs">
                           {msg.content}
                         </StreamdownRenderer>
@@ -968,6 +1054,57 @@ export default function Tutor() {
         {/* ── Input Area ─────────────────────────────────────────────────────── */}
         <div className="border-t bg-background px-4 py-3 shrink-0">
           <div className="max-w-3xl mx-auto">
+            {/* TUX-3: COPPA consent required inline banner */}
+            {coppaBlocked && (
+              <div role="alert" className="mb-3 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700 px-4 py-3 text-sm">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-amber-900 dark:text-amber-200 leading-tight">Parental consent required</p>
+                  <p className="text-amber-800 dark:text-amber-300 text-xs mt-0.5 leading-relaxed">
+                    A parent or guardian must approve AI Tutor access for your account.
+                    Ask a parent to sign in and approve access in the{" "}
+                    <a href="/parent" className="underline font-medium">Parent Dashboard</a>.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setCoppaBlocked(false)}
+                  className="shrink-0 text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 transition-colors"
+                  aria-label="Dismiss COPPA notice"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            {/* TUX-4: Connection-lost persistent banner */}
+            {connectionLost && (
+              <div role="alert" className="mb-3 flex items-center gap-3 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-2.5 text-sm">
+                <WifiOff className="h-4 w-4 text-destructive shrink-0" aria-hidden="true" />
+                <p className="flex-1 text-destructive text-xs font-medium">Connection lost. Check your network and try again.</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2.5 text-xs gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 shrink-0"
+                  onClick={() => {
+                    setConnectionLost(false);
+                    setMessages((prev) => {
+                      const last = prev[prev.length - 1];
+                      return last?.role === "assistant" && last.isError ? prev.slice(0, -1) : prev;
+                    });
+                    sendMessage(lastUserMessageRef.current);
+                  }}
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Retry
+                </Button>
+                <button
+                  onClick={() => setConnectionLost(false)}
+                  className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Dismiss connection error"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             {/* Misconception Drill quick-action chip — shown when a lesson is in context and mode isn't already misconception_drill */}
             {showMisconceptionChip && (
               <div className="mb-2 flex items-center gap-2">
@@ -1031,25 +1168,44 @@ export default function Tutor() {
                 rows={1}
                 disabled={isStreaming}
               />
-              <NavTooltip content={TUTOR_TOOLTIPS.sendMessage} side="top">
+              {/* TUX-1: Stop button during streaming; send button otherwise */}
+              {isStreaming ? (
                 <Button
-                  onClick={() => sendMessage()}
-                  disabled={!input.trim() || isStreaming}
+                  onClick={stopStreaming}
                   size="sm"
+                  variant="destructive"
                   className="h-9 w-9 p-0 shrink-0 rounded-xl"
-                  aria-label={TUTOR_TOOLTIPS.sendMessage.description}
+                  aria-label="Stop generating response"
                 >
-                  {isStreaming ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
+                  <Square className="h-4 w-4" />
                 </Button>
-              </NavTooltip>
+              ) : (
+                <NavTooltip content={TUTOR_TOOLTIPS.sendMessage} side="top">
+                  <Button
+                    onClick={() => sendMessage()}
+                    disabled={!input.trim()}
+                    size="sm"
+                    className="h-9 w-9 p-0 shrink-0 rounded-xl"
+                    aria-label={TUTOR_TOOLTIPS.sendMessage.description}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </NavTooltip>
+              )}
             </div>
-            <p className="text-[10px] text-muted-foreground text-center mt-1.5">
-              Enter to send · Shift+Enter for new line
-            </p>
+            {/* TUX-5: Character counter — shown when approaching the 4000-char limit */}
+            <div className="flex items-center justify-between mt-1.5">
+              <p className="text-[10px] text-muted-foreground">
+                Enter to send · Shift+Enter for new line
+              </p>
+              {input.length > 3500 && (
+                <p className={`text-[10px] font-medium tabular-nums ${
+                  input.length >= 4000 ? "text-destructive" : "text-amber-600 dark:text-amber-400"
+                }`}>
+                  {4000 - input.length} remaining
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>

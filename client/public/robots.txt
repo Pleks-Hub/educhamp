@@ -17,6 +17,14 @@ Disallow: /profile
 Disallow: /onboarding
 Disallow: /billing
 Disallow: /checkout
+Disallow: /tutor
+Disallow: /tutor/
+Disallow: /progress
+Disallow: /progress/
+Disallow: /skills
+Disallow: /skills/
+Disallow: /rewards
+Disallow: /adventure
 
 # Sitemap
 Sitemap: https://educhamp.app/api/sitemap.xml

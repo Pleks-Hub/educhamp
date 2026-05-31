@@ -1912,17 +1912,17 @@
 ### Phase 4 — ENG2 & USH STAAR EOC Courses (FIRST PRIORITY, added 2026-05-30)
 These are two of the five graduation-required STAAR EOC courses. Both have zero units, zero lessons, and zero questions in the database. Students preparing for English II or U.S. History STAAR exams currently get a blank result.
 
-#### English II (ENG2) — STAAR EOC
-- [ ] Seed 12 units for ENG2 (Literary Analysis, Expository Writing, Persuasive Writing, Research, Grammar, Poetry, Drama, Short Fiction, Novel Study, Revision, Speaking/Listening, EOC Review) aligned to TEKS ELA Grade 10
-- [ ] Seed lessons for each ENG2 unit (explanation, worked examples, misconceptions)
-- [ ] Generate 140+ questions for ENG2 (easy/medium/hard/challenge distribution)
-- [ ] Verify ENG2 appears in CourseCatalog and is enrollable
+#### English II (ENG2) — STAAR EOC ✓ COMPLETE (Phase 4A)
+- [x] Seed 12 units for ENG2 — completed in Phase 4A (all TEKS ELA Grade 10 codes verified)
+- [x] Seed lessons for each ENG2 unit — completed in Phase 4A
+- [x] Generate 140+ questions for ENG2 — 144 questions inserted (12 per unit × 12 units), passage-based MC + short_answer mix
+- [x] Verify ENG2 appears in CourseCatalog and is enrollable — id=210001, isActive=1, 12 units, 144 questions ✅
 
-#### U.S. History (USH) — STAAR EOC
-- [ ] Seed 12 units for USH (Colonial Era, American Revolution, Constitution, Antebellum, Civil War, Reconstruction, Industrialization, Progressive Era, WWI/WWII, Cold War, Civil Rights, Modern America) aligned to TEKS US History
-- [ ] Seed lessons for each USH unit (explanation, worked examples, misconceptions)
-- [ ] Generate 140+ questions for USH (easy/medium/hard/challenge distribution)
-- [ ] Verify USH appears in CourseCatalog and is enrollable
+#### U.S. History (USH) — STAAR EOC ✓ COMPLETE (Phase 4A)
+- [x] Seed 12 units for USH — completed in Phase 4A (all TEKS US History codes verified)
+- [x] Seed lessons for each USH unit — completed in Phase 4A
+- [x] Generate 140+ questions for USH — 144 questions inserted (12 per unit × 12 units), primary source excerpts and data descriptions included
+- [x] Verify USH appears in CourseCatalog and is enrollable — id=210002, isActive=1, 12 units, 144 questions ✅
 
 #### Phase 3C Weight Fix (added 2026-05-30)
 - [x] Confirm transferStudent() reads cw.alignmentWeight directly from DB row (no hardcoded switch)
@@ -2038,3 +2038,26 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 #### LCP / first paint ✓ COMPLETE
 - [x] Fonts are self-hosted woff2 with rel="preload" in index.html — no render-blocking Google Fonts CDN round-trip
 - [x] DashboardLayout does not block render — uses DashboardLayoutSkeleton during auth check
+
+### Production Readiness Sprint 3 — Security, Reliability & Tutor UX
+
+#### P0 Security Blockers
+- [x] P0-1: Suspended/deleted users can still log in — status check already in sdk.ts lines 304-313 (suspended, deleted, archived, deactivated) ✅
+- [x] P0-2: No HTTP security headers — helmet already mounted as first middleware in index.ts lines 72-81 ✅
+- [x] P0-3: No rate limiting on public endpoints — apiLimiter (300/min) + chatbotLimiter (20/5min) already applied ✅
+- [x] P0-4: Body parser limit is 50mb — already reduced to 1mb in index.ts line 89 ✅
+- [x] P0-5: No robots.txt — robots.txt exists; added /tutor, /progress, /skills, /rewards, /adventure to disallow list ✅
+
+#### P1 Reliability Fixes
+- [x] P1-1: DB indexes — added 6 new indexes on parentInviteTokens (studentId+status, parentId, status+expiresAt) and emailLogs (toEmail, status, createdAt); migration 0038 applied ✅
+- [x] P1-2: ErrorBoundary — already guards stack trace behind import.meta.env.DEV; enhanced with error ID, componentDidCatch logging, Go Home button, and support email link ✅
+- [x] P1-3: listUsers search — already implemented in db.ts line 1151 (LIKE on name + email) and admin.ts line 98 passes input.search ✅
+- [x] P1-4: Tutor session message cap — already capped at MAX_STORED_MESSAGES=40 in tutorStream.ts line 484; only last 20 messages sent to LLM (recentHistory.slice(-20)) ✅
+
+#### Tutor UX Improvements
+- [x] TUX-1: Stop-streaming button — red Square button replaces send button during streaming; abort clears empty placeholder ✅
+- [x] TUX-2: Retry button on error — failed messages marked isError:true; shown with red border and Retry button that re-sends lastUserMessageRef.current ✅
+- [x] TUX-3: COPPA error recovery — 403 COPPA_CONSENT_REQUIRED shows inline amber banner with Parent Dashboard link; dismissible ✅
+- [x] TUX-4: Connection-lost state — network errors show persistent red banner with Retry button above input bar; clears on new send ✅
+- [x] TUX-5: Input character counter — shows remaining chars in amber when >3500, red when >=4000 ✅
+- [x] TUX-6: Mobile sidebar overlay — fixed z-40 sidebar with translate-x animation; z-30 backdrop dismisses on tap; desktop unchanged ✅
