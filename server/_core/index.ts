@@ -19,6 +19,7 @@ import { seedDefaultQuests } from "../gamification/quests";
 import { seedDefaultHouses } from "../gamification/houses";
 import { registerStripeWebhook } from "../stripeWebhook";
 import { registerResendWebhook } from "../resendWebhook";
+import { registerEmailWebhook } from "../emailWebhook";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 
@@ -84,6 +85,8 @@ async function startServer() {
   registerStripeWebhook(app);
   // ── Resend webhook (must be registered BEFORE express.json) ──────────────────────────────────────────────────
   registerResendWebhook(app);
+  // ── Unified multi-provider email webhook (Resend + SendGrid) ──────────────────────────────
+  registerEmailWebhook(app);
 
   // 1 MB body limit — no raw file bytes go through tRPC (all uploads use S3 pre-signed URLs) (P1-12 DoS mitigation)
   app.use(express.json({ limit: "1mb" }));

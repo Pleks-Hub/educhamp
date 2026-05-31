@@ -2126,3 +2126,30 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Server: Create server/emailTemplates/emailBase.ts with base email template helpers (header, footer, button, text block)
 - [x] Fix userId property type mismatch in tutorSessions insert in admin.ts
 - [x] Verify TypeScript exits with 0 errors (excluding no pre-existing stubs)
+
+### Admin Sprint 7 — Impersonation Polish + Email Service Management
+
+#### Impersonation Polish
+- [x] System tab: Active Impersonation Sessions section (table of open sessions with adminId, impersonatedUser, created, expires, End button)
+- [x] ImpersonationBanner: countdown timer (live mm:ss) that auto-calls endImpersonation when expires
+- [x] System tab: warning thresholds — heap memory card turns amber >70% / red >90% of total; DB latency card turns amber >100ms / red >500ms
+
+#### Email Service Management
+- [x] DB: emailSettings table (provider, fromAddress, fromName, replyTo, apiKey encrypted, smtpHost/Port/Secure/Username, webhookSecret, isActive, lastTestedAt, lastTestStatus, createdAt, updatedAt, createdBy)
+- [x] DB: emailLogs table (already existed; provider column added)
+- [x] DB: emailLogsArchive table (same schema as emailLogs, for 90-day auto-archive)
+- [x] DB: Generate migration SQL (0040) and apply via webdev_execute_sql
+- [x] Server: server/services/email/types.ts — EmailPayload, EmailResult, EmailProvider interfaces
+- [x] Server: server/services/email/providers/resend.ts — ResendProvider class
+- [x] Server: server/services/email/providers/smtp.ts — SmtpProvider class using nodemailer
+- [x] Server: server/services/email/providers/sendgrid.ts — SendGridProvider class using HTTP API
+- [x] Server: server/services/email/factory.ts — getEmailProvider() reads active emailSettings row
+- [x] Server: server/services/email/index.ts — sendEmail() wraps provider, logs to emailLogs
+- [x] Server: emailService.ts updated as compatibility shim delegating to new sendEmail()
+- [x] Server: Seed initial Resend config row from RESEND_API_KEY env var
+- [x] Server: emailSettings tRPC procedures — getEmailProviders, upsertEmailProvider, deleteEmailProvider, setActiveEmailProvider, testEmailProviderConnection, sendTestEmail, retryEmailLog, getActiveImpersonationSessions
+- [x] Server: POST /api/webhooks/email — Resend + SendGrid webhook handler with signature verification
+- [x] UI: Admin EmailSettingsTab — Email Provider Management section (provider list, add/edit form, test connection, activate)
+- [x] UI: Admin EmailSettingsTab — Send Test Email button wired to sendTestEmail procedure
+- [x] UI: Admin EmailSettingsTab — Email Log tab with Retry button for failed entries
+- [x] Tests: server/email.test.ts — 20 test cases (all 880 tests passing)

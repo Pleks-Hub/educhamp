@@ -281,6 +281,13 @@
       "when": 1780189204777,
       "tag": "0039_busy_valeria_richards",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1780190470822,
+      "tag": "0040_naive_blob",
+      "breakpoints": true
     }
   ]
 }

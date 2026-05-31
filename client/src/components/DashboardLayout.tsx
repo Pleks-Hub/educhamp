@@ -14,7 +14,6 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
@@ -22,8 +21,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { getLoginUrl } from "@/const";
-import { NavTooltip, SidebarNavTooltip } from "@/components/NavTooltip";
-import { NAV_TOOLTIPS, HEADER_TOOLTIPS } from "@/lib/tooltipContent";
 import { trpc } from "@/lib/trpc";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
@@ -38,44 +35,37 @@ import {
   LayoutDashboard,
   Library,
   LogOut,
-  Map,
   PanelLeft,
   Settings,
   Share2,
   Shield,
   Sigma,
   Sparkles,
-  Trophy,
-  Gift,
   User,
   Users,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState, useCallback } from "react";
-import { X, AlertTriangle, Lock, ExternalLink, Eye } from "lucide-react";
-import { useLocation, Redirect } from "wouter";
+import { X, AlertTriangle, Lock, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { useLocation, Redirect } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import CourseSwitcher from "./CourseSwitcher";
-import { XpProgressBar } from "./XpProgressBar";
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/", tooltipKey: "dashboard" },
-  { icon: Library, label: "Course Catalog", path: "/courses", tooltipKey: "courses" },
-  { icon: BookOpen, label: "Curriculum", path: "/curriculum", tooltipKey: "curriculum" },
-  { icon: Brain, label: "AI Tutor", path: "/tutor", tooltipKey: "aiTutor" },
-  { icon: FileText, label: "Exam Prep", path: "/exam-prep", tooltipKey: "examPrep" },
-  { icon: ClipboardList, label: "Diagnostic", path: "/diagnostic", tooltipKey: "diagnostic" },
-  { icon: BarChart3, label: "Progress", path: "/progress", tooltipKey: "progress" },
-  { icon: Sigma, label: "Skill Index", path: "/skills", tooltipKey: "skillIndex" },
-  { icon: Trophy, label: "Achievements", path: "/gamification", tooltipKey: "achievements" },
-  { icon: Gift, label: "Rewards", path: "/rewards", tooltipKey: "rewards" },
-  { icon: Map, label: "Adventure Map", path: "/adventure-map", tooltipKey: "adventureMap" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: Library, label: "Course Catalog", path: "/courses" },
+  { icon: BookOpen, label: "Curriculum", path: "/curriculum" },
+  { icon: Brain, label: "AI Tutor", path: "/tutor" },
+  { icon: ClipboardList, label: "Diagnostic", path: "/diagnostic" },
+  { icon: BarChart3, label: "Progress", path: "/progress" },
+  { icon: Sigma, label: "Skill Index", path: "/skills" },
+  { icon: FileText, label: "Exam Prep", path: "/exam-prep" },
 ];
 
 // Parent Dashboard is shown to all authenticated users — any user can enrol children
-const parentMenuItem = { icon: Users, label: "Parent Dashboard", path: "/parent", tooltipKey: "parent" };
-const referralMenuItem = { icon: Share2, label: "Refer & Invite", path: "/referrals", tooltipKey: "referrals" };
-const billingMenuItem = { icon: CreditCard, label: "Billing", path: "/billing", tooltipKey: "billing" };
+const parentMenuItem = { icon: Users, label: "Parent Dashboard", path: "/parent" };
+const referralMenuItem = { icon: Share2, label: "Refer & Invite", path: "/referrals" };
+const billingMenuItem = { icon: CreditCard, label: "Billing", path: "/billing" };
 
 const SIDEBAR_WIDTH_KEY = "educhamp-sidebar-width";
 const DEFAULT_WIDTH = 256;
@@ -93,26 +83,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
-  // COPPA gate: check consent status for student accounts
-  const consentQuery = trpc.coppa.consentStatus.useQuery(undefined, {
-    enabled: !!user && user.accountType === "student",
-    staleTime: 30_000,
-  });
-
   if (loading) return <DashboardLayoutSkeleton />;
 
   if (!user) {
     return <Redirect to="/landing" />;
-  }
-
-  // If COPPA gate is active and consent is required but not approved, redirect to waiting page
-  if (
-    user.accountType === "student" &&
-    consentQuery.data?.required &&
-    consentQuery.data?.status !== "approved" &&
-    consentQuery.data?.status !== "not_required"
-  ) {
-    return <Redirect to="/consent/waiting" />;
   }
 
   return (
@@ -121,38 +95,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {children}
       </DashboardLayoutContent>
     </SidebarProvider>
-  );
-}
-
-/**
- * A button that opens the Stripe Customer Portal directly.
- * Used in the locked-access overlay so lapsed users can reactivate in one click.
- */
-function PortalButton({ className }: { className?: string }) {
-  const portalMutation = trpc.payment.createPortalSession.useMutation({
-    onSuccess: ({ url }) => {
-      window.open(url, "_blank", "noopener,noreferrer");
-    },
-    onError: (err) => {
-      toast.error(err.message || "Could not open billing portal. Please try again.");
-    },
-  });
-
-  return (
-    <Button
-      className={className}
-      onClick={() => portalMutation.mutate({ origin: window.location.origin })}
-      disabled={portalMutation.isPending}
-    >
-      {portalMutation.isPending ? (
-        "Opening portal..."
-      ) : (
-        <>
-          <ExternalLink className="mr-2 h-4 w-4" />
-          Reactivate your plan
-        </>
-      )}
-    </Button>
   );
 }
 
@@ -207,17 +149,8 @@ function DashboardLayoutContent({
   const [courseSwitcherOpen, setCourseSwitcherOpen] = useState(false);
   const dashboardQuery = trpc.progress.getDashboard.useQuery(undefined, {
     staleTime: 60_000,
-    enabled: !!user,
   });
   const activeCourseTitle = dashboardQuery.data?.courseTitle;
-
-  // Pending course request count for the Parent Dashboard badge
-  const pendingRequestsQuery = trpc.parent.getPendingCourseRequests.useQuery(undefined, {
-    staleTime: 30_000,
-    retry: false,
-    enabled: !!user,
-  });
-  const pendingRequestCount = pendingRequestsQuery.data?.length ?? 0;
 
   // Trial banner state
   const TRIAL_BANNER_KEY = "educhamp-trial-banner-dismissed";
@@ -231,7 +164,6 @@ function DashboardLayoutContent({
   const subscriptionQuery = trpc.payment.getMySubscription.useQuery(undefined, {
     staleTime: 5 * 60_000,
     retry: false,
-    enabled: !!user,
   });
   const sub = subscriptionQuery.data;
   const isTrialing = sub?.status === "trialing" && sub?.trialEnd != null;
@@ -259,15 +191,13 @@ function DashboardLayoutContent({
           {/* Header */}
           <SidebarHeader className="h-16 border-b border-sidebar-border">
             <div className="flex items-center gap-3 px-3 h-full">
-              <NavTooltip content={HEADER_TOOLTIPS.sidebarToggle} side="right">
-                <button
-                  onClick={toggleSidebar}
-                  className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-sidebar-accent transition-colors shrink-0"
-                  aria-label={HEADER_TOOLTIPS.sidebarToggle.description}
-                >
-                  <PanelLeft className="h-4 w-4 text-sidebar-foreground/70" />
-                </button>
-              </NavTooltip>
+              <button
+                onClick={toggleSidebar}
+                className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-sidebar-accent transition-colors shrink-0"
+                aria-label="Toggle sidebar"
+              >
+                <PanelLeft className="h-4 w-4 text-sidebar-foreground/70" />
+              </button>
               {!isCollapsed && (
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="h-7 w-7 rounded-lg overflow-hidden shrink-0 bg-white flex items-center justify-center">
@@ -299,40 +229,29 @@ function DashboardLayoutContent({
             </div>
           </SidebarHeader>
 
-          {/* XP Progress Bar — shown when sidebar is expanded */}
-          {!isCollapsed && <XpProgressBar />}
-
           {/* Navigation */}
           <SidebarContent className="py-3">
             <SidebarMenu className="px-2 gap-0.5">
               {menuItems.map((item) => {
                 const isActive = item.path === location || (item.path !== "/" && location.startsWith(item.path));
-                const tooltipEntry = NAV_TOOLTIPS[item.tooltipKey];
                 return (
                   <SidebarMenuItem key={item.path}>
-                    <SidebarNavTooltip
-                      content={tooltipEntry}
-                      sidebarExpanded={!isCollapsed}
-                      side="right"
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setLocation(item.path)}
+                      tooltip={item.label}
+                      className={`h-9 rounded-lg transition-all duration-150 ${
+                        isActive
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
+                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      }`}
                     >
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        onClick={() => setLocation(item.path)}
-                        tooltip={isCollapsed ? undefined : item.label}
-                        className={`h-9 rounded-lg transition-all duration-150 ${
-                          isActive
-                            ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                        aria-label={tooltipEntry?.description ?? item.label}
-                      >
-                        <item.icon className="h-4 w-4 shrink-0" />
-                        <span className="text-sm">{item.label}</span>
-                        {isActive && !isCollapsed && (
-                          <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
-                        )}
-                      </SidebarMenuButton>
-                    </SidebarNavTooltip>
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="text-sm">{item.label}</span>
+                      {isActive && !isCollapsed && (
+                        <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
+                      )}
+                    </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
               })}
@@ -345,41 +264,24 @@ function DashboardLayoutContent({
               )}
               {[parentMenuItem, referralMenuItem, billingMenuItem].map((item) => {
                 const isActive = location.startsWith(item.path);
-                const tooltipEntry = NAV_TOOLTIPS[item.tooltipKey];
-                const showPendingBadge = item.path === "/parent" && pendingRequestCount > 0;
                 return (
                   <SidebarMenuItem key={item.path}>
-                    <SidebarNavTooltip
-                      content={tooltipEntry}
-                      sidebarExpanded={!isCollapsed}
-                      side="right"
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setLocation(item.path)}
+                      tooltip={item.label}
+                      className={`h-9 rounded-lg transition-all duration-150 ${
+                        isActive
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
+                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      }`}
                     >
-                      <SidebarMenuButton
-                        isActive={isActive}
-                        onClick={() => setLocation(item.path)}
-                        tooltip={isCollapsed ? undefined : item.label}
-                        className={`h-9 rounded-lg transition-all duration-150 ${
-                          isActive
-                            ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                        }`}
-                        aria-label={tooltipEntry?.description ?? item.label}
-                      >
-                        <item.icon className="h-4 w-4 shrink-0" />
-                        <span className="text-sm">{item.label}</span>
-                        {isActive && !isCollapsed && (
-                          <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
-                        )}
-                      </SidebarMenuButton>
-                    </SidebarNavTooltip>
-                    {showPendingBadge && (
-                      <SidebarMenuBadge
-                        className="bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1"
-                        aria-label={`${pendingRequestCount} pending course request${pendingRequestCount !== 1 ? 's' : ''}`}
-                      >
-                        {pendingRequestCount > 99 ? "99+" : pendingRequestCount}
-                      </SidebarMenuBadge>
-                    )}
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="text-sm">{item.label}</span>
+                      {isActive && !isCollapsed && (
+                        <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
+                      )}
+                    </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
               })}
@@ -390,11 +292,7 @@ function DashboardLayoutContent({
           <SidebarFooter className="p-3 border-t border-sidebar-border">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button
-                  className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-sidebar-accent transition-colors w-full text-left focus:outline-none"
-                  aria-label={HEADER_TOOLTIPS.userMenu.description}
-                  title={isCollapsed ? HEADER_TOOLTIPS.userMenu.title : undefined}
-                >
+                <button className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-sidebar-accent transition-colors w-full text-left focus:outline-none">
                   <Avatar className="h-8 w-8 shrink-0 border border-sidebar-border">
                     <AvatarFallback className="text-xs font-semibold bg-sidebar-primary text-sidebar-primary-foreground">
                       {initials}
@@ -413,21 +311,21 @@ function DashboardLayoutContent({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem onClick={() => setLocation("/profile")} className="cursor-pointer" title={NAV_TOOLTIPS.settings.description}>
+                <DropdownMenuItem onClick={() => setLocation("/profile")} className="cursor-pointer">
                   <User className="mr-2 h-4 w-4" />
                   Profile &amp; Settings
                 </DropdownMenuItem>
                 {user?.role === "admin" && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setLocation("/admin")} className="cursor-pointer" title={NAV_TOOLTIPS.admin.description}>
+                    <DropdownMenuItem onClick={() => setLocation("/admin")} className="cursor-pointer">
                       <Shield className="mr-2 h-4 w-4" />
                       Admin Console
                     </DropdownMenuItem>
                   </>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive" title={NAV_TOOLTIPS.logout.description}>
+                <DropdownMenuItem onClick={logout} className="cursor-pointer text-destructive focus:text-destructive">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out
                 </DropdownMenuItem>
@@ -446,60 +344,40 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset className="bg-background">
-        {/* Impersonation Banner */}
+        {/* Admin impersonation banner */}
         <ImpersonationBanner />
-
         {/* Trial active banner */}
-        {showTrialBanner && (() => {
-          const isUrgent = trialDaysLeft <= 3;
-          const bannerBg = isUrgent
-            ? "bg-red-500/10 border-red-500/30"
-            : "bg-amber-500/10 border-amber-500/30";
-          const textColor = isUrgent
-            ? "text-red-700 dark:text-red-400"
-            : "text-amber-700 dark:text-amber-400";
-          const pillBg = isUrgent
-            ? "bg-red-500 text-white"
-            : "bg-amber-500 text-white";
-          const btnBg = isUrgent
-            ? "bg-red-500 hover:bg-red-600"
-            : "bg-amber-500 hover:bg-amber-600";
-          const dayLabel =
-            trialDaysLeft === 0
-              ? "Expires today"
-              : trialDaysLeft === 1
-              ? "1 day left"
-              : `${trialDaysLeft} days left`;
-          return (
-            <div className={`sticky top-0 z-50 flex items-center justify-between gap-3 border-b px-4 py-2.5 text-sm ${bannerBg}`}>
-              <div className={`flex items-center gap-2.5 ${textColor}`}>
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${pillBg}`}>
-                  {dayLabel}
-                </span>
-                <span className="hidden sm:inline">
-                  <strong>Free trial</strong> — upgrade to keep full access after your trial ends.
-                </span>
-                <span className="sm:hidden text-xs">Upgrade to keep access.</span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => setLocation("/billing")}
-                  className={`rounded-md px-3 py-1 text-xs font-semibold text-white transition-colors ${btnBg}`}
-                >
-                  Upgrade Now
-                </button>
-                <button
-                  onClick={dismissTrialBanner}
-                  aria-label="Dismiss trial banner"
-                  className={`rounded p-1 transition-colors ${isUrgent ? "text-red-600 hover:bg-red-500/20" : "text-amber-600 hover:bg-amber-500/20"}`}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+        {showTrialBanner && (
+          <div className="sticky top-0 z-50 flex items-center justify-between gap-3 bg-amber-500/10 border-b border-amber-500/30 px-4 py-2.5 text-sm">
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>
+                <strong>Free trial active</strong> — your trial{" "}
+                {trialDaysLeft === 0
+                  ? "expires today"
+                  : trialDaysLeft === 1
+                  ? "ends tomorrow"
+                  : `ends in ${trialDaysLeft} days`}.
+                {" "}Upgrade to keep full access.
+              </span>
             </div>
-          );
-        })()}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => setLocation("/billing")}
+                className="rounded-md bg-amber-500 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-600 transition-colors"
+              >
+                Upgrade now
+              </button>
+              <button
+                onClick={dismissTrialBanner}
+                aria-label="Dismiss trial banner"
+                className="rounded p-1 text-amber-600 hover:bg-amber-500/20 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Mobile top bar */}
         {isMobile && (
@@ -542,13 +420,12 @@ function DashboardLayoutContent({
                     : "Your subscription has ended. Reactivate to continue learning."}
                 </p>
               )}
-              <PortalButton className="w-full mb-3" />
-              <button
-                className="text-xs text-muted-foreground underline hover:text-foreground mb-4 block w-full text-center"
+              <Button
+                className="w-full mb-3"
                 onClick={() => setLocation("/billing")}
               >
-                View billing details
-              </button>
+                Reactivate your plan
+              </Button>
               <p className="text-xs text-muted-foreground">
                 Need help?{" "}
                 <a href="mailto:support@educhamp.app" className="underline hover:text-foreground">
@@ -569,11 +446,12 @@ function DashboardLayoutContent({
   );
 }
 
-// ─── Impersonation Banner ─────────────────────────────────────────────────────
+// ─── Impersonation Banner ─────────────────────────────────────────────────
 
 function ImpersonationBanner() {
   const [token, setToken] = useState<string | null>(null);
   const [expires, setExpires] = useState<number | null>(null);
+  const [secsLeft, setSecsLeft] = useState<number>(0);
   const utils = trpc.useUtils();
 
   useEffect(() => {
@@ -584,8 +462,8 @@ function ImpersonationBanner() {
       if (Date.now() < expMs) {
         setToken(t);
         setExpires(expMs);
+        setSecsLeft(Math.max(0, Math.ceil((expMs - Date.now()) / 1000)));
       } else {
-        // Expired — clean up
         sessionStorage.removeItem("educhamp-impersonation-token");
         sessionStorage.removeItem("educhamp-impersonation-expires");
       }
@@ -608,34 +486,65 @@ function ImpersonationBanner() {
     onError: (e) => toast.error(e.message),
   });
 
+  // Tick every second; auto-redirect when timer hits 0
+  useEffect(() => {
+    if (!token || !expires) return;
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((expires - Date.now()) / 1000));
+      setSecsLeft(remaining);
+      if (remaining === 0) {
+        clearInterval(interval);
+        sessionStorage.removeItem("educhamp-impersonation-token");
+        sessionStorage.removeItem("educhamp-impersonation-expires");
+        toast.info("Impersonation session expired — returning to admin console");
+        setTimeout(() => { window.location.href = "/admin"; }, 800);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [token, expires]);
+
   if (!token || !info) return null;
 
-  const minsLeft = expires ? Math.max(0, Math.ceil((expires - Date.now()) / 60_000)) : 0;
+  const mm = String(Math.floor(secsLeft / 60)).padStart(2, "0");
+  const ss = String(secsLeft % 60).padStart(2, "0");
+  const isUrgent = secsLeft <= 120;
 
   return (
     <div
       role="status"
       aria-live="polite"
-      className="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm"
+      className={`sticky top-0 z-50 flex items-center justify-between gap-3 border-b px-4 py-2.5 text-sm transition-colors ${
+        isUrgent ? "border-red-500/40 bg-red-500/10" : "border-amber-500/40 bg-amber-500/10"
+      }`}
     >
-      <div className="flex items-center gap-2.5 text-amber-700 dark:text-amber-400">
+      <div className={`flex items-center gap-2.5 ${
+        isUrgent ? "text-red-700 dark:text-red-400" : "text-amber-700 dark:text-amber-400"
+      }`}>
         <Eye className="h-4 w-4 shrink-0" />
-        <span className="inline-flex items-center rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-white">
+        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold text-white ${
+          isUrgent ? "bg-red-500" : "bg-amber-500"
+        }`}>
           Admin View
         </span>
         <span className="hidden sm:inline">
           Viewing as <strong>{info.impersonatedUser.name ?? info.impersonatedUser.email}</strong>
-          {" "}— this is an admin impersonation session
+          {" "}— admin impersonation session
         </span>
         <span className="sm:hidden text-xs">
-          Impersonating {info.impersonatedUser.name ?? info.impersonatedUser.email}
+          {info.impersonatedUser.name ?? info.impersonatedUser.email}
         </span>
-        <span className="text-xs text-amber-600 dark:text-amber-500">({minsLeft}m left)</span>
+        <span className={`font-mono text-xs font-semibold tabular-nums ${
+          isUrgent ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-500"
+        }`}>
+          {mm}:{ss}
+        </span>
       </div>
       <button
         onClick={() => endMutation.mutate({ token })}
         disabled={endMutation.isPending}
-        className="rounded-md bg-amber-500 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-amber-600 disabled:opacity-60"
+        className={`rounded-md px-3 py-1 text-xs font-semibold text-white transition-colors disabled:opacity-60 ${
+          isUrgent ? "bg-red-500 hover:bg-red-600" : "bg-amber-500 hover:bg-amber-600"
+        }`}
       >
         {endMutation.isPending ? "Ending…" : "End Session"}
       </button>

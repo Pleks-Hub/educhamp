@@ -1693,3 +1693,62 @@ export const adminImpersonationSessions = mysqlTable("adminImpersonationSessions
   expiresIdx: index("imp_sessions_expires_idx").on(t.expiresAt),
 }));
 export type AdminImpersonationSession = typeof adminImpersonationSessions.$inferSelect;
+
+// ─── Email Settings (Provider Abstraction Layer) ──────────────────────────────
+/**
+ * Stores the active email provider configuration.
+ * Only one row can have isActive = true at a time — enforced at application layer.
+ * apiKey is stored encrypted (AES-256-GCM via encryptSecret/decryptSecret helpers).
+ */
+export const emailSettings = mysqlTable("emailSettings", {
+  id: int("id").autoincrement().primaryKey(),
+  provider: mysqlEnum("provider", ["resend", "smtp", "sendgrid"]).notNull(),
+  fromAddress: varchar("fromAddress", { length: 256 }).notNull(),
+  fromName: varchar("fromName", { length: 100 }).notNull(),
+  replyTo: varchar("replyTo", { length: 256 }),
+  /** Encrypted API key (Resend/SendGrid) or SMTP password */
+  apiKey: varchar("apiKey", { length: 1024 }).notNull(),
+  smtpHost: varchar("smtpHost", { length: 256 }),
+  smtpPort: int("smtpPort"),
+  smtpSecure: boolean("smtpSecure"),
+  smtpUsername: varchar("smtpUsername", { length: 256 }),
+  /** Webhook signing secret for delivery event verification */
+  webhookSecret: varchar("webhookSecret", { length: 512 }),
+  isActive: boolean("isActive").notNull().default(false),
+  lastTestedAt: timestamp("lastTestedAt"),
+  lastTestStatus: mysqlEnum("lastTestStatus", ["ok", "failed"]),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().onUpdateNow(),
+  createdBy: int("createdBy").notNull().default(1),
+}, (t) => ({
+  activeIdx: index("emailSettings_isActive_idx").on(t.isActive),
+  providerIdx: index("emailSettings_provider_idx").on(t.provider),
+}));
+export type EmailSettings = typeof emailSettings.$inferSelect;
+
+// ─── Email Logs Archive (90-day auto-archive) ─────────────────────────────────
+/**
+ * Rows from emailLogs older than 90 days are moved here (not deleted).
+ * Schema mirrors emailLogs exactly.
+ */
+export const emailLogsArchive = mysqlTable("emailLogsArchive", {
+  id: int("id").primaryKey(), // original ID preserved
+  toEmail: varchar("toEmail", { length: 512 }).notNull(),
+  subject: varchar("subject", { length: 512 }).notNull(),
+  templateName: varchar("templateName", { length: 128 }).notNull(),
+  status: mysqlEnum("status", ["sent", "failed", "skipped", "delivered", "bounced", "complained"]).notNull(),
+  messageId: varchar("messageId", { length: 256 }),
+  referenceId: varchar("referenceId", { length: 256 }),
+  errorMessage: text("errorMessage"),
+  deliveryStatus: mysqlEnum("deliveryStatus", ["sent", "delivered", "opened", "bounced", "complained", "failed"]),
+  deliveryUpdatedAt: timestamp("deliveryUpdatedAt"),
+  provider: varchar("provider", { length: 50 }).default("resend"),
+  recipientId: int("recipientId"),
+  createdAt: timestamp("createdAt").notNull(),
+  archivedAt: timestamp("archivedAt").defaultNow().notNull(),
+}, (t) => ({
+  createdAtIdx: index("emailLogsArchive_createdAt_idx").on(t.createdAt),
+  statusIdx: index("emailLogsArchive_status_idx").on(t.status),
+  toEmailIdx: index("emailLogsArchive_toEmail_idx").on(t.toEmail),
+}));
+export type EmailLogArchive = typeof emailLogsArchive.$inferSelect;

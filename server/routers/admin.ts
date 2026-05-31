@@ -1505,6 +1505,331 @@ export const adminRouter = router({
       return getAdminAuditLog(input.limit);
     }),
 
+  // ─── Email Provider Management ────────────────────────────────────────────
+
+  /**
+   * Get the active email provider settings (API key masked for display).
+   */
+  getActiveEmailProvider: adminProcedure.query(async () => {
+    const { getDb } = await import("../db");
+    const { emailSettings } = await import("../../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+    const { maskApiKey } = await import("../services/email/crypto");
+    const db = await getDb();
+    if (!db) return null;
+    const [row] = await db.select().from(emailSettings).where(eq(emailSettings.isActive, true)).limit(1);
+    if (!row) return null;
+    return {
+      id: row.id,
+      provider: row.provider,
+      fromAddress: row.fromAddress,
+      fromName: row.fromName,
+      replyTo: row.replyTo,
+      smtpHost: row.smtpHost,
+      smtpPort: row.smtpPort,
+      smtpSecure: row.smtpSecure,
+      smtpUsername: row.smtpUsername,
+      apiKeyMasked: maskApiKey(row.apiKey),
+      webhookSecret: row.webhookSecret ? maskApiKey(row.webhookSecret) : null,
+      lastTestedAt: row.lastTestedAt,
+      lastTestStatus: row.lastTestStatus,
+      updatedAt: row.updatedAt,
+    };
+  }),
+
+  /**
+   * List all email provider configurations (masked).
+   */
+  listEmailProviders: adminProcedure.query(async () => {
+    const { getDb } = await import("../db");
+    const { emailSettings } = await import("../../drizzle/schema");
+    const { maskApiKey } = await import("../services/email/crypto");
+    const { desc } = await import("drizzle-orm");
+    const db = await getDb();
+    if (!db) return [];
+    const rows = await db.select().from(emailSettings).orderBy(desc(emailSettings.createdAt));
+    return rows.map((row) => ({
+      id: row.id,
+      provider: row.provider,
+      fromAddress: row.fromAddress,
+      fromName: row.fromName,
+      replyTo: row.replyTo,
+      smtpHost: row.smtpHost,
+      smtpPort: row.smtpPort,
+      smtpSecure: row.smtpSecure,
+      smtpUsername: row.smtpUsername,
+      apiKeyMasked: maskApiKey(row.apiKey),
+      isActive: row.isActive,
+      lastTestedAt: row.lastTestedAt,
+      lastTestStatus: row.lastTestStatus,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }));
+  }),
+
+  /**
+   * Upsert an email provider configuration.
+   * If id is provided, updates that row; otherwise inserts a new row.
+   * If setActive is true, deactivates all other rows first.
+   */
+  saveEmailProvider: adminProcedure
+    .input(z.object({
+      id: z.number().int().positive().optional(),
+      provider: z.enum(["resend", "smtp", "sendgrid"]),
+      fromAddress: z.string().email(),
+      fromName: z.string().min(1).max(100),
+      replyTo: z.string().email().optional().nullable(),
+      apiKey: z.string().min(1).optional(), // omit to keep existing key
+      smtpHost: z.string().optional().nullable(),
+      smtpPort: z.number().int().min(1).max(65535).optional().nullable(),
+      smtpSecure: z.boolean().optional().nullable(),
+      smtpUsername: z.string().optional().nullable(),
+      webhookSecret: z.string().optional().nullable(),
+      setActive: z.boolean().default(false),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { getDb } = await import("../db");
+      const { emailSettings } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const { encryptSecret, isEncrypted } = await import("../services/email/crypto");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      if (input.setActive) {
+        await db.update(emailSettings).set({ isActive: false });
+      }
+
+      const encryptedKey = input.apiKey ? encryptSecret(input.apiKey) : undefined;
+      const encryptedWebhook = input.webhookSecret ? encryptSecret(input.webhookSecret) : undefined;
+
+      if (input.id) {
+        const [existing] = await db.select().from(emailSettings).where(eq(emailSettings.id, input.id)).limit(1);
+        if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Email provider not found" });
+        await db.update(emailSettings).set({
+          provider: input.provider,
+          fromAddress: input.fromAddress,
+          fromName: input.fromName,
+          replyTo: input.replyTo ?? null,
+          ...(encryptedKey ? { apiKey: encryptedKey } : {}),
+          smtpHost: input.smtpHost ?? null,
+          smtpPort: input.smtpPort ?? null,
+          smtpSecure: input.smtpSecure ?? null,
+          smtpUsername: input.smtpUsername ?? null,
+          ...(encryptedWebhook !== undefined ? { webhookSecret: encryptedWebhook } : {}),
+          isActive: input.setActive ? true : existing.isActive,
+        }).where(eq(emailSettings.id, input.id));
+        await logAdminAction(ctx.user.id, "email.provider.update", "emailSettings", input.id, { provider: input.provider, setActive: input.setActive });
+        return { id: input.id };
+      } else {
+        if (!input.apiKey) throw new TRPCError({ code: "BAD_REQUEST", message: "apiKey required for new provider" });
+        const [inserted] = await db.insert(emailSettings).values({
+          provider: input.provider,
+          fromAddress: input.fromAddress,
+          fromName: input.fromName,
+          replyTo: input.replyTo ?? null,
+          apiKey: encryptedKey!,
+          smtpHost: input.smtpHost ?? null,
+          smtpPort: input.smtpPort ?? null,
+          smtpSecure: input.smtpSecure ?? null,
+          smtpUsername: input.smtpUsername ?? null,
+          webhookSecret: encryptedWebhook ?? null,
+          isActive: input.setActive,
+          createdBy: ctx.user.id,
+        }).$returningId();
+        await logAdminAction(ctx.user.id, "email.provider.create", "emailSettings", inserted.id, { provider: input.provider, setActive: input.setActive });
+        return { id: inserted.id };
+      }
+    }),
+
+  /**
+   * Activate a specific email provider row (deactivates all others).
+   */
+  activateEmailProvider: adminProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const { getDb } = await import("../db");
+      const { emailSettings } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(emailSettings).set({ isActive: false });
+      await db.update(emailSettings).set({ isActive: true }).where(eq(emailSettings.id, input.id));
+      await logAdminAction(ctx.user.id, "email.provider.activate", "emailSettings", input.id, {});
+      return { success: true };
+    }),
+
+  /**
+   * Delete an email provider configuration (cannot delete the active one).
+   */
+  deleteEmailProvider: adminProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const { getDb } = await import("../db");
+      const { emailSettings } = await import("../../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [row] = await db.select().from(emailSettings).where(eq(emailSettings.id, input.id)).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+      if (row.isActive) throw new TRPCError({ code: "BAD_REQUEST", message: "Cannot delete the active email provider. Activate another provider first." });
+      await db.delete(emailSettings).where(and(eq(emailSettings.id, input.id)));
+      await logAdminAction(ctx.user.id, "email.provider.delete", "emailSettings", input.id, { provider: row.provider });
+      return { success: true };
+    }),
+
+  /**
+   * Test the connection for a specific provider row.
+   * Updates lastTestedAt and lastTestStatus on the row.
+   */
+  testEmailProviderConnection: adminProcedure
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const { getDb } = await import("../db");
+      const { emailSettings } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const { decryptSecret, isEncrypted } = await import("../services/email/crypto");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [row] = await db.select().from(emailSettings).where(eq(emailSettings.id, input.id)).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND" });
+
+      const rawKey = isEncrypted(row.apiKey) ? decryptSecret(row.apiKey) : row.apiKey;
+      let result: { ok: boolean; error?: string };
+
+      try {
+        switch (row.provider) {
+          case "resend": {
+            const { ResendProvider } = await import("../services/email/providers/resend");
+            result = await new ResendProvider(rawKey).testConnection();
+            break;
+          }
+          case "smtp": {
+            const { SmtpProvider } = await import("../services/email/providers/smtp");
+            result = await new SmtpProvider({
+              host: row.smtpHost!, port: row.smtpPort!, secure: row.smtpSecure ?? false,
+              username: row.smtpUsername!, password: rawKey,
+            }).testConnection();
+            break;
+          }
+          case "sendgrid": {
+            const { SendGridProvider } = await import("../services/email/providers/sendgrid");
+            result = await new SendGridProvider(rawKey).testConnection();
+            break;
+          }
+          default:
+            result = { ok: false, error: "Unknown provider" };
+        }
+      } catch (err: unknown) {
+        result = { ok: false, error: err instanceof Error ? err.message : String(err) };
+      }
+
+      await db.update(emailSettings).set({
+        lastTestedAt: new Date(),
+        lastTestStatus: result.ok ? "ok" : "failed",
+      }).where(eq(emailSettings.id, input.id));
+
+      await logAdminAction(ctx.user.id, "email.provider.test", "emailSettings", input.id, { ok: result.ok, error: result.error });
+      return result;
+    }),
+
+  /**
+   * Send a test email via the active provider (or a specific provider row).
+   * Extends the existing sendTestEmail procedure with provider selection.
+   */
+  sendTestEmailViaProvider: adminProcedure
+    .input(z.object({
+      to: z.string().email(),
+      providerId: z.number().int().positive().optional(), // defaults to active
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { getDb } = await import("../db");
+      const { emailSettings } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const { decryptSecret, isEncrypted } = await import("../services/email/crypto");
+      const { wrapEmailHtml } = await import("../emailTemplates/emailBase");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      let row;
+      if (input.providerId) {
+        const [r] = await db.select().from(emailSettings).where(eq(emailSettings.id, input.providerId)).limit(1);
+        row = r;
+      } else {
+        const [r] = await db.select().from(emailSettings).where(eq(emailSettings.isActive, true)).limit(1);
+        row = r;
+      }
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "No email provider configured" });
+
+      const rawKey = isEncrypted(row.apiKey) ? decryptSecret(row.apiKey) : row.apiKey;
+      const html = wrapEmailHtml({
+        bodyHtml: `<h2 style="margin:0 0 12px">Test Email</h2><p>This is a test email sent from EduChamp Admin Console via <strong>${row.provider}</strong>.</p><p>If you received this, your email configuration is working correctly.</p>`,
+        previewText: "EduChamp email delivery test",
+      });
+
+      let sendResult: { success: boolean; messageId?: string; error?: string };
+      try {
+        switch (row.provider) {
+          case "resend": {
+            const { ResendProvider } = await import("../services/email/providers/resend");
+            sendResult = await new ResendProvider(rawKey).send(
+              { to: input.to, subject: "EduChamp — Email Delivery Test", html },
+              row.fromAddress, row.fromName
+            );
+            break;
+          }
+          case "smtp": {
+            const { SmtpProvider } = await import("../services/email/providers/smtp");
+            sendResult = await new SmtpProvider({
+              host: row.smtpHost!, port: row.smtpPort!, secure: row.smtpSecure ?? false,
+              username: row.smtpUsername!, password: rawKey,
+            }).send({ to: input.to, subject: "EduChamp — Email Delivery Test", html }, row.fromAddress, row.fromName);
+            break;
+          }
+          case "sendgrid": {
+            const { SendGridProvider } = await import("../services/email/providers/sendgrid");
+            sendResult = await new SendGridProvider(rawKey).send(
+              { to: input.to, subject: "EduChamp — Email Delivery Test", html },
+              row.fromAddress, row.fromName
+            );
+            break;
+          }
+          default:
+            sendResult = { success: false, error: "Unknown provider" };
+        }
+      } catch (err: unknown) {
+        sendResult = { success: false, error: err instanceof Error ? err.message : String(err) };
+      }
+
+      await logAdminAction(ctx.user.id, "email.test.send", "emailSettings", row.id, { to: input.to, success: sendResult.success });
+      return sendResult;
+    }),
+
+  /**
+   * Retry a failed email log entry.
+   */
+  retryEmailLog: adminProcedure
+    .input(z.object({ logId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const { getDb } = await import("../db");
+      const { emailLogs } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const { sendEmail } = await import("../emailService");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [log] = await db.select().from(emailLogs).where(eq(emailLogs.id, input.logId)).limit(1);
+      if (!log) throw new TRPCError({ code: "NOT_FOUND", message: "Email log entry not found" });
+      if (log.status !== "failed") throw new TRPCError({ code: "BAD_REQUEST", message: "Only failed emails can be retried" });
+      const result = await sendEmail({
+        to: log.toEmail,
+        subject: log.subject,
+        html: `<p>Retry of email: ${log.subject}</p>`,
+        text: `Retry of email: ${log.subject}`,
+        templateName: log.templateName,
+      });
+      await logAdminAction(ctx.user.id, "email.log.retry", "emailLogs", input.logId, { success: result.success });
+      return result;
+    }),
+
   // ─── User Impersonation ────────────────────────────────────────────────────
 
   /**
@@ -1587,5 +1912,64 @@ export const adminRouter = router({
         impersonatedUser,
         expiresAt: session.expiresAt.getTime(),
       };
+    }),
+
+  /**
+   * List all currently active (non-ended, non-expired) impersonation sessions.
+   * Used by the System Health tab to show an admin oversight table.
+   */
+  getActiveImpersonationSessions: adminProcedure.query(async () => {
+    const { getDb } = await import("../db");
+    const { adminImpersonationSessions } = await import("../../drizzle/schema");
+    const { users } = await import("../../drizzle/schema");
+    const { eq, and, isNull, gt } = await import("drizzle-orm");
+    const db = await getDb();
+    if (!db) return [];
+    const sessions = await db
+      .select({
+        id: adminImpersonationSessions.id,
+        adminId: adminImpersonationSessions.adminId,
+        impersonatedUserId: adminImpersonationSessions.impersonatedUserId,
+        token: adminImpersonationSessions.token,
+        createdAt: adminImpersonationSessions.createdAt,
+        expiresAt: adminImpersonationSessions.expiresAt,
+        impersonatedName: users.name,
+        impersonatedEmail: users.email,
+      })
+      .from(adminImpersonationSessions)
+      .leftJoin(users, eq(adminImpersonationSessions.impersonatedUserId, users.id))
+      .where(
+        and(
+          isNull(adminImpersonationSessions.endedAt),
+          gt(adminImpersonationSessions.expiresAt, new Date())
+        )
+      )
+      .orderBy(adminImpersonationSessions.createdAt);
+    return sessions.map(s => ({
+      ...s,
+      // Mask token — only expose first 8 chars for display
+      token: s.token.slice(0, 8) + "...",
+      createdAt: s.createdAt instanceof Date ? s.createdAt.getTime() : s.createdAt,
+      expiresAt: s.expiresAt instanceof Date ? s.expiresAt.getTime() : s.expiresAt,
+    }));
+  }),
+
+  /**
+   * Force-end any impersonation session by its ID (admin oversight).
+   */
+  forceEndImpersonation: adminProcedure
+    .input(z.object({ sessionId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const { getDb } = await import("../db");
+      const { adminImpersonationSessions } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      await db
+        .update(adminImpersonationSessions)
+        .set({ endedAt: new Date() })
+        .where(eq(adminImpersonationSessions.id, input.sessionId));
+      await logAdminAction(ctx.user.id, "user.impersonate.force_end", "session", input.sessionId, {});
+      return { success: true };
     }),
 });

@@ -1687,6 +1687,15 @@ function EmailLogsTab() {
     (handleSearchChange as any)._t = setTimeout(() => setDebouncedSearch(val), 400);
   };
 
+  const retryEmail = trpc.admin.retryEmailLog.useMutation({
+    onSuccess: (r) => {
+      if (r.success) toast.success("Email retried successfully!");
+      else toast.error(`Retry failed: ${r.error}`);
+      refetch();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
   const { data: stats } = trpc.admin.getEmailLogStats.useQuery();
   const { data, isLoading, refetch } = trpc.admin.getEmailLogs.useQuery({
     limit: 100,
@@ -1811,6 +1820,7 @@ function EmailLogsTab() {
               <TableHead>Message ID</TableHead>
               <TableHead>Sent At</TableHead>
               <TableHead>Error</TableHead>
+              <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1842,6 +1852,15 @@ function EmailLogsTab() {
                 </TableCell>
                 <TableCell className="text-xs text-red-600 max-w-[160px] truncate">
                   {log.errorMessage ?? "—"}
+                </TableCell>
+                <TableCell>
+                  {log.status === "failed" && (
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1 text-amber-700 hover:bg-amber-50"
+                      disabled={retryEmail.isPending}
+                      onClick={() => retryEmail.mutate({ logId: log.id })}>
+                      <RotateCcw className="h-3 w-3" />Retry
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -3116,15 +3135,50 @@ function FlaggedQuestionsTab() {
 
 // ─── Email Settings Tab ───────────────────────────────────────────────────────
 
+type ProviderFormState = {
+  provider: "resend" | "smtp" | "sendgrid";
+  fromAddress: string;
+  fromName: string;
+  replyTo: string;
+  apiKey: string;
+  smtpHost: string;
+  smtpPort: string;
+  smtpSecure: boolean;
+  smtpUsername: string;
+  webhookSecret: string;
+};
+
+const EMPTY_PROVIDER_FORM: ProviderFormState = {
+  provider: "resend",
+  fromAddress: "",
+  fromName: "EduChamp",
+  replyTo: "",
+  apiKey: "",
+  smtpHost: "",
+  smtpPort: "587",
+  smtpSecure: false,
+  smtpUsername: "",
+  webhookSecret: "",
+};
+
 function EmailSettingsTab() {
   const [testEmailTo, setTestEmailTo] = useState("");
   const [fromAddress, setFromAddress] = useState("");
   const [fromName, setFromName] = useState("");
   const [replyTo, setReplyTo] = useState("");
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [showProviderForm, setShowProviderForm] = useState(false);
+  const [editingProviderId, setEditingProviderId] = useState<number | null>(null);
+  const [providerForm, setProviderForm] = useState<ProviderFormState>(EMPTY_PROVIDER_FORM);
+  const [testingProviderId, setTestingProviderId] = useState<number | null>(null);
+  const [testProviderResult, setTestProviderResult] = useState<{ id: number; ok: boolean; error?: string } | null>(null);
+  const [sendTestProviderId, setSendTestProviderId] = useState<number | null>(null);
+  const [sendTestTo, setSendTestTo] = useState("");
 
   const { data: settings, isLoading: settingsLoading, refetch: refetchSettings } = trpc.admin.getEmailSettings.useQuery();
   const { data: domainStatus, isLoading: domainLoading, refetch: refetchDomain } = trpc.admin.getResendDomainStatus.useQuery();
+  const { data: providers = [], isLoading: providersLoading, refetch: refetchProviders } = trpc.admin.listEmailProviders.useQuery();
+  const utils = trpc.useUtils();
 
   const saveSettings = trpc.admin.saveEmailSettings.useMutation({
     onSuccess: () => { toast.success("Email settings saved"); refetchSettings(); },
@@ -3134,8 +3188,78 @@ function EmailSettingsTab() {
     onSuccess: (r) => r.success ? toast.success("Test email sent successfully!") : toast.error("Test email failed — check Resend logs"),
     onError: (e) => toast.error(e.message),
   });
+  const saveProvider = trpc.admin.saveEmailProvider.useMutation({
+    onSuccess: () => { toast.success("Provider saved"); setShowProviderForm(false); setEditingProviderId(null); refetchProviders(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const activateProvider = trpc.admin.activateEmailProvider.useMutation({
+    onSuccess: () => { toast.success("Provider activated"); refetchProviders(); utils.admin.getActiveEmailProvider.invalidate(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const deleteProvider = trpc.admin.deleteEmailProvider.useMutation({
+    onSuccess: () => { toast.success("Provider deleted"); refetchProviders(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const testConnection = trpc.admin.testEmailProviderConnection.useMutation({
+    onSuccess: (r, vars) => {
+      setTestProviderResult({ id: vars.id, ok: r.ok, error: r.error });
+      setTestingProviderId(null);
+      if (r.ok) toast.success("Connection test passed!");
+      else toast.error(`Connection test failed: ${r.error}`);
+      refetchProviders();
+    },
+    onError: (e) => { setTestingProviderId(null); toast.error(e.message); },
+  });
+  const sendTestViaProvider = trpc.admin.sendTestEmailViaProvider.useMutation({
+    onSuccess: (r) => {
+      setSendTestProviderId(null);
+      if (r.success) toast.success("Test email sent!");
+      else toast.error(`Send failed: ${r.error}`);
+    },
+    onError: (e) => { setSendTestProviderId(null); toast.error(e.message); },
+  });
 
-  // Populate form from loaded settings
+  const openAddProvider = () => {
+    setEditingProviderId(null);
+    setProviderForm(EMPTY_PROVIDER_FORM);
+    setShowProviderForm(true);
+  };
+
+  const openEditProvider = (p: typeof providers[0]) => {
+    setEditingProviderId(p.id);
+    setProviderForm({
+      provider: p.provider,
+      fromAddress: p.fromAddress,
+      fromName: p.fromName,
+      replyTo: p.replyTo ?? "",
+      apiKey: "",
+      smtpHost: p.smtpHost ?? "",
+      smtpPort: String(p.smtpPort ?? 587),
+      smtpSecure: p.smtpSecure ?? false,
+      smtpUsername: p.smtpUsername ?? "",
+      webhookSecret: "",
+    });
+    setShowProviderForm(true);
+  };
+
+  const submitProviderForm = (setActive: boolean) => {
+    saveProvider.mutate({
+      id: editingProviderId ?? undefined,
+      provider: providerForm.provider,
+      fromAddress: providerForm.fromAddress,
+      fromName: providerForm.fromName,
+      replyTo: providerForm.replyTo || null,
+      apiKey: providerForm.apiKey || undefined,
+      smtpHost: providerForm.smtpHost || null,
+      smtpPort: providerForm.smtpPort ? Number(providerForm.smtpPort) : null,
+      smtpSecure: providerForm.smtpSecure,
+      smtpUsername: providerForm.smtpUsername || null,
+      webhookSecret: providerForm.webhookSecret || null,
+      setActive,
+    });
+  };
+
+  // Populate legacy form from loaded settings
   if (settings && !settingsLoaded) {
     setFromAddress(settings.fromAddress ?? "");
     setFromName(settings.fromName ?? "");
@@ -3144,11 +3268,193 @@ function EmailSettingsTab() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div>
-        <h2 className="text-lg font-semibold">Email Settings</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">Configure sender identity, test delivery, and verify domain authentication</p>
+    <div className="space-y-6 max-w-4xl">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Email Settings</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage email providers, test delivery, and verify domain authentication</p>
+        </div>
       </div>
+
+      {/* ── Email Provider Management ── */}
+      <Card className="border">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2"><Server className="h-4 w-4" />Email Providers</CardTitle>
+              <CardDescription>Configure and switch between email delivery providers. Only one provider is active at a time.</CardDescription>
+            </div>
+            <Button size="sm" onClick={openAddProvider} className="gap-1.5">
+              <Plus className="h-4 w-4" />Add Provider
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {providersLoading ? (
+            <div className="space-y-2">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-lg" />)}</div>
+          ) : providers.length === 0 ? (
+            <div className="text-center py-6 text-muted-foreground">
+              <Mail className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No providers configured. Add one to enable email delivery.</p>
+            </div>
+          ) : (
+            providers.map((p) => {
+              const isActive = p.isActive;
+              const testResult = testProviderResult?.id === p.id ? testProviderResult : null;
+              return (
+                <div key={p.id} className={`rounded-lg border p-4 flex flex-col gap-3 ${isActive ? "border-emerald-300 bg-emerald-50/40" : ""}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isActive ? "bg-emerald-500" : "bg-gray-300"}`} />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm capitalize">{p.provider}</span>
+                          {isActive && <Badge className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0">Active</Badge>}
+                          {p.lastTestStatus === "ok" && !testResult && <Badge className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0">Tested ✓</Badge>}
+                          {p.lastTestStatus === "failed" && !testResult && <Badge className="bg-red-100 text-red-700 text-[10px] px-1.5 py-0">Test Failed</Badge>}
+                          {testResult?.ok && <Badge className="bg-emerald-100 text-emerald-700 text-[10px] px-1.5 py-0">Connected ✓</Badge>}
+                          {testResult && !testResult.ok && <Badge className="bg-red-100 text-red-700 text-[10px] px-1.5 py-0" title={testResult.error}>Failed</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">{p.fromName} &lt;{p.fromAddress}&gt;</p>
+                        {p.lastTestedAt && <p className="text-[10px] text-muted-foreground">Last tested: {new Date(p.lastTestedAt).toLocaleString()}</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1"
+                        disabled={testingProviderId === p.id || testConnection.isPending}
+                        onClick={() => { setTestingProviderId(p.id); testConnection.mutate({ id: p.id }); }}>
+                        {testingProviderId === p.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+                        Test
+                      </Button>
+                      {!isActive && (
+                        <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                          disabled={activateProvider.isPending}
+                          onClick={() => activateProvider.mutate({ id: p.id })}>
+                          <Zap className="h-3 w-3" />Activate
+                        </Button>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0"><MoreHorizontal className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditProvider(p)}><Edit2 className="h-3.5 w-3.5 mr-2" />Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => { setSendTestProviderId(p.id); setSendTestTo(""); }}>
+                            <Send className="h-3.5 w-3.5 mr-2" />Send Test Email
+                          </DropdownMenuItem>
+                          {!isActive && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-red-600"
+                                onClick={() => { if (confirm("Delete this provider?")) deleteProvider.mutate({ id: p.id }); }}>
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />Delete
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                  {/* Send test email inline form */}
+                  {sendTestProviderId === p.id && (
+                    <div className="flex gap-2 pt-1 border-t">
+                      <Input value={sendTestTo} onChange={(e) => setSendTestTo(e.target.value)} placeholder="recipient@example.com" type="email" className="h-8 text-sm flex-1" />
+                      <Button size="sm" className="h-8 px-3 text-xs" disabled={!sendTestTo || sendTestViaProvider.isPending}
+                        onClick={() => sendTestViaProvider.mutate({ to: sendTestTo, providerId: p.id })}>
+                        {sendTestViaProvider.isPending ? "Sending…" : "Send"}
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => setSendTestProviderId(null)}>
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Provider Add/Edit Dialog */}
+      <Dialog open={showProviderForm} onOpenChange={setShowProviderForm}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingProviderId ? "Edit Email Provider" : "Add Email Provider"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Provider</Label>
+              <Select value={providerForm.provider} onValueChange={(v) => setProviderForm((f) => ({ ...f, provider: v as ProviderFormState["provider"] }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="resend">Resend</SelectItem>
+                  <SelectItem value="sendgrid">SendGrid</SelectItem>
+                  <SelectItem value="smtp">SMTP</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>From Address</Label>
+                <Input value={providerForm.fromAddress} onChange={(e) => setProviderForm((f) => ({ ...f, fromAddress: e.target.value }))} placeholder="hi@yourdomain.com" type="email" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Display Name</Label>
+                <Input value={providerForm.fromName} onChange={(e) => setProviderForm((f) => ({ ...f, fromName: e.target.value }))} placeholder="EduChamp" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Reply-To <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input value={providerForm.replyTo} onChange={(e) => setProviderForm((f) => ({ ...f, replyTo: e.target.value }))} placeholder="support@yourdomain.com" type="email" />
+            </div>
+            {providerForm.provider !== "smtp" ? (
+              <div className="space-y-1.5">
+                <Label>{providerForm.provider === "resend" ? "Resend API Key" : "SendGrid API Key"}</Label>
+                <Input value={providerForm.apiKey} onChange={(e) => setProviderForm((f) => ({ ...f, apiKey: e.target.value }))} placeholder={editingProviderId ? "Leave blank to keep existing key" : "re_xxxx…"} type="password" />
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>SMTP Host</Label>
+                    <Input value={providerForm.smtpHost} onChange={(e) => setProviderForm((f) => ({ ...f, smtpHost: e.target.value }))} placeholder="smtp.gmail.com" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Port</Label>
+                    <Input value={providerForm.smtpPort} onChange={(e) => setProviderForm((f) => ({ ...f, smtpPort: e.target.value }))} placeholder="587" type="number" />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Username</Label>
+                  <Input value={providerForm.smtpUsername} onChange={(e) => setProviderForm((f) => ({ ...f, smtpUsername: e.target.value }))} placeholder="user@gmail.com" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Password / App Password</Label>
+                  <Input value={providerForm.apiKey} onChange={(e) => setProviderForm((f) => ({ ...f, apiKey: e.target.value }))} placeholder={editingProviderId ? "Leave blank to keep existing" : ""} type="password" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={providerForm.smtpSecure} onCheckedChange={(v) => setProviderForm((f) => ({ ...f, smtpSecure: v }))} />
+                  <Label>Use TLS/SSL</Label>
+                </div>
+              </>
+            )}
+            <div className="space-y-1.5">
+              <Label>Webhook Signing Secret <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input value={providerForm.webhookSecret} onChange={(e) => setProviderForm((f) => ({ ...f, webhookSecret: e.target.value }))} placeholder="whsec_xxxx…" type="password" />
+              <p className="text-xs text-muted-foreground">Used to verify delivery event webhooks from the provider.</p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowProviderForm(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => submitProviderForm(false)} disabled={saveProvider.isPending}>
+              {saveProvider.isPending ? "Saving…" : "Save"}
+            </Button>
+            <Button onClick={() => submitProviderForm(true)} disabled={saveProvider.isPending}>
+              {saveProvider.isPending ? "Saving…" : "Save & Activate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Sender Configuration */}
       <Card className="border">
@@ -3532,6 +3838,13 @@ function SystemHealthTab() {
     refetchInterval: 30_000,
   });
   const { data: auditLog, isLoading: auditLoading } = trpc.admin.getRecentAuditLog.useQuery({ limit: 50 });
+  const { data: activeSessions, isLoading: sessionsLoading, refetch: refetchSessions } = trpc.admin.getActiveImpersonationSessions.useQuery(undefined, {
+    refetchInterval: 15_000,
+  });
+  const forceEnd = trpc.admin.forceEndImpersonation.useMutation({
+    onSuccess: () => { toast.success("Session force-ended"); refetchSessions(); },
+    onError: (e) => toast.error(e.message),
+  });
 
   function formatUptime(seconds: number) {
     const d = Math.floor(seconds / 86400);
@@ -3541,6 +3854,21 @@ function SystemHealthTab() {
     if (d > 0) return `${d}d ${h}h ${m}m`;
     if (h > 0) return `${h}h ${m}m ${s}s`;
     return `${m}m ${s}s`;
+  }
+
+  // Warning threshold helpers
+  function dbLatencyColor(ms: number | null, status: string) {
+    if (status !== "ok" || ms === null) return { card: "border-red-300 bg-red-500/5", icon: "bg-red-500/10", iconColor: "text-red-600", badge: "text-red-600" };
+    if (ms > 500) return { card: "border-red-300 bg-red-500/5", icon: "bg-red-500/10", iconColor: "text-red-600", badge: "text-red-600" };
+    if (ms > 100) return { card: "border-amber-300 bg-amber-500/5", icon: "bg-amber-500/10", iconColor: "text-amber-600", badge: "text-amber-600" };
+    return { card: "", icon: "bg-blue-500/10", iconColor: "text-blue-600", badge: "text-emerald-600" };
+  }
+
+  function memoryColor(used: number, total: number) {
+    const pct = total > 0 ? used / total : 0;
+    if (pct > 0.9) return { card: "border-red-300 bg-red-500/5", icon: "bg-red-500/10", iconColor: "text-red-600", label: "Critical" };
+    if (pct > 0.7) return { card: "border-amber-300 bg-amber-500/5", icon: "bg-amber-500/10", iconColor: "text-amber-600", label: "High" };
+    return { card: "", icon: "bg-violet-500/10", iconColor: "text-violet-600", label: null };
   }
 
   return (
@@ -3553,7 +3881,7 @@ function SystemHealthTab() {
               Last checked: {new Date(dataUpdatedAt).toLocaleTimeString()}
             </span>
           )}
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <Button variant="outline" size="sm" onClick={() => { refetch(); refetchSessions(); }}>
             <RefreshCw className="h-4 w-4 mr-2" /> Refresh
           </Button>
         </div>
@@ -3582,37 +3910,75 @@ function SystemHealthTab() {
               </CardContent>
             </Card>
 
-            {/* DB Status */}
-            <Card>
-              <CardContent className="pt-5 pb-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Database</p>
-                    <p className="text-2xl font-bold">{health.dbStatus === "ok" ? `${health.dbPingMs}ms` : "Error"}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{health.dbStatus === "ok" ? "Connected" : "Unreachable"}</p>
-                  </div>
-                  <div className={`p-2.5 rounded-xl ${health.dbStatus === "ok" ? "bg-blue-500/10" : "bg-red-500/10"}`}>
-                    <Server className={`h-5 w-5 ${health.dbStatus === "ok" ? "text-blue-600" : "text-red-600"}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* DB Status — with latency thresholds */}
+            {(() => {
+              const c = dbLatencyColor(health.dbPingMs, health.dbStatus);
+              return (
+                <Card className={c.card ? `border ${c.card}` : ""}>
+                  <CardContent className="pt-5 pb-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Database</p>
+                        <p className="text-2xl font-bold">{health.dbStatus === "ok" ? `${health.dbPingMs}ms` : "Error"}</p>
+                        <p className="text-xs mt-0.5">
+                          {health.dbStatus !== "ok" ? (
+                            <span className="text-red-600 font-medium">Unreachable</span>
+                          ) : (health.dbPingMs ?? 0) > 500 ? (
+                            <span className="text-red-600 font-medium">Critical latency</span>
+                          ) : (health.dbPingMs ?? 0) > 100 ? (
+                            <span className="text-amber-600 font-medium">High latency</span>
+                          ) : (
+                            <span className="text-muted-foreground">Connected</span>
+                          )}
+                        </p>
+                      </div>
+                      <div className={`p-2.5 rounded-xl ${c.icon}`}>
+                        <Server className={`h-5 w-5 ${c.iconColor}`} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
-            {/* Memory */}
-            <Card>
-              <CardContent className="pt-5 pb-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Heap Memory</p>
-                    <p className="text-2xl font-bold">{health.memoryHeapUsedMb} MB</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">of {health.memoryHeapTotalMb} MB</p>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-violet-500/10">
-                    <BarChart3 className="h-5 w-5 text-violet-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Heap Memory — with usage thresholds */}
+            {(() => {
+              const c = memoryColor(health.memoryHeapUsedMb, health.memoryHeapTotalMb);
+              const pct = health.memoryHeapTotalMb > 0
+                ? Math.round((health.memoryHeapUsedMb / health.memoryHeapTotalMb) * 100)
+                : 0;
+              return (
+                <Card className={c.card ? `border ${c.card}` : ""}>
+                  <CardContent className="pt-5 pb-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Heap Memory</p>
+                        <p className="text-2xl font-bold">{health.memoryHeapUsedMb} MB</p>
+                        <p className="text-xs mt-0.5">
+                          {c.label ? (
+                            <span className={c.iconColor + " font-medium"}>{c.label} ({pct}%)</span>
+                          ) : (
+                            <span className="text-muted-foreground">of {health.memoryHeapTotalMb} MB ({pct}%)</span>
+                          )}
+                        </p>
+                      </div>
+                      <div className={`p-2.5 rounded-xl ${c.icon}`}>
+                        <BarChart3 className={`h-5 w-5 ${c.iconColor}`} />
+                      </div>
+                    </div>
+                    {/* Mini progress bar */}
+                    <div className="mt-3 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          pct > 90 ? "bg-red-500" : pct > 70 ? "bg-amber-500" : "bg-violet-500"
+                        }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
             {/* RSS */}
             <Card>
@@ -3640,7 +4006,15 @@ function SystemHealthTab() {
                 <span className="text-muted-foreground ml-2">Environment:</span>
                 <Badge variant={health.env === "production" ? "default" : "secondary"}>{health.env}</Badge>
                 <span className="text-muted-foreground ml-2">DB:</span>
-                <Badge variant={health.dbStatus === "ok" ? "outline" : "destructive"} className={health.dbStatus === "ok" ? "text-emerald-600 border-emerald-300" : ""}>
+                <Badge
+                  variant={health.dbStatus === "ok" ? "outline" : "destructive"}
+                  className={
+                    health.dbStatus !== "ok" ? "" :
+                    (health.dbPingMs ?? 0) > 500 ? "text-red-600 border-red-300" :
+                    (health.dbPingMs ?? 0) > 100 ? "text-amber-600 border-amber-300" :
+                    "text-emerald-600 border-emerald-300"
+                  }
+                >
                   {health.dbStatus === "ok" ? `✓ Connected (${health.dbPingMs}ms)` : "✗ Error"}
                 </Badge>
               </div>
@@ -3650,6 +4024,87 @@ function SystemHealthTab() {
       ) : (
         <p className="text-muted-foreground">Failed to load system health.</p>
       )}
+
+      {/* Active Impersonation Sessions */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            <Eye className="h-4 w-4 text-amber-500" />
+            Active Impersonation Sessions
+            {(activeSessions ?? []).length > 0 && (
+              <Badge variant="outline" className="text-amber-600 border-amber-300 text-xs">
+                {activeSessions!.length} active
+              </Badge>
+            )}
+          </h3>
+        </div>
+        {sessionsLoading ? (
+          <div className="space-y-2">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-10 rounded" />)}</div>
+        ) : (
+          <div className="rounded-xl border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Admin ID</TableHead>
+                  <TableHead className="text-xs">Impersonating</TableHead>
+                  <TableHead className="text-xs">Started</TableHead>
+                  <TableHead className="text-xs">Expires</TableHead>
+                  <TableHead className="text-xs">Token</TableHead>
+                  <TableHead className="text-xs">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(activeSessions ?? []).length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-6 text-sm">
+                      No active impersonation sessions.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  (activeSessions ?? []).map((s: any) => {
+                    const minsLeft = Math.max(0, Math.ceil((s.expiresAt - Date.now()) / 60_000));
+                    return (
+                      <TableRow key={s.id} className="bg-amber-500/5">
+                        <TableCell className="text-xs font-mono">#{s.adminId}</TableCell>
+                        <TableCell className="text-xs">
+                          <span className="font-medium">{s.impersonatedName ?? "—"}</span>
+                          {s.impersonatedEmail && (
+                            <span className="text-muted-foreground ml-1">({s.impersonatedEmail})</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(s.createdAt).toLocaleTimeString()}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <span className={minsLeft <= 2 ? "text-red-600 font-medium" : "text-muted-foreground"}>
+                            {minsLeft}m left
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">{s.token}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-6 text-xs text-red-600 border-red-300 hover:bg-red-50"
+                            onClick={() => {
+                              if (confirm(`Force-end impersonation session for admin #${s.adminId}?`)) {
+                                forceEnd.mutate({ sessionId: s.id });
+                              }
+                            }}
+                            disabled={forceEnd.isPending}
+                          >
+                            Force End
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
 
       {/* Recent Admin Activity */}
       <div>

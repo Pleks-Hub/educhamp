@@ -122,49 +122,43 @@ async function sleep(ms: number) {
 }
 
 /**
- * Send a transactional email with automatic retry and DB logging.
+ * Send a transactional email.
+ *
+ * Delegates to the provider-agnostic service layer (server/services/email/index.ts).
+ * The active provider (Resend / SMTP / SendGrid) is determined at runtime from
+ * the emailSettings DB table — no code change needed to switch providers.
+ *
+ * Falls back to the legacy direct-Resend path if no emailSettings row is configured
+ * yet, so existing deployments continue working without interruption.
  */
 export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult> {
-  const resend = getResend();
-
-  // ── Suppression check ──────────────────────────────────────────────────────
-  const suppressed = await isEmailSuppressed(opts.to);
-  if (suppressed) {
-    console.log(`[EmailService] Skipping suppressed address: ${opts.to}`);
-    await logEmail({
-      toEmail: opts.to,
+  try {
+    const { sendEmail: newSendEmail } = await import("./services/email/index");
+    return await newSendEmail({
+      to: opts.to,
       subject: opts.subject,
-      templateName: opts.templateName,
-      status: "skipped",
-      messageId: null,
-      errorMessage: "Address is on suppression list",
+      html: opts.html,
+      text: opts.text,
+      template: opts.templateName,
     });
-    return { success: false, error: "Address is on suppression list" };
-  }
-
-  // ── No API key → dev/test fallback ──────────────────────────────────────────
-  if (!resend) {
-    console.log(
-      `[EmailService] No RESEND_API_KEY — email not sent.\n` +
-        `  To: ${opts.to}\n` +
-        `  Subject: ${opts.subject}\n` +
-        `  Template: ${opts.templateName}`
-    );
-    await logEmail({
-      toEmail: opts.to,
-      subject: opts.subject,
-      templateName: opts.templateName,
-      status: "skipped",
-      messageId: null,
-      errorMessage: "No RESEND_API_KEY configured",
-    });
-    return { success: false, error: "No RESEND_API_KEY configured" };
-  }
-
-  // ── Send with retry ──────────────────────────────────────────────────────────
-  let lastError: string | undefined;
-
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+  } catch (err: unknown) {
+    // If the new service fails (e.g. no active emailSettings row), fall back to
+    // the legacy direct-Resend path so emails are never silently dropped.
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const isNoProvider = errMsg.includes("No active email provider");
+    if (!isNoProvider) {
+      // Unexpected error — surface it
+      return { success: false, error: errMsg };
+    }
+    // Legacy fallback: use RESEND_API_KEY directly
+    const resend = getResend();
+    if (!resend) {
+      console.log(
+        `[EmailService] No active provider or RESEND_API_KEY — email not sent.\n` +
+          `  To: ${opts.to}\n  Subject: ${opts.subject}\n  Template: ${opts.templateName}`
+      );
+      return { success: false, error: "No email provider configured" };
+    }
     try {
       const result = await resend.emails.send({
         from: getFromAddress(),
@@ -173,46 +167,12 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult
         html: opts.html,
         text: opts.text,
       });
-
-      if (result.error) {
-        lastError = result.error.message ?? "Unknown Resend error";
-        console.warn(`[EmailService] Attempt ${attempt} failed: ${lastError}`);
-        if (attempt < MAX_RETRIES) await sleep(RETRY_DELAY_MS * attempt);
-        continue;
-      }
-
-      const messageId = result.data?.id ?? undefined;
-
-      await logEmail({
-        toEmail: opts.to,
-        subject: opts.subject,
-        templateName: opts.templateName,
-        status: "sent",
-        messageId: messageId ?? null,
-        errorMessage: null,
-      });
-
-      console.log(`[EmailService] Email sent to ${opts.to} (id: ${messageId})`);
-      return { success: true, messageId };
-    } catch (err: unknown) {
-      lastError = err instanceof Error ? err.message : String(err);
-      console.warn(`[EmailService] Attempt ${attempt} threw: ${lastError}`);
-      if (attempt < MAX_RETRIES) await sleep(RETRY_DELAY_MS * attempt);
+      if (result.error) return { success: false, error: result.error.message };
+      return { success: true, messageId: result.data?.id };
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) };
     }
   }
-
-  // All attempts failed
-  await logEmail({
-    toEmail: opts.to,
-    subject: opts.subject,
-    templateName: opts.templateName,
-    status: "failed",
-    messageId: null,
-    errorMessage: lastError ?? "Unknown error",
-  });
-
-  console.error(`[EmailService] All ${MAX_RETRIES} attempts failed for ${opts.to}: ${lastError}`);
-  return { success: false, error: lastError };
 }
 
 // ─── DB logging helper ────────────────────────────────────────────────────────
