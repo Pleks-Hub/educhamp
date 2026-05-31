@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState, useCallback } from "react";
 import { X, AlertTriangle, Lock, Eye } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { useLocation, Redirect } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
@@ -551,13 +552,23 @@ function ImpersonationBanner() {
       </div>
       <div className="flex items-center gap-2">
         {secsLeft <= 300 && (
-          <button
-            onClick={() => extendMutation.mutate({ token })}
-            disabled={extendMutation.isPending || endMutation.isPending}
-            className="rounded-md border border-current px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-60 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
-          >
-            {extendMutation.isPending ? "Extending…" : "+15 min"}
-          </button>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => extendMutation.mutate({ token })}
+                  disabled={extendMutation.isPending || endMutation.isPending}
+                  className="rounded-md border border-current px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-60 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
+                >
+                  {extendMutation.isPending ? "Extending…" : "+15 min"}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-center">
+                <p className="font-medium">Extend session by 15 minutes</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Maximum session length is 2 hours. Extensions are logged in the audit trail.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
         <button
           onClick={() => endMutation.mutate({ token })}
