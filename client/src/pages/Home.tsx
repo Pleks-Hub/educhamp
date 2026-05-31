@@ -423,6 +423,92 @@ function AutoEnrollBanner({ courseTitle }: { courseTitle: string }) {
     </div>
   );
 }
+// ─── Streak At-Risk Banner ──────────────────────────────────────────────────
+
+const STREAK_RISK_DISMISSED_KEY = "educhamp_streak_risk_dismissed";
+
+function StreakAtRiskBanner({ currentStreak, streakFreezeCount }: { currentStreak: number; streakFreezeCount: number }) {
+  const [, setLocation] = useLocation();
+  const [visible, setVisible] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // Only show once per session and only if streak is meaningful (≥2 days)
+    if (currentStreak < 2) return;
+    const key = `${STREAK_RISK_DISMISSED_KEY}_${currentStreak}`;
+    const dismissed = sessionStorage.getItem(key);
+    if (!dismissed) {
+      setMounted(true);
+      requestAnimationFrame(() => setVisible(true));
+    }
+  }, [currentStreak]);
+
+  const dismiss = () => {
+    setVisible(false);
+    setTimeout(() => {
+      const key = `${STREAK_RISK_DISMISSED_KEY}_${currentStreak}`;
+      sessionStorage.setItem(key, "1");
+      setMounted(false);
+    }, 300);
+  };
+
+  if (!mounted) return null;
+
+  const hasFreezes = streakFreezeCount > 0;
+  const urgencyColor = hasFreezes
+    ? "border-amber-300/60 from-amber-50/80 to-amber-50/40"
+    : "border-red-300/60 from-red-50/80 to-red-50/40";
+  const iconColor = hasFreezes ? "bg-amber-100 text-amber-600" : "bg-red-100 text-red-600";
+  const ctaColor = hasFreezes ? "" : "bg-red-600 hover:bg-red-700 text-white";
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="overflow-hidden transition-all duration-300 ease-out"
+      style={{
+        maxHeight: visible ? "140px" : "0px",
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(-8px)",
+      }}
+    >
+      <div className={`flex items-start gap-3 rounded-xl border bg-gradient-to-r px-4 py-3 text-sm ${urgencyColor}`}>
+        <div className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 mt-0.5 ${iconColor}`}>
+          <span className="text-base" aria-hidden="true">🔥</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-foreground leading-tight">
+            Your {currentStreak}-day streak is at risk!
+          </p>
+          <p className="text-muted-foreground text-xs mt-0.5 leading-relaxed">
+            {hasFreezes
+              ? `You haven't studied today. Complete a lesson or quiz to keep your streak alive. You have ${streakFreezeCount} streak freeze${streakFreezeCount !== 1 ? "s" : ""} available if you need one.`
+              : "You haven't studied today. Complete a lesson or quiz now to keep your streak alive — missing today will reset it to zero."}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            size="sm"
+            className={`h-7 px-3 text-xs font-medium gap-1.5 ${ctaColor}`}
+            onClick={() => { dismiss(); setLocation("/curriculum"); }}
+          >
+            <BookOpen className="h-3 w-3" />
+            Study Now
+          </Button>
+          <button
+            type="button"
+            onClick={dismiss}
+            className="flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            aria-label="Dismiss streak reminder"
+          >
+            <XCircle className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -435,6 +521,11 @@ export default function Home() {
   });
   const { data: allCourseProgress, isLoading: isLoadingCourses } = trpc.progress.getAllCourseProgress.useQuery(undefined, {
     enabled: !!user,
+  });
+  // Streak data for the at-risk banner — only fetch for students
+  const { data: streakData } = trpc.gamification.getStreak.useQuery(undefined, {
+    enabled: !!user && user.accountType === "student",
+    staleTime: 5 * 60 * 1000,
   });
   const activeCourseId = dashboard?.activeCourseId;
   const { data: diagnostic } = trpc.diagnostic.getLatestAttempt.useQuery(
@@ -567,6 +658,14 @@ export default function Home() {
 
       {/* Seasonal challenge banner — shown when an active challenge exists */}
       <SeasonalChallengeBanner />
+
+      {/* Streak at-risk banner — shown when student has a streak but hasn't studied today */}
+      {user?.accountType === "student" && streakData && !streakData.isActiveToday && (
+        <StreakAtRiskBanner
+          currentStreak={streakData.currentStreak}
+          streakFreezeCount={streakData.streakFreezeCount}
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between flex-wrap gap-3">

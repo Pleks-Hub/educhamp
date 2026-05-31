@@ -33,6 +33,7 @@ import {
   ChevronUp,
   History,
   TrendingUp,
+  Search,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
@@ -272,6 +273,7 @@ export default function Diagnostic() {
   const [reviewFilter, setReviewFilter] = useState<"all" | "correct" | "wrong">("all");
   const [reviewUnit, setReviewUnit] = useState<string>("all");
   const [showSkipDialog, setShowSkipDialog] = useState(false);
+  const [skipUnitSearch, setSkipUnitSearch] = useState("");
 
   // Retest: generate a unique seed per session so each attempt gets different questions
   const [sessionSeed] = useState(() => Date.now().toString() + Math.random().toString(36).slice(2));
@@ -860,8 +862,8 @@ export default function Diagnostic() {
       </div>
 
       {/* Skip-to-unit dialog */}
-      <Dialog open={showSkipDialog} onOpenChange={setShowSkipDialog}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={showSkipDialog} onOpenChange={(open) => { setShowSkipDialog(open); if (!open) setSkipUnitSearch(""); }}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <SkipForward className="h-5 w-5 text-primary" />
@@ -871,28 +873,58 @@ export default function Diagnostic() {
               Choose a unit to start directly. Your placement will not be set and all units will remain unlocked.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 max-h-72 overflow-y-auto py-1">
-            {(dashboard?.units ?? []).map((u: any) => (
-              <button
-                key={u.unitNumber}
-                onClick={() => {
-                  setShowSkipDialog(false);
-                  setLocation(`/curriculum/unit/${u.unitNumber}`);
-                }}
-                className="w-full flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors text-left"
-              >
-                <div className="h-7 w-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0">
-                  {u.unitNumber}
-                </div>
-                <span className="text-sm font-medium text-foreground">{u.title}</span>
-              </button>
-            ))}
+          {/* Search bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            <Input
+              id="skip-unit-search"
+              className="pl-9 h-9 text-sm"
+              placeholder="Search units…"
+              value={skipUnitSearch}
+              onChange={(e) => setSkipUnitSearch(e.target.value)}
+              aria-label="Search units"
+            />
+          </div>
+          <div className="space-y-2 max-h-72 overflow-y-auto py-1 pr-1">
+            {(() => {
+              const allUnits = dashboard?.units ?? [];
+              const filtered = skipUnitSearch.trim()
+                ? allUnits.filter((u: any) =>
+                    u.title.toLowerCase().includes(skipUnitSearch.toLowerCase()) ||
+                    (u.overview ?? "").toLowerCase().includes(skipUnitSearch.toLowerCase())
+                  )
+                : allUnits;
+              if (filtered.length === 0) {
+                return <p className="text-sm text-muted-foreground text-center py-4">No units match your search.</p>;
+              }
+              return filtered.map((u: any) => (
+                <button
+                  key={u.unitNumber}
+                  onClick={() => {
+                    setShowSkipDialog(false);
+                    setSkipUnitSearch("");
+                    setLocation(`/curriculum/unit/${u.unitNumber}`);
+                  }}
+                  className="w-full flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors text-left group"
+                >
+                  <div className="h-7 w-7 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                    {u.unitNumber}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-foreground block">{u.title}</span>
+                    {u.overview && (
+                      <span className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{u.overview}</span>
+                    )}
+                  </div>
+                </button>
+              ));
+            })()}
             {(dashboard?.units ?? []).length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">No units available yet.</p>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSkipDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setShowSkipDialog(false); setSkipUnitSearch(""); }}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

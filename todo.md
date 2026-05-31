@@ -2076,3 +2076,21 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 #### Parent Dashboard improvements
 - [x] Replaced text-based Mastery by Unit progress bars with Recharts BarChart (green ≥80%, amber 60-79%, red <60%; legend; tooltip with skill count)
 - [x] Added Recent Activity vertical timeline to Progress tab: quiz attempts (color-coded by score) + unit completions with dot indicators
+
+### Production Readiness Sprint 5 — Parent Activity Filters, Diagnostic UX, Streak Banner ✓ COMPLETE
+
+#### Parent Dashboard — Recent Activity timeline filters
+- [x] Added date-range filter (Last 7 days / 30 days / 90 days / All time) to Recent Activity timeline in ChildDetailPanel
+- [x] Added subject/unit dropdown filter (derived from unitMastery titles); both filters are client-side, no new tRPC call
+- [x] Fixed ActivityItem discriminated union type narrowing (Extract<ActivityItem, {kind}>[]) to resolve 9 TS errors
+
+#### Diagnostic — Skip-to-Unit dialog improvements
+- [x] Added unit overview/description text below each unit name in the Skip-to-Unit dialog (from unit.overview field)
+- [x] Added real-time search bar at top of dialog; filters by unit title; Search icon imported
+
+#### Gamification — Streak at-risk in-app banner
+- [x] Used existing gamification.getStreak procedure (returns currentStreak, streakFreezeCount, isActiveToday) — no new procedure needed
+- [x] Added StreakAtRiskBanner component to Home.tsx; shown when currentStreak ≥2 and isActiveToday is false
+- [x] Amber variant when streakFreezeCount > 0; red variant when no freezes remain
+- [x] Study Now CTA navigates to /curriculum; dismiss stores per-streak key in sessionStorage (once per session per streak length)
+- [x] gamification.getStreak query added to Home.tsx (student accountType only, staleTime 5min)

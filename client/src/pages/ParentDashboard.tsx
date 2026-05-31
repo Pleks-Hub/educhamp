@@ -1641,6 +1641,9 @@ function GradeOverrideInline({ child }: { child: ChildSummary }) {
 
 function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: () => void }) {
   const [editOpen, setEditOpen] = useState(false);
+  // Activity timeline filters
+  const [activityDateRange, setActivityDateRange] = useState<"7d" | "30d" | "90d" | "all">("30d");
+  const [activitySubject, setActivitySubject] = useState<"all" | string>("all");
   const utils = trpc.useUtils();
   const removeChild = trpc.parent.removeChild.useMutation({
     onSuccess: () => { toast.success("Student removed from your account."); utils.parent.listChildren.invalidate(); },
@@ -1830,52 +1833,130 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
             </div>
           )}
 
-          {/* Recent Activity Feed */}
-          {(child.recentQuizzes.length > 0 || child.unitMastery.some((u) => u.avgMastery !== null)) && (
-            <div>
-              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" /> Recent Activity
-              </h3>
-              <div className="relative pl-5 space-y-3">
-                {/* Vertical timeline line */}
-                <div className="absolute left-1.5 top-1 bottom-1 w-px bg-border" aria-hidden="true" />
-                {/* Quiz attempts as timeline events */}
-                {child.recentQuizzes.slice(0, 5).map((q, i) => (
-                  <div key={i} className="relative flex items-start gap-3">
-                    <div className={`absolute -left-[13px] h-3 w-3 rounded-full border-2 border-background mt-0.5 ${
-                      q.score >= 75 ? "bg-emerald-500" : q.score >= 60 ? "bg-amber-400" : "bg-red-400"
-                    }`} aria-hidden="true" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-medium text-foreground">Unit {q.unitNumber} Quiz</span>
-                        <span className={`text-xs font-bold tabular-nums ${
-                          q.score >= 75 ? "text-emerald-600" : q.score >= 60 ? "text-amber-600" : "text-red-600"
-                        }`}>{q.score}%</span>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">{new Date(q.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-                    </div>
-                  </div>
-                ))}
-                {/* Unit mastery milestones */}
-                {child.unitMastery
-                  .filter((u) => u.status === "completed" && u.avgMastery !== null)
-                  .slice(0, 3)
-                  .map((u) => (
-                    <div key={u.unitNumber} className="relative flex items-start gap-3">
-                      <div className="absolute -left-[13px] h-3 w-3 rounded-full border-2 border-background bg-primary mt-0.5" aria-hidden="true" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-medium text-foreground truncate">Unit {u.unitNumber} completed</span>
-                          <span className={`text-xs font-bold tabular-nums ${masteryColor(u.avgMastery!)}`}>{u.avgMastery}%</span>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">{u.title}</span>
-                      </div>
-                    </div>
-                  ))
+          {/* Recent Activity Feed — with date-range and subject filters */}
+          {(child.recentQuizzes.length > 0 || child.unitMastery.some((u) => u.avgMastery !== null)) && (() => {
+            // Build unified activity items
+            const now = Date.now();
+            const cutoffMs: Record<string, number> = {
+              "7d": 7 * 86400000,
+              "30d": 30 * 86400000,
+              "90d": 90 * 86400000,
+              "all": Infinity,
+            };
+            const cutoff = cutoffMs[activityDateRange] ?? Infinity;
+
+            // Derive unique unit titles for the subject filter
+            const unitTitles = Array.from(new Set(child.unitMastery.map((u) => u.title)));
+
+            type ActivityItem =
+              | { kind: "quiz"; unitNumber: number; unitTitle: string; score: number; date: Date }
+              | { kind: "completion"; unitNumber: number; unitTitle: string; avgMastery: number };
+
+            const quizItems: ActivityItem[] = child.recentQuizzes
+              .filter((q) => {
+                const age = now - new Date(q.completedAt).getTime();
+                if (age > cutoff) return false;
+                if (activitySubject !== "all") {
+                  const unitTitle = child.unitMastery.find((u) => u.unitNumber === q.unitNumber)?.title ?? "";
+                  if (!unitTitle.toLowerCase().includes(activitySubject.toLowerCase())) return false;
                 }
+                return true;
+              })
+              .map((q) => ({
+                kind: "quiz" as const,
+                unitNumber: q.unitNumber,
+                unitTitle: child.unitMastery.find((u) => u.unitNumber === q.unitNumber)?.title ?? `Unit ${q.unitNumber}`,
+                score: q.score,
+                date: new Date(q.completedAt),
+              }));
+
+            const completionItems: ActivityItem[] = child.unitMastery
+              .filter((u) => {
+                if (u.status !== "completed" || u.avgMastery === null) return false;
+                if (activitySubject !== "all" && !u.title.toLowerCase().includes(activitySubject.toLowerCase())) return false;
+                return true;
+              })
+              .slice(0, 5)
+              .map((u) => ({
+                kind: "completion" as const,
+                unitNumber: u.unitNumber,
+                unitTitle: u.title,
+                avgMastery: u.avgMastery!,
+              }));
+
+            const allItems = [...quizItems, ...completionItems];
+
+            return (
+              <div>
+                <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" /> Recent Activity
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    {/* Date range filter */}
+                    <Select value={activityDateRange} onValueChange={(v) => setActivityDateRange(v as typeof activityDateRange)}>
+                      <SelectTrigger className="h-7 text-xs w-[110px]" aria-label="Date range filter">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7d">Last 7 days</SelectItem>
+                        <SelectItem value="30d">Last 30 days</SelectItem>
+                        <SelectItem value="90d">Last 90 days</SelectItem>
+                        <SelectItem value="all">All time</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {/* Subject/unit filter */}
+                    <Select value={activitySubject} onValueChange={setActivitySubject}>
+                      <SelectTrigger className="h-7 text-xs w-[130px]" aria-label="Subject filter">
+                        <SelectValue placeholder="All subjects" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All subjects</SelectItem>
+                        {unitTitles.map((title) => (
+                          <SelectItem key={title} value={title}>{title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {allItems.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">No activity in this period.</p>
+                ) : (
+                  <div className="relative pl-5 space-y-3">
+                    <div className="absolute left-1.5 top-1 bottom-1 w-px bg-border" aria-hidden="true" />
+                    {(quizItems as Extract<ActivityItem, { kind: "quiz" }>[]).map((q, i) => (
+                      <div key={`quiz-${i}`} className="relative flex items-start gap-3">
+                        <div className={`absolute -left-[13px] h-3 w-3 rounded-full border-2 border-background mt-0.5 ${
+                          q.score >= 75 ? "bg-emerald-500" : q.score >= 60 ? "bg-amber-400" : "bg-red-400"
+                        }`} aria-hidden="true" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-medium text-foreground truncate">{q.unitTitle} — Quiz</span>
+                            <span className={`text-xs font-bold tabular-nums shrink-0 ${
+                              q.score >= 75 ? "text-emerald-600" : q.score >= 60 ? "text-amber-600" : "text-red-600"
+                            }`}>{q.score}%</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">{q.date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {(completionItems as Extract<ActivityItem, { kind: "completion" }>[]).map((u) => (
+                      <div key={`comp-${u.unitNumber}`} className="relative flex items-start gap-3">
+                        <div className="absolute -left-[13px] h-3 w-3 rounded-full border-2 border-background bg-primary mt-0.5" aria-hidden="true" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-medium text-foreground truncate">{u.unitTitle} — Completed</span>
+                            <span className={`text-xs font-bold tabular-nums shrink-0 ${u.avgMastery >= 75 ? "text-emerald-600" : u.avgMastery >= 60 ? "text-amber-600" : "text-red-600"}`}>{u.avgMastery}%</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">Unit {u.unitNumber}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* AI Tutor Parent Summary link */}
           <div className="pt-2">
