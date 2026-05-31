@@ -423,4 +423,29 @@ export const adminUserDetailRouter = router({
       await logAdminAction(ctx.user.id, "question.flag", "quizQuestions", input.questionId, { flagNote: input.flagNote });
       return { success: true };
     }),
+
+  // ─── Session Management ────────────────────────────────────────────────────────
+  /**
+   * Immediately revoke a user session by setting isActive=false and loggedOutAt=now.
+   * The session token will no longer pass authentication checks on the next request.
+   */
+  revokeSession: adminProcedure
+    .input(z.object({ sessionId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [session] = await db
+        .select({ id: userSessions.id, userId: userSessions.userId, isActive: userSessions.isActive })
+        .from(userSessions)
+        .where(eq(userSessions.id, input.sessionId))
+        .limit(1);
+      if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Session not found" });
+      if (!session.isActive) return { success: true, alreadyRevoked: true };
+      await db
+        .update(userSessions)
+        .set({ isActive: false, loggedOutAt: new Date() })
+        .where(eq(userSessions.id, input.sessionId));
+      await logAdminAction(ctx.user.id, "session.revoke", "userSessions", input.sessionId, { targetUserId: session.userId });
+      return { success: true, alreadyRevoked: false };
+    }),
 });

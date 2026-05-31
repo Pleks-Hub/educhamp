@@ -144,6 +144,29 @@ export async function endSession(sessionToken: string): Promise<void> {
 }
 
 /**
+ * Check whether a specific session token has been administratively revoked.
+ * Returns true if the row exists and isActive=false (revoked by admin), or if the row
+ * is missing entirely (treated as invalid). Returns false if the session is still active.
+ * This is called on every authenticated request to enforce admin revocations in real time.
+ */
+export async function isRevokedSession(sessionToken: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false; // If DB is unavailable, fail open (don't block all requests)
+  try {
+    const [row] = await db
+      .select({ isActive: userSessions.isActive })
+      .from(userSessions)
+      .where(eq(userSessions.sessionToken, sessionToken))
+      .limit(1);
+    // If no row found, session was never tracked (e.g. pre-feature logins) — allow through
+    if (!row) return false;
+    return !row.isActive;
+  } catch {
+    return false; // Non-critical: fail open
+  }
+}
+
+/**
  * Get all sessions for a user (for admin portal display).
  */
 export async function getUserSessionHistory(userId: number, limit = 20) {

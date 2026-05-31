@@ -2264,3 +2264,25 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 #### Tests & Docs
 - [x] All existing 900 tests still passing
 - [x] docs/CROSS_DEVICE_TEST_MATRIX.md produced
+
+### AdminDashboard Tab Split & Revoke Session Sprint
+
+#### AdminDashboard Tab-Level Code Splitting
+- [x] Extract AdminOverviewTab into client/src/components/admin/AdminOverviewTab.tsx
+- [x] Extract AdminUsersTab into client/src/components/admin/AdminUsersTab.tsx
+- [x] Extract AdminCoursesTab into client/src/components/admin/AdminCoursesTab.tsx
+- [x] Extract AdminSettingsTab into client/src/components/admin/AdminSettingsTab.tsx
+- [x] Extract AdminAuditLogTab into client/src/components/admin/AdminAuditLogTab.tsx
+- [x] Lazy-load each tab component in AdminDashboard.tsx with React.lazy + Suspense
+- [x] AdminDashboard.tsx source reduced from 4,355 → 3,275 lines (25% reduction)
+
+#### Revoke Session Feature
+- [x] Server: adminDetail.revokeSession procedure (set isActive=false, loggedOutAt=now() by session id)
+- [x] Server: isRevokedSession check in context.ts — revoked sessions treated as unauthenticated on next request
+- [x] Server: logAdminAction called with SESSION_REVOKED event on revoke
+- [x] UI: UserDetailPanel Sessions tab — Revoke button per active session row (all 3 panels)
+- [x] UI: SessionRow uses correct DB field names (loginAt, isActive, browser, os, deviceType)
+- [x] UI: Toast confirmation on revoke with clear messaging about enforcement timing
+
+#### Tests
+- [x] All 900 tests passing (no regressions)

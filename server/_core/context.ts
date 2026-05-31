@@ -3,7 +3,7 @@ import type { User } from "../../drizzle/schema";
 import { sdk } from "./sdk";
 import { COOKIE_NAME } from "@shared/const";
 import { parse as parseCookieHeader } from "cookie";
-import { touchSession } from "../services/sessionTracker";
+import { touchSession, isRevokedSession } from "../services/sessionTracker";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -28,9 +28,16 @@ export async function createContext(
     user = null;
   }
 
-  // Throttled lastActiveAt update — best-effort, non-blocking.
+  // Enforce admin-revoked sessions: if the session was administratively revoked,
+  // treat the request as unauthenticated even if the JWT is still valid.
   if (user && sessionToken) {
-    touchSession(user.id, sessionToken).catch(() => {});
+    const revoked = await isRevokedSession(sessionToken).catch(() => false);
+    if (revoked) {
+      user = null;
+    } else {
+      // Throttled lastActiveAt update — best-effort, non-blocking.
+      touchSession(user.id, sessionToken).catch(() => {});
+    }
   }
 
   return {

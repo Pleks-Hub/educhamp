@@ -40,13 +40,16 @@ function MasteryBar({ score }: { score: number }) {
   );
 }
 
-function SessionRow({ session }: { session: any }) {
+function SessionRow({ session, onRevoke }: { session: any; onRevoke?: (id: number) => void }) {
+  const deviceLabel = [session.browser, session.os].filter(Boolean).join(" · ") || "Unknown device";
+  const deviceIcon = session.deviceType === "mobile" ? "phone" : session.deviceType === "tablet" ? "tablet" : "desktop";
   return (
     <TableRow>
       <TableCell className="text-xs">
         <div className="flex items-center gap-1.5">
-          <Smartphone className="h-3 w-3 text-muted-foreground" />
-          {session.deviceInfo ?? "Unknown device"}
+          <Smartphone className={`h-3 w-3 text-muted-foreground ${deviceIcon !== "phone" ? "hidden" : ""}`} />
+          <Monitor className={`h-3 w-3 text-muted-foreground ${deviceIcon === "phone" ? "hidden" : ""}`} />
+          <span className="truncate max-w-[140px]">{deviceLabel}</span>
         </div>
       </TableCell>
       <TableCell className="text-xs text-muted-foreground">
@@ -56,14 +59,26 @@ function SessionRow({ session }: { session: any }) {
         </div>
       </TableCell>
       <TableCell className="text-xs text-muted-foreground">
-        {session.createdAt ? new Date(session.createdAt).toLocaleString() : "—"}
+        {session.loginAt ? new Date(session.loginAt).toLocaleString() : "—"}
       </TableCell>
       <TableCell className="text-xs">
-        {session.endedAt ? (
-          <Badge variant="outline" className="text-xs text-muted-foreground">Ended</Badge>
-        ) : (
+        {session.isActive ? (
           <Badge variant="outline" className="text-xs text-emerald-600 border-emerald-200 bg-emerald-50">Active</Badge>
+        ) : (
+          <Badge variant="outline" className="text-xs text-muted-foreground">Ended</Badge>
         )}
+      </TableCell>
+      <TableCell className="text-xs">
+        {session.isActive && onRevoke ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs gap-1 text-red-600 hover:bg-red-50 hover:text-red-700"
+            onClick={() => onRevoke(session.id)}
+          >
+            <Trash2 className="h-3 w-3" />Revoke
+          </Button>
+        ) : null}
       </TableCell>
     </TableRow>
   );
@@ -74,6 +89,10 @@ function SessionRow({ session }: { session: any }) {
 function StudentDetailPanel({ userId, onClose }: { userId: number; onClose: () => void }) {
   const [linkEmail, setLinkEmail] = useState("");
   const { data, isLoading, refetch } = trpc.adminDetail.getStudentDetail.useQuery({ studentId: userId });
+  const revokeSession = trpc.adminDetail.revokeSession.useMutation({
+    onSuccess: (res) => { toast.success(res.alreadyRevoked ? "Session was already inactive" : "Session revoked — user will be signed out on next request"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
   const linkParent = trpc.adminDetail.linkParentToStudent.useMutation({
     onSuccess: () => { toast.success("Parent linked"); setLinkEmail(""); refetch(); },
     onError: (e) => toast.error(e.message),
@@ -188,10 +207,11 @@ function StudentDetailPanel({ userId, onClose }: { userId: number; onClose: () =
                   <TableHead className="text-xs">Location</TableHead>
                   <TableHead className="text-xs">Started</TableHead>
                   <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(sessions ?? []).map((s: any) => <SessionRow key={s.id} session={s} />)}
+                {(sessions ?? []).map((s: any) => <SessionRow key={s.id} session={s} onRevoke={(id) => revokeSession.mutate({ sessionId: id })} />)}
               </TableBody>
             </Table>
           </div>
@@ -249,7 +269,11 @@ function StudentDetailPanel({ userId, onClose }: { userId: number; onClose: () =
 // ─── Parent Detail Panel ──────────────────────────────────────────────────────
 
 function ParentDetailPanel({ userId }: { userId: number }) {
-  const { data, isLoading } = trpc.adminDetail.getParentDetail.useQuery({ parentId: userId });
+  const { data, isLoading, refetch } = trpc.adminDetail.getParentDetail.useQuery({ parentId: userId });
+  const revokeSession = trpc.adminDetail.revokeSession.useMutation({
+    onSuccess: (res) => { toast.success(res.alreadyRevoked ? "Session was already inactive" : "Session revoked — user will be signed out on next request"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
 
   if (isLoading) return (
     <div className="space-y-3 p-2">
@@ -340,10 +364,11 @@ function ParentDetailPanel({ userId }: { userId: number }) {
                   <TableHead className="text-xs">Location</TableHead>
                   <TableHead className="text-xs">Started</TableHead>
                   <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(sessions ?? []).map((s: any) => <SessionRow key={s.id} session={s} />)}
+                {(sessions ?? []).map((s: any) => <SessionRow key={s.id} session={s} onRevoke={(id) => revokeSession.mutate({ sessionId: id })} />)}
               </TableBody>
             </Table>
           </div>
@@ -356,7 +381,11 @@ function ParentDetailPanel({ userId }: { userId: number }) {
 // ─── Admin Detail Panel ───────────────────────────────────────────────────────
 
 function AdminDetailPanel({ userId }: { userId: number }) {
-  const { data, isLoading } = trpc.adminDetail.getAdminDetail.useQuery({ adminId: userId });
+  const { data, isLoading, refetch } = trpc.adminDetail.getAdminDetail.useQuery({ adminId: userId });
+  const revokeSession = trpc.adminDetail.revokeSession.useMutation({
+    onSuccess: (res) => { toast.success(res.alreadyRevoked ? "Session was already inactive" : "Session revoked — user will be signed out on next request"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
 
   if (isLoading) return (
     <div className="space-y-3 p-2">
@@ -418,10 +447,11 @@ function AdminDetailPanel({ userId }: { userId: number }) {
                   <TableHead className="text-xs">Location</TableHead>
                   <TableHead className="text-xs">Started</TableHead>
                   <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(sessions ?? []).map((s: any) => <SessionRow key={s.id} session={s} />)}
+                {(sessions ?? []).map((s: any) => <SessionRow key={s.id} session={s} onRevoke={(id) => revokeSession.mutate({ sessionId: id })} />)}
               </TableBody>
             </Table>
           </div>
