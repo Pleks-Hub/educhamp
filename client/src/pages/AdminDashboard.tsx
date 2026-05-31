@@ -2589,7 +2589,7 @@ export default function AdminDashboard() {
 
   if (!user || user.role !== "admin") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <Card className="max-w-sm w-full mx-4">
           <CardContent className="pt-8 pb-6 text-center">
             <Shield className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
@@ -2603,7 +2603,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       {/* Header */}
       <div className="border-b bg-card px-6 py-4 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">

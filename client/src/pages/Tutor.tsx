@@ -448,6 +448,8 @@ export default function Tutor() {
   // Use useMobile hook for reactive mobile detection (avoids SSR issues and Safari quirks)
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false); // default closed; updated in effect below
+  // Visual Viewport API: track keyboard height so the chat input stays above the keyboard on iOS/Android
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   // The key fix: use a plain div ref, not ScrollArea, so we control scrolling directly
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -459,6 +461,22 @@ export default function Tutor() {
   useEffect(() => {
     setSidebarOpen(!isMobile);
   }, [isMobile]);
+
+  // Visual Viewport API: detect virtual keyboard height on iOS/Android
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const handleResize = () => {
+      const kb = window.innerHeight - vv.height - vv.offsetTop;
+      setKeyboardHeight(Math.max(0, kb));
+    };
+    vv.addEventListener('resize', handleResize);
+    vv.addEventListener('scroll', handleResize);
+    return () => {
+      vv.removeEventListener('resize', handleResize);
+      vv.removeEventListener('scroll', handleResize);
+    };
+  }, []);
 
   // Use active-course units from dashboard instead of global getAllUnits
   const { data: dashboard } = trpc.progress.getDashboard.useQuery();
@@ -705,7 +723,7 @@ export default function Tutor() {
 
   return (
     <>
-    <div className="flex h-[calc(100vh-56px)] overflow-hidden page-enter">
+    <div className="flex overflow-hidden page-enter" style={{ height: 'calc(100dvh - 56px)' }}>
       {/* TUX-6: Mobile sidebar backdrop */}
       {isMobile && sidebarOpen && (
         <div
@@ -749,11 +767,12 @@ export default function Tutor() {
                 <NavTooltip key={m.id} content={modeTooltip ?? { title: m.label, description: m.description }} side="right" delayDuration={700}>
                   <button
                     onClick={() => handleModeChange(m.id)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all text-sm ${
+                    className={`w-full flex items-center gap-2.5 px-3 rounded-lg text-left transition-all text-sm ${
                       isActive
                         ? "bg-primary text-primary-foreground font-medium shadow-sm"
                         : "hover:bg-muted text-foreground"
                     }`}
+                    style={{ minHeight: '44px', paddingTop: '0.5rem', paddingBottom: '0.5rem' }}
                   >
                     <Icon className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{m.label}</span>
@@ -1065,7 +1084,10 @@ export default function Tutor() {
         )}
 
         {/* ── Input Area ─────────────────────────────────────────────────────── */}
-        <div className="border-t bg-background px-4 py-3 shrink-0">
+        <div
+          className="border-t bg-background px-4 py-3 shrink-0"
+          style={{ paddingBottom: `calc(0.75rem + ${keyboardHeight}px + var(--safe-area-bottom))` }}
+        >
           <div className="max-w-3xl mx-auto">
             {/* TUX-3: COPPA consent required inline banner */}
             {coppaBlocked && (

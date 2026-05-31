@@ -102,7 +102,7 @@ export default function CourseRequestResult() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-dvh flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-muted-foreground text-sm">Processing your request…</p>
@@ -115,7 +115,7 @@ export default function CourseRequestResult() {
   void action; // used for future analytics
 
   return (
-    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-[#f5f5f5] flex items-center justify-center p-4">
       <div
         className="w-full max-w-lg bg-white rounded-2xl overflow-hidden shadow-lg"
         style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.10)" }}

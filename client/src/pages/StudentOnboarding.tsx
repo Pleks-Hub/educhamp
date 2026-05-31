@@ -284,7 +284,7 @@ export default function StudentOnboarding() {
   const progress = ((step - 1) / totalSteps) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-indigo-50 flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-gradient-to-br from-slate-50 to-indigo-50 flex items-center justify-center p-4">
       <div className="w-full max-w-xl">
         {/* Header */}
         <div className="text-center mb-8">

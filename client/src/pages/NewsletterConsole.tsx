@@ -704,7 +704,7 @@ export default function NewsletterConsole() {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-dvh">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     );
@@ -712,7 +712,7 @@ export default function NewsletterConsole() {
 
   if (!user || user.role !== "admin") {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-dvh">
         <Card className="max-w-md w-full">
           <CardContent className="pt-8 pb-8 text-center">
             <XCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
@@ -726,7 +726,7 @@ export default function NewsletterConsole() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-dvh bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">

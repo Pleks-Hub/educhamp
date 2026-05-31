@@ -72,7 +72,7 @@ export default function CheckoutSuccess() {
       ];
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-emerald-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
+    <div className="min-h-dvh flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-emerald-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
       <div className="max-w-lg w-full text-center space-y-6">
         {/* Success icon */}
         <div className="flex justify-center">

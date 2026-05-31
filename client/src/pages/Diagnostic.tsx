@@ -600,26 +600,29 @@ export default function Diagnostic() {
             {gapUnits.map((gap, idx) => (
               <div
                 key={gap.unitNumber}
-                className={`flex items-center gap-3 p-3 rounded-xl border bg-card transition-all duration-150 ${
+                className={`flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border bg-card transition-all duration-150 ${
                   idx === 0 ? "border-primary/30 bg-primary/5 ring-1 ring-primary/20" : ""
                 }`}
               >
-                {idx === 0 && (
-                  <span className="shrink-0 text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">Next to fix</span>
-                )}
-                <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
-                  gap.status === "partial_understanding" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
-                }`}>
-                  {gap.unitNumber}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{gap.unitTitle}</p>
-                  <p className="text-xs text-muted-foreground">{gap.correct}/{gap.total} correct · {gap.recommendation}</p>
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  {idx === 0 && (
+                    <span className="shrink-0 text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">Next to fix</span>
+                  )}
+                  <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                    gap.status === "partial_understanding" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+                  }`}>
+                    {gap.unitNumber}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{gap.unitTitle}</p>
+                    <p className="text-xs text-muted-foreground">{gap.correct}/{gap.total} correct · {gap.recommendation}</p>
+                  </div>
                 </div>
                 <Button
                   size="sm"
                   variant={idx === 0 ? "default" : "outline"}
-                  className="shrink-0 text-xs h-7 px-2.5 gap-1"
+                  className="w-full sm:w-auto sm:shrink-0 text-xs gap-1"
+                  style={{ minHeight: '44px' }}
                   onClick={() => setLocation(`/tutor?mode=relearn&unitNumber=${gap.unitNumber}`)}
                 >
                   <ArrowRight className="h-3 w-3" />

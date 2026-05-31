@@ -345,7 +345,8 @@ export default function Curriculum() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 text-xs gap-1.5"
+                className="text-xs gap-1.5"
+                style={{ minHeight: '44px' }}
                 onClick={() => setLessonNavOpen((v) => !v)}
                 aria-expanded={lessonNavOpen}
                 aria-controls="lesson-navigator-panel"
@@ -375,11 +376,12 @@ export default function Curriculum() {
                             <button
                               key={lesson.id}
                               onClick={() => handleLessonSelect(lesson.id, unit.id, "relearn")}
-                              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-left text-xs transition-colors ${
+                              className={`flex items-center gap-2 px-3 rounded-lg text-left text-xs transition-colors ${
                                 isCurrent
                                   ? "bg-primary/10 text-primary font-medium border border-primary/20"
                                   : "hover:bg-muted/50 text-foreground/80"
                               }`}
+                              style={{ minHeight: '44px' }}
                             >
                               <span className="shrink-0 w-5 text-center font-mono text-muted-foreground/60">
                                 {lesson.lessonNumber}

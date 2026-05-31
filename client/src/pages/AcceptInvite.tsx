@@ -40,7 +40,7 @@ export default function AcceptInvite() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-dvh flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full text-center">
           <CardContent className="pt-10 pb-8 space-y-4">
             <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto" />
@@ -59,7 +59,7 @@ export default function AcceptInvite() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -69,7 +69,7 @@ export default function AcceptInvite() {
   if (!isAuthenticated) {
     const loginUrl = getLoginUrl();
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-dvh flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
           <CardHeader className="text-center pb-2">
             <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
@@ -114,7 +114,7 @@ export default function AcceptInvite() {
   // Accepted state
   if (accepted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-dvh flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full text-center">
           <CardContent className="pt-10 pb-8 space-y-4">
             <CheckCircle2 className="h-14 w-14 text-emerald-500 mx-auto" />
@@ -137,7 +137,7 @@ export default function AcceptInvite() {
   // Student account trying to accept
   if (user?.accountType === "student") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-dvh flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-10 pb-8 space-y-4 text-center">
             <ShieldAlert className="h-12 w-12 text-amber-500 mx-auto" />
@@ -162,7 +162,7 @@ export default function AcceptInvite() {
   // Preview loading or error
   if (previewLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-dvh flex items-center justify-center">
         <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -175,7 +175,7 @@ export default function AcceptInvite() {
     const isAccepted = msg.toLowerCase().includes("already been accepted");
 
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="min-h-dvh flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full text-center">
           <CardContent className="pt-10 pb-8 space-y-4">
             {isExpired ? (
@@ -209,7 +209,7 @@ export default function AcceptInvite() {
 
   // Show invitation preview and accept button
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-dvh flex items-center justify-center bg-background p-4">
       <Card className="max-w-md w-full">
         <CardHeader className="text-center pb-2">
           <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">

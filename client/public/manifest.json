@@ -4,9 +4,10 @@
   "description": "AI-powered adaptive learning for Grades 3–12. Personalized tutoring, mastery tracking, assessments, and TEKS-aligned curriculum for schools, districts, parents, and students.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1d4ed8",
-  "theme_color": "#1d4ed8",
-  "orientation": "portrait-primary",
+  "background_color": "#1B2A4A",
+  "theme_color": "#1B2A4A",
+  "orientation": "any",
+  "scope": "/",
   "icons": [
     {
       "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663050137747/bGgBz5qKButMMCqjwC5rTw/educhamp-favicon-32-ctv6U8mbwUrAsVD7RXQj4Q.png",
@@ -18,16 +19,29 @@
       "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663050137747/bGgBz5qKButMMCqjwC5rTw/educhamp-favicon-192-RCJzKWMHgzeJhmTEtN4iig.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663050137747/bGgBz5qKButMMCqjwC5rTw/educhamp-favicon-192-RCJzKWMHgzeJhmTEtN4iig.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663050137747/bGgBz5qKButMMCqjwC5rTw/educhamp-favicon-512-LgxxdRcp4nNuknktjTfqwj.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "https://d2xsxph8kpxj0f.cloudfront.net/310519663050137747/bGgBz5qKButMMCqjwC5rTw/educhamp-favicon-512-LgxxdRcp4nNuknktjTfqwj.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "categories": ["education"],
   "lang": "en-US",
-  "dir": "ltr"
+  "dir": "ltr",
+  "prefer_related_applications": false
 }

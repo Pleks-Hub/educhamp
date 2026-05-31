@@ -357,7 +357,7 @@ export default function EarlyDiagnostic() {
   // ── Intro screen ─────────────────────────────────────────────────────────────
   if (step === "intro") {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-yellow-50 to-orange-50 flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-dvh bg-gradient-to-b from-yellow-50 to-orange-50 flex flex-col items-center justify-center p-6 text-center">
         <div className="text-8xl mb-6 animate-bounce">🌟</div>
         <h1 className="text-4xl font-bold text-orange-600 mb-4">
           Learning Check!
@@ -397,7 +397,7 @@ export default function EarlyDiagnostic() {
     const correctCount = answers.filter((a) => a.correct).length;
     const score = Math.round((correctCount / answers.length) * 100);
     return (
-      <div className="min-h-screen bg-gradient-to-b from-green-50 to-teal-50 flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-dvh bg-gradient-to-b from-green-50 to-teal-50 flex flex-col items-center justify-center p-6 text-center">
         <div className="text-8xl mb-6">🏆</div>
         <h1 className="text-4xl font-bold text-green-600 mb-4">
           Amazing job! 🎉
@@ -436,7 +436,7 @@ export default function EarlyDiagnostic() {
   const gridCols = choiceCount === 2 ? "grid-cols-2" : "grid-cols-2";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-50 flex flex-col p-4">
+    <div className="min-h-dvh bg-gradient-to-b from-blue-50 to-indigo-50 flex flex-col p-4">
       {/* Progress bar */}
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">

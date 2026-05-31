@@ -111,7 +111,7 @@ export default function ResetPassword() {
 
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div className="min-h-dvh flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center gap-3">
           <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center shadow-lg">

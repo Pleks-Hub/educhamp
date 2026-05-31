@@ -98,7 +98,7 @@ export default function CourseWelcome() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="min-h-dvh flex items-center justify-center p-6">
         <div className="w-full max-w-2xl space-y-6">
           <Skeleton className="h-10 w-2/3 mx-auto" />
           <Skeleton className="h-48 rounded-2xl" />
@@ -111,7 +111,7 @@ export default function CourseWelcome() {
   return (
     // The entire page is clickable — any click goes to /diagnostic
     <div
-      className="min-h-screen cursor-pointer select-none page-enter"
+      className="min-h-dvh cursor-pointer select-none page-enter"
       onClick={goToDiagnostic}
       role="button"
       tabIndex={0}
@@ -119,7 +119,7 @@ export default function CourseWelcome() {
       aria-label="Take the placement test now"
     >
       {/* Background gradient */}
-      <div className={`min-h-screen bg-gradient-to-br ${colors.bg} flex flex-col items-center justify-center p-6`}>
+      <div className={`min-h-dvh bg-gradient-to-br ${colors.bg} flex flex-col items-center justify-center p-6`}>
         <div className="w-full max-w-2xl space-y-8">
 
           {/* Course identity */}

@@ -137,17 +137,18 @@ function QuestionCard({
           {choices.map((c) => (
             <div
               key={c.label}
-              className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all
+              className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all w-full
                 ${answer === c.label
                   ? "border-primary bg-primary/5"
                   : "border-border hover:border-primary/40 hover:bg-muted/40"
                 }
                 ${disabled ? "opacity-60 cursor-not-allowed" : ""}
               `}
+              style={{ minHeight: '48px' }}
               onClick={() => !disabled && onAnswer(c.label)}
             >
               <RadioGroupItem value={c.label} id={`choice-${c.label}`} className="mt-0.5 shrink-0" />
-              <Label htmlFor={`choice-${c.label}`} className="cursor-pointer leading-relaxed">
+              <Label htmlFor={`choice-${c.label}`} className="cursor-pointer leading-relaxed flex-1">
                 <span className="font-semibold mr-2">{c.label}.</span>
                 {c.text}
               </Label>
@@ -545,15 +546,21 @@ export default function ExamPrep() {
         {/* Scrollable question area */}
         <div className="flex-1 overflow-y-auto px-4 py-5">
           <div className="max-w-3xl mx-auto">
-            {/* Question navigator dots */}
-            <div className="flex flex-wrap gap-1.5 mb-5">
+            {/* Question navigator dots — scrollable row for 54-question STAAR EOC */}
+            <div
+              className="flex overflow-x-auto gap-1.5 mb-5 pb-1"
+              style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', overscrollBehaviorX: 'contain' } as React.CSSProperties}
+              role="tablist"
+              aria-label="Question navigator"
+            >
               {items.map((item, i) => (
                 <button
                   key={item.id}
                   onClick={() => setCurrentIndex(i)}
                   aria-label={`Go to question ${i + 1}${answers[item.id] ? " (answered)" : ""}`}
                   aria-current={i === currentIndex ? "true" : undefined}
-                  className={`h-6 w-6 rounded-full text-xs font-medium transition-all border
+                  style={{ scrollSnapAlign: 'start', flexShrink: 0 }}
+                  className={`h-8 w-8 rounded-full text-xs font-medium transition-all border
                     ${i === currentIndex
                       ? "bg-indigo-600 text-white border-indigo-600 scale-110"
                       : answers[item.id]

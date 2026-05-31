@@ -69,7 +69,7 @@ export default function ConsentApproval() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-background flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-8 text-center">
             <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
@@ -81,7 +81,7 @@ export default function ConsentApproval() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-background flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-6">
         {/* Header */}
         <div className="text-center">

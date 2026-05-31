@@ -528,6 +528,118 @@ button:active:not(:disabled) {
   --accent: oklch(0.72 0.16 65);
 }
 
+/* ─── Safe Area Insets (iPhone notch / Dynamic Island / Android nav bar) ────────
+   viewport-fit=cover is already set in index.html.
+   These variables are consumed by components with fixed/sticky bottom elements.
+─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --safe-area-top:    env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-left:   env(safe-area-inset-left, 0px);
+  --safe-area-right:  env(safe-area-inset-right, 0px);
+}
+
+/* ─── Dynamic Viewport Height utilities ─────────────────────────────────────
+   100dvh adjusts when the browser chrome (address bar) appears/disappears.
+   Fallback to 100vh for browsers without dvh support.
+─────────────────────────────────────────────────────────────────────────── */
+.min-h-dvh {
+  min-height: 100vh; /* fallback */
+  min-height: 100dvh;
+}
+.h-dvh {
+  height: 100vh; /* fallback */
+  height: 100dvh;
+}
+
+/* ─── Touch optimisation ─────────────────────────────────────────────────────
+   touch-action: manipulation eliminates the 300ms tap delay on touch devices
+   without requiring a polyfill. Applied globally to all interactive elements.
+─────────────────────────────────────────────────────────────────────────── */
+button, a, [role="button"], [role="tab"], [role="menuitem"], [role="option"] {
+  touch-action: manipulation;
+}
+
+/* ─── iOS input zoom prevention ─────────────────────────────────────────────
+   iOS Safari zooms in when a focused input has font-size < 16px.
+   Force 16px minimum on mobile without affecting desktop.
+─────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  input, textarea, select {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+/* ─── Overscroll / bounce control ───────────────────────────────────────────
+   Prevent the full-page iOS rubber-band bounce on the root.
+   Individual scrollable containers should use overscroll-behavior: contain.
+─────────────────────────────────────────────────────────────────────────── */
+html, body {
+  overscroll-behavior: none;
+}
+
+/* ─── Tap target minimum sizes ──────────────────────────────────────────────
+   Ensure small icon buttons meet the 44×44px Apple HIG minimum.
+   Apply .tap-target to any icon button that is visually smaller than 44px.
+─────────────────────────────────────────────────────────────────────────── */
+.tap-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─── Scrollable table container with fade indicator ────────────────────────
+   Wrap admin tables in .table-scroll to get momentum scroll + fade hint.
+─────────────────────────────────────────────────────────────────────────── */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  /* Right fade to hint at horizontal scroll */
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+}
+.table-scroll:not([data-scrolled]) {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* ─── iOS Safari aspect-ratio fallback ─────────────────────────────────────
+   Safari < 15 does not support aspect-ratio. We use a padding-top trick as
+   a fallback for any element that must maintain a fixed ratio.
+   The .ar-1-1 and .ar-16-9 helpers are available for custom use.
+─────────────────────────────────────────────────────────────────────────── */
+@supports not (aspect-ratio: 1) {
+  .ar-1-1 {
+    position: relative;
+    padding-top: 100%;
+  }
+  .ar-1-1 > * {
+    position: absolute;
+    inset: 0;
+  }
+  .ar-16-9 {
+    position: relative;
+    padding-top: 56.25%;
+  }
+  .ar-16-9 > * {
+    position: absolute;
+    inset: 0;
+  }
+}
+
+/* ─── -webkit-fill-available height fix for iOS Safari ─────────────────────
+   On iOS, 100vh includes the browser chrome (address bar).
+   Use this class instead of h-screen on full-page containers.
+─────────────────────────────────────────────────────────────────────────── */
+.h-fill-available {
+  height: 100vh;
+  height: -webkit-fill-available;
+  height: 100dvh;
+}
+
 /* ─── Safari -webkit-backdrop-filter polyfill ────────────────────────────────
    Safari requires the -webkit- prefix for backdrop-filter.
    Tailwind 4 / Lightning CSS adds this automatically in the compiled output,

@@ -65,7 +65,7 @@ export default function ChatManagement() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-dvh flex items-center justify-center bg-slate-50">
         <div className="animate-spin h-8 w-8 border-2 border-indigo-600 border-t-transparent rounded-full" />
       </div>
     );
@@ -73,7 +73,7 @@ export default function ChatManagement() {
 
   if (!user || user.role !== "admin") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-dvh flex items-center justify-center bg-slate-50">
         <Card className="max-w-sm w-full mx-4">
           <CardContent className="pt-6 text-center">
             <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-3" />
@@ -122,7 +122,7 @@ export default function ChatManagement() {
   const messages = conversationData?.messages ?? [];
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-dvh bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">

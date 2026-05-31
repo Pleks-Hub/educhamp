@@ -2216,3 +2216,51 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 #### Tests
 - [x] server/admin-portal.test.ts — 20 test cases covering role isolation, session tracking, user detail, relationship management, course management
 - [x] All 900 tests passing
+
+### Cross-Device & Cross-Browser Optimisation Sprint
+
+#### Part 1 — Viewport & Layout Foundations
+- [x] Replace min-h-screen with min-h-dvh (+ min-h-screen fallback) across all pages
+- [x] Replace h-[calc(100vh-56px)] in Tutor.tsx with h-[calc(100dvh-56px)]
+- [x] Add safe area CSS variables to index.css (:root)
+- [x] Apply safe-area-bottom padding to Tutor chat input bar
+- [x] iOS input zoom prevention: font-size ≥ 16px on mobile for all inputs/textareas/selects
+- [x] Tailwind breakpoint audit: confirm consistent sm/md/lg/xl usage
+
+#### Part 2 — Touch Optimisation
+- [x] touch-action: manipulation globally on button, a, [role="button"]
+- [x] overscroll-behavior: none on html/body; contain on scroll containers
+- [x] Admin table action buttons: min 44px tap target on mobile (via global touch CSS)
+- [x] Grade override select trigger: min 44px tap target on mobile (via global touch CSS)
+- [x] Exam prep question navigator dots: scrollable row (overflow-x: auto, scroll-snap)
+- [x] Diagnostic "Work on this" button: full-width on mobile
+- [x] Lesson navigator expand/collapse: min 44px tap target
+
+#### Part 3 — Component-Specific Fixes
+- [x] Tutor.tsx: Visual Viewport API keyboard height handler
+- [x] Tutor.tsx: paddingBottom = keyboardHeight on chat container
+- [x] ExamPrep: multiple choice options full-width rows min 48px on mobile
+- [x] ExamPrep: constructed response textarea resize:none
+- [x] Tutor mode selector: min 44px tap target per button
+- [x] Diagnostic result: Work on this full-width on mobile, 44px tap target
+
+#### Part 4 — iOS Safari Fixes
+- [x] overscroll-behavior: none on html/body (prevent full-page bounce)
+- [x] aspect-ratio fallbacks (.ar-1-1, .ar-16-9) via @supports not (aspect-ratio: 1)
+- [x] -webkit-backdrop-filter polyfill already in place; confirmed coverage
+- [x] .h-fill-available utility class added
+
+#### Part 5 — PWA Setup
+- [x] Create sw.js service worker (cache-first shell, network-first API, offline fallback)
+- [x] Update manifest.json: theme_color #1B2A4A, orientation any, separate maskable icon entries
+- [x] PWAUpdatePrompt wires correctly to sw.js via workbox-window
+
+#### Part 6 — Performance
+- [x] Bundle analysis: top 5 largest files identified (AdminDashboard 219KB, ParentDashboard 128KB, etc.)
+- [x] Route-based code splitting already applied to all 30+ routes via React.lazy in App.tsx
+- [x] Streamdown/Shiki/KaTeX already deferred via StreamdownRenderer.tsx lazy chunk
+- [x] font-display: swap already set on all @font-face declarations
+
+#### Tests & Docs
+- [x] All existing 900 tests still passing
+- [x] docs/CROSS_DEVICE_TEST_MATRIX.md produced

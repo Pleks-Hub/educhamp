@@ -78,7 +78,7 @@ export default function JoinPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+      <div className="min-h-dvh bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
         <div className="w-full max-w-lg space-y-4">
           <Skeleton className="h-14 w-14 rounded-2xl mx-auto" />
           <Skeleton className="h-8 w-64 mx-auto" />
@@ -89,7 +89,7 @@ export default function JoinPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
         {/* Hero */}
         <div className="text-center mb-8">
