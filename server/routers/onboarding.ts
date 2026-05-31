@@ -33,6 +33,7 @@ import {
   getCourseById,
   getUserByEmail,
 } from "../db";
+import { isYoungLearnerGrade } from "../educhamp-helpers";
 import { buildParentInviteEmail } from "../emailTemplates/parentInvite";
 import { sendEmail } from "../emailService";
 import { invokeLLM } from "../_core/llm";
@@ -685,6 +686,11 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
   /** Get personalization settings for the current user. */
   getPersonalization: protectedProcedure.query(async ({ ctx }) => {
     const profile = await getUserProfile(ctx.user.id);
+    // Determine whether the student's active course is an early-childhood course
+    // so the UI can enable/disable the Parent-Led Mode toggle accordingly.
+    const activeCourseId = await getActiveCourseIdForUser(ctx.user.id).catch(() => null);
+    const activeCourse = activeCourseId ? await getCourseById(activeCourseId).catch(() => null) : null;
+    const activeCourseIsEarlyChildhood = isYoungLearnerGrade(activeCourse?.gradeLevel);
     return {
       colorPalette: (profile as any)?.colorPalette ?? "indigo",
       displayName: (profile as any)?.displayName ?? null,
@@ -693,6 +699,7 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
       parentLedMode: (profile as any)?.parentLedMode ?? false,
       disableAnimations: (profile as any)?.disableAnimations ?? false,
       disableSound: (profile as any)?.disableSound ?? false,
+      activeCourseIsEarlyChildhood,
     };
   }),
 

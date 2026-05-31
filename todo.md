@@ -2286,3 +2286,10 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 
 #### Tests
 - [x] All 900 tests passing (no regressions)
+
+### Parent-Led Mode Improvements Sprint
+- [x] Server: auto-clear parentLedMode when student switches to a non-Pre-K/K course (setActiveCourse procedure)
+- [x] Server: getPersonalization now returns activeCourseIsEarlyChildhood field
+- [x] UI: Parent-Led Mode toggle in Personalization settings — disabled with amber note when active course is not Pre-K/K
+- [x] UI: toggle only enabled when activeCourseIsEarlyChildhood is true
+- [x] All 900 tests still passing

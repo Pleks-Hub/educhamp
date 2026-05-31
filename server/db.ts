@@ -1003,6 +1003,7 @@ export async function upsertUserProfile(
     aiWelcomeMessage: string;
     onboardingCompleted: boolean;
     onboardingStep: number;
+    parentLedMode: boolean;
   }>
 ) {
   const db = await getDb();

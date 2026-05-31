@@ -626,26 +626,41 @@ function PersonalizationCard() {
         <Separator />
 
         {/* Parent-Led Learning Mode */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <Label htmlFor="parentLedMode" className="text-sm font-medium">
-              Parent-Led Learning Mode 👨‍👩‍👧
-            </Label>
-            <p className="text-xs text-muted-foreground max-w-sm">
-              Enable this for Pre-K through Grade 2 students. EduBot will narrate instructions
-              aloud, use simpler language, and include coaching prompts for the parent to read
-              alongside the child.
-            </p>
-          </div>
-          <Switch
-            id="parentLedMode"
-            checked={parentLedMode}
-            onCheckedChange={(checked) => {
-              setParentLedMode(checked);
-              saveMutation.mutate({ parentLedMode: checked });
-            }}
-          />
-        </div>
+        {(() => {
+          const isEarlyChildhood = (personalization as any)?.activeCourseIsEarlyChildhood ?? false;
+          return (
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <Label
+                  htmlFor="parentLedMode"
+                  className={`text-sm font-medium ${!isEarlyChildhood ? "text-muted-foreground" : ""}`}
+                >
+                  Parent-Led Learning Mode 👨‍👩‍👧
+                </Label>
+                <p className="text-xs text-muted-foreground max-w-sm">
+                  Enable this for Pre-K through Grade 2 students. EduBot will narrate instructions
+                  aloud, use simpler language, and include coaching prompts for the parent to read
+                  alongside the child.
+                </p>
+                {!isEarlyChildhood && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mt-1">
+                    Not available for your current course. Switch to a Pre-K or Kindergarten course to enable.
+                  </p>
+                )}
+              </div>
+              <Switch
+                id="parentLedMode"
+                checked={parentLedMode && isEarlyChildhood}
+                disabled={!isEarlyChildhood}
+                onCheckedChange={(checked) => {
+                  if (!isEarlyChildhood) return;
+                  setParentLedMode(checked);
+                  saveMutation.mutate({ parentLedMode: checked });
+                }}
+              />
+            </div>
+          );
+        })()}
 
         <Button
           onClick={handleSaveNames}

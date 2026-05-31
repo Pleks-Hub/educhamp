@@ -35,6 +35,7 @@ import {
   bulkPromoteStudentGrade,
   getStudentsByGrade,
   getUserProfile,
+  upsertUserProfile,
   // CMS
   getCmsContent,
   getCmsContentByKey,
@@ -64,6 +65,7 @@ import {
   transferStudent,
   getMasteryRecordsForContext,
 } from "../db";
+import { isYoungLearnerGrade } from "../educhamp-helpers";
 import { sendEmail } from "../emailService";
 import { buildInactivityEmail } from "../emailTemplates/inactivityNotification";
 import { BRAND, wrapEmailHtml } from "../emailTemplates/emailBase";
@@ -498,6 +500,17 @@ export const adminRouter = router({
     .input(z.object({ courseId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       await setUserActiveCourse(ctx.user.id, input.courseId);
+      // Auto-clear parentLedMode when the student switches to a non-Pre-K/K course.
+      // This keeps the profile flag in sync with the active course so the AI tutor
+      // persona and UI banner stay consistent without relying solely on the runtime
+      // guard in tutorStream.ts.
+      const newCourse = await getCourseById(input.courseId).catch(() => null);
+      if (newCourse && !isYoungLearnerGrade(newCourse.gradeLevel)) {
+        const profile = await getUserProfile(ctx.user.id).catch(() => null);
+        if ((profile as any)?.parentLedMode === true) {
+          await upsertUserProfile(ctx.user.id, { parentLedMode: false });
+        }
+      }
       return { success: true };
     }),
 
