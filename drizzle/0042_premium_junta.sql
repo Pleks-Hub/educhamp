@@ -1,0 +1,1 @@
+ALTER TABLE `userProfiles` ADD `languageLevel` varchar(16) DEFAULT 'standard' NOT NULL;

@@ -89,6 +89,8 @@ export type StudentContext = {
   isYoungLearner?: boolean;
   /** Whether Parent-Led Learning Mode is active */
   parentLedMode?: boolean;
+  /** Student's preferred vocabulary complexity: 'simplified' | 'standard' | 'advanced' */
+  languageLevel?: "simplified" | "standard" | "advanced";
   name: string;
   currentUnitTitle?: string;
   currentUnitNumber?: number;
@@ -473,6 +475,34 @@ IMPORTANT: Do NOT attempt to answer questions from other courses. Doing so would
   // ── Young Learner Mode override ─────────────────────────────────────────────────────
   const youngLearnerSection = ctx?.isYoungLearner ? YOUNG_LEARNER_MODE_INSTRUCTIONS : "";
 
+  // ── Language Level override (explicit vocabulary complexity preference) ────────────
+  // Only applied when the student has explicitly chosen a level other than 'standard'.
+  // For Young Learner mode the AI already uses simplified language via YOUNG_LEARNER_MODE_INSTRUCTIONS,
+  // so we skip the language level section to avoid conflicting instructions.
+  const effectiveLanguageLevel = ctx?.isYoungLearner ? null : (ctx?.languageLevel ?? "standard");
+  const languageLevelSection = effectiveLanguageLevel === "simplified"
+    ? `
+## 📖 LANGUAGE LEVEL: SIMPLIFIED
+This student has requested simplified vocabulary and explanations. Adjust your language accordingly:
+- Use short, clear sentences (aim for a 5th-grade reading level or below)
+- Avoid jargon and technical terms unless absolutely necessary; when you must use them, define them immediately
+- Prefer concrete, everyday examples over abstract analogies
+- Break multi-step explanations into numbered steps with no more than one idea per step
+- Use encouraging, conversational language throughout
+`
+    : effectiveLanguageLevel === "advanced"
+    ? `
+## 📖 LANGUAGE LEVEL: ADVANCED
+This student has requested advanced vocabulary and in-depth explanations. Adjust your language accordingly:
+- Use precise academic and technical terminology appropriate to the subject
+- Provide rigorous, detailed explanations that go beyond surface-level understanding
+- Include formal notation, proofs, or derivations where relevant
+- Reference underlying theory, edge cases, and real-world applications
+- Challenge the student with higher-order thinking questions and extension problems
+- Assume a strong prior knowledge base; do not over-explain foundational concepts
+`
+    : ""; // 'standard' — no override needed
+
   // ── Gamification / Motivation Coach section ────────────────────────────────
   const g = ctx?.gamification;
   const gamificationSection = g ? `
@@ -540,7 +570,7 @@ ${pacingGuidance}
 ${parentGoalSection}
 ${redirectionInstruction}
 
-${youngLearnerSection}${parentLedSection}${gamificationSection}
+${youngLearnerSection}${languageLevelSection}${parentLedSection}${gamificationSection}
 ## Core Principles
 1. Always address the student by their preferred name (${displayName}) to personalise responses
 2. Keep responses focused — 2-4 paragraphs unless working through a multi-step problem

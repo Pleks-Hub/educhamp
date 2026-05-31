@@ -358,6 +358,7 @@ export function registerTutorStreamRoute(app: Express) {
       const { getUserProfile: getProfileForMode } = await import("./db");
       const modeProfile = await getProfileForMode(contextUserId).catch(() => null);
       const parentLedMode = modeProfile?.parentLedMode === true && isEarlyChildhoodCourse;
+      const languageLevel = (modeProfile as any)?.languageLevel as "simplified" | "standard" | "advanced" | undefined ?? "standard";
 
       // ── Gamification context for AI motivation coach ──────────────────────────────
       const [xpSummary, streakData, badgesData] = await Promise.all([
@@ -399,6 +400,7 @@ export function registerTutorStreamRoute(app: Express) {
           studentDemographics,
           isYoungLearner,
           parentLedMode,
+          languageLevel,
           gamification: gamificationCtx,
           courseContext: activeCourse
             ? {

@@ -699,6 +699,7 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
       parentLedMode: (profile as any)?.parentLedMode ?? false,
       disableAnimations: (profile as any)?.disableAnimations ?? false,
       disableSound: (profile as any)?.disableSound ?? false,
+      languageLevel: ((profile as any)?.languageLevel ?? "standard") as "simplified" | "standard" | "advanced",
       activeCourseIsEarlyChildhood,
     };
   }),
@@ -714,6 +715,7 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         parentLedMode: z.boolean().optional(),
         disableAnimations: z.boolean().optional(),
         disableSound: z.boolean().optional(),
+        languageLevel: z.enum(["simplified", "standard", "advanced"]).optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -729,6 +731,7 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         ...(input.parentLedMode !== undefined ? { parentLedMode: input.parentLedMode } : {}),
         ...(input.disableAnimations !== undefined ? { disableAnimations: input.disableAnimations } : {}),
         ...(input.disableSound !== undefined ? { disableSound: input.disableSound } : {}),
+        ...(input.languageLevel !== undefined ? { languageLevel: input.languageLevel } : {}),
       });
       return { success: true };
     }),

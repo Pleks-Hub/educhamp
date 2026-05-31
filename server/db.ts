@@ -1004,6 +1004,9 @@ export async function upsertUserProfile(
     onboardingCompleted: boolean;
     onboardingStep: number;
     parentLedMode: boolean;
+    disableAnimations: boolean;
+    disableSound: boolean;
+    languageLevel: string;
   }>
 ) {
   const db = await getDb();

@@ -56,6 +56,8 @@ type ChildSummary = {
   recentQuizzes: { unitNumber: number; score: number; completedAt: Date }[];
   placement: { score: number; recommendation: string | null; completedAt: Date } | null;
   adaptivePath: string | null;
+  parentLedMode: boolean;
+  languageLevel: "simplified" | "standard" | "advanced";
 };
 
 // ─── Mastery helpers ──────────────────────────────────────────────────────────
@@ -1696,6 +1698,22 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
                 </Badge>
               )}
               {adaptivePathBadge(child.adaptivePath)}
+              {/* Parent-Led Mode badge */}
+              {child.parentLedMode && (
+                <Badge variant="outline" className="text-xs bg-violet-50 text-violet-700 border-violet-200">
+                  👨‍👧 Parent-Led
+                </Badge>
+              )}
+              {/* Language Level badge — only shown when non-standard */}
+              {child.languageLevel !== "standard" && (
+                <Badge variant="outline" className={`text-xs ${
+                  child.languageLevel === "simplified"
+                    ? "bg-sky-50 text-sky-700 border-sky-200"
+                    : "bg-purple-50 text-purple-700 border-purple-200"
+                }`}>
+                  {child.languageLevel === "simplified" ? "📖 Simplified" : "📖 Advanced"}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -2527,6 +2545,26 @@ export default function ParentDashboard() {
                       {adaptivePathBadge(child.adaptivePath)}
                     </div>
                   </div>
+
+                  {/* Personalization badges */}
+                  {(child.parentLedMode || child.languageLevel !== "standard") && (
+                    <div className="flex gap-1.5 mt-2 flex-wrap">
+                      {child.parentLedMode && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-50 text-violet-700 border border-violet-200">
+                          👨‍👧 Parent-Led
+                        </span>
+                      )}
+                      {child.languageLevel !== "standard" && (
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                          child.languageLevel === "simplified"
+                            ? "bg-sky-50 text-sky-700 border-sky-200"
+                            : "bg-purple-50 text-purple-700 border-purple-200"
+                        }`}>
+                          {child.languageLevel === "simplified" ? "📖 Simplified" : "📖 Advanced"}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </button>
               );
             })}

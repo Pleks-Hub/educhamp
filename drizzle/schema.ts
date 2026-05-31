@@ -459,6 +459,8 @@ export const userProfiles = mysqlTable("userProfiles", {
   parentLedMode: boolean("parentLedMode").notNull().default(false), // Parent-Led Learning Mode for Pre-K/K
   disableAnimations: boolean("disableAnimations").notNull().default(false), // Disable celebration animations
   disableSound: boolean("disableSound").notNull().default(false), // Disable celebration sounds
+  // Vocabulary / language complexity preference
+  languageLevel: varchar("languageLevel", { length: 16 }).notNull().default("standard"), // 'simplified' | 'standard' | 'advanced'
   // Onboarding state
   onboardingCompleted: boolean("onboardingCompleted").notNull().default(false),
   onboardingStep: int("onboardingStep").notNull().default(0),

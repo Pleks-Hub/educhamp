@@ -29,8 +29,9 @@ import {
   rejectCourseRequest,
   getCourseRequestById,
   getUserById,
+  getUserProfile,
 } from "../db";
-import { getMasteryLabel, getAdaptivePath } from "../educhamp-helpers";
+import { getMasteryLabel, getAdaptivePath, isYoungLearnerGrade } from "../educhamp-helpers";
 import { sendEmail } from "../emailService";
 import { buildCourseRequestOutcomeEmail } from "../emailTemplates/courseRequestNotification";
 
@@ -79,6 +80,8 @@ export const parentRouter = router({
             ? Math.round(mastery.reduce((s, m) => s + m.score, 0) / mastery.length)
             : null;
 
+        const childProfile = await getUserProfile(child.id).catch(() => null);
+
         const completedUnits = summary?.progress.filter((p) => p.status === "completed").length ?? 0;
         const inProgressUnits = summary?.progress.filter((p) => p.status === "in_progress" || p.status === "quiz_unlocked").length ?? 0;
 
@@ -113,6 +116,9 @@ export const parentRouter = router({
               }
             : null,
           adaptivePath: overallAvg !== null ? getAdaptivePath(overallAvg) : null,
+          // Personalization fields for Parent Dashboard display
+          parentLedMode: (childProfile as any)?.parentLedMode ?? false,
+          languageLevel: ((childProfile as any)?.languageLevel ?? "standard") as "simplified" | "standard" | "advanced",
         };
       })
     );

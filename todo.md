@@ -2293,3 +2293,14 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UI: Parent-Led Mode toggle in Personalization settings — disabled with amber note when active course is not Pre-K/K
 - [x] UI: toggle only enabled when activeCourseIsEarlyChildhood is true
 - [x] All 900 tests still passing
+
+### Language Level, Vitest Auto-Clear Test & Parent-Led Badge Sprint
+- [x] DB: add languageLevel column to userProfiles (enum: 'simplified' | 'standard' | 'advanced', default 'standard')
+- [x] Server: include languageLevel in getPersonalization response and savePersonalization input
+- [x] Server: include languageLevel in buildTutorSystemPrompt / tutorStream.ts context (suppressed for Young Learner mode)
+- [x] UI: Language Level selector (3 radio cards) in Profile Personalization settings
+- [x] Vitest: sprint64.test.ts — 25 tests covering isYoungLearnerGrade, auto-clear logic, languageLevel prompt injection, schema validation
+- [x] UI: Parent-Led Mode badge on child card in main children list and ChildDetailPanel header
+- [x] UI: Language Level badge shown in ChildDetailPanel header when non-standard
+- [x] Server: listChildren returns parentLedMode and languageLevel per child
+- [x] All 925 tests passing
