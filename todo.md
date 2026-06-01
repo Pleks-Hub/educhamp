@@ -2389,3 +2389,13 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Retry 20 failed units — 20/20 succeeded, 60 lessons inserted
 - [x] Final verification: 1,485 total lessons, 0 courses with 0 lessons, 0 units with 0 lessons
 - [x] Confirmed: helmet.js and express-rate-limit already configured in server/_core/index.ts
+
+### Lesson Expansion Sprint — High-Traffic Courses (June 2026)
+- [x] Audit current lesson counts for ALG1, ENG1, BIO1, GR3MATH, G4MATH, G5MATH — all at 3/unit baseline
+- [x] Build expand-lessons.mjs script with sequential context injection and 4s inter-request delay
+- [x] Dry-run test on ALG1 and GR3MATH — content quality verified
+- [x] Run full expansion: 50/51 units succeeded, 1 unit (ALG1 U6) failed with JSON truncation
+- [x] Build targeted fix script (fix-alg1-u6.mjs) with 3-lesson batches to avoid token limit
+- [x] ALG1 U6 "Systems of Equations" fixed — 6 lessons inserted in 2 batches
+- [x] Final verification: ALG1 (9.3/unit), ENG1 (9.4/unit), BIO1 (9.0/unit), GR3MATH (9.4/unit), G4MATH (9.9/unit), G5MATH (9.6/unit)
+- [x] Total lessons in DB after expansion: 1,810
