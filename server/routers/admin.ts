@@ -489,7 +489,19 @@ export const adminRouter = router({
     .input(z.object({ courseId: z.number() }))
     .mutation(async ({ ctx, input }) => {
       const existing = await getUserCourseEnrollments(ctx.user.id);
-      await enrollUserInCourse(ctx.user.id, input.courseId);
+      try {
+        await enrollUserInCourse(ctx.user.id, input.courseId);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.startsWith("AGE_GATE:")) {
+          const minAge = msg.split(":")[1];
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `You must be at least ${minAge} years old to enrol in this course.`,
+          });
+        }
+        throw err;
+      }
       if (existing.length === 0) {
         await setUserActiveCourse(ctx.user.id, input.courseId);
       }

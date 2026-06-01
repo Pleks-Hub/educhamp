@@ -328,7 +328,7 @@ export default function Quiz() {
           </div>
         )}
 
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <Button onClick={() => setLocation(`/curriculum/unit/${unitNumber}`)} className="flex-1">
             Back to Unit
           </Button>
@@ -360,7 +360,7 @@ export default function Quiz() {
   // Start screen
   if (!started) {
     return (
-      <div className="p-6 space-y-6 page-enter max-w-2xl">
+      <div className="px-4 py-6 sm:p-6 space-y-6 page-enter max-w-2xl mx-auto">
         <CourseContextBanner />
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <button onClick={() => setLocation(`/curriculum/unit/${unitNumber}`)} className="hover:text-foreground flex items-center gap-1">
@@ -390,7 +390,7 @@ export default function Quiz() {
 
         <Card className="border shadow-sm">
           <CardContent className="p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-3">
               <div className="p-3 bg-muted/30 rounded-lg text-center">
                 <p className="text-2xl font-bold">15</p>
                 <p className="text-xs text-muted-foreground">Questions</p>
@@ -412,7 +412,7 @@ export default function Quiz() {
 
             <div className="space-y-2 text-sm">
               <p className="font-medium text-foreground">Difficulty breakdown:</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 gap-2">
                 {Object.entries(DIFFICULTY_CONFIG).map(([key, cfg]) => (
                   <div key={key} className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border text-xs ${cfg.color}`}>
                     <span className="font-medium">{cfg.label}</span>
@@ -542,7 +542,7 @@ export default function Quiz() {
   };
 
   return (
-    <div className="p-6 space-y-4 page-enter max-w-2xl">
+    <div className="px-4 py-6 sm:p-6 space-y-4 page-enter max-w-2xl mx-auto">
       {/* Exam Timer Bar (shown only for timed exams) */}
       {isTimedExam && (
         <ExamTimerBar

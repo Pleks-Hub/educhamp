@@ -1280,6 +1280,32 @@ export async function getGradeDefaultCourse(gradeLevel: string) {
 export async function enrollUserInCourse(userId: number, courseId: number) {
   const db = await getDb();
   if (!db) return;
+
+  // Server-side age gate: enforce minAgeRequirement against student DOB
+  const [course] = await db
+    .select({ minAgeRequirement: courses.minAgeRequirement })
+    .from(courses)
+    .where(eq(courses.id, courseId))
+    .limit(1);
+  if (course?.minAgeRequirement) {
+    const [profile] = await db
+      .select({ dateOfBirth: userProfiles.dateOfBirth })
+      .from(userProfiles)
+      .where(eq(userProfiles.userId, userId))
+      .limit(1);
+    if (profile?.dateOfBirth) {
+      const dob = new Date(profile.dateOfBirth);
+      const today = new Date();
+      const age =
+        today.getFullYear() -
+        dob.getFullYear() -
+        (today < new Date(today.getFullYear(), dob.getMonth(), dob.getDate()) ? 1 : 0);
+      if (age < course.minAgeRequirement) {
+        throw new Error(`AGE_GATE:${course.minAgeRequirement}`);
+      }
+    }
+  }
+
   const existing = await db.select().from(userCourseEnrollments)
     .where(and(eq(userCourseEnrollments.userId, userId), eq(userCourseEnrollments.courseId, courseId)))
     .limit(1);

@@ -2359,9 +2359,23 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] All 960 tests passing
 
 ### Student Age Gate, Badge Tooltips, Demo Quick-Action & Documents Sprint
-- [ ] Student-side age gate: show age-requirement badge on course cards in CourseSwitcher/CurriculumBrowser and disable Enrol button with clear message when student is underage
-- [ ] Suppression list sidebar badge: hover tooltip showing breakdown (hard bounces vs spam complaints)
-- [ ] Demo Requests sidebar item: quick-action popover to mark a request as contacted without navigating away
-- [ ] Product Feature & Capabilities Document: comprehensive document saved to reports/ folder
-- [ ] Project Handoff Document: full handoff saved to reports/educhamp_handoff_v1.md and committed to GitHub
-- [ ] All tests still passing
+- [x] Student-side age gate: CourseSwitcher fetches student DOB via getProfile, computes age, shows amber ShieldAlert badge and disables Enrol button with tooltip when student is below minAgeRequirement
+- [x] Suppression list sidebar badge: hover Tooltip shows breakdown (hard bounces / spam complaints / manual) from getSidebarBadgeCounts.suppressionBreakdown
+- [x] Demo Requests sidebar item: quick-action Popover shows 3 newest pending requests with Mark as Contacted button each (calls admin.updateDemoRequest mutation inline)
+- [x] Product Feature & Capabilities Document: reports/educhamp_product_features_v1.md — 8 sections, 9 modules, 19-slide deck outline
+- [x] Project Handoff Document: reports/educhamp_handoff_v3.md — full handoff covering all work since v2 (Sprint 37)
+- [x] Both documents committed to GitHub under /reports (commit 9495c53)
+- [x] All 960 tests passing
+
+### Production Readiness QA Sprint
+- [x] Phase 1: Full codebase audit — TypeScript 0 errors, all 44 migrations verified, all routes and procedures reviewed
+- [x] Phase 2: Auth & onboarding flow QA — login/logout, COPPA gate, age-of-majority, DOB enforcement all verified
+- [x] Phase 3: Student workflow QA — C-01 server-side age gate bypass fixed in enrollUserInCourse (server/db.ts)
+- [x] Phase 4: Parent/guardian workflow QA — state-aware age validation verified end-to-end (client + server)
+- [x] Phase 5: Admin console QA — all 21 sidebar sections reviewed; badge counters, suppression tooltip, demo popover verified
+- [x] Phase 6: Course content audit — 50/75 courses have 0 lessons (quiz-only); documented as M-01 pre-launch priority
+- [x] Phase 7: UI/UX review — H-01 Quiz.tsx mobile fix, H-02 Quiz start screen grid fix, H-03 ParentOnboarding grid fix, H-04 Skills.tsx mobile fix
+- [x] Phase 8: Email/payment flow QA — C-03 Stripe hardcoded educhamp.app URLs replaced with dynamic getAppBaseUrl(req)
+- [x] Phase 9: C-02 enrollSelf AGE_GATE error handling fixed; all 3 critical + 4 high-priority bugs resolved
+- [x] Phase 10: QA/UAT report written to reports/educhamp_qa_uat_report_v1.md
+- [x] All 960/960 tests passing after all fixes

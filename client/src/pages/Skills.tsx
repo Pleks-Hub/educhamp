@@ -101,7 +101,7 @@ export default function Skills() {
   }
 
   return (
-    <div className="p-6 space-y-6 page-enter max-w-5xl">
+    <div className="px-4 py-6 sm:p-6 space-y-6 page-enter max-w-5xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Sigma className="h-6 w-6 text-primary" />
@@ -113,8 +113,8 @@ export default function Skills() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-48">
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 min-w-0 sm:min-w-48">
           <label htmlFor="skills-search" className="sr-only">Search skills</label>
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -126,7 +126,7 @@ export default function Skills() {
           />
         </div>
         <Select value={unitFilter} onValueChange={setUnitFilter}>
-          <SelectTrigger className="w-40 h-9 text-sm" aria-label="Filter by unit">
+          <SelectTrigger className="w-full sm:w-40 h-9 text-sm" aria-label="Filter by unit">
             <SelectValue placeholder="All Units" />
           </SelectTrigger>
           <SelectContent>

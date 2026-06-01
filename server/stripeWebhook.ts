@@ -18,6 +18,15 @@ import { buildTrialReminderEmail } from "./emailTemplates/trialReminder";
 import { buildTrialExpiryEmail } from "./emailTemplates/trialExpiry";
 import { buildTrialWelcomeEmail } from "./emailTemplates/trialWelcome";
 
+/** Derive the app base URL from the request origin header, falling back to a sensible default. */
+function getAppBaseUrl(req: Request): string {
+  const origin = (req as any).headers?.origin as string | undefined;
+  if (origin && origin.startsWith("http")) return origin;
+  const host = (req as any).headers?.host as string | undefined;
+  if (host) return `https://${host}`;
+  return process.env.VITE_APP_URL ?? "https://educhamp.app";
+}
+
 export function registerStripeWebhook(app: Express) {
   // MUST use express.raw BEFORE express.json for webhook signature verification
   app.post(
@@ -53,7 +62,7 @@ export function registerStripeWebhook(app: Express) {
       console.log(`[Webhook] Processing event: ${event.type} (${event.id})`);
 
       try {
-        await handleStripeEvent(event);
+        await handleStripeEvent(event, getAppBaseUrl(req));
       } catch (err) {
         console.error("[Webhook] Handler error:", err);
         // Return 200 to prevent Stripe from retrying — log the error for investigation
@@ -82,7 +91,7 @@ async function getUserIdFromMetadata(metadata: Record<string, string>): Promise<
   return isNaN(parsed) ? null : parsed;
 }
 
-export async function handleStripeEvent(event: any) {
+export async function handleStripeEvent(event: any, appBaseUrl: string = "https://educhamp.app") {
   const obj = event.data?.object;
 
   switch (event.type) {
@@ -150,7 +159,7 @@ export async function handleStripeEvent(event: any) {
             trialEndDate: trialEndStr,
             firstChargeDate: trialEndStr,
             firstChargeAmount: monthlyPrice,
-            dashboardUrl: "https://educhamp.app/dashboard",
+            dashboardUrl: `${appBaseUrl}/dashboard`,
           });
 
           await sendEmail({
@@ -331,11 +340,11 @@ export async function handleStripeEvent(event: any) {
             : new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
 
           // Generate Stripe billing portal URL for cancellation
-          let billingPortalUrl = "https://educhamp.app/billing";
+          let billingPortalUrl = `${appBaseUrl}/billing`;
           try {
             const portal = await stripe.billingPortal.sessions.create({
               customer: sub.customer,
-              return_url: "https://educhamp.app/billing",
+              return_url: `${appBaseUrl}/billing`,
             });
             billingPortalUrl = portal.url;
           } catch (err) {
@@ -362,7 +371,7 @@ export async function handleStripeEvent(event: any) {
             billingDate,
             billingAmount,
             billingInterval,
-            dashboardUrl: "https://educhamp.app/dashboard",
+            dashboardUrl: `${appBaseUrl}/dashboard`,
             billingUrl: billingPortalUrl,
           });
 

@@ -217,7 +217,7 @@ export default function ParentOnboarding() {
               </div>
 
               {/* State — required for age-of-majority lookup */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>
                     State <span className="text-red-500">*</span>
