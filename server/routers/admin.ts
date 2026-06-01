@@ -2157,6 +2157,27 @@ export const adminRouter = router({
 
       return result;
     }),
+
+  /**
+   * Returns aggregate counts for sidebar badge indicators.
+   * Fetched once on mount and auto-refreshed every 60 s.
+   */
+  getSidebarBadgeCounts: adminProcedure.query(async () => {
+    const db = await (await import("../db")).getDb();
+    if (!db) return { flaggedQuestions: 0, demoRequests: 0, suppressionList: 0 };
+    const { questionFlags, demoRequests: demoRequestsTable, emailSuppression } = await import("../../drizzle/schema");
+    const { eq, sql } = await import("drizzle-orm");
+    const [[flagRow], [demoRow], [suppRow]] = await Promise.all([
+      db.select({ count: sql<number>`count(*)` }).from(questionFlags).where(eq(questionFlags.status, "open")),
+      db.select({ count: sql<number>`count(*)` }).from(demoRequestsTable).where(eq(demoRequestsTable.status, "new")),
+      db.select({ count: sql<number>`count(*)` }).from(emailSuppression),
+    ]);
+    return {
+      flaggedQuestions: Number(flagRow?.count ?? 0),
+      demoRequests: Number(demoRow?.count ?? 0),
+      suppressionList: Number(suppRow?.count ?? 0),
+    };
+  }),
 });
 
 // ─── In-process metrics ring buffer (max 20 entries) ─────────────────────────

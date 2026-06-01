@@ -2343,3 +2343,17 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Server db.ts: updateCourse and updateCourseWithStatus helpers accept minAgeRequirement
 - [x] Server admin.ts: updateCourse procedure input schema includes optional minAgeRequirement
 - [x] All 960 tests passing
+
+### Age-Gated Enrolment UI, Users Table Age Filter & Sidebar Badge Counters Sprint
+- [x] Admin Courses tab: minAgeRequirement field added to CourseDetail Overview tab with Save button, inline validation (1–25), and clear/remove support
+- [x] Admin Courses tab: age-requirement badge (amber, ShieldAlert icon) shown on course list cards and in CourseDetail header when minAgeRequirement is set
+- [x] Admin Courses tab: descriptive helper text explains recommended thresholds (14+ AP, 16+ dual-enrollment)
+- [x] Admin Users table: three age filter chips added — All Ages, Under 13 (COPPA), Underage Guardians
+- [x] Admin Users table: Underage Guardians filter uses state-specific minimums (MS=21, AL/NE=19, default=18)
+- [x] Admin Users table: filter chips use distinct colours (amber for COPPA, red for underage guardians)
+- [x] Server: admin.getSidebarBadgeCounts procedure — returns open flaggedQuestions, new demoRequests, total suppressionList counts
+- [x] Admin sidebar: badge counters wired to getSidebarBadgeCounts (auto-refreshes every 60s, stale after 30s)
+- [x] Admin sidebar: red pill badges appear on Flagged Questions, Demo Requests, and Suppression List items when count > 0
+- [x] Admin sidebar: badge turns white/translucent when the item is active (selected)
+- [x] Admin sidebar: badges cap at 99+ for large counts
+- [x] All 960 tests passing

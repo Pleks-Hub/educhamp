@@ -103,7 +103,18 @@ const ADMIN_NAV_GROUPS = [
 type AdminSection = (typeof ADMIN_NAV_GROUPS)[number]["items"][number]["id"];
 
 // ─── Sidebar Component ────────────────────────────────────────────────────────
-function AdminSidebar({ active, onSelect, onClose }: { active: AdminSection; onSelect: (id: AdminSection) => void; onClose?: () => void }) {
+function AdminSidebar({ active, onSelect, onClose, badgeCounts }: {
+  active: AdminSection;
+  onSelect: (id: AdminSection) => void;
+  onClose?: () => void;
+  badgeCounts?: { flaggedQuestions: number; demoRequests: number; suppressionList: number };
+}) {
+  const getBadge = (id: string): number => {
+    if (id === "flaggedquestions") return badgeCounts?.flaggedQuestions ?? 0;
+    if (id === "demorequests") return badgeCounts?.demoRequests ?? 0;
+    if (id === "suppression") return badgeCounts?.suppressionList ?? 0;
+    return 0;
+  };
   return (
     <nav className="flex flex-col h-full">
       <div className="px-4 py-4 border-b flex items-center justify-between">
@@ -129,6 +140,7 @@ function AdminSidebar({ active, onSelect, onClose }: { active: AdminSection; onS
             {group.items.map(item => {
               const Icon = item.icon;
               const isActive = active === item.id;
+              const badge = getBadge(item.id);
               return (
                 <button
                   key={item.id}
@@ -140,7 +152,14 @@ function AdminSidebar({ active, onSelect, onClose }: { active: AdminSection; onS
                   }`}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {item.label}
+                  <span className="flex-1 text-left truncate">{item.label}</span>
+                  {badge > 0 && (
+                    <span className={`shrink-0 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                      isActive ? "bg-white/25 text-white" : "bg-red-500 text-white"
+                    }`}>
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -1614,6 +1633,11 @@ export default function AdminDashboard() {
   const [, navigate] = useLocation();
   const [activeSection, setActiveSection] = useState<AdminSection>("overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { data: badgeCounts } = trpc.admin.getSidebarBadgeCounts.useQuery(undefined, {
+    enabled: !!user && user.role === "admin",
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
 
   if (loading) return (
     <div className="p-8 space-y-4">
@@ -1675,7 +1699,7 @@ export default function AdminDashboard() {
     <div className="min-h-dvh bg-background flex">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex flex-col w-56 xl:w-60 shrink-0 border-r bg-card sticky top-0 h-dvh overflow-hidden">
-        <AdminSidebar active={activeSection} onSelect={setActiveSection} />
+        <AdminSidebar active={activeSection} onSelect={setActiveSection} badgeCounts={badgeCounts} />
       </aside>
 
       {/* Mobile sidebar overlay */}
@@ -1683,7 +1707,7 @@ export default function AdminDashboard() {
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
           <aside className="absolute left-0 top-0 h-full w-64 bg-card border-r shadow-xl z-50 flex flex-col">
-            <AdminSidebar active={activeSection} onSelect={setActiveSection} onClose={() => setSidebarOpen(false)} />
+            <AdminSidebar active={activeSection} onSelect={setActiveSection} onClose={() => setSidebarOpen(false)} badgeCounts={badgeCounts} />
           </aside>
         </div>
       )}

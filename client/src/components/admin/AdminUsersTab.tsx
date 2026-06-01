@@ -116,6 +116,7 @@ export function AdminUsersTab() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [ageFilter, setAgeFilter] = useState<"all" | "coppa" | "underage-guardian">("all");
   const [page, setPage] = useState(0);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEnrollDialog, setShowEnrollDialog] = useState<number | null>(null);
@@ -208,9 +209,23 @@ export function AdminUsersTab() {
     return users.filter((u: any) => {
       const matchStatus = statusFilter === "all" || (u.status ?? "active") === statusFilter;
       const matchType = typeFilter === "all" || u.accountType === typeFilter;
-      return matchStatus && matchType;
+      if (!matchStatus || !matchType) return false;
+      if (ageFilter === "coppa") {
+        const age = calcAgeFromDob(u.dateOfBirth);
+        return age !== null && age < 13;
+      }
+      if (ageFilter === "underage-guardian") {
+        if (u.accountType !== "parent") return false;
+        const age = calcAgeFromDob(u.dateOfBirth);
+        if (age === null) return false;
+        // State-specific minimums: MS=21, AL/NE=19, default=18
+        const state = (u.state ?? "").toUpperCase();
+        const minAge = state === "MS" ? 21 : (state === "AL" || state === "NE") ? 19 : 18;
+        return age < minAge;
+      }
+      return true;
     });
-  }, [users, statusFilter, typeFilter]);
+  }, [users, statusFilter, typeFilter, ageFilter]);
 
   return (
     <div className="space-y-4">
@@ -238,6 +253,33 @@ export function AdminUsersTab() {
             <SelectItem value="teacher">Teachers</SelectItem>
           </SelectContent>
         </Select>
+        {/* Age filter chips */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            onClick={() => setAgeFilter("all")}
+            className={`h-7 px-2.5 rounded-full text-xs font-medium border transition-colors ${
+              ageFilter === "all"
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground border-border hover:border-primary/50"
+            }`}
+          >All Ages</button>
+          <button
+            onClick={() => setAgeFilter("coppa")}
+            className={`h-7 px-2.5 rounded-full text-xs font-medium border transition-colors flex items-center gap-1 ${
+              ageFilter === "coppa"
+                ? "bg-amber-500 text-white border-amber-500"
+                : "bg-background text-amber-600 border-amber-300 hover:border-amber-500"
+            }`}
+          ><Baby className="h-3 w-3" /> Under 13 (COPPA)</button>
+          <button
+            onClick={() => setAgeFilter("underage-guardian")}
+            className={`h-7 px-2.5 rounded-full text-xs font-medium border transition-colors flex items-center gap-1 ${
+              ageFilter === "underage-guardian"
+                ? "bg-red-500 text-white border-red-500"
+                : "bg-background text-red-600 border-red-300 hover:border-red-500"
+            }`}
+          ><AlertTriangle className="h-3 w-3" /> Underage Guardians</button>
+        </div>
         <Badge variant="secondary">{totalUsers} total · showing {filtered.length}</Badge>
         <Button size="sm" onClick={() => setShowCreateDialog(true)} className="ml-auto gap-1">
           <Plus className="h-4 w-4" /> Create User

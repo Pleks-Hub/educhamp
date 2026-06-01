@@ -9,13 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { BookOpen } from "lucide-react";
+import { BookOpen, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
 // ─── Course Detail ────────────────────────────────────────────────────────────
 function CourseDetail({ course, units, onUpdate }: { course: any; units: any[]; onUpdate: (d: any) => void }) {
   const [cooldownInput, setCooldownInput] = useState<string>("");
   const [timerInput, setTimerInput] = useState<string>("");
+  const [minAgeInput, setMinAgeInput] = useState<string>("");
   const [courseDetailTab, setCourseDetailTab] = useState("overview");
   const { data: courseDetail, refetch: refetchDetail } = trpc.adminDetail.getCourseDetail.useQuery(
     { courseId: course?.id },
@@ -43,7 +44,14 @@ function CourseDetail({ course, units, onUpdate }: { course: any; units: any[]; 
             <CardTitle>{course.title}</CardTitle>
             <CardDescription className="mt-1">{course.description}</CardDescription>
           </div>
-          <Badge variant="outline">{course.courseCode}</Badge>
+          <div className="flex flex-col items-end gap-1.5">
+            <Badge variant="outline">{course.courseCode}</Badge>
+            {course.minAgeRequirement ? (
+              <Badge className="bg-amber-100 text-amber-800 gap-1 text-xs">
+                <ShieldAlert className="h-3 w-3" /> Age {course.minAgeRequirement}+ required
+              </Badge>
+            ) : null}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -106,6 +114,50 @@ function CourseDetail({ course, units, onUpdate }: { course: any; units: any[]; 
                   if (!isNaN(v) && v > 0) onUpdate({ examTimerMinutes: v });
                 }}>Save</Button>
               </div>
+            </div>
+            {/* ── Minimum Age Requirement ── */}
+            <div className="space-y-2 border-t pt-4">
+              <Label className="text-sm font-medium flex items-center gap-1.5">
+                <ShieldAlert className="h-4 w-4 text-amber-600" />
+                Minimum Age Requirement
+              </Label>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Input
+                  type="number" min={0} max={25}
+                  placeholder={course.minAgeRequirement ? String(course.minAgeRequirement) : "No restriction"}
+                  value={minAgeInput}
+                  onChange={(e) => setMinAgeInput(e.target.value)}
+                  className="w-36"
+                />
+                <Button size="sm" variant="outline" onClick={() => {
+                  const raw = minAgeInput.trim();
+                  if (raw === "" || raw === "0") {
+                    onUpdate({ minAgeRequirement: null });
+                    setMinAgeInput("");
+                    toast.success("Age restriction removed");
+                  } else {
+                    const v = parseInt(raw);
+                    if (!isNaN(v) && v > 0 && v <= 25) {
+                      onUpdate({ minAgeRequirement: v });
+                      setMinAgeInput("");
+                      toast.success(`Age restriction set to ${v}+`);
+                    } else {
+                      toast.error("Enter a valid age between 1 and 25, or 0 to remove restriction");
+                    }
+                  }
+                }}>Save</Button>
+                {course.minAgeRequirement ? (
+                  <Badge className="bg-amber-100 text-amber-800 gap-1 text-xs">
+                    <ShieldAlert className="h-3 w-3" /> Age {course.minAgeRequirement}+ required
+                  </Badge>
+                ) : (
+                  <span className="text-xs text-muted-foreground">No restriction currently set</span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Students below this age will be blocked from enrolling. Set to 0 or leave blank to remove the restriction.
+                Recommended: 14+ for AP courses, 16+ for dual-enrollment courses.
+              </p>
             </div>
           </TabsContent>
 
@@ -229,15 +281,20 @@ export function AdminCoursesTab() {
             className={`w-full text-left p-3 rounded-lg border transition-colors ${selectedCourse === course.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"}`}
           >
             <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-sm">{course.title}</p>
+              <div className="flex-1 min-w-0 mr-2">
+                <p className="font-medium text-sm truncate">{course.title}</p>
                 <p className="text-xs text-muted-foreground">Grade {course.gradeLevel} · {course.courseCode}</p>
               </div>
-              <div className="flex flex-col items-end gap-1">
+              <div className="flex flex-col items-end gap-1 shrink-0">
                 <Badge className={`text-xs ${subjectColors[course.subject] ?? "bg-gray-100 text-gray-800"}`}>{course.subject}</Badge>
                 <Badge variant={course.status === "active" || !course.status ? "outline" : "secondary"} className="text-xs">
                   {course.status ?? "active"}
                 </Badge>
+                {course.minAgeRequirement ? (
+                  <Badge className="bg-amber-100 text-amber-800 gap-1 text-xs">
+                    <ShieldAlert className="h-2.5 w-2.5" /> {course.minAgeRequirement}+
+                  </Badge>
+                ) : null}
               </div>
             </div>
           </button>
