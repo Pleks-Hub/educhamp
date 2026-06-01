@@ -2379,3 +2379,13 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Phase 9: C-02 enrollSelf AGE_GATE error handling fixed; all 3 critical + 4 high-priority bugs resolved
 - [x] Phase 10: QA/UAT report written to reports/educhamp_qa_uat_report_v1.md
 - [x] All 960/960 tests passing after all fixes
+
+### Lesson Content Generation Sprint (June 2026)
+- [x] Audit all 46 courses with 0 lessons — 312 units identified
+- [x] Build bulk AI lesson seed script (scripts/seed-lessons.mjs) matching actual DB schema
+- [x] Dry-run test on GR3MATH — 7 units, 21 lessons, 0 errors
+- [x] Run full bulk seed — 302/312 units succeeded, 906 lessons inserted
+- [x] Build retry script with exponential backoff (scripts/seed-lessons-retry.mjs)
+- [x] Retry 20 failed units — 20/20 succeeded, 60 lessons inserted
+- [x] Final verification: 1,485 total lessons, 0 courses with 0 lessons, 0 units with 0 lessons
+- [x] Confirmed: helmet.js and express-rate-limit already configured in server/_core/index.ts
