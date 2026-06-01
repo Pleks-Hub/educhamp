@@ -17,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -37,7 +39,7 @@ import {
   ChevronLeft, ChevronDown, ChevronUp, Star, Tag, CreditCard,
   MailX, ShieldOff, ShieldCheck, RotateCcw, Download, Trophy, Zap, Award,
   Flag, MailCheck, CheckSquare, AlertCircle, Server, ArrowRightLeft,
-  Menu, X, Home, PanelLeft,
+  Menu, X, Home, PanelLeft, Loader2,
 } from "lucide-react";
 
 // ─── Sidebar Navigation Config ────────────────────────────────────────────────
@@ -107,14 +109,34 @@ function AdminSidebar({ active, onSelect, onClose, badgeCounts }: {
   active: AdminSection;
   onSelect: (id: AdminSection) => void;
   onClose?: () => void;
-  badgeCounts?: { flaggedQuestions: number; demoRequests: number; suppressionList: number };
+  badgeCounts?: {
+    flaggedQuestions: number;
+    demoRequests: number;
+    suppressionList: number;
+    suppressionBreakdown?: { bounced: number; complained: number; manual: number };
+  };
 }) {
+  const utils = trpc.useUtils();
+  const markContacted = trpc.admin.updateDemoRequest.useMutation({
+    onSuccess: () => {
+      utils.admin.getSidebarBadgeCounts.invalidate();
+      utils.admin.listDemoRequests.invalidate();
+      toast.success("Marked as contacted");
+    },
+    onError: () => toast.error("Failed to update request"),
+  });
+  const { data: pendingDemos } = trpc.admin.listDemoRequests.useQuery(
+    { status: "new", page: 1, pageSize: 3 },
+    { enabled: (badgeCounts?.demoRequests ?? 0) > 0, staleTime: 30_000 }
+  );
+
   const getBadge = (id: string): number => {
     if (id === "flaggedquestions") return badgeCounts?.flaggedQuestions ?? 0;
     if (id === "demorequests") return badgeCounts?.demoRequests ?? 0;
     if (id === "suppression") return badgeCounts?.suppressionList ?? 0;
     return 0;
   };
+
   return (
     <nav className="flex flex-col h-full">
       <div className="px-4 py-4 border-b flex items-center justify-between">
@@ -141,6 +163,130 @@ function AdminSidebar({ active, onSelect, onClose, badgeCounts }: {
               const Icon = item.icon;
               const isActive = active === item.id;
               const badge = getBadge(item.id);
+
+              // ── Suppression item: badge has hover tooltip showing breakdown ──
+              if (item.id === "suppression" && badge > 0) {
+                const bd = badgeCounts?.suppressionBreakdown;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { onSelect(item.id); onClose?.(); }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                      isActive
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="flex-1 text-left truncate">{item.label}</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className={`shrink-0 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center cursor-default ${
+                            isActive ? "bg-white/25 text-white" : "bg-red-500 text-white"
+                          }`}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          {badge > 99 ? "99+" : badge}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="text-xs space-y-1 p-3 min-w-[160px]">
+                        <p className="font-semibold mb-1">Suppression Breakdown</p>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Hard bounces</span>
+                          <span className="font-medium">{bd?.bounced ?? 0}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Spam complaints</span>
+                          <span className="font-medium">{bd?.complained ?? 0}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Manual</span>
+                          <span className="font-medium">{bd?.manual ?? 0}</span>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </button>
+                );
+              }
+
+              // ── Demo Requests item: badge opens quick-action popover ──
+              if (item.id === "demorequests" && badge > 0) {
+                return (
+                  <div key={item.id} className="relative">
+                    <button
+                      onClick={() => { onSelect(item.id); onClose?.(); }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="flex-1 text-left truncate">{item.label}</span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <span
+                            className={`shrink-0 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center cursor-pointer ${
+                              isActive ? "bg-white/25 text-white" : "bg-red-500 text-white"
+                            }`}
+                            onClick={e => e.stopPropagation()}
+                          >
+                            {badge > 99 ? "99+" : badge}
+                          </span>
+                        </PopoverTrigger>
+                        <PopoverContent side="right" align="start" className="w-72 p-0">
+                          <div className="px-3 py-2.5 border-b">
+                            <p className="text-xs font-semibold">New Demo Requests</p>
+                            <p className="text-[10px] text-muted-foreground">Click to mark as contacted</p>
+                          </div>
+                          <div className="divide-y">
+                            {(pendingDemos?.rows ?? []).length === 0 ? (
+                              <p className="text-xs text-muted-foreground px-3 py-3">No pending requests</p>
+                            ) : (
+                              (pendingDemos?.rows ?? []).map((req: any) => (
+                                <div key={req.id} className="px-3 py-2.5 flex items-start gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-medium truncate">{req.fullName}</p>
+                                    <p className="text-[10px] text-muted-foreground truncate">{req.schoolName ?? req.email}</p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-6 text-[10px] px-2 shrink-0"
+                                    disabled={markContacted.isPending && markContacted.variables?.id === req.id}
+                                    onClick={e => {
+                                      e.stopPropagation();
+                                      markContacted.mutate({ id: req.id, status: "contacted" });
+                                    }}
+                                  >
+                                    {markContacted.isPending && markContacted.variables?.id === req.id
+                                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                                      : "Mark contacted"
+                                    }
+                                  </Button>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                          {(badgeCounts?.demoRequests ?? 0) > 3 && (
+                            <div className="px-3 py-2 border-t">
+                              <button
+                                className="text-[10px] text-primary hover:underline"
+                                onClick={() => { onSelect("demorequests"); onClose?.(); }}
+                              >
+                                View all {badgeCounts?.demoRequests} requests →
+                              </button>
+                            </div>
+                          )}
+                        </PopoverContent>
+                      </Popover>
+                    </button>
+                  </div>
+                );
+              }
+
+              // ── Default item rendering ──
               return (
                 <button
                   key={item.id}

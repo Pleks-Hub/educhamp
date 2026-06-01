@@ -1,8 +1,12 @@
 /**
  * CourseSwitcher — lets students browse courses filtered by their grade level,
  * enrol, and switch their active course. Persists the selection server-side.
+ *
+ * Age gate: if the course has a minAgeRequirement and the student's stored DOB
+ * indicates they are too young, the Enrol button is disabled and an amber
+ * "Age X+ required" badge is shown.
  */
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -15,6 +19,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import {
   BookOpen,
@@ -23,6 +28,7 @@ import {
   Loader2,
   Star,
   Filter,
+  ShieldAlert,
 } from "lucide-react";
 
 // Subject colour tokens aligned with Tailwind palette
@@ -67,6 +73,18 @@ function gradeSort(a: string, b: string): number {
   return ia - ib;
 }
 
+/** Returns the student's age in whole years from an ISO date string, or null. */
+function calcAge(dob: string | null | undefined): number | null {
+  if (!dob) return null;
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
 interface CourseSwitcherProps {
   open: boolean;
   onClose: () => void;
@@ -84,6 +102,17 @@ export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
   const { data: myEnrollments, isLoading: loadingEnrollments } = trpc.admin.myEnrollments.useQuery(
     undefined,
     { enabled: open }
+  );
+  // Fetch the student's profile to get their stored DOB for age-gate checks
+  const { data: profileData } = trpc.onboarding.getProfile.useQuery(
+    undefined,
+    { enabled: open }
+  );
+
+  // Compute student age once; null means DOB not set (no gate applied)
+  const studentAge = useMemo(
+    () => calcAge(profileData?.profile?.dateOfBirth),
+    [profileData?.profile?.dateOfBirth]
   );
 
   const enrollSelf = trpc.admin.enrollSelf.useMutation({
@@ -221,6 +250,14 @@ export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
                       const colorClass =
                         SUBJECT_COLORS[course.subject] ??
                         "bg-gray-100 text-gray-800 border-gray-200";
+
+                      // Age gate: block enrolment if student is too young
+                      const minAge: number | null = course.minAgeRequirement ?? null;
+                      const isTooYoung =
+                        minAge !== null &&
+                        studentAge !== null &&
+                        studentAge < minAge;
+
                       return (
                         <Card
                           key={course.id}
@@ -229,16 +266,24 @@ export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
                               ? "border-primary ring-1 ring-primary/20 bg-primary/5"
                               : enrolled
                               ? "border-primary/30 bg-primary/3"
+                              : isTooYoung
+                              ? "border-amber-200 bg-amber-50/40 dark:border-amber-800/40 dark:bg-amber-950/20"
                               : "hover:border-border/80 hover:shadow-sm"
                           }`}
                         >
                           <CardContent className="pt-4 pb-3">
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                   <p className="font-semibold text-sm leading-snug">{course.title}</p>
                                   {isCurrent && (
                                     <Star className="h-3.5 w-3.5 text-primary fill-primary shrink-0" />
+                                  )}
+                                  {minAge !== null && (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700 shrink-0">
+                                      <ShieldAlert className="h-2.5 w-2.5" />
+                                      Age {minAge}+
+                                    </span>
                                   )}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
@@ -274,6 +319,25 @@ export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
                                   ) : null}
                                   Switch to this
                                 </Button>
+                              ) : isTooYoung ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span>
+                                      <Button
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        disabled
+                                        variant="outline"
+                                      >
+                                        <ShieldAlert className="h-3 w-3 mr-1 text-amber-500" />
+                                        Age {minAge}+ required
+                                      </Button>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs max-w-[200px] text-center">
+                                    This course requires students to be at least {minAge} years old. Your current age ({studentAge}) does not meet the requirement.
+                                  </TooltipContent>
+                                </Tooltip>
                               ) : (
                                 <Button
                                   size="sm"
@@ -291,6 +355,13 @@ export default function CourseSwitcher({ open, onClose }: CourseSwitcherProps) {
                                 </Button>
                               )}
                             </div>
+                            {/* Inline age-gate message when student is too young */}
+                            {isTooYoung && (
+                              <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+                                <ShieldAlert className="h-3 w-3 shrink-0" />
+                                Requires age {minAge}+ — you are currently {studentAge} years old.
+                              </p>
+                            )}
                           </CardContent>
                         </Card>
                       );

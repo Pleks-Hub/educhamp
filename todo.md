@@ -2357,3 +2357,11 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Admin sidebar: badge turns white/translucent when the item is active (selected)
 - [x] Admin sidebar: badges cap at 99+ for large counts
 - [x] All 960 tests passing
+
+### Student Age Gate, Badge Tooltips, Demo Quick-Action & Documents Sprint
+- [ ] Student-side age gate: show age-requirement badge on course cards in CourseSwitcher/CurriculumBrowser and disable Enrol button with clear message when student is underage
+- [ ] Suppression list sidebar badge: hover tooltip showing breakdown (hard bounces vs spam complaints)
+- [ ] Demo Requests sidebar item: quick-action popover to mark a request as contacted without navigating away
+- [ ] Product Feature & Capabilities Document: comprehensive document saved to reports/ folder
+- [ ] Project Handoff Document: full handoff saved to reports/educhamp_handoff_v1.md and committed to GitHub
+- [ ] All tests still passing
