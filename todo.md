@@ -2316,3 +2316,15 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UI: Status banner shows active provider name + from address, env-var fallback notice, or unconfigured warning
 - [x] UI: Existing Email Providers section retained (add/edit/delete/activate/test providers, send test email, domain verification)
 - [x] All 925 tests still passing
+
+### Compulsory DOB & State-Aware Age-of-Majority Sprint
+- [x] Shared utility: shared/ageValidation.ts — calcAge(), getGuardianMinAge(), validateGuardianAge(), validateStudentAge()
+- [x] State-aware minimum ages: MS→21, AL→19, NE→19, all others→18 (U.S. age-of-majority rules)
+- [x] Student age range: minimum 3 years (Pre-K), maximum 21 years
+- [x] Server: saveStudentProfile schema — dateOfBirth now required (z.string().min(1)); validateStudentAge() enforced before upsert; throws TRPCError BAD_REQUEST on failure
+- [x] Server: saveParentProfile schema — dateOfBirth + state now required; validateGuardianAge() enforced before upsert; throws TRPCError BAD_REQUEST with clear state-specific message on failure
+- [x] UI: StudentOnboarding step 1 — DOB field required (amber border when empty), age-range error shown inline with AlertCircle icon, "Skip for now" button removed
+- [x] UI: ParentOnboarding step 1 — DOB + state fields required (amber border when empty), live age-ok banner (green ShieldCheck), inline error on age/state failure, Continue button disabled when age is insufficient
+- [x] UI: State-specific minimum age note shown for AL, NE, MS (e.g. "Minimum age in Mississippi: 21 years")
+- [x] Tests: 35 new Vitest tests in server/ageValidation.test.ts covering all edge cases (missing DOB, invalid DOB, boundary ages, all special states, case-insensitivity)
+- [x] All 960 tests passing

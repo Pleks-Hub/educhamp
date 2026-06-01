@@ -133,6 +133,8 @@ export default function StudentOnboarding() {
   // Derived age and under-16 gate
   const studentAge = useMemo(() => calcAge(dateOfBirth), [dateOfBirth]);
   const isUnder16 = studentAge !== null && studentAge < 16;
+  // Inline age eligibility error
+  const [ageError, setAgeError] = useState<string | null>(null);
   const gradeSuggestion = useMemo(() => {
     if (studentAge !== null && !gradeLevel) return suggestGradeFromAge(studentAge);
     return null;
@@ -191,10 +193,22 @@ export default function StudentOnboarding() {
   });
 
   async function handleStep1() {
+    setAgeError(null);
     // Mandatory: date of birth
     if (!dateOfBirth) {
-      toast.error("Date of birth is required to personalise your learning path.");
+      setAgeError("Date of birth is required to create a student account.");
       return;
+    }
+    // Client-side age range check (mirrors server-side validateStudentAge)
+    if (studentAge !== null) {
+      if (studentAge < 3) {
+        setAgeError("Students must be at least 3 years old to register. If your child is younger, a parent or guardian account is required.");
+        return;
+      }
+      if (studentAge > 21) {
+        setAgeError("Student accounts are available for learners up to 21 years old. Please contact support if you need assistance.");
+        return;
+      }
     }
     if (!gradeLevel) {
       toast.error("Please select your grade level.");
@@ -204,17 +218,22 @@ export default function StudentOnboarding() {
       toast.error("The selected grade level doesn't match your age. Please choose an age-appropriate grade.");
       return;
     }
-    await saveProfile.mutateAsync({
-      schoolType: schoolType as any,
-      schoolName: schoolName || undefined,
-      schoolDistrict: schoolDistrict || undefined,
-      gradeLevel: gradeLevel || undefined,
-      city: city || undefined,
-      state: state || undefined,
-      dateOfBirth: dateOfBirth || undefined,
-      gender: gender || undefined,
-    });
-    setStep(2);
+    try {
+      await saveProfile.mutateAsync({
+        schoolType: schoolType as any,
+        schoolName: schoolName || undefined,
+        schoolDistrict: schoolDistrict || undefined,
+        gradeLevel: gradeLevel || undefined,
+        city: city || undefined,
+        state: state || undefined,
+        dateOfBirth,
+        gender: gender || undefined,
+      });
+      setStep(2);
+    } catch (err: any) {
+      const msg = err?.message ?? "Failed to save profile. Please try again.";
+      setAgeError(msg);
+    }
   }
 
   async function handleSendCoppaConsent() {
@@ -372,6 +391,12 @@ export default function StudentOnboarding() {
                 />
                 {studentAge !== null && (
                   <p className="text-xs text-slate-500 mt-1">Age: {studentAge} years old</p>
+                )}
+                {ageError && (
+                  <div className="mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                    <p className="text-xs text-red-700 font-medium">{ageError}</p>
+                  </div>
                 )}
               </div>
 

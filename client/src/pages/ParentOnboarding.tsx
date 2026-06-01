@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,12 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  GraduationCap, MapPin, User, Target, Sparkles, CheckCircle2,
-  ArrowRight, ArrowLeft, Loader2
+  GraduationCap, MapPin, Target, Sparkles, CheckCircle2,
+  ArrowRight, ArrowLeft, Loader2, AlertCircle, ShieldCheck,
 } from "lucide-react";
+import { calcAge, getGuardianMinAge } from "../../../shared/ageValidation";
 
 const GOAL_CATEGORIES = [
   { value: "grade_improvement", label: "Grade Improvement", desc: "Help my child get better grades in their courses" },
@@ -31,10 +30,24 @@ const US_STATES = [
   "SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"
 ];
 
+/** Full state name map for human-readable error messages */
+const STATE_NAMES: Record<string, string> = {
+  AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California",
+  CO: "Colorado", CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia",
+  HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa",
+  KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
+  MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri",
+  MT: "Montana", NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey",
+  NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
+  OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina",
+  SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont",
+  VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
+  DC: "Washington D.C.",
+};
+
 export default function ParentOnboarding() {
   const [, navigate] = useLocation();
   const search = useSearch();
-  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const totalSteps = 3;
 
@@ -51,11 +64,12 @@ export default function ParentOnboarding() {
   );
   const acceptParentInvite = trpc.onboarding.acceptParentInvite.useMutation();
 
-  // Step 1: Demographics
+  // Step 1: Demographics — DOB and state are required for age-of-majority check
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [gender, setGender] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [ageError, setAgeError] = useState<string | null>(null);
 
   // Step 2: Goal
   const [goalCategory, setGoalCategory] = useState("");
@@ -65,13 +79,51 @@ export default function ParentOnboarding() {
   const [goalDetail, setGoalDetail] = useState("");
   const [childName, setChildName] = useState("");
 
+  // Derived age + minimum age for selected state
+  const parentAge = useMemo(() => calcAge(dateOfBirth), [dateOfBirth]);
+  const minAge = useMemo(() => getGuardianMinAge(state), [state]);
+  const stateName = state ? (STATE_NAMES[state] ?? state) : null;
+
+  // Live eligibility feedback (shown while filling in the form)
+  const ageOk = parentAge !== null && parentAge >= minAge;
+  const ageInsufficient = parentAge !== null && parentAge < minAge;
+
   const saveProfile = trpc.onboarding.saveParentProfile.useMutation();
   const generateGoal = trpc.onboarding.generateGoalAlignment.useMutation();
   const completeOnboarding = trpc.onboarding.completeOnboarding.useMutation();
 
   async function handleStep1() {
-    await saveProfile.mutateAsync({ city, state, gender, dateOfBirth });
-    setStep(2);
+    setAgeError(null);
+
+    // Require date of birth
+    if (!dateOfBirth) {
+      setAgeError("Date of birth is required to verify your eligibility as a parent or guardian.");
+      return;
+    }
+
+    // Require state
+    if (!state) {
+      setAgeError("Please select your state so we can apply the correct minimum age requirement.");
+      return;
+    }
+
+    // Client-side age-of-majority check (mirrors server-side validateGuardianAge)
+    if (parentAge !== null && parentAge < minAge) {
+      const label = stateName ?? "your state";
+      setAgeError(
+        `You must be at least ${minAge} years old to register as a parent or guardian in ${label}. ` +
+        `Please check your date of birth and state.`
+      );
+      return;
+    }
+
+    try {
+      await saveProfile.mutateAsync({ city, state, gender, dateOfBirth });
+      setStep(2);
+    } catch (err: any) {
+      const msg = err?.message ?? "Failed to save profile. Please try again.";
+      setAgeError(msg);
+    }
   }
 
   async function handleStep2() {
@@ -116,7 +168,6 @@ export default function ParentOnboarding() {
           </div>
           <h1 className="text-2xl font-bold text-slate-900">Welcome to EduChamp</h1>
           <p className="text-slate-500 mt-1">Let's set up your parent account in a few quick steps.</p>
-          {/* Plan + billing context pill */}
           {selectedPlan && (
             <div className="mt-3 inline-flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full px-3 py-1 text-xs font-semibold">
               <CheckCircle2 className="h-3 w-3" />
@@ -141,50 +192,97 @@ export default function ParentOnboarding() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-primary" />
-                <CardTitle>Your Location</CardTitle>
+                <CardTitle>Your Details</CardTitle>
               </div>
-              <CardDescription>Help us personalise your experience (all optional).</CardDescription>
+              <CardDescription>
+                We need your date of birth and state to verify your eligibility as a parent or guardian.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Date of Birth — required */}
+              <div>
+                <Label>
+                  Date of Birth <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={e => { setDateOfBirth(e.target.value); setAgeError(null); }}
+                  max={new Date().toISOString().split("T")[0]}
+                  className={!dateOfBirth ? "border-amber-300" : ageInsufficient ? "border-red-400" : ""}
+                />
+                {parentAge !== null && (
+                  <p className="text-xs text-slate-500 mt-1">Age: {parentAge} years old</p>
+                )}
+              </div>
+
+              {/* State — required for age-of-majority lookup */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>City</Label>
-                  <Input placeholder="e.g. Houston" value={city} onChange={e => setCity(e.target.value)} />
-                </div>
-                <div>
-                  <Label>State</Label>
-                  <Select value={state} onValueChange={setState}>
-                    <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+                  <Label>
+                    State <span className="text-red-500">*</span>
+                    <span className="text-muted-foreground text-xs ml-1">(required for age verification)</span>
+                  </Label>
+                  <Select value={state} onValueChange={v => { setState(v); setAgeError(null); }}>
+                    <SelectTrigger className={!state ? "border-amber-300" : ""}>
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
                     <SelectContent>
                       {US_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Gender <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Select value={gender} onValueChange={setGender}>
-                    <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="non_binary">Non-binary</SelectItem>
-                      <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* Show minimum age note for special states */}
+                  {state && minAge > 18 && (
+                    <p className="text-xs text-amber-700 mt-1">
+                      Minimum age in {stateName}: {minAge} years
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <Label>Date of Birth <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input type="date" value={dateOfBirth} onChange={e => setDateOfBirth(e.target.value)} />
+                  <Label>City <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                  <Input placeholder="e.g. Houston" value={city} onChange={e => setCity(e.target.value)} />
                 </div>
               </div>
-              <Button className="w-full" onClick={handleStep1} disabled={saveProfile.isPending}>
+
+              {/* Gender — optional */}
+              <div>
+                <Label>Gender <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="non_binary">Non-binary</SelectItem>
+                    <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Live age eligibility feedback */}
+              {ageOk && dateOfBirth && state && (
+                <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <p className="text-xs text-emerald-700 font-medium">
+                    Age verified — you meet the minimum age requirement{stateName ? ` in ${stateName}` : ""}.
+                  </p>
+                </div>
+              )}
+
+              {/* Inline error */}
+              {ageError && (
+                <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
+                  <p className="text-xs text-red-700 font-medium">{ageError}</p>
+                </div>
+              )}
+
+              <Button
+                className="w-full"
+                onClick={handleStep1}
+                disabled={saveProfile.isPending || ageInsufficient}
+              >
                 {saveProfile.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 Continue <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-              <Button variant="ghost" className="w-full text-sm" onClick={() => setStep(2)}>
-                Skip for now
               </Button>
             </CardContent>
           </Card>

@@ -34,6 +34,7 @@ import {
   getUserByEmail,
 } from "../db";
 import { isYoungLearnerGrade } from "../educhamp-helpers";
+import { validateGuardianAge, validateStudentAge } from "../../shared/ageValidation";
 import { buildParentInviteEmail } from "../emailTemplates/parentInvite";
 import { sendEmail } from "../emailService";
 import { invokeLLM } from "../_core/llm";
@@ -42,7 +43,8 @@ import { notifyOwner } from "../_core/notification";
 // ─── Zod schemas ─────────────────────────────────────────────────────────────
 
 const studentProfileSchema = z.object({
-  dateOfBirth: z.string().optional(),
+  // DOB is required for age eligibility verification
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
   gender: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
@@ -53,7 +55,17 @@ const studentProfileSchema = z.object({
   gradeLevel: z.string().optional(),
 });
 
-const parentProfileSchema = studentProfileSchema.extend({
+const parentProfileSchema = z.object({
+  // DOB + state are required for state-aware age-of-majority verification
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
+  state: z.string().min(1, "State is required to determine the age of majority in your location"),
+  gender: z.string().optional(),
+  city: z.string().optional(),
+  country: z.string().default("US"),
+  schoolDistrict: z.string().optional(),
+  schoolType: z.enum(["public", "private", "homeschool", "charter", "other"]).optional(),
+  schoolName: z.string().optional(),
+  gradeLevel: z.string().optional(),
   parentSignupReason: z.string().min(1).max(2000).optional(),
   parentGoalCategory: z.enum([
     "grade_improvement",
@@ -93,6 +105,11 @@ export const onboardingRouter = router({
   saveStudentProfile: protectedProcedure
     .input(studentProfileSchema)
     .mutation(async ({ ctx, input }) => {
+      // Enforce student age eligibility before saving
+      const ageCheck = validateStudentAge(input.dateOfBirth);
+      if (!ageCheck.valid) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: ageCheck.reason });
+      }
       // Auto-enable Parent-Led Mode for Pre-K and Kindergarten
       const earlyGrades = ["Pre-K", "Kindergarten"];
       const autoParentLed = earlyGrades.includes(input.gradeLevel ?? "");
@@ -106,10 +123,16 @@ export const onboardingRouter = router({
 
   /**
    * Save parent demographic profile + signup reason (step 1 of parent onboarding).
+   * Enforces state-aware age-of-majority check before saving.
    */
   saveParentProfile: protectedProcedure
     .input(parentProfileSchema)
     .mutation(async ({ ctx, input }) => {
+      // Enforce guardian age-of-majority for the given state
+      const ageCheck = validateGuardianAge(input.dateOfBirth, input.state);
+      if (!ageCheck.valid) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: ageCheck.reason });
+      }
       await upsertUserProfile(ctx.user.id, {
         ...input,
         onboardingStep: 1,
