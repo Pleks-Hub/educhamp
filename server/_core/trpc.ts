@@ -46,12 +46,13 @@ export const studentProcedure = t.procedure.use(
 
     // COPPA gate: check if this student requires parental consent
     try {
-      const { getPlatformSettings, getUserProfile, isCoppaGrade, hasParentalConsent, getLatestParentalConsent } = await import("../db");
+      const { getPlatformSettings, getUserProfile, requiresCoppaConsentByAge, hasParentalConsent, getLatestParentalConsent } = await import("../db");
       const settings = await getPlatformSettings();
       const gateEnabled = settings.find((s) => s.key === "COPPA_GATE_ENABLED")?.value === "true";
       if (gateEnabled) {
         const profile = await getUserProfile(ctx.user.id);
-        if (profile && isCoppaGrade(profile.gradeLevel)) {
+        // Use DOB-based age check (< 13) when DOB is available; fall back to grade-level heuristic
+        if (profile && requiresCoppaConsentByAge(profile.dateOfBirth, profile.gradeLevel)) {
           const approved = await hasParentalConsent(ctx.user.id);
           if (!approved) {
             const latest = await getLatestParentalConsent(ctx.user.id);

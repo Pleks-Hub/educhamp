@@ -37,7 +37,119 @@ import {
   ChevronLeft, ChevronDown, ChevronUp, Star, Tag, CreditCard,
   MailX, ShieldOff, ShieldCheck, RotateCcw, Download, Trophy, Zap, Award,
   Flag, MailCheck, CheckSquare, AlertCircle, Server, ArrowRightLeft,
+  Menu, X, Home, PanelLeft,
 } from "lucide-react";
+
+// ─── Sidebar Navigation Config ────────────────────────────────────────────────
+const ADMIN_NAV_GROUPS = [
+  {
+    label: "Dashboard",
+    items: [
+      { id: "overview", label: "Overview", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Users & Access",
+    items: [
+      { id: "users", label: "Users", icon: Users },
+      { id: "grades", label: "Grade Management", icon: GraduationCap },
+      { id: "rbac", label: "Roles & Permissions", icon: Lock },
+      { id: "inactivity", label: "Inactivity Monitor", icon: Activity },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { id: "courses", label: "Courses", icon: BookOpen },
+      { id: "cms", label: "CMS", icon: FileText },
+      { id: "gamification", label: "Gamification", icon: Trophy },
+      { id: "flaggedquestions", label: "Flagged Questions", icon: Flag },
+      { id: "courserequests", label: "Course Requests", icon: CheckSquare },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { id: "subscriptions", label: "Subscriptions", icon: CreditCard },
+      { id: "paymentanalytics", label: "Payment Analytics", icon: BarChart3 },
+      { id: "coupons", label: "Coupons", icon: Tag },
+    ],
+  },
+  {
+    label: "Email",
+    items: [
+      { id: "emailsettings", label: "Email Settings", icon: MailCheck },
+      { id: "emaillogs", label: "Email Logs", icon: Inbox },
+      { id: "suppression", label: "Suppression List", icon: MailX },
+    ],
+  },
+  {
+    label: "Compliance & Safety",
+    items: [
+      { id: "audit", label: "Audit Log", icon: ClipboardList },
+      { id: "districttransfer", label: "District Transfer", icon: ArrowRightLeft },
+      { id: "demorequests", label: "Demo Requests", icon: Building2 },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { id: "settings", label: "Platform Settings", icon: Settings },
+      { id: "system", label: "System Health", icon: Server },
+    ],
+  },
+] as const;
+
+type AdminSection = (typeof ADMIN_NAV_GROUPS)[number]["items"][number]["id"];
+
+// ─── Sidebar Component ────────────────────────────────────────────────────────
+function AdminSidebar({ active, onSelect, onClose }: { active: AdminSection; onSelect: (id: AdminSection) => void; onClose?: () => void }) {
+  return (
+    <nav className="flex flex-col h-full">
+      <div className="px-4 py-4 border-b flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-lg bg-primary/10">
+            <Shield className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-bold leading-none">Admin Console</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">EduChamp</p>
+          </div>
+        </div>
+        {onClose && (
+          <button onClick={onClose} className="p-1 rounded hover:bg-muted transition-colors lg:hidden">
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      <div className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
+        {ADMIN_NAV_GROUPS.map(group => (
+          <div key={group.label}>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-2 mb-1">{group.label}</p>
+            {group.items.map(item => {
+              const Icon = item.icon;
+              const isActive = active === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => { onSelect(item.id); onClose?.(); }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </nav>
+  );
+}
 
 // ─── Lazy-loaded tab chunks ────────────────────────────────────────────────────
 const AdminOverviewTab = lazy(() => import("@/components/admin/AdminOverviewTab").then(m => ({ default: m.AdminOverviewTab })));
@@ -1500,6 +1612,8 @@ function CourseRequestsAuditTab() {
 export default function AdminDashboard() {
   const { user, loading } = useAuth();
   const [, navigate] = useLocation();
+  const [activeSection, setActiveSection] = useState<AdminSection>("overview");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (loading) return (
     <div className="p-8 space-y-4">
@@ -1523,130 +1637,104 @@ export default function AdminDashboard() {
     );
   }
 
+  // Get the label for the current section
+  const allItems = ADMIN_NAV_GROUPS.reduce<Array<{ id: string; label: string; icon: any }>>(
+    (acc, g) => [...acc, ...g.items.map(item => ({ id: item.id, label: item.label, icon: item.icon }))],
+    []
+  );
+  const currentItem = allItems.find(i => i.id === activeSection);
+
+  function renderSection() {
+    switch (activeSection) {
+      case "overview": return <Suspense fallback={<SectionSkeleton />}><AdminOverviewTab /></Suspense>;
+      case "users": return <Suspense fallback={<SectionSkeleton rows={6} />}><AdminUsersTab /></Suspense>;
+      case "courses": return <Suspense fallback={<SectionSkeleton />}><AdminCoursesTab /></Suspense>;
+      case "cms": return <CmsTab />;
+      case "rbac": return <RbacTab />;
+      case "grades": return <GradeManagementTab />;
+      case "settings": return <Suspense fallback={<SectionSkeleton />}><AdminSettingsTab /></Suspense>;
+      case "audit": return <Suspense fallback={<SectionSkeleton rows={5} />}><AdminAuditLogTab /></Suspense>;
+      case "emaillogs": return <EmailLogsTab />;
+      case "suppression": return <SuppressionManagementTab />;
+      case "courserequests": return <CourseRequestsAuditTab />;
+      case "demorequests": return <DemoRequestsTab />;
+      case "coupons": return <CouponManagerTab />;
+      case "subscriptions": return <SubscriptionCRMTab />;
+      case "paymentanalytics": return <PaymentAnalyticsTab />;
+      case "inactivity": return <InactivityMonitoringTab />;
+      case "gamification": return <GamificationAdminTab />;
+      case "flaggedquestions": return <FlaggedQuestionsTab />;
+      case "emailsettings": return <EmailSettingsTab />;
+      case "districttransfer": return <DistrictTransferTab />;
+      case "system": return <SystemHealthTab />;
+      default: return null;
+    }
+  }
+
   return (
-    <div className="min-h-dvh bg-background">
-      {/* Header */}
-      <div className="border-b bg-card px-6 py-4 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Shield className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">Admin Console</h1>
-              <p className="text-xs text-muted-foreground">EduChamp Platform Management</p>
-            </div>
+    <div className="min-h-dvh bg-background flex">
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex flex-col w-56 xl:w-60 shrink-0 border-r bg-card sticky top-0 h-dvh overflow-hidden">
+        <AdminSidebar active={activeSection} onSelect={setActiveSection} />
+      </aside>
+
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
+          <aside className="absolute left-0 top-0 h-full w-64 bg-card border-r shadow-xl z-50 flex flex-col">
+            <AdminSidebar active={activeSection} onSelect={setActiveSection} onClose={() => setSidebarOpen(false)} />
+          </aside>
+        </div>
+      )}
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar */}
+        <header className="border-b bg-card px-4 lg:px-6 py-3 sticky top-0 z-10 flex items-center gap-3">
+          <button
+            className="lg:hidden p-1.5 rounded hover:bg-muted transition-colors"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open navigation"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base font-semibold truncate">{currentItem ? String(currentItem.label) : "Admin Console"}</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
+          <div className="flex items-center gap-2 shrink-0">
+            <Badge variant="outline" className="text-xs hidden sm:flex">
               <Activity className="h-3 w-3 mr-1 text-emerald-500" />
-              System Online
+              Online
             </Badge>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/admin/newsletter")} className="gap-1">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/admin/newsletter")} className="gap-1 hidden md:flex">
               <Mail className="h-4 w-4" /> Newsletter
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/admin/chat")} className="gap-1">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/admin/chat")} className="gap-1 hidden md:flex">
               <MessageCircle className="h-4 w-4" /> Chat Leads
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
-              <ChevronRight className="h-4 w-4 mr-1" /> Back to App
+            <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-1">
+              <Home className="h-4 w-4" />
+              <span className="hidden sm:inline">Back to App</span>
             </Button>
           </div>
-        </div>
-      </div>
+        </header>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <Tabs defaultValue="overview">
-          <TabsList className="mb-6 flex-wrap gap-1 h-auto overflow-x-auto">
-            <NavTooltip content={ADMIN_TAB_TOOLTIPS.overview} side="bottom" delayDuration={700}>
-              <TabsTrigger value="overview" className="gap-2"><BarChart3 className="h-4 w-4" /> Overview</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={ADMIN_TAB_TOOLTIPS.users} side="bottom" delayDuration={700}>
-              <TabsTrigger value="users" className="gap-2"><Users className="h-4 w-4" /> Users</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={ADMIN_TAB_TOOLTIPS.courses} side="bottom" delayDuration={700}>
-              <TabsTrigger value="courses" className="gap-2"><BookOpen className="h-4 w-4" /> Courses</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={{ title: "CMS", description: "Manage platform content — announcements, help articles, and onboarding copy." }} side="bottom" delayDuration={700}>
-              <TabsTrigger value="cms" className="gap-2"><FileText className="h-4 w-4" /> CMS</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={{ title: "RBAC", description: "Role-Based Access Control — assign and manage admin roles and permissions." }} side="bottom" delayDuration={700}>
-              <TabsTrigger value="rbac" className="gap-2"><Lock className="h-4 w-4" /> RBAC</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={ADMIN_TAB_TOOLTIPS.settings} side="bottom" delayDuration={700}>
-              <TabsTrigger value="settings" className="gap-2"><Settings className="h-4 w-4" /> Settings</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={{ title: "Grades", description: "View and manage student grade levels and academic year progression." }} side="bottom" delayDuration={700}>
-              <TabsTrigger value="grades" className="gap-2"><GraduationCap className="h-4 w-4" /> Grades</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={ADMIN_TAB_TOOLTIPS.auditLog} side="bottom" delayDuration={700}>
-              <TabsTrigger value="audit" className="gap-2"><ClipboardList className="h-4 w-4" /> Audit Log</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={ADMIN_TAB_TOOLTIPS.emailLogs} side="bottom" delayDuration={700}>
-              <TabsTrigger value="emaillogs" className="gap-2"><Inbox className="h-4 w-4" /> Email Logs</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={ADMIN_TAB_TOOLTIPS.suppression} side="bottom" delayDuration={700}>
-              <TabsTrigger value="suppression" className="gap-2"><MailX className="h-4 w-4" /> Suppression</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={{ title: "Course Requests", description: "View all student course requests and parent approval/rejection audit trail." }} side="bottom" delayDuration={700}>
-              <TabsTrigger value="courserequests" className="gap-2"><BookOpen className="h-4 w-4" /> Course Requests</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={{ title: "Demo Requests", description: "Review and respond to inbound demo or trial requests from prospective school customers." }} side="bottom" delayDuration={700}>
-              <TabsTrigger value="demorequests" className="gap-2"><Building2 className="h-4 w-4" /> Demo Requests</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={{ title: "Coupons", description: "Create and manage promotional discount codes for trials and paid plans." }} side="bottom" delayDuration={700}>
-              <TabsTrigger value="coupons" className="gap-2"><Tag className="h-4 w-4" /> Coupons</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={ADMIN_TAB_TOOLTIPS.subscriptions} side="bottom" delayDuration={700}>
-              <TabsTrigger value="subscriptions" className="gap-2"><CreditCard className="h-4 w-4" /> Subscriptions</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={{ title: "Payment Analytics", description: "Revenue charts, MRR trends, churn rates, and trial conversion metrics." }} side="bottom" delayDuration={700}>
-              <TabsTrigger value="paymentanalytics" className="gap-2"><BarChart3 className="h-4 w-4" /> Payment Analytics</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={{ title: "Inactivity", description: "Monitor student inactivity, view notification history, and trigger manual follow-ups." }} side="bottom" delayDuration={700}>
-              <TabsTrigger value="inactivity" className="gap-2"><Activity className="h-4 w-4" /> Inactivity</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={{ title: "Gamification", description: "Manage badges, XP economy settings, leaderboards, and gamification analytics." }} side="bottom" delayDuration={700}>
-              <TabsTrigger value="gamification" className="gap-2"><Trophy className="h-4 w-4" /> Gamification</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content="Flagged Questions — review and resolve student-reported question issues">
-              <TabsTrigger value="flaggedquestions" className="gap-2"><Flag className="h-4 w-4" /> Flagged Questions</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content="Email Settings — configure sender identity, test delivery, and domain verification" side="bottom" delayDuration={700}>
-              <TabsTrigger value="emailsettings" className="gap-2"><MailCheck className="h-4 w-4" /> Email Settings</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content="District Transfer — move students between districts with crosswalk-weighted mastery transfer" side="bottom" delayDuration={700}>
-              <TabsTrigger value="districttransfer" className="gap-2"><ArrowRightLeft className="h-4 w-4" /> District Transfer</TabsTrigger>
-            </NavTooltip>
-            <NavTooltip content={{ title: "System Health", description: "Monitor server uptime, database latency, memory usage, and recent admin activity." }} side="bottom" delayDuration={700}>
-              <TabsTrigger value="system" className="gap-2"><Server className="h-4 w-4" /> System</TabsTrigger>
-            </NavTooltip>
-          </TabsList>
-
-          <TabsContent value="overview"><Suspense fallback={<div className="space-y-2">{Array.from({length:4}).map((_,i)=><div key={i} className="h-24 rounded-xl bg-muted animate-pulse" />)}</div>}><AdminOverviewTab /></Suspense></TabsContent>
-          <TabsContent value="users"><Suspense fallback={<div className="space-y-2">{Array.from({length:6}).map((_,i)=><div key={i} className="h-12 rounded bg-muted animate-pulse" />)}</div>}><AdminUsersTab /></Suspense></TabsContent>
-          <TabsContent value="courses"><Suspense fallback={<div className="space-y-2">{Array.from({length:4}).map((_,i)=><div key={i} className="h-20 rounded bg-muted animate-pulse" />)}</div>}><AdminCoursesTab /></Suspense></TabsContent>
-          <TabsContent value="cms"><CmsTab /></TabsContent>
-          <TabsContent value="rbac"><RbacTab /></TabsContent>
-          <TabsContent value="grades"><GradeManagementTab /></TabsContent>
-          <TabsContent value="settings"><Suspense fallback={<div className="space-y-3">{Array.from({length:4}).map((_,i)=><div key={i} className="h-12 rounded bg-muted animate-pulse" />)}</div>}><AdminSettingsTab /></Suspense></TabsContent>
-          <TabsContent value="audit"><Suspense fallback={<div className="space-y-2">{Array.from({length:5}).map((_,i)=><div key={i} className="h-12 rounded bg-muted animate-pulse" />)}</div>}><AdminAuditLogTab /></Suspense></TabsContent>
-          <TabsContent value="emaillogs"><EmailLogsTab /></TabsContent>
-          <TabsContent value="suppression"><SuppressionManagementTab /></TabsContent>
-          <TabsContent value="courserequests"><CourseRequestsAuditTab /></TabsContent>
-          <TabsContent value="demorequests"><DemoRequestsTab /></TabsContent>
-          <TabsContent value="coupons"><CouponManagerTab /></TabsContent>
-          <TabsContent value="subscriptions"><SubscriptionCRMTab /></TabsContent>
-          <TabsContent value="paymentanalytics"><PaymentAnalyticsTab /></TabsContent>
-          <TabsContent value="inactivity"><InactivityMonitoringTab /></TabsContent>
-          <TabsContent value="gamification"><GamificationAdminTab /></TabsContent>
-          <TabsContent value="flaggedquestions"><FlaggedQuestionsTab /></TabsContent>
-          <TabsContent value="emailsettings"><EmailSettingsTab /></TabsContent>
-          <TabsContent value="districttransfer"><DistrictTransferTab /></TabsContent>
-          <TabsContent value="system"><SystemHealthTab /></TabsContent>
-        </Tabs>
+        {/* Page content */}
+        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+          {renderSection()}
+        </main>
       </div>
+    </div>
+  );
+}
+
+function SectionSkeleton({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: rows }).map((_, i) => (
+        <Skeleton key={i} className="h-16 w-full rounded-lg" />
+      ))}
     </div>
   );
 }

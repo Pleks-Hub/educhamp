@@ -2328,3 +2328,18 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UI: State-specific minimum age note shown for AL, NE, MS (e.g. "Minimum age in Mississippi: 21 years")
 - [x] Tests: 35 new Vitest tests in server/ageValidation.test.ts covering all edge cases (missing DOB, invalid DOB, boundary ages, all special states, case-insensitivity)
 - [x] All 960 tests passing
+
+### Admin Portal UX Overhaul, COPPA Hard-Block & Age Gating Sprint
+- [x] Admin Portal: replaced 23-tab horizontal bar with left sidebar navigation grouped into 7 sections (Dashboard, Users & Access, Content, Finance, Email, Compliance & Safety, System)
+- [x] Admin Portal: sidebar active item highlighted with primary colour; grouped section labels in small caps
+- [x] Admin Portal: mobile-responsive — hamburger button opens sidebar overlay with backdrop dismiss
+- [x] Admin Portal: sticky top bar shows current section name + quick-access buttons (Newsletter, Chat Leads, Back to App)
+- [x] Admin Portal: all 21 existing tab content components preserved and wired to sidebar navigation via renderSection() switch
+- [x] Admin Users table: added DOB / Age column (formatted date · calculated age in years)
+- [x] Admin Users table: COPPA amber indicator (baby icon) shown for users under 13
+- [x] Admin Users table: colSpan updated to 9 to match new column count
+- [x] COPPA gate: enhanced to use DOB-based age check (age < 13) when DOB is present; falls back to grade-level check
+- [x] DB: added minAgeRequirement (nullable int) column to courses table; migration applied
+- [x] Server db.ts: updateCourse and updateCourseWithStatus helpers accept minAgeRequirement
+- [x] Server admin.ts: updateCourse procedure input schema includes optional minAgeRequirement
+- [x] All 960 tests passing

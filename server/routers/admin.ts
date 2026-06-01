@@ -251,6 +251,7 @@ export const adminRouter = router({
       diagnosticCooldownDays: z.number().min(0).max(365).optional(),
       isTimedExam: z.boolean().optional(),
       timeLimitMinutes: z.number().min(1).max(300).nullable().optional(),
+      minAgeRequirement: z.number().min(3).max(21).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const { courseId, ...data } = input;

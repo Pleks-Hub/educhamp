@@ -15,9 +15,21 @@ import { toast } from "sonner";
 import { UserDetailDialog } from "@/components/UserDetailPanel";
 import {
   Users, BookOpen, Shield, ShieldOff, Search, Plus, Trash2, Eye, History,
-  MoreHorizontal, UserPlus, UserMinus, AlertTriangle, CheckCircle2,
+  MoreHorizontal, UserPlus, UserMinus, AlertTriangle, CheckCircle2, Baby,
 } from "lucide-react";
 import { STATUS_COLORS, STATUS_LABELS, SuppressionBadge } from "./adminHelpers";
+
+/** Calculate age in full years from a date-of-birth string. Returns null if DOB is missing or invalid. */
+function calcAgeFromDob(dob?: string | null): number | null {
+  if (!dob) return null;
+  const d = new Date(dob);
+  if (isNaN(d.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  const m = today.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+  return age;
+}
 
 // ─── User Course Management Dialog ───────────────────────────────────────────
 function UserCourseManagementDialog({ userId, onClose, courses }: { userId: number; onClose: () => void; courses: any[] }) {
@@ -297,14 +309,18 @@ export function AdminUsersTab() {
                 <TableHead>Type</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="whitespace-nowrap">DOB / Age</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No users found.</TableCell></TableRow>
-              ) : filtered.map((user: any) => (
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No users found.</TableCell></TableRow>
+              ) : filtered.map((user: any) => {
+                const age = calcAgeFromDob(user.dateOfBirth);
+                const isCoppaAge = age !== null && age < 13;
+                return (
                 <TableRow key={user.id} data-selected={selectedUserIds.has(user.id)} className="data-[selected=true]:bg-primary/5">
                   <TableCell className="w-10">
                     <Checkbox
@@ -345,6 +361,19 @@ export function AdminUsersTab() {
                     <Badge className={`text-xs ${STATUS_COLORS[user.status ?? "active"] ?? "bg-gray-100 text-gray-600"}`}>
                       {STATUS_LABELS[user.status ?? "active"] ?? user.status}
                     </Badge>
+                  </TableCell>
+                  {/* DOB / Age column */}
+                  <TableCell className="text-xs whitespace-nowrap">
+                    {user.dateOfBirth ? (
+                      <div className="flex items-center gap-1">
+                        {isCoppaAge && <span title="Under 13 — COPPA applies"><Baby className="h-3 w-3 text-amber-500 shrink-0" /></span>}
+                        <span className={isCoppaAge ? "text-amber-600 font-medium" : "text-muted-foreground"}>
+                          {new Date(user.dateOfBirth).toLocaleDateString()} · {age}y
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground/40">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : <span className="text-muted-foreground/40">Never</span>}
@@ -419,7 +448,8 @@ export function AdminUsersTab() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              );})
+            }
             </TableBody>
           </Table>
         </div>

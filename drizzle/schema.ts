@@ -553,6 +553,8 @@ export const courses = mysqlTable("courses", {
   diagnosticCooldownDays: int("diagnosticCooldownDays").notNull().default(7), // per-course retake cooldown
   isTimedExam: boolean("isTimedExam").notNull().default(false),  // enables countdown timer in quiz mode
   timeLimitMinutes: int("timeLimitMinutes"),                      // null = no limit; total minutes for the full unit quiz
+  /** Minimum student age required to enrol. null = no restriction. Used for AP/advanced courses. */
+  minAgeRequirement: int("minAgeRequirement"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

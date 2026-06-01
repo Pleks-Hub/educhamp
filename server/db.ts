@@ -1155,11 +1155,34 @@ export async function getAllUsers(limit = 100, offset = 0, search?: string) {
     ? or(like(users.name, `%${search.trim()}%`), like(users.email, `%${search.trim()}%`))
     : undefined;
   const [rows, [countRow]] = await Promise.all([
-    db.select().from(users)
-      .where(whereClause)
-      .limit(limit)
-      .offset(offset)
-      .orderBy(desc(users.createdAt)),
+    db.select({
+      id: users.id,
+      openId: users.openId,
+      name: users.name,
+      email: users.email,
+      loginMethod: users.loginMethod,
+      role: users.role,
+      accountType: users.accountType,
+      grade: users.grade,
+      school: users.school,
+      status: users.status,
+      billingPeriod: users.billingPeriod,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      lastSignedIn: users.lastSignedIn,
+      lastLoginAt: users.lastLoginAt,
+      lastActiveAt: users.lastActiveAt,
+      invitedByAdminId: users.invitedByAdminId,
+      // Profile fields for admin display
+      dateOfBirth: userProfiles.dateOfBirth,
+      state: userProfiles.state,
+    })
+    .from(users)
+    .leftJoin(userProfiles, eq(userProfiles.userId, users.id))
+    .where(whereClause)
+    .limit(limit)
+    .offset(offset)
+    .orderBy(desc(users.createdAt)),
     db.select({ total: sqlCount() }).from(users).where(whereClause),
   ]);
   return { rows, total: Number(countRow?.total ?? 0) };
@@ -1197,6 +1220,7 @@ export async function updateCourse(courseId: number, data: {
   isActive?: boolean;
   isDefault?: boolean;
   sortOrder?: number;
+  minAgeRequirement?: number | null;
 }) {
   const db = await getDb();
   if (!db) return;
@@ -1675,6 +1699,7 @@ export async function updateCourseWithStatus(courseId: number, data: {
   diagnosticCooldownDays?: number;
   isTimedExam?: boolean;
   timeLimitMinutes?: number | null;
+  minAgeRequirement?: number | null;
 }) {
   const db = await getDb();
   if (!db) return;
@@ -2763,6 +2788,25 @@ export const COPPA_GRADES = new Set([
 export function isCoppaGrade(gradeLevel?: string | null): boolean {
   if (!gradeLevel) return false;
   return COPPA_GRADES.has(gradeLevel.trim());
+}
+
+/**
+ * Returns true if the student is under 13 based on their stored date of birth.
+ * Falls back to grade-level check when DOB is not available.
+ */
+export function requiresCoppaConsentByAge(dateOfBirth?: string | null, gradeLevel?: string | null): boolean {
+  if (dateOfBirth) {
+    const dob = new Date(dateOfBirth);
+    if (!isNaN(dob.getTime())) {
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) age--;
+      return age < 13;
+    }
+  }
+  // Fallback: use grade level
+  return isCoppaGrade(gradeLevel);
 }
 
 /** Create a new parental consent request and return the token. */
