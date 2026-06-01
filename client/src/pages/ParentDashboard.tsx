@@ -13,12 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import {
-  Users, UserPlus, BookOpen, Trophy, TrendingUp, AlertTriangle,
+  Award, Users, UserPlus, BookOpen, Trophy, TrendingUp, AlertTriangle,
   ChevronRight, GraduationCap, BarChart3, CheckCircle2, Clock,
   Pencil, Trash2, Mail, Plus, X, Star, Target, Brain, ShieldAlert,
   FileText, Download, StickyNote, Flag, TrendingDown, Zap,
   Loader2, Link2, Copy, Bell, CheckCheck, XCircle, UserCheck, Info,
-  Send, BookMarked, ThumbsUp, ThumbsDown, AlertCircle
+  Send, Share2, BookMarked, ThumbsUp, ThumbsDown, AlertCircle
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { StreamdownRenderer } from "@/components/StreamdownRenderer";
@@ -32,6 +32,79 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+
+// ─── Child Certificates Panel ────────────────────────────────────────────────
+
+function ChildCertificatesPanel({ childId, childName }: { childId: number; childName: string }) {
+  const { data: certs, isLoading } = trpc.certificate.getChildCertificates.useQuery({ childId });
+
+  const handleShare = async (token: string, courseTitle: string) => {
+    const url = `${window.location.origin}/certificate/${token}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: `EduChamp Certificate — ${courseTitle}`, url }); } catch { /* cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast.success("Certificate link copied!");
+    }
+  };
+
+  if (isLoading) return <div className="py-8 text-center text-muted-foreground text-sm">Loading certificates…</div>;
+
+  if (!certs || certs.length === 0) {
+    return (
+      <div className="py-12 text-center space-y-3">
+        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto">
+          <Award className="h-7 w-7 text-muted-foreground/50" />
+        </div>
+        <p className="font-medium text-sm">{childName} hasn't earned any certificates yet.</p>
+        <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+          Certificates are awarded when a student achieves 90%+ average mastery across all units in a course.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        {childName} has earned <span className="font-semibold text-foreground">{certs.length}</span>{" "}
+        {certs.length === 1 ? "certificate" : "certificates"}.
+      </p>
+      {certs.map((cert) => (
+        <Card key={cert.id} className="border-l-4 border-l-indigo-500">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+                <Award className="h-5 w-5 text-indigo-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm truncate">{cert.courseTitle}</p>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <Badge variant="outline" className="text-xs">{cert.courseCode}</Badge>
+                  <span className="text-xs text-muted-foreground">Mastery: <span className="font-medium text-emerald-600">{cert.averageMastery}%</span></span>
+                  <span className="text-xs text-muted-foreground">{new Date(cert.issuedAt).toLocaleDateString()}</span>
+                </div>
+              </div>
+              <div className="flex gap-1.5 shrink-0">
+                <Link href={`/certificate/${cert.certificateToken}`}>
+                  <Button size="sm" variant="outline" className="h-7 text-xs gap-1">
+                    <Award className="h-3 w-3" /> View
+                  </Button>
+                </Link>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => handleShare(cert.certificateToken, cert.courseTitle)}>
+                  <Share2 className="h-3 w-3" /> Share
+                </Button>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => window.open(`/api/certificate/${cert.certificateToken}/pdf`, "_blank")}>
+                  <Download className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1750,7 +1823,7 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
 
       {/* Tabbed detail sections */}
       <Tabs defaultValue="courses">
-        <TabsList className="w-full grid grid-cols-4 sm:grid-cols-9">
+        <TabsList className="w-full grid grid-cols-5 sm:grid-cols-10">
           <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
           <TabsTrigger value="requests" className="text-xs">Requests</TabsTrigger>
           <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
@@ -1759,6 +1832,7 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
           <TabsTrigger value="gaps" className="text-xs">Skill Gaps</TabsTrigger>
           <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
           <TabsTrigger value="achievements" className="text-xs">🏆 Rewards</TabsTrigger>
+          <TabsTrigger value="certificates" className="text-xs">🎓 Certs</TabsTrigger>
           <TabsTrigger value="report" className="text-xs">Export</TabsTrigger>
         </TabsList>
 
@@ -2014,6 +2088,10 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
           </div>
         </TabsContent>
 
+        {/* Certificates tab */}
+        <TabsContent value="certificates" className="mt-4">
+          <ChildCertificatesPanel childId={child.childId} childName={child.name ?? "Student"} />
+        </TabsContent>
         {/* Export tab */}
         <TabsContent value="report" className="mt-4">
           <ReportExportPanel childId={child.childId} childName={child.name ?? "Student"} />

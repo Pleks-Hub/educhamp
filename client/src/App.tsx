@@ -48,6 +48,8 @@ const AdventureMap = lazy(() => import("./pages/AdventureMap"));
 const ConsentApproval = lazy(() => import("./pages/ConsentApproval"));
 const CoppaConsentWaiting = lazy(() => import("./pages/CoppaConsentWaiting"));
 const ExamPrep = lazy(() => import("./pages/ExamPrep"));
+const CertificatePage = lazy(() => import("./pages/CertificatePage"));
+const Certificates = lazy(() => import("./pages/Certificates"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -83,6 +85,7 @@ function Router() {
         <Route path="/consent/approve" component={ConsentApproval} />
         <Route path="/consent/deny" component={ConsentApproval} />
         <Route path="/consent/waiting" component={CoppaConsentWaiting} />
+        <Route path="/certificate/:token" component={CertificatePage} />
 
         {/* Admin console — standalone, no sidebar */}
         <Route path="/admin" component={AdminDashboard} />
@@ -114,6 +117,7 @@ function Router() {
                 <Route path="/gamification" component={GamificationHub} />
                 <Route path="/rewards" component={RewardsMarketplace} />
                 <Route path="/adventure-map" component={AdventureMap} />
+                <Route path="/certificates" component={Certificates} />
                 <Route path="/404" component={NotFound} />
                 <Route component={NotFound} />
               </Switch>

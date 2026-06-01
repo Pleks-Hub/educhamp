@@ -2399,3 +2399,20 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] ALG1 U6 "Systems of Equations" fixed — 6 lessons inserted in 2 batches
 - [x] Final verification: ALG1 (9.3/unit), ENG1 (9.4/unit), BIO1 (9.0/unit), GR3MATH (9.4/unit), G4MATH (9.9/unit), G5MATH (9.6/unit)
 - [x] Total lessons in DB after expansion: 1,810
+
+### Course Completion Certificate Feature
+- [x] DB: courseCertificates table (id, userId, courseId, issuedAt, certificateToken, averageMastery, masterySnapshot JSON)
+- [x] Migration: generate and apply courseCertificates migration (0044)
+- [x] Server: certificate.checkEligibility — verify 90%+ avg mastery across all units in course
+- [x] Server: certificate.issue — create certificate record with unique token if eligible (idempotent)
+- [x] Server: certificate.getMyCertificates — list all certificates for current user
+- [x] Server: certificate.getChildCertificates — parent access with authorization check
+- [x] Server: certificate.getPublic — public lookup by token (no auth required)
+- [x] Server: handleCertificatePDF — pdfkit landscape PDF generation (GET /api/certificate/:token/pdf)
+- [x] UI: /certificate/:token — public shareable certificate page (printable, no login required)
+- [x] UI: /certificates — student Certificates dashboard page (list all earned certs)
+- [x] UI: Progress page — certificate eligibility banner (claim / already-issued / share / PDF download)
+- [x] UI: Parent Dashboard — Certificates tab with ChildCertificatesPanel (view/share/download per child)
+- [x] UI: DashboardLayout sidebar — Certificates nav item (Award icon)
+- [x] UI: Certificate design — navy/indigo landscape PDF with student name, course, mastery score, date, cert ID
+- [x] Tests: 14 certificate tests (eligibility logic, token format, mastery snapshot, grade label, URL building) — 974/974 total passing

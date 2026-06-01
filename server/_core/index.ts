@@ -171,6 +171,17 @@ async function startServer() {
     res.set("Cache-Control", "public, max-age=3600"); // cache for 1 hour
     res.send(xml);
   });
+  // ── Certificate PDF download (public, no auth required) ─────────────────────
+  app.get("/api/certificate/:token/pdf", async (req, res) => {
+    try {
+      const { handleCertificatePDF } = await import("../routers/certificate");
+      await handleCertificatePDF(req.params.token, res);
+    } catch (err) {
+      console.error("[Certificate PDF]", err);
+      if (!res.headersSent) res.status(500).json({ error: "Failed to generate certificate" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

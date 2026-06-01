@@ -24,6 +24,7 @@ import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
+  Award,
   BarChart3,
   BookOpen,
   Brain,
@@ -67,6 +68,7 @@ const menuItems = [
 const parentMenuItem = { icon: Users, label: "Parent Dashboard", path: "/parent" };
 const referralMenuItem = { icon: Share2, label: "Refer & Invite", path: "/referrals" };
 const billingMenuItem = { icon: CreditCard, label: "Billing", path: "/billing" };
+const certificatesMenuItem = { icon: Award, label: "Certificates", path: "/certificates" };
 
 const SIDEBAR_WIDTH_KEY = "educhamp-sidebar-width";
 const DEFAULT_WIDTH = 256;
@@ -263,7 +265,7 @@ function DashboardLayoutContent({
                   <div className="h-px bg-sidebar-border" />
                 </div>
               )}
-              {[parentMenuItem, referralMenuItem, billingMenuItem].map((item) => {
+              {[parentMenuItem, certificatesMenuItem, referralMenuItem, billingMenuItem].map((item) => {
                 const isActive = location.startsWith(item.path);
                 return (
                   <SidebarMenuItem key={item.path}>

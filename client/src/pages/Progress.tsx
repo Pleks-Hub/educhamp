@@ -21,12 +21,15 @@ import {
   PolarAngleAxis,
 } from "recharts";
 import {
+  Award,
   BarChart3,
   BookOpen,
   Brain,
   CheckCircle2,
+  Download,
   Lock,
   PlayCircle,
+  Share2,
   Star,
   Target,
   Trophy,
@@ -34,6 +37,8 @@ import {
 } from "lucide-react";
 import { getLoginUrl } from "@/const";
 import { WelcomeBackBanner } from "@/components/WelcomeBackBanner";
+import { Link } from "wouter";
+import { toast } from "sonner";
 
 function getMasteryColor(score: number): string {
   if (score < 60) return "#ef4444";
@@ -125,6 +130,35 @@ export default function ProgressPage() {
   const overallMastery = dashboard?.overallMastery ?? 0;
   const radialData = [{ name: "Mastery", value: overallMastery, fill: getMasteryColor(overallMastery) }];
 
+  // Certificate eligibility
+  const activeCourseId = dashboard?.activeCourseId;
+  const { data: certEligibility } = trpc.certificate.checkEligibility.useQuery(
+    { courseId: activeCourseId! },
+    { enabled: !!user && !!activeCourseId }
+  );
+  const issueCertMutation = trpc.certificate.issue.useMutation({
+    onSuccess: (data) => {
+      if (data.isNew) {
+        toast.success("Certificate issued!", { description: "Your course completion certificate is ready." });
+      }
+      setLocation(`/certificate/${data.certificateToken}`);
+    },
+    onError: () => toast.error("Could not issue certificate. Please try again."),
+  });
+  const handleClaimCertificate = () => {
+    if (!activeCourseId) return;
+    issueCertMutation.mutate({ courseId: activeCourseId });
+  };
+  const handleShareCertificate = async (token: string) => {
+    const url = `${window.location.origin}/certificate/${token}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: "EduChamp Certificate", url }); } catch { /* cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied!");
+    }
+  };
+
   // Group mastery by level
   const masteryGroups = {
     advanced: (masteryData ?? []).filter((m) => m.score >= 100).length,
@@ -138,6 +172,64 @@ export default function ProgressPage() {
     <div className="p-6 space-y-6 page-enter max-w-6xl">
       {/* Welcome back banner — shown when student has been inactive 7+ days */}
       <WelcomeBackBanner />
+
+      {/* Certificate eligibility / already-issued banner */}
+      {certEligibility?.alreadyIssued && certEligibility.certificateToken && (
+        <div
+          className="flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-xl p-4 border"
+          style={{
+            background: "linear-gradient(135deg, rgba(79,70,229,0.15), rgba(124,58,237,0.10))",
+            borderColor: "rgba(99,102,241,0.35)",
+          }}
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg,#4f46e5,#7c3aed)" }}>
+            <Award className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-indigo-300 text-sm">Certificate Earned!</p>
+            <p className="text-xs text-slate-400 mt-0.5">You completed this course with {certEligibility.averageMastery}% average mastery.</p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Link href={`/certificate/${certEligibility.certificateToken}`}>
+              <Button size="sm" className="bg-indigo-600 hover:bg-indigo-500 text-white gap-1.5 text-xs">
+                <Award className="w-3.5 h-3.5" /> View Certificate
+              </Button>
+            </Link>
+            <Button size="sm" variant="outline" className="border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 gap-1.5 text-xs" onClick={() => handleShareCertificate(certEligibility.certificateToken!)}>
+              <Share2 className="w-3.5 h-3.5" /> Share
+            </Button>
+            <Button size="sm" variant="outline" className="border-slate-600 text-slate-400 hover:bg-slate-800 gap-1.5 text-xs" onClick={() => window.open(`/api/certificate/${certEligibility.certificateToken}/pdf`, "_blank")}>
+              <Download className="w-3.5 h-3.5" /> PDF
+            </Button>
+          </div>
+        </div>
+      )}
+      {certEligibility?.eligible && !certEligibility.alreadyIssued && (
+        <div
+          className="flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-xl p-4 border"
+          style={{
+            background: "linear-gradient(135deg, rgba(34,197,94,0.10), rgba(79,70,229,0.10))",
+            borderColor: "rgba(34,197,94,0.35)",
+          }}
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: "linear-gradient(135deg,#16a34a,#15803d)" }}>
+            <Trophy className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-green-400 text-sm">You qualify for a Course Completion Certificate!</p>
+            <p className="text-xs text-slate-400 mt-0.5">Average mastery: {certEligibility.averageMastery}% across all {certEligibility.unitCount} units — above the 90% threshold.</p>
+          </div>
+          <Button
+            size="sm"
+            className="bg-green-600 hover:bg-green-500 text-white gap-1.5 text-xs shrink-0"
+            onClick={handleClaimCertificate}
+            disabled={issueCertMutation.isPending}
+          >
+            <Award className="w-3.5 h-3.5" />
+            {issueCertMutation.isPending ? "Issuing…" : "Claim Certificate"}
+          </Button>
+        </div>
+      )}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Progress & Mastery</h1>
         <p className="text-muted-foreground text-sm mt-1">

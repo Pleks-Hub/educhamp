@@ -1799,3 +1799,25 @@ export const userSessions = mysqlTable("userSessions", {
 
 export type UserSession = typeof userSessions.$inferSelect;
 export type InsertUserSession = typeof userSessions.$inferInsert;
+
+// ─── Course Completion Certificates ──────────────────────────────────────────
+/**
+ * Issued when a student achieves ≥90% average mastery across all units in a course.
+ * certificateToken is a URL-safe UUID used for the public shareable link.
+ * masterySnapshot stores the per-unit mastery scores at time of issuance.
+ */
+export const courseCertificates = mysqlTable("courseCertificates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),                          // FK → users.id
+  courseId: int("courseId").notNull(),                      // FK → courses.id
+  certificateToken: varchar("certificateToken", { length: 64 }).notNull().unique(),
+  averageMastery: float("averageMastery").notNull(),        // 0–100 at time of issuance
+  masterySnapshot: json("masterySnapshot").$type<Record<string, number>>().notNull(), // unitId → mastery
+  issuedAt: timestamp("issuedAt").defaultNow().notNull(),
+}, (t) => ({
+  userCourseUnique: uniqueIndex("cert_user_course_unique").on(t.userId, t.courseId),
+  tokenIdx: index("cert_token_idx").on(t.certificateToken),
+  userIdx: index("cert_user_idx").on(t.userId),
+}));
+export type CourseCertificate = typeof courseCertificates.$inferSelect;
+export type InsertCourseCertificate = typeof courseCertificates.$inferInsert;
