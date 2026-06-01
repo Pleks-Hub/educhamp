@@ -2032,6 +2032,130 @@ export const adminRouter = router({
   getSystemMetricsHistory: adminProcedure.query(async () => {
     return systemMetricsHistory.slice();
   }),
+
+  // ─── Email Service Health ────────────────────────────────────────────────────
+  /**
+   * Returns a unified health snapshot for the Mail Service panel:
+   * active provider details, overall status, and 7-day delivery counts.
+   */
+  getEmailServiceHealth: adminProcedure.query(async () => {
+    const { getDb } = await import("../db");
+    const { emailSettings, emailLogs } = await import("../../drizzle/schema");
+    const { eq, gte, sql } = await import("drizzle-orm");
+    const { maskApiKey } = await import("../services/email/crypto");
+    const { ENV } = await import("../_core/env");
+
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+    const [row] = await db
+      .select()
+      .from(emailSettings)
+      .where(eq(emailSettings.isActive, true))
+      .limit(1);
+
+    let overallStatus: "ok" | "warning" | "error" | "unconfigured";
+    if (!row) {
+      overallStatus = ENV.resendApiKey ? "warning" : "unconfigured";
+    } else if (row.lastTestStatus === "failed") {
+      overallStatus = "error";
+    } else if (!row.lastTestedAt) {
+      overallStatus = "warning";
+    } else {
+      overallStatus = "ok";
+    }
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const [sent7d] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(emailLogs)
+      .where(eq(emailLogs.status, "sent"));
+    const [failed7d] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(emailLogs)
+      .where(eq(emailLogs.status, "failed"));
+    const [total7d] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(emailLogs)
+      .where(gte(emailLogs.createdAt, sevenDaysAgo));
+
+    const sentCount = Number(sent7d?.count ?? 0);
+    const failedCount = Number(failed7d?.count ?? 0);
+    const totalCount = Number(total7d?.count ?? 0);
+    const failureRate = totalCount > 0 ? Math.round((failedCount / totalCount) * 100) : 0;
+
+    return {
+      overallStatus,
+      usingEnvFallback: !row && !!ENV.resendApiKey,
+      activeProvider: row
+        ? {
+            id: row.id,
+            provider: row.provider,
+            fromAddress: row.fromAddress,
+            fromName: row.fromName,
+            apiKeyMasked: maskApiKey(row.apiKey),
+            lastTestedAt: row.lastTestedAt,
+            lastTestStatus: row.lastTestStatus,
+            isActive: row.isActive,
+          }
+        : null,
+      stats7d: {
+        sent: sentCount,
+        failed: failedCount,
+        total: totalCount,
+        failureRate,
+      },
+      checkedAt: Date.now(),
+    };
+  }),
+
+  /**
+   * Returns daily email delivery counts for the last N days (default 7).
+   * Used to render the delivery sparkline chart in the Mail Service panel.
+   */
+  getEmailDeliveryStats: adminProcedure
+    .input(z.object({ days: z.number().int().min(1).max(90).default(7) }))
+    .query(async ({ input }) => {
+      const { getDb } = await import("../db");
+      const { emailLogs } = await import("../../drizzle/schema");
+      const { gte, sql } = await import("drizzle-orm");
+
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const since = new Date(Date.now() - input.days * 24 * 60 * 60 * 1000);
+
+      const rows = await db
+        .select({
+          date: sql<string>`DATE(${emailLogs.createdAt})`,
+          status: emailLogs.status,
+          count: sql<number>`count(*)`,
+        })
+        .from(emailLogs)
+        .where(gte(emailLogs.createdAt, since))
+        .groupBy(sql`DATE(${emailLogs.createdAt})`, emailLogs.status)
+        .orderBy(sql`DATE(${emailLogs.createdAt})`);
+
+      const byDate = new Map<string, { sent: number; failed: number; skipped: number }>();
+      for (const row of rows) {
+        const key = row.date;
+        if (!byDate.has(key)) byDate.set(key, { sent: 0, failed: 0, skipped: 0 });
+        const entry = byDate.get(key)!;
+        if (row.status === "sent") entry.sent += Number(row.count);
+        else if (row.status === "failed") entry.failed += Number(row.count);
+        else if (row.status === "skipped") entry.skipped += Number(row.count);
+      }
+
+      const result: Array<{ date: string; sent: number; failed: number; skipped: number }> = [];
+      for (let i = input.days - 1; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+        const key = d.toISOString().split("T")[0];
+        const entry = byDate.get(key) ?? { sent: 0, failed: 0, skipped: 0 };
+        result.push({ date: key, ...entry });
+      }
+
+      return result;
+    }),
 });
 
 // ─── In-process metrics ring buffer (max 20 entries) ─────────────────────────

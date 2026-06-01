@@ -2304,3 +2304,15 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UI: Language Level badge shown in ChildDetailPanel header when non-standard
 - [x] Server: listChildren returns parentLedMode and languageLevel per child
 - [x] All 925 tests passing
+
+### Mail Service Reconfiguration & Admin Health Panel Sprint
+- [x] Audit current email send utility and identify root cause of broken delivery (factory.ts threw when no active DB row existed)
+- [x] Reconfigure email to use Manus built-in RESEND_API_KEY and RESEND_FROM_EMAIL env vars (factory.ts 2-tier fallback: active DB row → env var)
+- [x] Server: bootstrapEmailService — seeds default Resend row from env vars at startup if no active provider exists (server/services/email/bootstrap.ts)
+- [x] Server: admin.getEmailServiceHealth procedure — overall status (ok/warning/error/unconfigured), active provider details, 7-day delivery stats
+- [x] Server: admin.getEmailDeliveryStats procedure — daily delivery counts (sent/failed/skipped) for last N days (default 7)
+- [x] UI: Mail Service Health card at top of Email Settings tab — live status banner (green/amber/red/gray), delivery stat tiles, 7-day stacked bar chart
+- [x] UI: Health card auto-refreshes every 30 seconds; manual Refresh button
+- [x] UI: Status banner shows active provider name + from address, env-var fallback notice, or unconfigured warning
+- [x] UI: Existing Email Providers section retained (add/edit/delete/activate/test providers, send test email, domain verification)
+- [x] All 925 tests still passing

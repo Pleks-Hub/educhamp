@@ -20,6 +20,7 @@ import { seedDefaultHouses } from "../gamification/houses";
 import { registerStripeWebhook } from "../stripeWebhook";
 import { registerResendWebhook } from "../resendWebhook";
 import { registerEmailWebhook } from "../emailWebhook";
+import { bootstrapEmailService } from "../services/email/bootstrap";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 
@@ -196,6 +197,8 @@ async function startServer() {
     console.log(`Server running on http://localhost:${port}/`);
     // Seed default RBAC roles on startup (idempotent — skips existing roles)
     seedDefaultRoles(1).catch((err) => console.warn("[RBAC] Seed default roles failed:", err));
+    // Bootstrap email service — seeds default Resend row from env vars if no active provider exists
+    bootstrapEmailService().catch((err) => console.warn("[EmailService] Bootstrap failed:", err));
     // Auto-seed gamification defaults (idempotent — safe to run on every start)
     Promise.all([
       seedDefaultBadges(),

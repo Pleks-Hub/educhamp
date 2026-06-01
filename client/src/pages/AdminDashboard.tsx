@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { DemoRequestsTab } from "@/components/DemoRequestsTab";
-import { LineChart, Line, AreaChart, Area, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 import { NavTooltip } from "@/components/NavTooltip";
 import { ADMIN_TAB_TOOLTIPS, ADMIN_ACTION_TOOLTIPS } from "@/lib/tooltipContent";
 import { CouponManagerTab } from "@/components/admin/CouponManagerTab";
@@ -2246,6 +2246,8 @@ function EmailSettingsTab() {
   const { data: settings, isLoading: settingsLoading, refetch: refetchSettings } = trpc.admin.getEmailSettings.useQuery();
   const { data: domainStatus, isLoading: domainLoading, refetch: refetchDomain } = trpc.admin.getResendDomainStatus.useQuery();
   const { data: providers = [], isLoading: providersLoading, refetch: refetchProviders } = trpc.admin.listEmailProviders.useQuery();
+  const { data: serviceHealth, isLoading: healthLoading, refetch: refetchHealth } = trpc.admin.getEmailServiceHealth.useQuery(undefined, { refetchInterval: 30_000 });
+  const { data: deliveryStats = [] } = trpc.admin.getEmailDeliveryStats.useQuery({ days: 7 }, { refetchInterval: 60_000 });
   const utils = trpc.useUtils();
 
   const saveSettings = trpc.admin.saveEmailSettings.useMutation({
@@ -2343,6 +2345,90 @@ function EmailSettingsTab() {
           <p className="text-sm text-muted-foreground mt-0.5">Manage email providers, test delivery, and verify domain authentication</p>
         </div>
       </div>
+
+      {/* ── Mail Service Health ── */}
+      <Card className="border">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Mail className="h-4 w-4" />Mail Service Health
+              </CardTitle>
+              <CardDescription>Live status of the email delivery service. Refreshes every 30 seconds.</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" className="h-7 px-2 gap-1 text-xs" onClick={() => { refetchHealth(); }} disabled={healthLoading}>
+              <RefreshCw className={`h-3 w-3 ${healthLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {healthLoading ? (
+            <div className="space-y-2">{Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-12 rounded-lg" />)}</div>
+          ) : (
+            <>
+              {/* Status banner */}
+              {(() => {
+                const s = serviceHealth?.overallStatus;
+                const bannerClass = s === "ok" ? "bg-emerald-50 border-emerald-200 text-emerald-800" : s === "error" ? "bg-red-50 border-red-200 text-red-800" : s === "unconfigured" ? "bg-gray-50 border-gray-200 text-gray-700" : "bg-amber-50 border-amber-200 text-amber-800";
+                const dotClass = s === "ok" ? "bg-emerald-500" : s === "error" ? "bg-red-500" : s === "unconfigured" ? "bg-gray-400" : "bg-amber-500";
+                const label = s === "ok" ? "Operational" : s === "error" ? "Connection Error" : s === "unconfigured" ? "Not Configured" : "Needs Attention";
+                const desc = s === "ok" ? `Active provider: ${serviceHealth?.activeProvider?.provider ?? "resend"} (${serviceHealth?.activeProvider?.fromAddress ?? ""})` : s === "error" ? `Last test failed for ${serviceHealth?.activeProvider?.provider ?? "provider"}. Click Test on the provider card below.` : s === "unconfigured" ? "No email provider is configured. Add a Resend or SMTP provider below." : serviceHealth?.usingEnvFallback ? "Using Manus default Resend (env var). Add a provider row below to manage settings." : "Provider is configured but has not been tested yet.";
+                return (
+                  <div className={`rounded-lg border px-4 py-3 flex items-start gap-3 ${bannerClass}`}>
+                    <div className={`w-2.5 h-2.5 rounded-full mt-0.5 flex-shrink-0 ${dotClass}`} />
+                    <div>
+                      <p className="font-semibold text-sm">{label}</p>
+                      <p className="text-xs mt-0.5 opacity-80">{desc}</p>
+                      {serviceHealth?.checkedAt && <p className="text-[10px] mt-1 opacity-60">Checked {new Date(serviceHealth.checkedAt).toLocaleTimeString()}</p>}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 7-day delivery stats */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg border bg-card p-3 text-center">
+                  <p className="text-2xl font-bold text-emerald-600">{serviceHealth?.stats7d?.sent ?? 0}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Sent (all time)</p>
+                </div>
+                <div className="rounded-lg border bg-card p-3 text-center">
+                  <p className="text-2xl font-bold text-red-500">{serviceHealth?.stats7d?.failed ?? 0}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Failed (all time)</p>
+                </div>
+                <div className="rounded-lg border bg-card p-3 text-center">
+                  <p className={`text-2xl font-bold ${(serviceHealth?.stats7d?.failureRate ?? 0) > 10 ? "text-red-500" : (serviceHealth?.stats7d?.failureRate ?? 0) > 5 ? "text-amber-500" : "text-emerald-600"}`}>
+                    {serviceHealth?.stats7d?.failureRate ?? 0}%
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Failure Rate</p>
+                </div>
+              </div>
+
+              {/* 7-day delivery chart */}
+              {deliveryStats.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Last 7 Days — Daily Delivery</p>
+                  <div className="h-32">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={deliveryStats} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v) => v.slice(5)} />
+                        <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                        <RechartsTooltip
+                          contentStyle={{ fontSize: 11, borderRadius: 6 }}
+                          formatter={(val: any, name: string) => [val, name.charAt(0).toUpperCase() + name.slice(1)]}
+                        />
+                        <Bar dataKey="sent" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
+                        <Bar dataKey="failed" stackId="a" fill="#ef4444" radius={[2, 2, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── Email Provider Management ── */}
       <Card className="border">
