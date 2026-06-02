@@ -20,6 +20,8 @@ import {
   XCircle,
   Eye,
   EyeOff,
+  PlayCircle,
+  Video,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -266,7 +268,7 @@ export default function LessonDetail() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-3 sm:grid-cols-5 w-full">
           <TabsTrigger value="explanation" className="text-xs">
             <BookOpen className="h-3.5 w-3.5 mr-1.5" />
             Explanation
@@ -282,6 +284,10 @@ export default function LessonDetail() {
           <TabsTrigger value="independent" className="text-xs">
             <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
             Practice ({independentProblems.length})
+          </TabsTrigger>
+          <TabsTrigger value="watch" className="text-xs">
+            <PlayCircle className="h-3.5 w-3.5 mr-1.5" />
+            Watch
           </TabsTrigger>
         </TabsList>
 
@@ -661,6 +667,63 @@ export default function LessonDetail() {
                 Mark Lesson Complete
               </Button>
             </div>
+          )}
+        </TabsContent>
+
+        {/* ── Watch (Video) ───────────────────────────────────────────── */}
+        <TabsContent value="watch" className="mt-4 space-y-4">
+          {lesson.videoUrl ? (
+            <Card className="border overflow-hidden">
+              <CardContent className="p-0">
+                {lesson.videoUrl.includes("youtube.com") || lesson.videoUrl.includes("youtu.be") ? (
+                  <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+                    <iframe
+                      className="absolute inset-0 w-full h-full"
+                      src={lesson.videoUrl
+                        .replace("watch?v=", "embed/")
+                        .replace("youtu.be/", "youtube.com/embed/")
+                        .replace(/&.*$/, "")}
+                      title={`Video: ${lesson.title}`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : lesson.videoUrl.match(/\.(mp4|webm|ogg)$/i) ? (
+                  <video
+                    controls
+                    className="w-full max-h-[500px]"
+                    src={lesson.videoUrl}
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                ) : (
+                  <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+                    <iframe
+                      className="absolute inset-0 w-full h-full"
+                      src={lesson.videoUrl}
+                      title={`Video: ${lesson.title}`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border border-dashed border-muted-foreground/30">
+              <CardContent className="p-12 flex flex-col items-center justify-center text-center gap-4">
+                <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
+                  <Video className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Video Coming Soon</h3>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-md">
+                    A video lesson for this topic is being prepared. In the meantime, check out the
+                    Explanation and Examples tabs for comprehensive coverage.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
       </Tabs>

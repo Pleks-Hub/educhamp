@@ -128,6 +128,14 @@ export async function getLessonById(id: number) {
   return result[0] ?? null;
 }
 
+export async function updateLessonVideoUrl(lessonId: number, videoUrl: string | null) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.update(lessons).set({ videoUrl }).where(eq(lessons.id, lessonId));
+  const result = await db.select().from(lessons).where(eq(lessons.id, lessonId)).limit(1);
+  return result[0] ?? null;
+}
+
 // ─── Skills ───────────────────────────────────────────────────────────────────
 
 export async function getAllSkills() {

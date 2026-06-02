@@ -316,6 +316,13 @@
       "when": 1780308826040,
       "tag": "0044_calm_rogue",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "5",
+      "when": 1780358483149,
+      "tag": "0045_safe_stark_industries",
+      "breakpoints": true
     }
   ]
 }

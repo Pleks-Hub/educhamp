@@ -236,7 +236,23 @@ export const adminRouter = router({
   getCourseUnits: adminProcedure
     .input(z.object({ courseId: z.number() }))
     .query(async ({ input }) => {
-      return getUnitsForCourse(input.courseId);
+      const { getLessonsByUnit } = await import("../db");
+      const courseUnits = await getUnitsForCourse(input.courseId);
+      return Promise.all(
+        courseUnits.map(async (unit) => {
+          const unitLessons = await getLessonsByUnit(unit.id);
+          return {
+            ...unit,
+            lessons: unitLessons.map((l) => ({
+              id: l.id,
+              lessonNumber: l.lessonNumber,
+              title: l.title,
+              sortOrder: l.sortOrder,
+              videoUrl: l.videoUrl ?? null,
+            })),
+          };
+        })
+      );
     }),
 
   updateCourse: adminProcedure
@@ -2201,6 +2217,26 @@ export const adminRouter = router({
       },
     };
   }),
+
+  // ─── Video Lesson Management ─────────────────────────────────────────────
+
+  updateLessonVideo: adminProcedure
+    .input(z.object({
+      lessonId: z.number(),
+      videoUrl: z.string().url().nullable(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { updateLessonVideoUrl, getLessonById } = await import("../db");
+      const existing = await getLessonById(input.lessonId);
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found" });
+      const updated = await updateLessonVideoUrl(input.lessonId, input.videoUrl);
+      await logAdminAction(ctx.user.id, "lesson.video_update", "lesson", input.lessonId, {
+        lessonTitle: existing.title,
+        oldVideoUrl: existing.videoUrl ?? null,
+        newVideoUrl: input.videoUrl,
+      });
+      return updated;
+    }),
 });
 
 // ─── In-process metrics ring buffer (max 20 entries) ─────────────────────────

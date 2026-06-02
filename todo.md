@@ -2416,3 +2416,23 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UI: DashboardLayout sidebar — Certificates nav item (Award icon)
 - [x] UI: Certificate design — navy/indigo landscape PDF with student name, course, mastery score, date, cert ID
 - [x] Tests: 14 certificate tests (eligibility logic, token format, mastery snapshot, grade label, URL building) — 974/974 total passing
+
+### Full Catalog Lesson Expansion — All 75 Courses to 9 Lessons/Unit (June 2026)
+- [x] Build expand-all-courses.mjs — bulk expansion script with LLM-generated lessons, auto-retry, DB reconnect
+- [x] Build fill-gap-units.mjs — targeted 3-lesson-batch gap fill for truncation failures
+- [x] Batch 1 expansion: 22 courses (G4-G5, G7, KAP variants) — 175 units expanded
+- [x] Batch 1 gap fill: 87 gap units filled, 562 lessons inserted, 0 incomplete
+- [x] Batch 2 expansion: 25 courses (G6, G8, AP, SAT, K, PreK) — 199 units processed
+- [x] Batch 2 gap fill: 35 gap units filled, 243 lessons inserted, 0 incomplete
+- [x] APCALCBC targeted fill: 12 units filled, 84 lessons inserted, 0 incomplete
+- [x] Final verification: 5,223 total lessons, 565 units, 74 courses, 0 units with < 9 lessons
+
+### Video Lesson Stubs
+- [x] DB: Add videoUrl (text, nullable) column to lessons table
+- [x] Migration: generate and apply videoUrl migration
+- [x] Server: updateLessonVideo tRPC procedure (admin-only, sets videoUrl by lessonId)
+- [x] Server: getLessonWithVideo — include videoUrl in lesson fetch responses (automatic via pass-through query)
+- [x] UI: Lesson viewer — "Watch" tab alongside "Learn" tab (shows embedded video or stub placeholder)
+- [x] UI: Video player — support YouTube embeds, direct MP4 URLs, and a "Video coming soon" stub state
+- [x] UI: Admin content panel — video URL input field per lesson (inline edit)
+- [x] Tests: videoUrl nullable, updateLessonVideo auth guard, video tab rendering — 31/31 passing

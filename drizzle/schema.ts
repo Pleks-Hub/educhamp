@@ -72,6 +72,7 @@ export const lessons = mysqlTable("lessons", {
   independentProblems: json("independentProblems").$type<IndependentProblem[]>().notNull(),
   misconceptions: json("misconceptions").$type<string[]>().notNull(),
   sortOrder: int("sortOrder").notNull().default(0),
+  videoUrl: text("videoUrl"),
 });
 
 export type Lesson = typeof lessons.$inferSelect;

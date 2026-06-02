@@ -9,8 +9,78 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { BookOpen, ShieldAlert } from "lucide-react";
+import { BookOpen, ShieldAlert, Video, Check, X, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+
+// ─── Lesson Video Row (inline video URL editor) ────────────────────────────────
+function LessonVideoRow({ lesson }: { lesson: any }) {
+  const [editing, setEditing] = useState(false);
+  const [videoInput, setVideoInput] = useState(lesson.videoUrl ?? "");
+  const utils = trpc.useUtils();
+  const updateVideo = trpc.admin.updateLessonVideo.useMutation({
+    onSuccess: () => {
+      toast.success("Video URL updated");
+      setEditing(false);
+      utils.admin.getCourseUnits.invalidate();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs">
+        <span className="w-6 text-right text-muted-foreground">{lesson.lessonNumber}.</span>
+        <span className="truncate max-w-[120px]">{lesson.title}</span>
+        <Input
+          value={videoInput}
+          onChange={(e) => setVideoInput(e.target.value)}
+          placeholder="https://youtube.com/watch?v=..."
+          className="h-6 text-xs flex-1 min-w-0"
+        />
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6 text-green-600 hover:text-green-700"
+          onClick={() => updateVideo.mutate({ lessonId: lesson.id, videoUrl: videoInput.trim() || null })}
+          disabled={updateVideo.isPending}
+        >
+          <Check className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6 text-red-500 hover:text-red-600"
+          onClick={() => { setEditing(false); setVideoInput(lesson.videoUrl ?? ""); }}
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground group">
+      <span className="w-6 text-right">{lesson.lessonNumber}.</span>
+      <span className="flex-1 truncate">{lesson.title}</span>
+      {lesson.videoUrl ? (
+        <a href={lesson.videoUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-0.5">
+          <Video className="h-3 w-3" />
+          <ExternalLink className="h-2.5 w-2.5" />
+        </a>
+      ) : (
+        <span className="text-muted-foreground/40"><Video className="h-3 w-3" /></span>
+      )}
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={() => { setEditing(true); setVideoInput(lesson.videoUrl ?? ""); }}
+      >
+        <Video className="h-3 w-3" />
+      </Button>
+    </div>
+  );
+}
 
 // ─── Course Detail ────────────────────────────────────────────────────────────
 function CourseDetail({ course, units, onUpdate }: { course: any; units: any[]; onUpdate: (d: any) => void }) {
@@ -175,12 +245,9 @@ function CourseDetail({ course, units, onUpdate }: { course: any; units: any[]; 
                     {unit.teksAlignment && <Badge variant="outline" className="text-xs">{unit.teksAlignment.split("(")[0].trim()}</Badge>}
                   </div>
                   {unit.lessons && unit.lessons.length > 0 && (
-                    <div className="ml-10 space-y-0.5">
+                    <div className="ml-10 space-y-1 mt-1">
                       {unit.lessons.map((lesson: any) => (
-                        <div key={lesson.id} className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="w-6 text-right">{lesson.lessonNumber}.</span>
-                          <span>{lesson.title}</span>
-                        </div>
+                        <LessonVideoRow key={lesson.id} lesson={lesson} />
                       ))}
                     </div>
                   )}
