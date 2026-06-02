@@ -365,6 +365,48 @@ export const paymentRouter = router({
         metadata: { planKey: "free", stripeCustomerId: input.stripeCustomerId },
       });
 
+      // If this is a parent account, notify linked students that billing is now active
+      if (ctx.user.accountType === "parent") {
+        try {
+          const { getChildrenForParent } = await import("../db");
+          const { getDb } = await import("../db");
+          const children = await getChildrenForParent(ctx.user.id);
+          const db = await getDb();
+          if (db && children.length > 0) {
+            const { userNotifications } = await import("../../drizzle/schema");
+            for (const { child } of children) {
+              if (!child) continue;
+              // Send in-app notification to each linked student
+              await db.insert(userNotifications).values({
+                userId: child.id,
+                type: "billing_activated",
+                title: "Account Activated!",
+                message: `Great news! ${ctx.user.name || "Your parent"} has completed billing setup. You now have full access to EduChamp.`,
+                isRead: false,
+                metadata: JSON.stringify({
+                  parentId: ctx.user.id,
+                  parentName: ctx.user.name,
+                  action: "billing_completed",
+                }),
+              });
+              // Send email notification to student
+              if (child.email) {
+                const { sendEmail } = await import("../emailService");
+                await sendEmail({
+                  to: child.email,
+                  subject: "Your EduChamp Account is Now Active!",
+                  html: `<p>Hi ${child.name || "there"},</p><p>Great news! ${ctx.user.name || "Your parent/guardian"} has completed billing setup for your EduChamp account.</p><p>You now have full access to all courses and features. Log in and start learning!</p><p>— The EduChamp Team</p>`,
+                  text: `Hi ${child.name || "there"}, great news! ${ctx.user.name || "Your parent/guardian"} has completed billing setup for your EduChamp account. You now have full access. Log in and start learning!`,
+                  templateName: "billing_activated_student",
+                }).catch(() => {}); // Non-fatal
+              }
+            }
+          }
+        } catch {
+          // Non-fatal: don't block billing completion if notification fails
+        }
+      }
+
       return { success: true, plan: "free" };
     }),
 
