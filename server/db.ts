@@ -1016,6 +1016,7 @@ export async function upsertUserProfile(
     disableSound: boolean;
     languageLevel: string;
     weeklyDigestEnabled: boolean;
+    activityPreference: string;
   }>
 ) {
   const db = await getDb();

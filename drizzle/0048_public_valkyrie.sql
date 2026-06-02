@@ -1,0 +1,1 @@
+ALTER TABLE `userProfiles` ADD `activityPreference` varchar(32) DEFAULT 'general' NOT NULL;

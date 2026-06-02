@@ -9,10 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   User, Shield, ShieldCheck, ShieldOff, KeyRound, Copy, RefreshCw,
-  CheckCircle2, AlertTriangle, Loader2, QrCode, Palette, Bell
+  CheckCircle2, AlertTriangle, Loader2, QrCode, Palette, Bell, Eye, Mail
 } from "lucide-react";
 import { usePalette, PALETTES, type PaletteId } from "@/contexts/PaletteContext";
 
@@ -681,15 +683,30 @@ function PersonalizationCard() {
   );
 }
 
+// ─── Activity Preference Labels ──────────────────────────────────────────────
+const ACTIVITY_OPTIONS = [
+  { value: "general", label: "General (mixed activities)" },
+  { value: "reading", label: "Reading & literacy" },
+  { value: "math_games", label: "Math games & puzzles" },
+  { value: "hands_on", label: "Hands-on projects" },
+  { value: "outdoor", label: "Outdoor & movement" },
+  { value: "creative", label: "Creative & art" },
+] as const;
+
 // ─── Notification Preferences Card ───────────────────────────────────────────
 function NotificationPreferencesCard() {
   const { data: prefs, isLoading } = trpc.parentTools.getNotificationPreferences.useQuery();
   const utils = trpc.useUtils();
+  const [previewOpen, setPreviewOpen] = useState(false);
+
   const updateMutation = trpc.parentTools.updateNotificationPreferences.useMutation({
     onMutate: async (newPrefs) => {
       await utils.parentTools.getNotificationPreferences.cancel();
       const prev = utils.parentTools.getNotificationPreferences.getData();
-      utils.parentTools.getNotificationPreferences.setData(undefined, newPrefs);
+      utils.parentTools.getNotificationPreferences.setData(undefined, (old) => ({
+        weeklyDigestEnabled: newPrefs.weeklyDigestEnabled,
+        activityPreference: newPrefs.activityPreference ?? old?.activityPreference ?? "general",
+      }));
       return { prev };
     },
     onError: (_err, _vars, context) => {
@@ -706,39 +723,127 @@ function NotificationPreferencesCard() {
     },
   });
 
+  const previewMutation = trpc.parentTools.previewDigest.useMutation({
+    onError: () => toast.error("Could not generate preview. Make sure you have children linked."),
+  });
+
   const weeklyDigestEnabled = prefs?.weeklyDigestEnabled ?? true;
+  const activityPreference = prefs?.activityPreference ?? "general";
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Bell className="h-4 w-4" />
-          Email Notifications
-        </CardTitle>
-        <CardDescription>
-          Control which emails you receive from EduChamp.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="weekly-digest-toggle" className="text-sm font-medium">
-              Weekly Progress Digest
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              Receive a weekly email summarising your child's lesson completions, quiz scores, and mastery progress.
-            </p>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Email Notifications
+          </CardTitle>
+          <CardDescription>
+            Control which emails you receive from EduChamp.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Weekly digest toggle */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="weekly-digest-toggle" className="text-sm font-medium">
+                Weekly Progress Digest
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Receive a weekly email summarising your child's lesson completions, quiz scores, and mastery progress.
+              </p>
+            </div>
+            <Switch
+              id="weekly-digest-toggle"
+              checked={weeklyDigestEnabled}
+              disabled={isLoading || updateMutation.isPending}
+              onCheckedChange={(checked) => {
+                updateMutation.mutate({ weeklyDigestEnabled: checked, activityPreference: activityPreference as "general" | "reading" | "math_games" | "hands_on" | "outdoor" | "creative" });
+              }}
+            />
           </div>
-          <Switch
-            id="weekly-digest-toggle"
-            checked={weeklyDigestEnabled}
-            disabled={isLoading || updateMutation.isPending}
-            onCheckedChange={(checked) => {
-              updateMutation.mutate({ weeklyDigestEnabled: checked });
-            }}
-          />
-        </div>
-      </CardContent>
-    </Card>
+
+          {/* Activity preference selector */}
+          {weeklyDigestEnabled && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">At-Home Activity Focus</Label>
+              <p className="text-xs text-muted-foreground">
+                Choose what types of at-home activity suggestions you'd like in your weekly digest.
+              </p>
+              <Select
+                value={activityPreference}
+                onValueChange={(val) => {
+                  updateMutation.mutate({ weeklyDigestEnabled, activityPreference: val as any });
+                }}
+                disabled={isLoading || updateMutation.isPending}
+              >
+                <SelectTrigger className="w-full max-w-xs">
+                  <SelectValue placeholder="Select activity type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACTIVITY_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Preview Digest button */}
+          {weeklyDigestEnabled && (
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                disabled={previewMutation.isPending}
+                onClick={() => {
+                  previewMutation.mutate(undefined, {
+                    onSuccess: () => setPreviewOpen(true),
+                  });
+                }}
+              >
+                {previewMutation.isPending ? (
+                  <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Generating…</>
+                ) : (
+                  <><Eye className="h-3.5 w-3.5" /> Preview Digest</>
+                )}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-1">
+                See a sample of what your weekly email will look like.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Preview Dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Weekly Digest Preview
+            </DialogTitle>
+            <DialogDescription>
+              This is a sample of what your weekly email will look like. Actual data will reflect your child's real activity.
+            </DialogDescription>
+          </DialogHeader>
+          {previewMutation.data && (
+            <div className="mt-4">
+              <div className="text-sm font-medium text-muted-foreground mb-2">
+                Subject: {previewMutation.data.subject}
+              </div>
+              <div
+                className="border rounded-lg overflow-hidden"
+                dangerouslySetInnerHTML={{ __html: previewMutation.data.html }}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

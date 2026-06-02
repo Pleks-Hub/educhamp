@@ -17,8 +17,13 @@ import {
   getChildrenForParent,
   getUserProfile,
   upsertUserProfile,
+  getWeeklyDigestDataForParent,
+  getDb,
 } from "../db";
 import { getMasteryLabel, getAdaptivePath } from "../educhamp-helpers";
+import { buildWeeklyParentDigestEmail, type WeeklyDigestChild } from "../emailTemplates/weeklyParentDigest";
+import { userMastery, unitProgress, units, diagnosticAttempts } from "../../drizzle/schema";
+import { and, eq, gte, desc, inArray } from "drizzle-orm";
 
 // ─── Goals ────────────────────────────────────────────────────────────────────
 
@@ -305,17 +310,117 @@ export const parentToolsRouter = router({
     const profile = await getUserProfile(ctx.user.id);
     return {
       weeklyDigestEnabled: profile?.weeklyDigestEnabled ?? true,
+      activityPreference: (profile?.activityPreference as string) ?? "general",
     };
   }),
 
   updateNotificationPreferences: protectedProcedure
     .input(z.object({
       weeklyDigestEnabled: z.boolean(),
+      activityPreference: z.enum(["general", "reading", "math_games", "hands_on", "outdoor", "creative"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await upsertUserProfile(ctx.user.id, {
+      const data: Record<string, any> = {
         weeklyDigestEnabled: input.weeklyDigestEnabled,
-      });
+      };
+      if (input.activityPreference !== undefined) {
+        data.activityPreference = input.activityPreference;
+      }
+      await upsertUserProfile(ctx.user.id, data);
       return { success: true };
     }),
+
+  // ─── Preview Digest ──────────────────────────────────────────────────────────────
+
+  previewDigest: protectedProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+    const childData = await getWeeklyDigestDataForParent(ctx.user.id);
+    if (childData.length === 0) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "No children linked to your account." });
+    }
+
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - 7);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(now);
+    weekEnd.setHours(23, 59, 59, 999);
+    const appUrl = ctx.req.headers.origin || "https://educhamp.app";
+
+    const digestChildren: WeeklyDigestChild[] = [];
+
+    for (const child of childData) {
+      const grade = child.gradeLevel || "Student";
+
+      const weekMastery = await db
+        .select()
+        .from(userMastery)
+        .where(and(eq(userMastery.userId, child.childId), gte(userMastery.updatedAt, weekStart)));
+      const newSkillsMastered = weekMastery.filter((m) => (m.score ?? 0) >= 75).length;
+
+      const allMastery = await db
+        .select({ score: userMastery.score })
+        .from(userMastery)
+        .where(eq(userMastery.userId, child.childId));
+      const totalMasteryScore = allMastery.length > 0
+        ? Math.round(allMastery.reduce((s, m) => s + (m.score ?? 0), 0) / allMastery.length)
+        : 0;
+
+      const recentUnitProgress = await db
+        .select({ unitId: unitProgress.unitId })
+        .from(unitProgress)
+        .where(eq(unitProgress.userId, child.childId))
+        .orderBy(desc(unitProgress.updatedAt))
+        .limit(2);
+      let recentUnitNames: string[] = [];
+      if (recentUnitProgress.length > 0) {
+        const unitIds = recentUnitProgress.map((u) => u.unitId);
+        const unitRows = await db.select({ id: units.id, title: units.title }).from(units).where(inArray(units.id, unitIds));
+        recentUnitNames = unitRows.map((u) => u.title);
+      }
+
+      const latestDiag = await db
+        .select({ overallScore: diagnosticAttempts.overallScore })
+        .from(diagnosticAttempts)
+        .where(eq(diagnosticAttempts.userId, child.childId))
+        .orderBy(desc(diagnosticAttempts.completedAt))
+        .limit(1)
+        .then((r) => r[0] ?? null);
+      const diagScore = latestDiag?.overallScore ?? null;
+      const onTrackStatus: "on_track" | "needs_attention" | "check_in" | null =
+        diagScore === null ? null :
+        diagScore >= 75 ? "on_track" :
+        diagScore >= 60 ? "needs_attention" : "check_in";
+
+      digestChildren.push({
+        name: child.childName,
+        grade,
+        lessonsCompleted: child.lessonsCompleted,
+        quizAttempts: child.quizzesTaken,
+        bestQuizScore: child.bestQuizScore,
+        newSkillsMastered,
+        totalMasteryScore,
+        recentUnits: recentUnitNames,
+        showedImprovement: child.lessonsCompleted > 0,
+        suggestedActivity: "Practice a fun 10-minute activity together — this is a preview of your weekly digest!",
+        progressUrl: `${appUrl}/parent`,
+        nextLessonUrl: `${appUrl}/curriculum`,
+        onTrackStatus,
+        diagnosticScore: diagScore,
+      });
+    }
+
+    const emailData = buildWeeklyParentDigestEmail({
+      parentName: ctx.user.name ?? "Parent",
+      parentEmail: ctx.user.email ?? "",
+      weekStart,
+      weekEnd,
+      children: digestChildren,
+      appUrl,
+    });
+
+    return { html: emailData.html, subject: emailData.subject };
+  }),
 });

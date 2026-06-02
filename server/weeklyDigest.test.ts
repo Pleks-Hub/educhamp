@@ -241,3 +241,198 @@ describe("Notification Preferences — tRPC procedures", () => {
     expect(prefs2.weeklyDigestEnabled).toBe(true);
   });
 });
+
+// ─── 3. Celebration Badge Tests ──────────────────────────────────────────────
+
+describe("Weekly Parent Digest — Celebration Badge", () => {
+  it("shows celebration badge when child has perfect quiz score (100%)", () => {
+    const result = buildWeeklyParentDigestEmail(
+      mockEmailData({
+        children: [mockChild({ bestQuizScore: 100, newSkillsMastered: 0 })],
+      })
+    );
+    expect(result.html).toContain("Celebration!");
+    expect(result.html).toContain("perfect 100%");
+    expect(result.html).toContain("🏆");
+  });
+
+  it("shows celebration badge when child masters new skills", () => {
+    const result = buildWeeklyParentDigestEmail(
+      mockEmailData({
+        children: [mockChild({ bestQuizScore: 85, newSkillsMastered: 2 })],
+      })
+    );
+    expect(result.html).toContain("Celebration!");
+    expect(result.html).toContain("mastered 2 new skills");
+    expect(result.html).toContain("🏆");
+  });
+
+  it("shows combined celebration for perfect score AND new mastery", () => {
+    const result = buildWeeklyParentDigestEmail(
+      mockEmailData({
+        children: [mockChild({ bestQuizScore: 100, newSkillsMastered: 3 })],
+      })
+    );
+    expect(result.html).toContain("Celebration!");
+    expect(result.html).toContain("perfect 100%");
+    expect(result.html).toContain("mastered 3 new skills");
+    expect(result.html).toContain("🎉");
+  });
+
+  it("does NOT show celebration badge when no perfect score and no mastery", () => {
+    const result = buildWeeklyParentDigestEmail(
+      mockEmailData({
+        children: [mockChild({ bestQuizScore: 85, newSkillsMastered: 0 })],
+      })
+    );
+    expect(result.html).not.toContain("Celebration!");
+    expect(result.html).not.toContain("🏆");
+  });
+});
+
+// ─── 4. Activity Preference Tests ────────────────────────────────────────────
+
+describe("Notification Preferences — Activity Preference", () => {
+  function createParentContext(): TrpcContext {
+    return {
+      user: {
+        id: 42,
+        openId: "parent-user-42",
+        email: "parent@example.com",
+        name: "Parent User",
+        loginMethod: "manus",
+        role: "parent",
+        accountType: "parent",
+        grade: null,
+        school: null,
+        status: "active",
+        billingPeriod: "monthly",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        lastLoginAt: null,
+        lastActiveAt: null,
+        invitedByAdminId: null,
+      },
+      req: {
+        protocol: "https",
+        headers: { origin: "https://educhamp.app" },
+      } as TrpcContext["req"],
+      res: {
+        clearCookie: () => {},
+      } as unknown as TrpcContext["res"],
+      sessionToken: null,
+    };
+  }
+
+  it("getNotificationPreferences returns activityPreference field", async () => {
+    const ctx = createParentContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.parentTools.getNotificationPreferences();
+    expect(result).toHaveProperty("activityPreference");
+    expect(typeof result.activityPreference).toBe("string");
+  });
+
+  it("updateNotificationPreferences accepts activityPreference", async () => {
+    const ctx = createParentContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.parentTools.updateNotificationPreferences({
+      weeklyDigestEnabled: true,
+      activityPreference: "math_games",
+    });
+    expect(result).toEqual({ success: true });
+  });
+
+  it("activityPreference round-trips correctly", async () => {
+    const ctx = createParentContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await caller.parentTools.updateNotificationPreferences({
+      weeklyDigestEnabled: true,
+      activityPreference: "outdoor",
+    });
+
+    const prefs = await caller.parentTools.getNotificationPreferences();
+    expect(prefs.activityPreference).toBe("outdoor");
+
+    // Change to creative
+    await caller.parentTools.updateNotificationPreferences({
+      weeklyDigestEnabled: true,
+      activityPreference: "creative",
+    });
+
+    const prefs2 = await caller.parentTools.getNotificationPreferences();
+    expect(prefs2.activityPreference).toBe("creative");
+  });
+
+  it("rejects invalid activityPreference values", async () => {
+    const ctx = createParentContext();
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.parentTools.updateNotificationPreferences({
+        weeklyDigestEnabled: true,
+        activityPreference: "invalid_value" as any,
+      })
+    ).rejects.toThrow();
+  });
+});
+
+// ─── 5. Preview Digest Tests ─────────────────────────────────────────────────
+
+describe("Preview Digest — tRPC procedure", () => {
+  function createParentContext(): TrpcContext {
+    return {
+      user: {
+        id: 42,
+        openId: "parent-user-42",
+        email: "parent@example.com",
+        name: "Parent User",
+        loginMethod: "manus",
+        role: "parent",
+        accountType: "parent",
+        grade: null,
+        school: null,
+        status: "active",
+        billingPeriod: "monthly",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        lastLoginAt: null,
+        lastActiveAt: null,
+        invitedByAdminId: null,
+      },
+      req: {
+        protocol: "https",
+        headers: { origin: "https://educhamp.app" },
+      } as TrpcContext["req"],
+      res: {
+        clearCookie: () => {},
+      } as unknown as TrpcContext["res"],
+      sessionToken: null,
+    };
+  }
+
+  it("previewDigest returns html and subject when children exist", async () => {
+    const ctx = createParentContext();
+    const caller = appRouter.createCaller(ctx);
+    try {
+      const result = await caller.parentTools.previewDigest();
+      expect(result).toHaveProperty("html");
+      expect(result).toHaveProperty("subject");
+      expect(typeof result.html).toBe("string");
+      expect(typeof result.subject).toBe("string");
+      expect(result.html.length).toBeGreaterThan(100);
+    } catch (err: any) {
+      // If no children linked, it should throw NOT_FOUND
+      expect(err.code).toBe("NOT_FOUND");
+    }
+  });
+
+  it("previewDigest throws NOT_FOUND when parent has no children", async () => {
+    // Use a user ID that likely has no children
+    const ctx = createParentContext();
+    ctx.user!.id = 99999;
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.parentTools.previewDigest()).rejects.toThrow();
+  });
+});

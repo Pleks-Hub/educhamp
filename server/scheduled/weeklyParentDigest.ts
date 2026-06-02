@@ -14,7 +14,7 @@ import type { Request, Response } from "express";
 import { sdk } from "../_core/sdk";
 import { sendEmail } from "../emailService";
 import { buildWeeklyParentDigestEmail, type WeeklyDigestChild } from "../emailTemplates/weeklyParentDigest";
-import { getWeeklyDigestEligibleParents, getWeeklyDigestDataForParent } from "../db";
+import { getWeeklyDigestEligibleParents, getWeeklyDigestDataForParent, getUserProfile } from "../db";
 import { getDb } from "../db";
 import {
   userMastery,
@@ -89,7 +89,48 @@ function getGradeBand(gradeLevel: string | null): string {
   return "middle";
 }
 
-function pickActivity(gradeLevel: string | null, childId: number): string {
+// ─── Preference-based activity suggestions ──────────────────────────────────
+
+const PREFERENCE_ACTIVITIES: Record<string, string[]> = {
+  reading: [
+    "Read together for 15 minutes — take turns reading paragraphs aloud.",
+    "Visit the library and pick a book about a topic they're studying.",
+    "Start a reading journal: write one sentence about what happened in today's chapter.",
+    "Read a non-fiction article together and discuss 3 new facts.",
+  ],
+  math_games: [
+    "Play a dice-rolling game: roll two dice and multiply the numbers.",
+    "Try a math puzzle app together for 10 minutes.",
+    "Play 'Grocery Store Math' — estimate totals before checking out.",
+    "Create a treasure hunt with math clues (e.g., 'Take 3×4 steps north').",
+  ],
+  hands_on: [
+    "Build something with blocks or LEGO and count the pieces used.",
+    "Cook together and practice measuring fractions (½ cup, ¼ tsp).",
+    "Create a paper airplane and measure how far it flies.",
+    "Build a simple circuit or science experiment from household items.",
+  ],
+  outdoor: [
+    "Go on a nature walk and count different types of plants or animals.",
+    "Measure distances outside — how many steps to the mailbox?",
+    "Play hopscotch with math problems in each square.",
+    "Create an outdoor scavenger hunt with shape-finding challenges.",
+  ],
+  creative: [
+    "Draw a picture using only geometric shapes — name each one.",
+    "Create a comic strip that tells a math story problem.",
+    "Design a dream bedroom on paper — calculate the area and perimeter.",
+    "Make a pattern with coloured beads or buttons and describe the rule.",
+  ],
+};
+
+function pickActivity(gradeLevel: string | null, childId: number, preference?: string): string {
+  // If parent has a specific preference (not "general"), use preference-based activities
+  if (preference && preference !== "general" && PREFERENCE_ACTIVITIES[preference]) {
+    const list = PREFERENCE_ACTIVITIES[preference];
+    return list[childId % list.length];
+  }
+  // Otherwise fall back to grade-band activities
   const band = getGradeBand(gradeLevel);
   const list = AT_HOME_ACTIVITIES[band] ?? AT_HOME_ACTIVITIES["middle"];
   return list[childId % list.length];
@@ -141,6 +182,10 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
 
     for (const parent of parentUsers) {
       if (!parent.email) { parentsSkipped++; continue; }
+
+      // ── Get parent's activity preference ─────────────────────────────────
+      const parentProfile = await getUserProfile(parent.id);
+      const activityPref = (parentProfile?.activityPreference as string) ?? "general";
 
       // ── Get digest data for all children ───────────────────────────────────
       const childData = await getWeeklyDigestDataForParent(parent.id);
@@ -220,7 +265,7 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
           totalMasteryScore,
           recentUnits: recentUnitNames,
           showedImprovement,
-          suggestedActivity: pickActivity(child.gradeLevel, child.childId),
+          suggestedActivity: pickActivity(child.gradeLevel, child.childId, activityPref),
           progressUrl: `${appUrl}/parent`,
           nextLessonUrl: `${appUrl}/curriculum`,
           onTrackStatus,

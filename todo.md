@@ -2493,3 +2493,13 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Heartbeat: Weekly cron job to send digest emails to all parents (extended to ALL grade levels)
 - [x] UI: Parent notification preferences (opt-in/out of weekly digest) — toggle in Profile page
 - [x] Tests: digest query, email template, heartbeat handler — 15 passing tests
+
+### Weekly Digest Enhancements (June 2026)
+- [x] UI: "Preview Digest" button in Profile page so parents can see a sample of the weekly email before it is sent
+- [x] Server: tRPC endpoint to generate a preview digest for the current parent
+- [x] Email: Celebration badge in template when child achieves perfect quiz score or masters a new skill
+- [x] DB: activityPreference column on userProfiles (enum: general, reading, math_games, hands_on, outdoor, creative)
+- [x] Server: tRPC procedure to get/update activity preference
+- [x] UI: Activity preference selector in Profile notification preferences card
+- [x] Server: Weekly digest handler uses parent's activity preference to tailor at-home suggestions
+- [x] Tests: preview digest, celebration badge, activity preference — 25 tests passing (1091 total)

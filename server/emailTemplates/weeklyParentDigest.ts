@@ -91,6 +91,29 @@ function scoreBar(score: number): string {
 function childCard(child: WeeklyDigestChild, idx: number): string {
   const emoji = gradeEmoji(child.grade);
   const hasActivity = child.lessonsCompleted > 0 || child.quizAttempts > 0;
+
+  // Celebration badge for perfect quiz or new mastery
+  const hasCelebration = child.bestQuizScore === 100 || child.newSkillsMastered > 0;
+  const celebrationBadge = hasCelebration
+    ? `<tr><td style="padding:8px 0;">
+        <table cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid ${ACCENT};border-radius:12px;width:100%;">
+          <tr>
+            <td style="padding:14px 18px;">
+              <span style="font-size:22px;vertical-align:middle;">🏆</span>
+              <span style="font-size:15px;font-weight:700;color:#92400e;margin-left:8px;vertical-align:middle;">Celebration!</span>
+              <p style="margin:6px 0 0;font-size:14px;color:#78350f;">${
+                child.bestQuizScore === 100 && child.newSkillsMastered > 0
+                  ? `${child.name} scored a perfect 100% on a quiz AND mastered ${child.newSkillsMastered} new skill${child.newSkillsMastered > 1 ? "s" : ""}! 🎉`
+                  : child.bestQuizScore === 100
+                    ? `${child.name} scored a perfect 100% on a quiz this week! 🌟`
+                    : `${child.name} mastered ${child.newSkillsMastered} new skill${child.newSkillsMastered > 1 ? "s" : ""} this week! 🌟`
+              }</p>
+            </td>
+          </tr>
+        </table>
+      </td></tr>`
+    : "";
+
   const skillsLine = child.newSkillsMastered > 0
     ? `<tr><td style="padding:6px 0;font-size:15px;">🌟 <strong>${child.newSkillsMastered} new skill${child.newSkillsMastered > 1 ? "s" : ""} mastered!</strong></td></tr>`
     : "";
@@ -139,6 +162,7 @@ function childCard(child: WeeklyDigestChild, idx: number): string {
         ${hasActivity ? `
         <table width="100%" cellpadding="0" cellspacing="0">
           ${onTrackBadge}
+          ${celebrationBadge}
           <tr>
             <td style="padding:6px 0;font-size:15px;">📚 <strong>${child.lessonsCompleted} lesson${child.lessonsCompleted !== 1 ? "s" : ""}</strong> completed this week</td>
           </tr>

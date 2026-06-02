@@ -464,6 +464,7 @@ export const userProfiles = mysqlTable("userProfiles", {
   languageLevel: varchar("languageLevel", { length: 16 }).notNull().default("standard"), // 'simplified' | 'standard' | 'advanced'
   // Email notification preferences
   weeklyDigestEnabled: boolean("weeklyDigestEnabled").notNull().default(true), // opt-in/out of weekly digest emails
+  activityPreference: varchar("activityPreference", { length: 32 }).notNull().default("general"), // general | reading | math_games | hands_on | outdoor | creative
   // Onboarding state
   onboardingCompleted: boolean("onboardingCompleted").notNull().default(false),
   onboardingStep: int("onboardingStep").notNull().default(0),
