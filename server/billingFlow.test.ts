@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { buildParentBillingNotificationEmail } from "./emailTemplates/parentBillingNotification";
+import { buildBillingActivatedStudentEmail } from "./emailTemplates/billingActivatedStudent";
 
 describe("Billing Setup Flow", () => {
   describe("Parent Billing Notification Email Template", () => {
@@ -132,6 +133,95 @@ describe("Billing Setup Flow", () => {
       const needsBilling = !billingStatus.hasSubscription && !billingStatus.cardOnFile;
       // With card on file, they're partially done — the billing page will handle plan selection
       expect(needsBilling).toBe(false);
+    });
+  });
+
+  describe("Student Billing Activated Email (CAN-SPAM)", () => {
+    it("generates email with unsubscribe footer", () => {
+      const result = buildBillingActivatedStudentEmail({
+        studentName: "Alex",
+        parentName: "Jane",
+        loginUrl: "https://educhamp.app",
+      });
+
+      expect(result.subject).toContain("Active");
+      expect(result.html).toContain("Alex");
+      expect(result.html).toContain("Jane");
+      expect(result.html).toContain("https://educhamp.app");
+      // CAN-SPAM unsubscribe footer
+      expect(result.html.toLowerCase()).toContain("unsubscribe");
+      expect(result.html).toContain("/profile");
+      expect(result.text.toLowerCase()).toContain("unsubscribe");
+    });
+
+    it("includes login CTA button in HTML", () => {
+      const result = buildBillingActivatedStudentEmail({
+        studentName: "Alex",
+        parentName: "Jane",
+        loginUrl: "https://educhamp.app",
+      });
+
+      expect(result.html).toContain("href=\"");
+      expect(result.html).toContain("Log In");
+    });
+
+    it("plain text version includes unsubscribe instructions", () => {
+      const result = buildBillingActivatedStudentEmail({
+        studentName: "Alex",
+        parentName: "Jane",
+        loginUrl: "https://educhamp.app",
+      });
+
+      expect(result.text).toContain("Profile > Settings");
+      expect(result.text).toContain("UNSUBSCRIBE");
+    });
+  });
+
+  describe("Parent Billing Reminder Email (isReminder flag)", () => {
+    it("generates reminder-specific subject line", () => {
+      const result = buildParentBillingNotificationEmail({
+        studentName: "Tommy",
+        parentName: "Jane",
+        billingSetupUrl: "https://educhamp.app/billing/setup",
+        isReminder: true,
+      });
+
+      expect(result.subject).toContain("Reminder");
+      expect(result.subject).toContain("Tommy");
+    });
+
+    it("uses alarm clock emoji for reminder", () => {
+      const result = buildParentBillingNotificationEmail({
+        studentName: "Tommy",
+        parentName: "Jane",
+        billingSetupUrl: "https://educhamp.app/billing/setup",
+        isReminder: true,
+      });
+
+      expect(result.html).toContain("\u23f0"); // ⏰
+    });
+
+    it("uses bell emoji for initial notification (not reminder)", () => {
+      const result = buildParentBillingNotificationEmail({
+        studentName: "Tommy",
+        parentName: "Jane",
+        billingSetupUrl: "https://educhamp.app/billing/setup",
+        isReminder: false,
+      });
+
+      expect(result.html).toContain("\ud83d\udd14"); // 🔔
+      expect(result.subject).not.toContain("Reminder");
+    });
+
+    it("reminder title says 'Reminder: Billing Setup Still Needed'", () => {
+      const result = buildParentBillingNotificationEmail({
+        studentName: "Tommy",
+        parentName: "Jane",
+        billingSetupUrl: "https://educhamp.app/billing/setup",
+        isReminder: true,
+      });
+
+      expect(result.html).toContain("Reminder: Billing Setup Still Needed");
     });
   });
 

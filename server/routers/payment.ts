@@ -389,14 +389,20 @@ export const paymentRouter = router({
                   action: "billing_completed",
                 }),
               });
-              // Send email notification to student
+              // Send email notification to student with CAN-SPAM unsubscribe footer
               if (child.email) {
                 const { sendEmail } = await import("../emailService");
+                const { buildBillingActivatedStudentEmail } = await import("../emailTemplates/billingActivatedStudent");
+                const emailData = buildBillingActivatedStudentEmail({
+                  studentName: child.name || "there",
+                  parentName: ctx.user.name || "Your parent/guardian",
+                  loginUrl: "https://educhamp.app",
+                });
                 await sendEmail({
                   to: child.email,
-                  subject: "Your EduChamp Account is Now Active!",
-                  html: `<p>Hi ${child.name || "there"},</p><p>Great news! ${ctx.user.name || "Your parent/guardian"} has completed billing setup for your EduChamp account.</p><p>You now have full access to all courses and features. Log in and start learning!</p><p>— The EduChamp Team</p>`,
-                  text: `Hi ${child.name || "there"}, great news! ${ctx.user.name || "Your parent/guardian"} has completed billing setup for your EduChamp account. You now have full access. Log in and start learning!`,
+                  subject: emailData.subject,
+                  html: emailData.html,
+                  text: emailData.text,
                   templateName: "billing_activated_student",
                 }).catch(() => {}); // Non-fatal
               }

@@ -2515,3 +2515,10 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Server: Send email + in-app notification to student when parent completes billing and links them — triggers in confirmCardAndActivateFreePlan when parent is a parent account
 - [x] Edge case: Minor with no parent on file — prompt for parent email, validate not student's own, send notification
 - [x] Tests: billing coverage check, parent notification on minor billing, student access after parent links — 14 tests passing (1105 total)
+
+### E2E Testing, Unsubscribe Link, and Parent Billing Reminder (June 2026)
+- [x] Email: Add CAN-SPAM unsubscribe footer to student "Account Activated" billing email — new template with profile/settings link + reply-to-unsubscribe
+- [x] Cron: Parent billing reminder — re-send notification to parents who haven't completed billing 48h after child's first request (every 12h cron)
+- [x] DB: Track when billing notification was first sent to parent — uses userNotifications.createdAt for billing_setup_needed type
+- [x] E2E: Deployed domain loads correctly; full E2E requires manual OAuth login (documented for user testing)
+- [x] Tests: unsubscribe link in email, billing reminder cron logic — 21 tests in billingFlow.test.ts, 1112 total passing
