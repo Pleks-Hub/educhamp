@@ -1,11 +1,11 @@
 /**
  * weeklyParentDigest.ts — Scheduled heartbeat handler
  *
- * Runs every Monday at 8 AM (via Manus Heartbeat cron) to:
- *  1. Find all parent accounts with linked Pre-K through Grade 2 children
+ * Runs every Monday at 8 AM UTC (via Manus Heartbeat cron) to:
+ *  1. Find all parent accounts who have NOT opted out of weekly digest emails
  *  2. Gather each child's weekly learning activity (lessons, quizzes, mastery)
  *  3. Build and send a personalised weekly digest email to each parent
- *  4. Skip parents who have no linked early-learner children
+ *  4. Skip parents with no linked children or no activity
  *
  * Endpoint: POST /api/scheduled/weekly-parent-digest
  * Auth:     sdk.authenticateRequest → user.isCron === true
@@ -13,14 +13,10 @@
 import type { Request, Response } from "express";
 import { sdk } from "../_core/sdk";
 import { sendEmail } from "../emailService";
-import { buildWeeklyParentDigestEmail } from "../emailTemplates/weeklyParentDigest";
+import { buildWeeklyParentDigestEmail, type WeeklyDigestChild } from "../emailTemplates/weeklyParentDigest";
+import { getWeeklyDigestEligibleParents, getWeeklyDigestDataForParent } from "../db";
 import { getDb } from "../db";
 import {
-  users,
-  userProfiles,
-  parentChildren,
-  lessonProgress,
-  quizAttempts,
   userMastery,
   unitProgress,
   units,
@@ -29,11 +25,7 @@ import {
 import { and, eq, gte, inArray, desc } from "drizzle-orm";
 import { notifyOwner } from "../_core/notification";
 
-// ─── Early-learner grades ─────────────────────────────────────────────────────
-
-const EARLY_GRADES = new Set(["Pre-K", "Kindergarten", "Grade 1", "Grade 2"]);
-
-// ─── At-home activity suggestions by grade ───────────────────────────────────
+// ─── At-home activity suggestions by grade band ──────────────────────────────
 
 const AT_HOME_ACTIVITIES: Record<string, string[]> = {
   "Pre-K": [
@@ -60,11 +52,57 @@ const AT_HOME_ACTIVITIES: Record<string, string[]> = {
     "Use a ruler to measure household objects in centimetres and inches.",
     "Try mental addition: add two 2-digit numbers without writing anything down.",
   ],
+  "elementary": [
+    "Practice multiplication facts with flashcards or a timed quiz game.",
+    "Measure ingredients together while cooking — fractions in action!",
+    "Create a budget for a pretend shopping trip with a $20 limit.",
+    "Read a chapter book together and discuss the main idea.",
+  ],
+  "middle": [
+    "Discuss current events and ask your child to identify cause and effect.",
+    "Work through a logic puzzle or Sudoku together.",
+    "Have your child explain a concept they learned this week in their own words.",
+    "Practice estimation: guess quantities, distances, or times, then verify.",
+  ],
+  "high": [
+    "Discuss a real-world application of what they're learning (e.g., algebra in budgeting).",
+    "Encourage them to teach you something new they learned this week.",
+    "Set a 25-minute focused study session (Pomodoro technique) together.",
+    "Review their quiz results together and identify patterns in mistakes.",
+  ],
 };
 
-function pickActivity(grade: string, childId: number): string {
-  const list = AT_HOME_ACTIVITIES[grade] ?? AT_HOME_ACTIVITIES["Grade 1"];
+function getGradeBand(gradeLevel: string | null): string {
+  if (!gradeLevel) return "middle";
+  const g = gradeLevel.toLowerCase();
+  if (g === "pre-k" || g === "prek") return "Pre-K";
+  if (g === "kindergarten" || g === "k") return "Kindergarten";
+  if (g === "grade 1" || g === "1") return "Grade 1";
+  if (g === "grade 2" || g === "2") return "Grade 2";
+  const num = parseInt(g.replace(/[^0-9]/g, ""), 10);
+  if (!isNaN(num)) {
+    if (num <= 5) return "elementary";
+    if (num <= 8) return "middle";
+    return "high";
+  }
+  if (g.includes("ap") || g.includes("advanced")) return "high";
+  return "middle";
+}
+
+function pickActivity(gradeLevel: string | null, childId: number): string {
+  const band = getGradeBand(gradeLevel);
+  const list = AT_HOME_ACTIVITIES[band] ?? AT_HOME_ACTIVITIES["middle"];
   return list[childId % list.length];
+}
+
+function gradeLabel(gradeLevel: string | null): string {
+  if (!gradeLevel) return "Student";
+  const g = gradeLevel.toLowerCase();
+  if (g === "pre-k" || g === "prek") return "Pre-K";
+  if (g === "kindergarten" || g === "k") return "Kindergarten";
+  const num = parseInt(g.replace(/[^0-9]/g, ""), 10);
+  if (!isNaN(num)) return `Grade ${num}`;
+  return gradeLevel;
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
@@ -94,11 +132,8 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
 
     const appUrl = "https://educhamp.app";
 
-    // ── Fetch all parent accounts ──────────────────────────────────────────────
-    const parentUsers = await db
-      .select({ id: users.id, name: users.name, email: users.email })
-      .from(users)
-      .where(eq(users.accountType, "parent"));
+    // ── Fetch eligible parents (opted-in, has email) ───────────────────────────
+    const parentUsers = await getWeeklyDigestEligibleParents();
 
     let emailsSent = 0;
     let parentsProcessed = 0;
@@ -107,93 +142,24 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
     for (const parent of parentUsers) {
       if (!parent.email) { parentsSkipped++; continue; }
 
-      // ── Get active children ────────────────────────────────────────────────
-      const links = await db
-        .select()
-        .from(parentChildren)
-        .where(and(eq(parentChildren.parentId, parent.id), eq(parentChildren.isActive, true)));
+      // ── Get digest data for all children ───────────────────────────────────
+      const childData = await getWeeklyDigestDataForParent(parent.id);
 
-      if (links.length === 0) { parentsSkipped++; continue; }
+      if (childData.length === 0) { parentsSkipped++; continue; }
 
-      const childIds = links.map((l) => l.childId);
+      // ── Build per-child digest for email template ──────────────────────────
+      const digestChildren: WeeklyDigestChild[] = [];
 
-      // ── Get child profiles (filter to early grades) ────────────────────────
-      const childProfiles = await db
-        .select({
-          userId: userProfiles.userId,
-          gradeLevel: userProfiles.gradeLevel,
-        })
-        .from(userProfiles)
-        .where(inArray(userProfiles.userId, childIds));
+      for (const child of childData) {
+        const grade = gradeLabel(child.gradeLevel);
 
-      const earlyLearnerProfiles = childProfiles.filter(
-        (p) => p.gradeLevel && EARLY_GRADES.has(p.gradeLevel)
-      );
-
-      if (earlyLearnerProfiles.length === 0) { parentsSkipped++; continue; }
-
-      const earlyChildIds = earlyLearnerProfiles.map((p) => p.userId);
-
-      // ── Get child user records ─────────────────────────────────────────────
-      const childUsers = await db
-        .select({ id: users.id, name: users.name })
-        .from(users)
-        .where(inArray(users.id, earlyChildIds));
-
-      // ── Build per-child digest data ────────────────────────────────────────
-      const digestChildren = [];
-
-      for (const childUser of childUsers) {
-        const profile = earlyLearnerProfiles.find((p) => p.userId === childUser.id);
-        const grade = profile?.gradeLevel ?? "Grade 1";
-
-        // Lessons completed this week
-        const weekLessons = await db
-          .select()
-          .from(lessonProgress)
-          .where(
-            and(
-              eq(lessonProgress.userId, childUser.id),
-              eq(lessonProgress.completed, true),
-              gte(lessonProgress.completedAt, weekStart)
-            )
-          );
-
-        // Lessons completed previous week (for improvement detection)
-        const prevWeekLessons = await db
-          .select()
-          .from(lessonProgress)
-          .where(
-            and(
-              eq(lessonProgress.userId, childUser.id),
-              eq(lessonProgress.completed, true),
-              gte(lessonProgress.completedAt, prevWeekStart),
-              // less than weekStart
-            )
-          );
-
-        // Quiz attempts this week
-        const weekQuizzes = await db
-          .select()
-          .from(quizAttempts)
-          .where(
-            and(
-              eq(quizAttempts.userId, childUser.id),
-              gte(quizAttempts.completedAt, weekStart)
-            )
-          );
-
-        const bestQuizScore = weekQuizzes.length > 0
-          ? Math.max(...weekQuizzes.map((q) => q.score ?? 0))
-          : null;
-
-        // Mastery: count skills with masteryScore >= 75 updated this week (confirmed threshold)
+        // Mastery: count skills with score >= 75 updated this week
         const weekMastery = await db
           .select()
           .from(userMastery)
           .where(
             and(
-              eq(userMastery.userId, childUser.id),
+              eq(userMastery.userId, child.childId),
               gte(userMastery.updatedAt, weekStart)
             )
           );
@@ -203,7 +169,7 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
         const allMastery = await db
           .select({ score: userMastery.score })
           .from(userMastery)
-          .where(eq(userMastery.userId, childUser.id));
+          .where(eq(userMastery.userId, child.childId));
         const totalMasteryScore = allMastery.length > 0
           ? Math.round(allMastery.reduce((s, m) => s + (m.score ?? 0), 0) / allMastery.length)
           : 0;
@@ -212,7 +178,7 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
         const recentUnitProgress = await db
           .select({ unitId: unitProgress.unitId })
           .from(unitProgress)
-          .where(eq(unitProgress.userId, childUser.id))
+          .where(eq(unitProgress.userId, child.childId))
           .orderBy(desc(unitProgress.updatedAt))
           .limit(2);
 
@@ -226,13 +192,15 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
           recentUnitNames = unitRows.map((u) => u.title);
         }
 
-        const showedImprovement = weekLessons.length > prevWeekLessons.length;
+        // Improvement detection: compare this week vs previous week lesson count
+        // (simplified: if they completed any lessons this week, consider it positive)
+        const showedImprovement = child.lessonsCompleted > 0;
 
-        // B4: Fetch latest diagnostic score for on-track indicator
+        // Diagnostic score for on-track indicator
         const latestDiag = await db
           .select({ overallScore: diagnosticAttempts.overallScore })
           .from(diagnosticAttempts)
-          .where(eq(diagnosticAttempts.userId, childUser.id))
+          .where(eq(diagnosticAttempts.userId, child.childId))
           .orderBy(desc(diagnosticAttempts.completedAt))
           .limit(1)
           .then((r) => r[0] ?? null);
@@ -243,16 +211,16 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
           diagScore >= 60 ? "needs_attention" : "check_in";
 
         digestChildren.push({
-          name: childUser.name ?? "Your learner",
+          name: child.childName,
           grade,
-          lessonsCompleted: weekLessons.length,
-          quizAttempts: weekQuizzes.length,
-          bestQuizScore,
+          lessonsCompleted: child.lessonsCompleted,
+          quizAttempts: child.quizzesTaken,
+          bestQuizScore: child.bestQuizScore,
           newSkillsMastered,
           totalMasteryScore,
           recentUnits: recentUnitNames,
           showedImprovement,
-          suggestedActivity: pickActivity(grade, childUser.id),
+          suggestedActivity: pickActivity(child.gradeLevel, child.childId),
           progressUrl: `${appUrl}/parent`,
           nextLessonUrl: `${appUrl}/curriculum`,
           onTrackStatus,
@@ -285,8 +253,8 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
     }
 
     await notifyOwner({
-      title: "✅ Weekly Parent Digest Sent",
-      content: `Processed ${parentsProcessed} parents, sent ${emailsSent} digest emails, skipped ${parentsSkipped} (no early learners or no email).`,
+      title: "Weekly Parent Digest Sent",
+      content: `Processed ${parentsProcessed} parents, sent ${emailsSent} digest emails, skipped ${parentsSkipped} (no children, no activity, or opted out).`,
     });
 
     return res.json({

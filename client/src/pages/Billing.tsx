@@ -88,6 +88,7 @@ const PLAN_OPTIONS = [
 ];
 
 type SortOption = "newest" | "oldest" | "amount_high" | "amount_low";
+type StatusFilter = "all" | "paid" | "open" | "void" | "uncollectible";
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "newest", label: "Newest First" },
@@ -95,6 +96,43 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "amount_high", label: "Amount: High to Low" },
   { value: "amount_low", label: "Amount: Low to High" },
 ];
+
+const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All Statuses" },
+  { value: "paid", label: "Paid" },
+  { value: "open", label: "Pending / Open" },
+  { value: "void", label: "Void" },
+  { value: "uncollectible", label: "Failed" },
+];
+
+function getQuickDateRange(preset: "last30" | "thisYear"): { from: string; to: string } {
+  const now = new Date();
+  const to = now.toISOString().split("T")[0];
+  if (preset === "last30") {
+    const from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    return { from, to };
+  }
+  return { from: `${now.getFullYear()}-01-01`, to };
+}
+
+function exportInvoicesToCSV(invoices: Array<{ number?: string | null; id: string; date: number; amountPaid: number; amountDue: number; currency: string; status?: string | null; description?: string | null }>) {
+  const headers = ["Invoice #", "Date", "Amount", "Status", "Description"];
+  const rows = invoices.map((inv) => [
+    inv.number || inv.id,
+    new Date(inv.date).toLocaleDateString("en-US"),
+    `${((inv.amountPaid || inv.amountDue) / 100).toFixed(2)} ${(inv.currency || "usd").toUpperCase()}`,
+    inv.status || "unknown",
+    inv.description || "",
+  ]);
+  const csv = [headers, ...rows].map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `educhamp-invoices-${new Date().toISOString().split("T")[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function PaymentHistorySection() {
   const { data, isLoading } = trpc.payment.listMyInvoices.useQuery();
@@ -105,13 +143,19 @@ function PaymentHistorySection() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showFilters, setShowFilters] = useState(false);
 
-  const hasActiveFilters = dateFrom !== "" || dateTo !== "";
-  const activeFilterCount = (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+  const hasActiveFilters = dateFrom !== "" || dateTo !== "" || statusFilter !== "all";
+  const activeFilterCount = (dateFrom ? 1 : 0) + (dateTo ? 1 : 0) + (statusFilter !== "all" ? 1 : 0);
 
   const filteredAndSorted = useMemo(() => {
     let result = [...invoices];
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      result = result.filter((inv) => inv.status === statusFilter);
+    }
 
     // Apply date range filter
     if (dateFrom) {
@@ -140,11 +184,19 @@ function PaymentHistorySection() {
     }
 
     return result;
-  }, [invoices, dateFrom, dateTo, sortBy]);
+  }, [invoices, dateFrom, dateTo, sortBy, statusFilter]);
 
   const clearFilters = () => {
     setDateFrom("");
     setDateTo("");
+    setStatusFilter("all");
+  };
+
+  const applyQuickFilter = (preset: "last30" | "thisYear") => {
+    const { from, to } = getQuickDateRange(preset);
+    setDateFrom(from);
+    setDateTo(to);
+    setShowFilters(true);
   };
 
   const fmtInvDate = (ts: number) =>
@@ -210,10 +262,63 @@ function PaymentHistorySection() {
           )}
         </div>
 
+        {/* Quick Filter Chips + Export */}
+        {invoices.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button
+              variant={dateFrom === getQuickDateRange("last30").from && dateTo === getQuickDateRange("last30").to ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs rounded-full px-3"
+              onClick={() => applyQuickFilter("last30")}
+            >
+              <Calendar className="h-3 w-3 mr-1" />
+              Last 30 Days
+            </Button>
+            <Button
+              variant={dateFrom === getQuickDateRange("thisYear").from && dateTo === getQuickDateRange("thisYear").to ? "default" : "outline"}
+              size="sm"
+              className="h-7 text-xs rounded-full px-3"
+              onClick={() => applyQuickFilter("thisYear")}
+            >
+              <Calendar className="h-3 w-3 mr-1" />
+              This Year
+            </Button>
+            <div className="flex-1" />
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => exportInvoicesToCSV(filteredAndSorted)}
+              disabled={filteredAndSorted.length === 0}
+            >
+              <Download className="h-3 w-3 mr-1" />
+              Export CSV
+            </Button>
+          </div>
+        )}
+
         {/* Filter & Sort Controls */}
         {showFilters && invoices.length > 0 && (
           <div className="mt-3 p-3 rounded-lg border bg-muted/30 space-y-3">
             <div className="flex flex-wrap items-end gap-3">
+              {/* Status Filter */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Status</label>
+                <div className="relative">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                    className="h-8 appearance-none rounded-md border border-input bg-background pl-2.5 pr-7 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 cursor-pointer"
+                  >
+                    {STATUS_FILTER_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
               {/* Date From */}
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">From</label>
@@ -261,7 +366,7 @@ function PaymentHistorySection() {
                   className="h-8 text-xs text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-3 w-3 mr-1" />
-                  Clear dates
+                  Clear all
                 </Button>
               )}
             </div>

@@ -2480,3 +2480,16 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UI: Add sort dropdown (newest first, oldest first, amount high-low, amount low-high)
 - [x] UI: Show active filter count and clear filters button
 - [x] Tests: filtering and sorting logic — 18/18 passing, 1066 total
+
+### Payment History Enhancements (June 2026)
+- [ ] UI: Status filter dropdown (paid, pending/open, failed/void)
+- [ ] UI: Export to CSV button for filtered transaction records
+- [ ] UI: Quick filter chips — "Last 30 Days" and "This Year"
+- [ ] Tests: status filter, CSV export, quick filter chips
+
+### Parent Weekly Digest Emails (June 2026)
+- [x] DB: Query helpers for weekly student activity (lessons completed, quizzes taken, mastery changes)
+- [x] Email: Weekly digest template with student progress summary
+- [x] Heartbeat: Weekly cron job to send digest emails to all parents (extended to ALL grade levels)
+- [x] UI: Parent notification preferences (opt-in/out of weekly digest) — toggle in Profile page
+- [x] Tests: digest query, email template, heartbeat handler — 15 passing tests

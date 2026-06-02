@@ -330,6 +330,13 @@
       "when": 1780359915126,
       "tag": "0046_amazing_joystick",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "5",
+      "when": 1780366940364,
+      "tag": "0047_yellow_star_brand",
+      "breakpoints": true
     }
   ]
 }

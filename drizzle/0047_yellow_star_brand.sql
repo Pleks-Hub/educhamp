@@ -1,0 +1,1 @@
+ALTER TABLE `userProfiles` ADD `weeklyDigestEnabled` boolean DEFAULT true NOT NULL;

@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
   User, Shield, ShieldCheck, ShieldOff, KeyRound, Copy, RefreshCw,
-  CheckCircle2, AlertTriangle, Loader2, QrCode, Palette
+  CheckCircle2, AlertTriangle, Loader2, QrCode, Palette, Bell
 } from "lucide-react";
 import { usePalette, PALETTES, type PaletteId } from "@/contexts/PaletteContext";
 
@@ -411,6 +411,9 @@ export default function Profile() {
       {/* Personalization */}
       <PersonalizationCard />
 
+      {/* Notification Preferences (parents only) */}
+      {user.accountType === "parent" && <NotificationPreferencesCard />}
+
       {/* Account Security Note */}
       <Card className="border-muted bg-muted/30">
         <CardContent className="pt-4 pb-4">
@@ -673,6 +676,68 @@ function PersonalizationCard() {
             "Save Preferences"
           )}
         </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Notification Preferences Card ───────────────────────────────────────────
+function NotificationPreferencesCard() {
+  const { data: prefs, isLoading } = trpc.parentTools.getNotificationPreferences.useQuery();
+  const utils = trpc.useUtils();
+  const updateMutation = trpc.parentTools.updateNotificationPreferences.useMutation({
+    onMutate: async (newPrefs) => {
+      await utils.parentTools.getNotificationPreferences.cancel();
+      const prev = utils.parentTools.getNotificationPreferences.getData();
+      utils.parentTools.getNotificationPreferences.setData(undefined, newPrefs);
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) {
+        utils.parentTools.getNotificationPreferences.setData(undefined, context.prev);
+      }
+      toast.error("Failed to update notification preferences.");
+    },
+    onSuccess: () => {
+      toast.success("Notification preferences updated.");
+    },
+    onSettled: () => {
+      utils.parentTools.getNotificationPreferences.invalidate();
+    },
+  });
+
+  const weeklyDigestEnabled = prefs?.weeklyDigestEnabled ?? true;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Bell className="h-4 w-4" />
+          Email Notifications
+        </CardTitle>
+        <CardDescription>
+          Control which emails you receive from EduChamp.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <Label htmlFor="weekly-digest-toggle" className="text-sm font-medium">
+              Weekly Progress Digest
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Receive a weekly email summarising your child's lesson completions, quiz scores, and mastery progress.
+            </p>
+          </div>
+          <Switch
+            id="weekly-digest-toggle"
+            checked={weeklyDigestEnabled}
+            disabled={isLoading || updateMutation.isPending}
+            onCheckedChange={(checked) => {
+              updateMutation.mutate({ weeklyDigestEnabled: checked });
+            }}
+          />
+        </div>
       </CardContent>
     </Card>
   );

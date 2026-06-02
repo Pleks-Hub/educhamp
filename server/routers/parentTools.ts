@@ -15,6 +15,8 @@ import {
   deleteParentNote,
   getChildProgressSummary,
   getChildrenForParent,
+  getUserProfile,
+  upsertUserProfile,
 } from "../db";
 import { getMasteryLabel, getAdaptivePath } from "../educhamp-helpers";
 
@@ -295,5 +297,25 @@ export const parentToolsRouter = router({
         masteredSkills: mastery.filter((m) => m.score >= 90).length,
         skillsNeedingWork: mastery.filter((m) => m.score < 75).length,
       };
+    }),
+
+  // ─── Notification Preferences ──────────────────────────────────────────────
+
+  getNotificationPreferences: protectedProcedure.query(async ({ ctx }) => {
+    const profile = await getUserProfile(ctx.user.id);
+    return {
+      weeklyDigestEnabled: profile?.weeklyDigestEnabled ?? true,
+    };
+  }),
+
+  updateNotificationPreferences: protectedProcedure
+    .input(z.object({
+      weeklyDigestEnabled: z.boolean(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await upsertUserProfile(ctx.user.id, {
+        weeklyDigestEnabled: input.weeklyDigestEnabled,
+      });
+      return { success: true };
     }),
 });

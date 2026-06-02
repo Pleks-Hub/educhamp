@@ -1015,6 +1015,7 @@ export async function upsertUserProfile(
     disableAnimations: boolean;
     disableSound: boolean;
     languageLevel: string;
+    weeklyDigestEnabled: boolean;
   }>
 ) {
   const db = await getDb();
@@ -3996,4 +3997,149 @@ export async function adminDeleteCard(subscriptionId: number) {
       stripePaymentMethodId: null,
     })
     .where(eq(subscriptions.id, subscriptionId));
+}
+
+
+// ─── Weekly Digest Helpers ────────────────────────────────────────────────────
+
+/**
+ * Returns all parent users who have:
+ * - accountType = "parent"
+ * - a valid email address
+ * - weeklyDigestEnabled = true (or no profile row, which defaults to true)
+ * - at least one active child link
+ */
+export async function getWeeklyDigestEligibleParents() {
+  const db = await getDb();
+  if (!db) return [];
+  // Get all parent users with email
+  const parentUsers = await db
+    .select({ id: users.id, name: users.name, email: users.email })
+    .from(users)
+    .where(and(eq(users.accountType, "parent"), sql`${users.email} IS NOT NULL`));
+
+  if (parentUsers.length === 0) return [];
+
+  // Get profiles for opt-out check
+  const parentIds = parentUsers.map((p) => p.id);
+  const profiles = await db
+    .select({ userId: userProfiles.userId, weeklyDigestEnabled: userProfiles.weeklyDigestEnabled })
+    .from(userProfiles)
+    .where(inArray(userProfiles.userId, parentIds));
+
+  const profileMap = new Map(profiles.map((p) => [p.userId, p.weeklyDigestEnabled]));
+
+  // Filter out parents who opted out
+  return parentUsers.filter((p) => {
+    const enabled = profileMap.get(p.id);
+    // Default is true (if no profile row exists)
+    return enabled !== false;
+  });
+}
+
+export interface WeeklyDigestChildData {
+  childId: number;
+  childName: string;
+  gradeLevel: string | null;
+  lessonsCompleted: number;
+  quizzesTaken: number;
+  avgQuizScore: number | null;
+  bestQuizScore: number | null;
+  topUnitName: string | null;
+}
+
+/**
+ * Fetches weekly digest data for a single parent: all linked children's
+ * activity in the past 7 days (lessons completed, quiz attempts, scores).
+ */
+export async function getWeeklyDigestDataForParent(parentId: number): Promise<WeeklyDigestChildData[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  // Get active children
+  const links = await db
+    .select({ childId: parentChildren.childId })
+    .from(parentChildren)
+    .where(and(eq(parentChildren.parentId, parentId), eq(parentChildren.isActive, true)));
+
+  if (links.length === 0) return [];
+
+  const childIds = links.map((l) => l.childId);
+
+  // Get child user info
+  const childUsers = await db
+    .select({ id: users.id, name: users.name })
+    .from(users)
+    .where(inArray(users.id, childIds));
+
+  // Get child profiles for grade level
+  const childProfiles = await db
+    .select({ userId: userProfiles.userId, gradeLevel: userProfiles.gradeLevel })
+    .from(userProfiles)
+    .where(inArray(userProfiles.userId, childIds));
+  const profileMap = new Map(childProfiles.map((p) => [p.userId, p.gradeLevel]));
+
+  const results: WeeklyDigestChildData[] = [];
+
+  for (const child of childUsers) {
+    // Lessons completed this week
+    const weekLessons = await db
+      .select({ id: lessonProgress.id })
+      .from(lessonProgress)
+      .where(
+        and(
+          eq(lessonProgress.userId, child.id),
+          eq(lessonProgress.completed, true),
+          gte(lessonProgress.completedAt, sevenDaysAgo)
+        )
+      );
+
+    // Quiz attempts this week (non-practice only)
+    const weekQuizzes = await db
+      .select({ score: quizAttempts.score, unitId: quizAttempts.unitId })
+      .from(quizAttempts)
+      .where(
+        and(
+          eq(quizAttempts.userId, child.id),
+          eq(quizAttempts.isPracticeMode, false),
+          gte(quizAttempts.completedAt, sevenDaysAgo)
+        )
+      );
+
+    const avgQuizScore = weekQuizzes.length > 0
+      ? Math.round(weekQuizzes.reduce((s, q) => s + q.score, 0) / weekQuizzes.length)
+      : null;
+    const bestQuizScore = weekQuizzes.length > 0
+      ? Math.max(...weekQuizzes.map((q) => q.score))
+      : null;
+
+    // Top unit (most recent quiz unit)
+    let topUnitName: string | null = null;
+    if (weekQuizzes.length > 0) {
+      const topUnitId = weekQuizzes[weekQuizzes.length - 1].unitId;
+      const unitRow = await db
+        .select({ title: units.title })
+        .from(units)
+        .where(eq(units.id, topUnitId))
+        .limit(1);
+      topUnitName = unitRow[0]?.title ?? null;
+    }
+
+    results.push({
+      childId: child.id,
+      childName: child.name ?? "Student",
+      gradeLevel: profileMap.get(child.id) ?? null,
+      lessonsCompleted: weekLessons.length,
+      quizzesTaken: weekQuizzes.length,
+      avgQuizScore,
+      bestQuizScore,
+      topUnitName,
+    });
+  }
+
+  return results;
 }
