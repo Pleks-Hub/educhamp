@@ -2467,3 +2467,10 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Admin: Card & Transaction Management panel — masked PAN, card details, suspend/delete/activate subscription
 - [x] Admin: Transaction history view with payment amounts, dates, statuses
 - [x] Tests: Admin card management procedures and UI tests — 13/13 passing, 1048 total
+
+### Invoice/Receipt Download on Billing Page (June 2026)
+- [x] Server: listMyInvoices procedure — fetch Stripe invoices for current user's customer ID
+- [x] Server: return invoice number, date, amount, status, and hosted_invoice_url / invoice_pdf
+- [x] UI: Billing page — "Payment History" section with invoice list
+- [x] UI: Each invoice row shows date, amount, status, and PDF download button
+- [x] Tests: invoice listing procedure and response format — 9/9 passing, 1057 total

@@ -27,6 +27,9 @@ import {
   ArrowRight,
   ArrowUpDown,
   Check,
+  Download,
+  FileText,
+  Receipt,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { NavTooltip } from "@/components/NavTooltip";
@@ -80,6 +83,123 @@ const PLAN_OPTIONS = [
     badge: "Most Popular" as string | null,
   },
 ];
+
+function PaymentHistorySection() {
+  const { data, isLoading } = trpc.payment.listMyInvoices.useQuery();
+
+  const invoices = data?.invoices ?? [];
+
+  const fmtInvDate = (ts: number) =>
+    new Date(ts).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+
+  const fmtInvAmount = (cents: number, currency: string) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: currency || "usd" }).format(cents / 100);
+
+  const statusColor: Record<string, string> = {
+    paid: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    open: "bg-blue-100 text-blue-700 border-blue-200",
+    draft: "bg-slate-100 text-slate-600 border-slate-200",
+    void: "bg-slate-100 text-slate-500 border-slate-200",
+    uncollectible: "bg-red-100 text-red-600 border-red-200",
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-muted-foreground" />
+            Payment History
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-lg" />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <Receipt className="h-4 w-4 text-muted-foreground" />
+          Payment History
+        </CardTitle>
+        <CardDescription>
+          View and download invoices and receipts for all past payments.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {invoices.length === 0 ? (
+          <div className="text-center py-8 space-y-2">
+            <FileText className="h-8 w-8 text-muted-foreground/50 mx-auto" />
+            <p className="text-sm text-muted-foreground">
+              No invoices yet. They will appear here after your first payment.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {invoices.map((inv) => (
+              <div
+                key={inv.id}
+                className="flex items-center gap-3 rounded-lg border px-4 py-3 hover:bg-muted/30 transition-colors"
+              >
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium">
+                      {inv.number || inv.id.slice(0, 16)}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs capitalize ${statusColor[inv.status ?? ""] ?? "bg-slate-100 text-slate-600"}`}
+                    >
+                      {inv.status}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {fmtInvDate(inv.date)}
+                    {inv.description ? ` — ${inv.description}` : ""}
+                  </p>
+                </div>
+                <span className="text-sm font-semibold shrink-0">
+                  {fmtInvAmount(inv.amountPaid || inv.amountDue, inv.currency)}
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  {inv.invoicePdf && (
+                    <a
+                      href={inv.invoicePdf}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors"
+                      title="Download PDF"
+                    >
+                      <Download className="h-4 w-4 text-indigo-600" />
+                    </a>
+                  )}
+                  {inv.hostedInvoiceUrl && (
+                    <a
+                      href={inv.hostedInvoiceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-muted transition-colors"
+                      title="View invoice online"
+                    >
+                      <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Billing() {
   const [, navigate] = useLocation();
@@ -356,31 +476,8 @@ export default function Billing() {
         </Card>
       )}
 
-      {/* Payment history note */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            Payment History
-          </CardTitle>
-          <CardDescription>
-            View and download all past invoices and receipts.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Full payment history, invoices, and receipts are available in the{" "}
-            <button
-              className="text-indigo-600 hover:underline font-medium"
-              onClick={handleOpenPortal}
-              disabled={portalLoading || !sub?.stripeCustomerId}
-            >
-              Stripe billing portal
-            </button>
-            . Click "Manage Billing & Invoices" above to access them.
-          </p>
-        </CardContent>
-      </Card>
+      {/* Payment History — Invoice List */}
+      <PaymentHistorySection />
 
       {/* Help */}
       <p className="text-xs text-center text-muted-foreground">

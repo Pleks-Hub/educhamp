@@ -412,6 +412,36 @@ export const paymentRouter = router({
       return { success: true, card: cardDetails };
     }),
 
+  // ── Protected: list invoices for current user ─────────────────────────────
+  listMyInvoices: protectedProcedure.query(async ({ ctx }) => {
+    const sub = await getUserSubscription(ctx.user.id);
+    if (!sub?.stripeCustomerId) return { invoices: [] };
+    try {
+      const invoiceList = await stripe.invoices.list({
+        customer: sub.stripeCustomerId,
+        limit: 50,
+        expand: ["data.charge"],
+      });
+      const invoices = invoiceList.data.map((inv) => ({
+        id: inv.id,
+        number: inv.number,
+        date: inv.created * 1000,
+        amountDue: inv.amount_due,
+        amountPaid: inv.amount_paid,
+        currency: inv.currency,
+        status: inv.status,
+        hostedInvoiceUrl: inv.hosted_invoice_url,
+        invoicePdf: inv.invoice_pdf,
+        description: inv.description || inv.lines?.data?.[0]?.description || null,
+        receiptUrl: (inv as any).charge?.receipt_url || null,
+      }));
+      return { invoices };
+    } catch (err) {
+      console.error("[listMyInvoices] Stripe error:", err);
+      return { invoices: [] };
+    }
+  }),
+
   // ── Protected: billing delegation (student requests parent to pay) ─────────
   createBillingDelegation: protectedProcedure
     .input(
