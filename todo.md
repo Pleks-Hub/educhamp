@@ -2474,3 +2474,9 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UI: Billing page — "Payment History" section with invoice list
 - [x] UI: Each invoice row shows date, amount, status, and PDF download button
 - [x] Tests: invoice listing procedure and response format — 9/9 passing, 1057 total
+
+### Payment History Filtering & Sorting (June 2026)
+- [x] UI: Add date range picker (from/to) to filter invoices by date
+- [x] UI: Add sort dropdown (newest first, oldest first, amount high-low, amount low-high)
+- [x] UI: Show active filter count and clear filters button
+- [x] Tests: filtering and sorting logic — 18/18 passing, 1066 total

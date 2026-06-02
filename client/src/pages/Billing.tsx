@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,6 +30,9 @@ import {
   Download,
   FileText,
   Receipt,
+  Filter,
+  X,
+  ChevronDown,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { NavTooltip } from "@/components/NavTooltip";
@@ -84,10 +87,65 @@ const PLAN_OPTIONS = [
   },
 ];
 
+type SortOption = "newest" | "oldest" | "amount_high" | "amount_low";
+
+const SORT_OPTIONS: { value: SortOption; label: string }[] = [
+  { value: "newest", label: "Newest First" },
+  { value: "oldest", label: "Oldest First" },
+  { value: "amount_high", label: "Amount: High to Low" },
+  { value: "amount_low", label: "Amount: Low to High" },
+];
+
 function PaymentHistorySection() {
   const { data, isLoading } = trpc.payment.listMyInvoices.useQuery();
 
   const invoices = data?.invoices ?? [];
+
+  // Filter & sort state
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [showFilters, setShowFilters] = useState(false);
+
+  const hasActiveFilters = dateFrom !== "" || dateTo !== "";
+  const activeFilterCount = (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+
+  const filteredAndSorted = useMemo(() => {
+    let result = [...invoices];
+
+    // Apply date range filter
+    if (dateFrom) {
+      const fromTs = new Date(dateFrom).getTime();
+      result = result.filter((inv) => inv.date >= fromTs);
+    }
+    if (dateTo) {
+      const toTs = new Date(dateTo).setHours(23, 59, 59, 999);
+      result = result.filter((inv) => inv.date <= toTs);
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case "newest":
+        result.sort((a, b) => b.date - a.date);
+        break;
+      case "oldest":
+        result.sort((a, b) => a.date - b.date);
+        break;
+      case "amount_high":
+        result.sort((a, b) => (b.amountPaid || b.amountDue) - (a.amountPaid || a.amountDue));
+        break;
+      case "amount_low":
+        result.sort((a, b) => (a.amountPaid || a.amountDue) - (b.amountPaid || b.amountDue));
+        break;
+    }
+
+    return result;
+  }, [invoices, dateFrom, dateTo, sortBy]);
+
+  const clearFilters = () => {
+    setDateFrom("");
+    setDateTo("");
+  };
 
   const fmtInvDate = (ts: number) =>
     new Date(ts).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
@@ -124,13 +182,96 @@ function PaymentHistorySection() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold flex items-center gap-2">
-          <Receipt className="h-4 w-4 text-muted-foreground" />
-          Payment History
-        </CardTitle>
-        <CardDescription>
-          View and download invoices and receipts for all past payments.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Receipt className="h-4 w-4 text-muted-foreground" />
+              Payment History
+            </CardTitle>
+            <CardDescription className="mt-1">
+              View and download invoices and receipts for all past payments.
+            </CardDescription>
+          </div>
+          {invoices.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="relative shrink-0"
+            >
+              <Filter className="h-3.5 w-3.5 mr-1.5" />
+              Filter & Sort
+              {hasActiveFilters && (
+                <span className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
+          )}
+        </div>
+
+        {/* Filter & Sort Controls */}
+        {showFilters && invoices.length > 0 && (
+          <div className="mt-3 p-3 rounded-lg border bg-muted/30 space-y-3">
+            <div className="flex flex-wrap items-end gap-3">
+              {/* Date From */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">From</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="h-8 rounded-md border border-input bg-background px-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+                />
+              </div>
+              {/* Date To */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">To</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="h-8 rounded-md border border-input bg-background px-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+                />
+              </div>
+              {/* Sort By */}
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Sort by</label>
+                <div className="relative">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="h-8 appearance-none rounded-md border border-input bg-background pl-2.5 pr-7 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 cursor-pointer"
+                  >
+                    {SORT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
+              {/* Clear Filters */}
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Clear dates
+                </Button>
+              )}
+            </div>
+            {/* Results summary */}
+            <p className="text-xs text-muted-foreground">
+              Showing {filteredAndSorted.length} of {invoices.length} invoice{invoices.length !== 1 ? "s" : ""}
+              {hasActiveFilters && " (filtered)"}
+            </p>
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         {invoices.length === 0 ? (
@@ -140,9 +281,19 @@ function PaymentHistorySection() {
               No invoices yet. They will appear here after your first payment.
             </p>
           </div>
+        ) : filteredAndSorted.length === 0 ? (
+          <div className="text-center py-8 space-y-2">
+            <Filter className="h-8 w-8 text-muted-foreground/50 mx-auto" />
+            <p className="text-sm text-muted-foreground">
+              No invoices match your filters.
+            </p>
+            <Button variant="link" size="sm" onClick={clearFilters} className="text-indigo-600">
+              Clear filters
+            </Button>
+          </div>
         ) : (
           <div className="space-y-2">
-            {invoices.map((inv) => (
+            {filteredAndSorted.map((inv) => (
               <div
                 key={inv.id}
                 className="flex items-center gap-3 rounded-lg border px-4 py-3 hover:bg-muted/30 transition-colors"

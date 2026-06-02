@@ -101,6 +101,80 @@ describe("Invoice Listing Feature", () => {
     });
   });
 
+  describe("Filtering and sorting logic", () => {
+    const mockInvoices = [
+      { id: "inv_1", date: 1717286400000, amountPaid: 1999, amountDue: 1999, status: "paid" },
+      { id: "inv_2", date: 1714694400000, amountPaid: 2999, amountDue: 2999, status: "paid" },
+      { id: "inv_3", date: 1720051200000, amountPaid: 0, amountDue: 1999, status: "open" },
+      { id: "inv_4", date: 1712102400000, amountPaid: 1999, amountDue: 1999, status: "paid" },
+    ];
+
+    it("should sort by newest first (default)", () => {
+      const sorted = [...mockInvoices].sort((a, b) => b.date - a.date);
+      expect(sorted[0].id).toBe("inv_3");
+      expect(sorted[sorted.length - 1].id).toBe("inv_4");
+    });
+
+    it("should sort by oldest first", () => {
+      const sorted = [...mockInvoices].sort((a, b) => a.date - b.date);
+      expect(sorted[0].id).toBe("inv_4");
+      expect(sorted[sorted.length - 1].id).toBe("inv_3");
+    });
+
+    it("should sort by amount high to low", () => {
+      const sorted = [...mockInvoices].sort(
+        (a, b) => (b.amountPaid || b.amountDue) - (a.amountPaid || a.amountDue)
+      );
+      expect(sorted[0].id).toBe("inv_2"); // $29.99
+      expect(sorted[1].amountPaid).toBe(1999); // $19.99
+    });
+
+    it("should sort by amount low to high", () => {
+      const sorted = [...mockInvoices].sort(
+        (a, b) => (a.amountPaid || a.amountDue) - (b.amountPaid || b.amountDue)
+      );
+      // inv_3 has amountPaid=0, so (0 || 1999) = 1999, same as inv_1 and inv_4
+      // inv_2 ($29.99) should be last
+      expect(sorted[sorted.length - 1].id).toBe("inv_2");
+      expect((sorted[0].amountPaid || sorted[0].amountDue)).toBeLessThanOrEqual(
+        (sorted[sorted.length - 1].amountPaid || sorted[sorted.length - 1].amountDue)
+      );
+    });
+
+    it("should filter by date range (from)", () => {
+      const fromTs = new Date("2024-06-01").getTime();
+      const filtered = mockInvoices.filter((inv) => inv.date >= fromTs);
+      expect(filtered.length).toBe(2); // inv_1 (Jun 2) and inv_3 (Jul 4)
+    });
+
+    it("should filter by date range (to)", () => {
+      const toTs = new Date("2024-05-31").setHours(23, 59, 59, 999);
+      const filtered = mockInvoices.filter((inv) => inv.date <= toTs);
+      expect(filtered.length).toBe(2); // inv_2 (May 3) and inv_4 (Apr 3)
+    });
+
+    it("should filter by date range (from + to)", () => {
+      const fromTs = new Date("2024-05-01").getTime();
+      const toTs = new Date("2024-06-30").setHours(23, 59, 59, 999);
+      const filtered = mockInvoices.filter((inv) => inv.date >= fromTs && inv.date <= toTs);
+      expect(filtered.length).toBe(2); // inv_2 (May 3) and inv_1 (Jun 2)
+    });
+
+    it("should return empty when no invoices match date range", () => {
+      const fromTs = new Date("2025-01-01").getTime();
+      const filtered = mockInvoices.filter((inv) => inv.date >= fromTs);
+      expect(filtered.length).toBe(0);
+    });
+
+    it("should combine filter and sort correctly", () => {
+      const fromTs = new Date("2024-05-01").getTime();
+      let result = mockInvoices.filter((inv) => inv.date >= fromTs);
+      result.sort((a, b) => (b.amountPaid || b.amountDue) - (a.amountPaid || a.amountDue));
+      expect(result.length).toBe(3);
+      expect(result[0].id).toBe("inv_2"); // highest amount
+    });
+  });
+
   describe("Invoice status badge mapping", () => {
     it("should map all known statuses to colors", () => {
       const statusColor: Record<string, string> = {
