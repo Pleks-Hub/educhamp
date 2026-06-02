@@ -2193,23 +2193,25 @@ export const adminRouter = router({
   getSidebarBadgeCounts: adminProcedure.query(async () => {
     const db = await (await import("../db")).getDb();
     if (!db) return {
-      flaggedQuestions: 0, demoRequests: 0, suppressionList: 0,
+      flaggedQuestions: 0, demoRequests: 0, suppressionList: 0, billingEscalations: 0,
       suppressionBreakdown: { bounced: 0, complained: 0, manual: 0 },
     };
-    const { questionFlags, demoRequests: demoRequestsTable, emailSuppression } = await import("../../drizzle/schema");
-    const { eq, sql, and } = await import("drizzle-orm");
-    const [[flagRow], [demoRow], [suppRow], [bouncedRow], [complainedRow], [manualRow]] = await Promise.all([
+    const { questionFlags, demoRequests: demoRequestsTable, emailSuppression, userProfiles: up } = await import("../../drizzle/schema");
+    const { eq, sql, and, isNotNull } = await import("drizzle-orm");
+    const [[flagRow], [demoRow], [suppRow], [bouncedRow], [complainedRow], [manualRow], [escalationRow]] = await Promise.all([
       db.select({ count: sql<number>`count(*)` }).from(questionFlags).where(eq(questionFlags.status, "open")),
       db.select({ count: sql<number>`count(*)` }).from(demoRequestsTable).where(eq(demoRequestsTable.status, "new")),
       db.select({ count: sql<number>`count(*)` }).from(emailSuppression).where(eq(emailSuppression.isActive, true)),
       db.select({ count: sql<number>`count(*)` }).from(emailSuppression).where(and(eq(emailSuppression.reason, "bounced"), eq(emailSuppression.isActive, true))),
       db.select({ count: sql<number>`count(*)` }).from(emailSuppression).where(and(eq(emailSuppression.reason, "complained"), eq(emailSuppression.isActive, true))),
       db.select({ count: sql<number>`count(*)` }).from(emailSuppression).where(and(eq(emailSuppression.reason, "manual"), eq(emailSuppression.isActive, true))),
+      db.select({ count: sql<number>`count(*)` }).from(up).where(isNotNull(up.billingEscalatedAt)),
     ]);
     return {
       flaggedQuestions: Number(flagRow?.count ?? 0),
       demoRequests: Number(demoRow?.count ?? 0),
       suppressionList: Number(suppRow?.count ?? 0),
+      billingEscalations: Number(escalationRow?.count ?? 0),
       suppressionBreakdown: {
         bounced: Number(bouncedRow?.count ?? 0),
         complained: Number(complainedRow?.count ?? 0),

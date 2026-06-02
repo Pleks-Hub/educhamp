@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { toast } from "sonner";
 import {
   User, Shield, ShieldCheck, ShieldOff, KeyRound, Copy, RefreshCw,
-  CheckCircle2, AlertTriangle, Loader2, QrCode, Palette, Bell, Eye, Mail
+  CheckCircle2, AlertTriangle, Loader2, QrCode, Palette, Bell, Eye, Mail, ChevronRight
 } from "lucide-react";
 import { usePalette, PALETTES, type PaletteId } from "@/contexts/PaletteContext";
 
@@ -415,6 +415,24 @@ export default function Profile() {
 
       {/* Notification Preferences (parents only) */}
       {user.accountType === "parent" && <NotificationPreferencesCard />}
+
+      {/* Email Preferences link (students only) */}
+      {user.accountType === "student" && (
+        <Card className="transition-all duration-200 hover:shadow-md cursor-pointer" onClick={() => { window.location.href = "/settings/notifications"; }}>
+          <CardContent className="flex items-center justify-between p-5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="font-medium">Email Notifications</p>
+                <p className="text-sm text-muted-foreground">Manage your email preferences</p>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Account Security Note */}
       <Card className="border-muted bg-muted/30">

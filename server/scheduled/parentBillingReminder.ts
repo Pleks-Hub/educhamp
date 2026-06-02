@@ -15,12 +15,13 @@ import { getDb } from "../db";
 import { sdk } from "../_core/sdk";
 import { sendEmail } from "../emailService";
 import { buildParentBillingNotificationEmail } from "../emailTemplates/parentBillingNotification";
-import { userNotifications, subscriptions, users } from "../../drizzle/schema";
+import { userNotifications, subscriptions, users, userProfiles, parentChildren } from "../../drizzle/schema";
 import { eq, and, lte, sql } from "drizzle-orm";
 import { BRAND } from "../emailTemplates/emailBase";
 
 const REMINDER_THRESHOLD_MS = 48 * 60 * 60 * 1000; // 48 hours
 const DEDUP_WINDOW_MS = 48 * 60 * 60 * 1000; // Don't re-send within 48h of last reminder
+const ESCALATION_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days — stop reminding, escalate to admin
 
 // In-memory dedup (persists within same Cloud Run instance)
 const sentCache = new Map<string, number>();
@@ -33,6 +34,61 @@ function wasRecentlySent(parentId: number): boolean {
 
 function markSent(parentId: number): void {
   sentCache.set(`billing-reminder-${parentId}`, Date.now());
+}
+
+/**
+ * Escalate a stale billing notification to admin review.
+ * Sets billingEscalatedAt on the student's profile and creates an admin notification.
+ */
+async function escalateToAdmin(
+  db: any,
+  parentId: number,
+  notif: { id: number; metadata: string | null; createdAt: Date }
+) {
+  // Find the student(s) linked to this parent
+  const children = await db
+    .select({ childId: parentChildren.childId })
+    .from(parentChildren)
+    .where(eq(parentChildren.parentId, parentId));
+
+  for (const child of children) {
+    // Set billingEscalatedAt on the student's profile (only if not already set)
+    await db
+      .update(userProfiles)
+      .set({ billingEscalatedAt: new Date() })
+      .where(
+        and(
+          eq(userProfiles.userId, child.childId),
+          sql`${userProfiles.billingEscalatedAt} IS NULL`
+        )
+      );
+  }
+
+  // Parse metadata for student name
+  let studentName = "A student";
+  try {
+    const meta = JSON.parse(notif.metadata || "{}");
+    if (meta.studentName) studentName = meta.studentName;
+  } catch { /* ignore */ }
+
+  // Create an admin notification (type: billing_escalation)
+  // This will appear in the admin sidebar badge counts
+  await db.insert(userNotifications).values({
+    userId: parentId, // stored on parent but type indicates admin should review
+    type: "billing_escalation",
+    title: "Billing Escalation: Parent Unresponsive",
+    message: `Parent (ID: ${parentId}) has not completed billing setup for ${studentName} after 7 days. Manual review recommended.`,
+    isRead: false,
+    metadata: JSON.stringify({
+      parentId,
+      studentName,
+      originalNotificationId: notif.id,
+      escalatedAt: new Date().toISOString(),
+      childIds: children.map((c: any) => c.childId),
+    }),
+  });
+
+  console.log(`[BillingReminder] Escalated parent ${parentId} (${studentName}) to admin review`);
 }
 
 export async function parentBillingReminderHandler(req: Request, res: Response) {
@@ -67,9 +123,19 @@ export async function parentBillingReminderHandler(req: Request, res: Response) 
 
     let reminded = 0;
     let skipped = 0;
+    let escalated = 0;
 
     for (const notif of pendingNotifications) {
       const parentId = notif.userId;
+
+      // Check if notification is older than 7 days — escalate instead of remind
+      const notifAge = Date.now() - new Date(notif.createdAt).getTime();
+      if (notifAge > ESCALATION_THRESHOLD_MS) {
+        // Escalate: flag the student(s) for admin review
+        await escalateToAdmin(db, parentId, notif);
+        escalated++;
+        continue;
+      }
 
       // Dedup check
       if (wasRecentlySent(parentId)) {
@@ -147,8 +213,8 @@ export async function parentBillingReminderHandler(req: Request, res: Response) 
       reminded++;
     }
 
-    console.log(`[BillingReminder] Processed: ${reminded} reminded, ${skipped} skipped`);
-    return res.json({ ok: true, reminded, skipped, total: pendingNotifications.length });
+    console.log(`[BillingReminder] Processed: ${reminded} reminded, ${skipped} skipped, ${escalated} escalated`);
+    return res.json({ ok: true, reminded, skipped, escalated, total: pendingNotifications.length });
   } catch (err: any) {
     console.error("[BillingReminder] Handler error:", err);
     return res.status(500).json({

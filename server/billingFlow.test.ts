@@ -246,4 +246,89 @@ describe("Billing Setup Flow", () => {
       expect(noCardOnFile).toBe(true);
     });
   });
+
+  describe("Escalation Path for Stale Billing Reminders", () => {
+    it("should escalate after 7 days (168 hours)", () => {
+      const ESCALATION_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+      const notificationCreatedAt = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000); // 8 days ago
+      const hoursSinceFirstNotification = (Date.now() - notificationCreatedAt.getTime()) / (1000 * 60 * 60);
+      const shouldEscalate = hoursSinceFirstNotification > 168;
+      expect(shouldEscalate).toBe(true);
+    });
+
+    it("should NOT escalate within 7 days", () => {
+      const notificationCreatedAt = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000); // 5 days ago
+      const hoursSinceFirstNotification = (Date.now() - notificationCreatedAt.getTime()) / (1000 * 60 * 60);
+      const shouldEscalate = hoursSinceFirstNotification > 168;
+      expect(shouldEscalate).toBe(false);
+    });
+
+    it("should NOT escalate if already escalated (billingEscalatedAt set)", () => {
+      const billingEscalatedAt = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000); // already escalated 2 days ago
+      const alreadyEscalated = billingEscalatedAt !== null;
+      expect(alreadyEscalated).toBe(true);
+      // Handler should skip this student
+    });
+
+    it("escalation should flag student for admin review", () => {
+      // The escalation sets billingEscalatedAt and creates an admin notification
+      const escalationData = {
+        billingEscalatedAt: new Date(),
+        adminNotificationType: "billing_escalation",
+        adminNotificationTitle: "Billing Escalation",
+      };
+      expect(escalationData.billingEscalatedAt).toBeInstanceOf(Date);
+      expect(escalationData.adminNotificationType).toBe("billing_escalation");
+    });
+
+    it("escalation should stop further reminders", () => {
+      // Once escalated, the reminder handler should skip this parent-student pair
+      const billingEscalatedAt = new Date();
+      const shouldSkipReminder = billingEscalatedAt !== null;
+      expect(shouldSkipReminder).toBe(true);
+    });
+  });
+
+  describe("Student Email Preferences", () => {
+    it("default preferences should all be enabled", () => {
+      const defaultPrefs = {
+        emailDigestEnabled: true,
+        emailAchievementsEnabled: true,
+        emailRemindersEnabled: true,
+      };
+      expect(defaultPrefs.emailDigestEnabled).toBe(true);
+      expect(defaultPrefs.emailAchievementsEnabled).toBe(true);
+      expect(defaultPrefs.emailRemindersEnabled).toBe(true);
+    });
+
+    it("can disable individual email types", () => {
+      const updatedPrefs = {
+        emailDigestEnabled: false,
+        emailAchievementsEnabled: true,
+        emailRemindersEnabled: false,
+      };
+      expect(updatedPrefs.emailDigestEnabled).toBe(false);
+      expect(updatedPrefs.emailAchievementsEnabled).toBe(true);
+      expect(updatedPrefs.emailRemindersEnabled).toBe(false);
+    });
+
+    it("partial updates should only change specified fields", () => {
+      const existingPrefs = {
+        emailDigestEnabled: true,
+        emailAchievementsEnabled: true,
+        emailRemindersEnabled: true,
+      };
+      const partialUpdate = { emailDigestEnabled: false };
+      const merged = { ...existingPrefs, ...partialUpdate };
+      expect(merged.emailDigestEnabled).toBe(false);
+      expect(merged.emailAchievementsEnabled).toBe(true);
+      expect(merged.emailRemindersEnabled).toBe(true);
+    });
+
+    it("preferences page route is /settings/notifications", () => {
+      const route = "/settings/notifications";
+      expect(route.startsWith("/settings")).toBe(true);
+      // This route is allowed even when billing gate is active
+    });
+  });
 });

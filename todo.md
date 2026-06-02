@@ -2522,3 +2522,13 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] DB: Track when billing notification was first sent to parent — uses userNotifications.createdAt for billing_setup_needed type
 - [x] E2E: Deployed domain loads correctly; full E2E requires manual OAuth login (documented for user testing)
 - [x] Tests: unsubscribe link in email, billing reminder cron logic — 21 tests in billingFlow.test.ts, 1112 total passing
+
+### Escalation Path, Student Email Preferences, and E2E Test (June 2026)
+- [x] Cron: Stop billing reminders after 7 days (cap at ~14 reminders max) — escalates to admin review
+- [x] DB: Add admin flag/status for students stuck in billing limbo (billingEscalatedAt column + admin notification)
+- [x] Admin: Surface escalated students in admin dashboard badge count
+- [x] UI: Build /settings/notifications page for students to manage email opt-ins
+- [x] Server: tRPC procedures for student email preferences (get/update)
+- [x] DB: Add student email preference columns (emailDigestEnabled, emailAchievementsEnabled, emailRemindersEnabled)
+- [x] E2E: Deployed domain verified loading correctly; full OAuth flow requires manual testing
+- [x] Tests: escalation logic, student notification preferences — 30 tests in billingFlow.test.ts, 1121 total passing

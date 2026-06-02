@@ -465,6 +465,12 @@ export const userProfiles = mysqlTable("userProfiles", {
   // Email notification preferences
   weeklyDigestEnabled: boolean("weeklyDigestEnabled").notNull().default(true), // opt-in/out of weekly digest emails
   activityPreference: varchar("activityPreference", { length: 32 }).notNull().default("general"), // general | reading | math_games | hands_on | outdoor | creative
+  // Student email preferences
+  emailDigestEnabled: boolean("emailDigestEnabled").notNull().default(true), // students: opt-in/out of progress digest emails
+  emailAchievementsEnabled: boolean("emailAchievementsEnabled").notNull().default(true), // students: opt-in/out of achievement/badge emails
+  emailRemindersEnabled: boolean("emailRemindersEnabled").notNull().default(true), // students: opt-in/out of inactivity/reminder emails
+  // Billing escalation
+  billingEscalatedAt: timestamp("billingEscalatedAt"), // set when billing reminders exceed 7 days without parent action
   // Onboarding state
   onboardingCompleted: boolean("onboardingCompleted").notNull().default(false),
   onboardingStep: int("onboardingStep").notNull().default(0),

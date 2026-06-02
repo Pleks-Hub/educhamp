@@ -1239,6 +1239,31 @@ export const appRouter = router({
       }
       return { isInactive: true, daysSinceActive, lastLesson, lastCompletedActivity };
     }),
+    // ─── Student Email Notification Preferences ─────────────────────────────────
+    getEmailPreferences: protectedProcedure.query(async ({ ctx }) => {
+      const { getUserProfile: _getProfile } = await import("./db");
+      const profile = await _getProfile(ctx.user.id);
+      return {
+        emailDigestEnabled: profile?.emailDigestEnabled ?? true,
+        emailAchievementsEnabled: profile?.emailAchievementsEnabled ?? true,
+        emailRemindersEnabled: profile?.emailRemindersEnabled ?? true,
+      };
+    }),
+    updateEmailPreferences: protectedProcedure
+      .input(z.object({
+        emailDigestEnabled: z.boolean().optional(),
+        emailAchievementsEnabled: z.boolean().optional(),
+        emailRemindersEnabled: z.boolean().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { upsertUserProfile: _upsert } = await import("./db");
+        const data: Record<string, any> = {};
+        if (input.emailDigestEnabled !== undefined) data.emailDigestEnabled = input.emailDigestEnabled;
+        if (input.emailAchievementsEnabled !== undefined) data.emailAchievementsEnabled = input.emailAchievementsEnabled;
+        if (input.emailRemindersEnabled !== undefined) data.emailRemindersEnabled = input.emailRemindersEnabled;
+        await _upsert(ctx.user.id, data);
+        return { success: true };
+      }),
   }),
 
   // ─── In-App Notifications ────────────────────────────────────────────────────

@@ -51,6 +51,7 @@ const CoppaConsentWaiting = lazy(() => import("./pages/CoppaConsentWaiting"));
 const ExamPrep = lazy(() => import("./pages/ExamPrep"));
 const CertificatePage = lazy(() => import("./pages/CertificatePage"));
 const Certificates = lazy(() => import("./pages/Certificates"));
+const StudentNotifications = lazy(() => import("./pages/StudentNotifications"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -113,6 +114,7 @@ function Router() {
                 <Route path="/skills" component={Skills} />
                 <Route path="/parent" component={ParentDashboard} />
                 <Route path="/profile" component={Profile} />
+                <Route path="/settings/notifications" component={StudentNotifications} />
                 <Route path="/referrals" component={Referrals} />
                 <Route path="/billing" component={Billing} />
                 <Route path="/billing/setup" component={BillingSetup} />
