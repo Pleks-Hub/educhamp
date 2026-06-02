@@ -3893,3 +3893,107 @@ export async function getExpiringCardSubscriptions(withinDays: number = 30) {
     return false;
   });
 }
+
+
+// ─── Admin Card & Transaction Management ──────────────────────────────────────
+
+export async function listPaymentAuditLog(opts: {
+  limit?: number;
+  offset?: number;
+  userId?: number;
+  event?: string;
+}) {
+  const db = await getDb();
+  if (!db) return { rows: [], total: 0 };
+  const { paymentAuditLog } = await import("../drizzle/schema");
+  const { and, count, desc } = await import("drizzle-orm");
+  const conditions: any[] = [];
+  if (opts.userId) conditions.push(eq(paymentAuditLog.userId, opts.userId));
+  if (opts.event) conditions.push(eq(paymentAuditLog.event, opts.event));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select({
+        id: paymentAuditLog.id,
+        userId: paymentAuditLog.userId,
+        event: paymentAuditLog.event,
+        stripeEventId: paymentAuditLog.stripeEventId,
+        stripeObjectId: paymentAuditLog.stripeObjectId,
+        amountCents: paymentAuditLog.amountCents,
+        currency: paymentAuditLog.currency,
+        status: paymentAuditLog.status,
+        metadata: paymentAuditLog.metadata,
+        createdAt: paymentAuditLog.createdAt,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(paymentAuditLog)
+      .leftJoin(users, eq(paymentAuditLog.userId, users.id))
+      .where(where)
+      .orderBy(desc(paymentAuditLog.createdAt))
+      .limit(opts.limit ?? 50)
+      .offset(opts.offset ?? 0),
+    db.select({ total: count() }).from(paymentAuditLog).where(where),
+  ]);
+  return { rows, total };
+}
+
+export async function listSubscriptionCards(opts: {
+  limit?: number;
+  offset?: number;
+  hasCard?: boolean;
+}) {
+  const db = await getDb();
+  if (!db) return { rows: [], total: 0 };
+  const { subscriptions } = await import("../drizzle/schema");
+  const { and, count, desc, isNotNull, isNull } = await import("drizzle-orm");
+  const conditions: any[] = [];
+  if (opts.hasCard === true) conditions.push(isNotNull(subscriptions.cardLast4));
+  if (opts.hasCard === false) conditions.push(isNull(subscriptions.cardLast4));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select({
+        id: subscriptions.id,
+        userId: subscriptions.userId,
+        planName: subscriptions.planName,
+        status: subscriptions.status,
+        cardOnFile: subscriptions.cardOnFile,
+        cardLast4: subscriptions.cardLast4,
+        cardBrand: subscriptions.cardBrand,
+        cardExpMonth: subscriptions.cardExpMonth,
+        cardExpYear: subscriptions.cardExpYear,
+        stripePaymentMethodId: subscriptions.stripePaymentMethodId,
+        stripeCustomerId: subscriptions.stripeCustomerId,
+        suspendedAt: subscriptions.suspendedAt,
+        createdAt: subscriptions.createdAt,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(subscriptions)
+      .leftJoin(users, eq(subscriptions.userId, users.id))
+      .where(where)
+      .orderBy(desc(subscriptions.createdAt))
+      .limit(opts.limit ?? 50)
+      .offset(opts.offset ?? 0),
+    db.select({ total: count() }).from(subscriptions).where(where),
+  ]);
+  return { rows, total };
+}
+
+export async function adminDeleteCard(subscriptionId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("DB unavailable");
+  const { subscriptions } = await import("../drizzle/schema");
+  await db
+    .update(subscriptions)
+    .set({
+      cardOnFile: false,
+      cardLast4: null,
+      cardBrand: null,
+      cardExpMonth: null,
+      cardExpYear: null,
+      stripePaymentMethodId: null,
+    })
+    .where(eq(subscriptions.id, subscriptionId));
+}

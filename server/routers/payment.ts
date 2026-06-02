@@ -35,6 +35,9 @@ import {
   listSubscriptionsWithUsers,
   getExpiringCardSubscriptions,
   getUserById,
+  listPaymentAuditLog,
+  listSubscriptionCards,
+  adminDeleteCard,
 } from "../db";
 import {
   stripe,
@@ -875,6 +878,44 @@ export const paymentRouter = router({
       .input(z.object({ withinDays: z.number().int().min(1).max(180).default(30) }))
       .query(async ({ input }) => {
         return getExpiringCardSubscriptions(input.withinDays);
+      }),
+
+    listTransactions: adminProcedure
+      .input(
+        z.object({
+          limit: z.number().int().min(1).max(100).default(50),
+          offset: z.number().int().nonnegative().default(0),
+          userId: z.number().optional(),
+          event: z.string().optional(),
+        })
+      )
+      .query(async ({ input }) => {
+        return listPaymentAuditLog(input);
+      }),
+
+    listCards: adminProcedure
+      .input(
+        z.object({
+          limit: z.number().int().min(1).max(100).default(50),
+          offset: z.number().int().nonnegative().default(0),
+          hasCard: z.boolean().optional(),
+        })
+      )
+      .query(async ({ input }) => {
+        return listSubscriptionCards(input);
+      }),
+
+    deleteCard: adminProcedure
+      .input(z.object({ subscriptionId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await adminDeleteCard(input.subscriptionId);
+        await logPaymentEvent({
+          userId: ctx.user.id,
+          event: "admin.card.deleted",
+          stripeObjectId: String(input.subscriptionId),
+          metadata: { adminId: ctx.user.id },
+        });
+        return { success: true };
       }),
   }),
 });

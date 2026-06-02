@@ -473,7 +473,7 @@ export default function LandingPage() {
   ];
 
   const faqs = [
-    { q: "Is EduChamp free to use?", a: "EduChamp offers a free tier to get started. Sign up to explore the platform — no credit card required. Paid plans (Family at $19.99/mo and Premium Family at $29.99/mo) unlock unlimited AI tutor sessions, all courses, and the parent dashboard." },
+    { q: "Is EduChamp free to use?", a: "EduChamp offers a free tier to get started. A payment card on file is required for all plans (including free) to verify your identity and enable seamless upgrades. Paid plans (Family at $19.99/mo and Premium Family at $29.99/mo) unlock unlimited AI tutor sessions, all courses, and the parent dashboard — both with a 14-day free trial." },
     { q: "What is the difference between the Family and Premium Family plans?", a: "The Family Plan ($19.99/mo) covers up to 3 students with access to all 70+ courses, unlimited AI tutoring, and the parent dashboard. The Premium Family Plan ($29.99/mo) adds diagnostic assessments, exam prep modules, priority AI sessions, and custom learning paths. Both plans can be cancelled at any time." },
     { q: "Do you offer plans for schools and school districts?", a: "Yes. The School / District License is a per-seat annual contract designed for campuses and districts. It includes teacher and admin dashboards, custom standards alignment, bulk content management, and a performance analytics API. Contact schools@educhamp.app for pricing and a demo." },
     { q: "What grade levels are supported?", a: "EduChamp supports students from Pre-K through Grade 12, including all major AP courses and SAT preparation. The catalogue covers early childhood (Pre-K–Grade 2), elementary (Grades 3–5), middle school (Grades 6–8), high school (Grades 9–12), and advanced AP/SAT tracks — over 70 courses in total." },
@@ -609,7 +609,7 @@ export default function LandingPage() {
                   View Plans
                 </button>
               </div>
-              <p className="mt-4 text-xs text-slate-400">Free to start · No credit card required · Works on any device</p>
+              <p className="mt-4 text-xs text-slate-400">Free plan available · 14-day trial on paid plans · Works on any device</p>
               {/* Social proof */}
               <div className="mt-6 flex items-center gap-3">
                 <div className="flex -space-x-2">
@@ -1216,7 +1216,7 @@ export default function LandingPage() {
 
           {/* Trust badges */}
           <div className="mt-12 flex flex-wrap justify-center gap-6 text-sm text-slate-500">
-            <div className="flex items-center gap-2"><Shield className="h-4 w-4 text-indigo-500" /> No credit card required to start</div>
+            <div className="flex items-center gap-2"><Shield className="h-4 w-4 text-indigo-500" /> Free plan available</div>
             <div className="flex items-center gap-2"><Trophy className="h-4 w-4 text-amber-500" /> 30-day satisfaction guarantee</div>
             <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-emerald-500" /> Cancel anytime, no lock-in</div>
             <div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-indigo-500" /> Standards-aligned curriculum</div>
@@ -1228,7 +1228,7 @@ export default function LandingPage() {
       <section className="py-20 bg-gradient-to-br from-indigo-600 to-violet-700 text-white">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to start your learning journey?</h2>
-          <p className="text-indigo-200 mb-8 max-w-xl mx-auto">Join thousands of students already advancing with EduChamp. Sign up in under 2 minutes — no credit card required.</p>
+          <p className="text-indigo-200 mb-8 max-w-xl mx-auto">Join thousands of students already advancing with EduChamp. Sign up in under 2 minutes — free plan available with a 14-day trial on paid plans.</p>
           <div className="flex flex-wrap justify-center gap-4">
             <button
               onClick={() => openSignUp()}

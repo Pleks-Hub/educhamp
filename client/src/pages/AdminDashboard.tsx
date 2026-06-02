@@ -39,8 +39,9 @@ import {
   ChevronLeft, ChevronDown, ChevronUp, Star, Tag, CreditCard,
   MailX, ShieldOff, ShieldCheck, RotateCcw, Download, Trophy, Zap, Award,
   Flag, MailCheck, CheckSquare, AlertCircle, Server, ArrowRightLeft,
-  Menu, X, Home, PanelLeft, Loader2,
+  Menu, X, Home, PanelLeft, Loader2, Receipt,
 } from "lucide-react";
+import { AdminCardTransactionsTab } from "@/components/admin/AdminCardTransactionsTab";
 
 // ─── Sidebar Navigation Config ────────────────────────────────────────────────
 const ADMIN_NAV_GROUPS = [
@@ -73,6 +74,7 @@ const ADMIN_NAV_GROUPS = [
     label: "Finance",
     items: [
       { id: "subscriptions", label: "Subscriptions", icon: CreditCard },
+      { id: "cardtransactions", label: "Cards & Transactions", icon: Receipt },
       { id: "paymentanalytics", label: "Payment Analytics", icon: BarChart3 },
       { id: "coupons", label: "Coupons", icon: Tag },
     ],
@@ -1830,6 +1832,7 @@ export default function AdminDashboard() {
       case "demorequests": return <DemoRequestsTab />;
       case "coupons": return <CouponManagerTab />;
       case "subscriptions": return <SubscriptionCRMTab />;
+      case "cardtransactions": return <AdminCardTransactionsTab />;
       case "paymentanalytics": return <PaymentAnalyticsTab />;
       case "inactivity": return <InactivityMonitoringTab />;
       case "gamification": return <GamificationAdminTab />;

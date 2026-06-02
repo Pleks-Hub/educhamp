@@ -2459,3 +2459,11 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UI: Card expiry warning banner + update card flow
 - [x] UI: Admin subscription management console (view/filter/suspend/restart/stop/terminate/manual)
 - [x] Tests: Card-on-file enforcement, plan limits, billing delegation, access gating — 30/30 passing, 1035 total
+
+### Billing Flow E2E Test, Heartbeat, Landing Page, Admin Card Management (June 2026)
+- [x] E2E: Test billing flow — sign in → billing setup → card capture → free plan → upgrade
+- [x] Heartbeat: Register card-expiry-reminder daily cron schedule — UID: 8J437kBMWD8nYKGV9ksDni
+- [x] Landing: Update pricing section — remove "No credit card required", reflect card-on-file requirement
+- [x] Admin: Card & Transaction Management panel — masked PAN, card details, suspend/delete/activate subscription
+- [x] Admin: Transaction history view with payment amounts, dates, statuses
+- [x] Tests: Admin card management procedures and UI tests — 13/13 passing, 1048 total
