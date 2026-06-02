@@ -6,7 +6,7 @@
 export const BRAND = {
   fromAddress: "EduChamp <hi@educhamp.app>",
   supportEmail: "hi@educhamp.app",
-  logoUrl: "https://educhamp.manus.space/manus-storage/educhamp-logo-64_7d30d62b.png",
+  logoUrl: "https://educhamp.app/manus-storage/educhamp-logo-64_7d30d62b.png",
   brandColor: "#6C63FF",
   accentColor: "#FF6584",
   bgColor: "#0F0F1A",

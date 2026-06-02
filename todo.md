@@ -2532,3 +2532,19 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] DB: Add student email preference columns (emailDigestEnabled, emailAchievementsEnabled, emailRemindersEnabled)
 - [x] E2E: Deployed domain verified loading correctly; full OAuth flow requires manual testing
 - [x] Tests: escalation logic, student notification preferences — 30 tests in billingFlow.test.ts, 1121 total passing
+
+### QA/UAT Regression Testing & Bug Fixes (June 2026)
+- [x] BUG FIX: Progress page crash — React hooks called after early returns (violated rules of hooks)
+- [x] BUG FIX: Parent Dashboard shows "X/565 units" — getAllUnits() returned all courses' units instead of child's active course units
+- [x] BUG FIX: getChildDetail procedure same issue — used getAllUnits() instead of getUnitsForCourse(childActiveCourseId)
+- [x] Verify Progress page renders correctly after fix
+- [x] Verify Parent Dashboard shows correct unit counts after fix
+- [x] Full regression test pass (1122 tests — all passing)
+- [x] TypeScript check: zero errors
+- [x] Email template URLs: updated from educhamp.manus.space to educhamp.app for production consistency
+- [x] Server-side code audit: no SQL injection, proper error handling, webhook security verified
+- [x] COPPA gate: properly re-throws TRPCErrors, swallows DB errors
+- [x] Stripe webhook: test event handling correct, registered before express.json()
+- [x] No hooks-after-return violations in other pages (false positives confirmed)
+- [x] No memory leaks: all timers/intervals have proper cleanup
+- [x] All 41 test files passing, 1122 total tests

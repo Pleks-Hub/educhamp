@@ -30,6 +30,8 @@ import {
   getCourseRequestById,
   getUserById,
   getUserProfile,
+  getActiveCourseIdForUser,
+  getUnitsForCourse,
 } from "../db";
 import { getMasteryLabel, getAdaptivePath, isYoungLearnerGrade } from "../educhamp-helpers";
 import { sendEmail } from "../emailService";
@@ -50,7 +52,6 @@ export const parentRouter = router({
    */
   listChildren: protectedProcedure.query(async ({ ctx }) => {
     const links = await getChildrenForParent(ctx.user.id);
-    const allUnits = await getAllUnits();
 
     const children = await Promise.all(
       links.map(async ({ link, child }) => {
@@ -58,8 +59,12 @@ export const parentRouter = router({
         const summary = await getChildProgressSummary(child.id);
         const mastery = summary?.mastery ?? [];
 
+        // Get units for the child's active course (not ALL units across all courses)
+        const childActiveCourseId = await getActiveCourseIdForUser(child.id);
+        const childCourseUnits = await getUnitsForCourse(childActiveCourseId);
+
         // Compute unit-level mastery averages
-        const unitMastery = allUnits.map((u) => {
+        const unitMastery = childCourseUnits.map((u) => {
           const unitSkills = mastery.filter((m) => m.skillId.startsWith(`ALG1-U${u.unitNumber}-`));
           const avg =
             unitSkills.length > 0
@@ -101,7 +106,7 @@ export const parentRouter = router({
           masteryLabel: overallAvg !== null ? getMasteryLabel(overallAvg) : null,
           completedUnits,
           inProgressUnits,
-          totalUnits: allUnits.length,
+          totalUnits: childCourseUnits.length,
           unitMastery,
           recentQuizzes: (summary?.quizHistory ?? []).slice(0, 5).map((q) => ({
             unitNumber: q.unitNumber,
@@ -151,7 +156,9 @@ export const parentRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this student." });
       }
 
-      const allUnits = await getAllUnits();
+      // Get units for the child's active course (not ALL units across all courses)
+      const childActiveCourseId = await getActiveCourseIdForUser(input.childId);
+      const allUnits = await getUnitsForCourse(childActiveCourseId);
       const summary = await getChildProgressSummary(input.childId);
       const mastery = summary?.mastery ?? [];
 

@@ -75,6 +75,22 @@ export default function ProgressPage() {
     enabled: !!user,
   });
 
+  // Certificate eligibility — hooks MUST be called before any early returns
+  const activeCourseId = dashboard?.activeCourseId;
+  const { data: certEligibility } = trpc.certificate.checkEligibility.useQuery(
+    { courseId: activeCourseId! },
+    { enabled: !!user && !!activeCourseId }
+  );
+  const issueCertMutation = trpc.certificate.issue.useMutation({
+    onSuccess: (data) => {
+      if (data.isNew) {
+        toast.success("Certificate issued!", { description: "Your course completion certificate is ready." });
+      }
+      setLocation(`/certificate/${data.certificateToken}`);
+    },
+    onError: () => toast.error("Could not issue certificate. Please try again."),
+  });
+
   if (!user) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[60vh]">
@@ -130,21 +146,6 @@ export default function ProgressPage() {
   const overallMastery = dashboard?.overallMastery ?? 0;
   const radialData = [{ name: "Mastery", value: overallMastery, fill: getMasteryColor(overallMastery) }];
 
-  // Certificate eligibility
-  const activeCourseId = dashboard?.activeCourseId;
-  const { data: certEligibility } = trpc.certificate.checkEligibility.useQuery(
-    { courseId: activeCourseId! },
-    { enabled: !!user && !!activeCourseId }
-  );
-  const issueCertMutation = trpc.certificate.issue.useMutation({
-    onSuccess: (data) => {
-      if (data.isNew) {
-        toast.success("Certificate issued!", { description: "Your course completion certificate is ready." });
-      }
-      setLocation(`/certificate/${data.certificateToken}`);
-    },
-    onError: () => toast.error("Could not issue certificate. Please try again."),
-  });
   const handleClaimCertificate = () => {
     if (!activeCourseId) return;
     issueCertMutation.mutate({ courseId: activeCourseId });

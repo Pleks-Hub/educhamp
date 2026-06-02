@@ -63,7 +63,7 @@ const BG = "#f8fafc";
 const CARD_BG = "#ffffff";
 const TEXT_PRIMARY = "#0f172a";
 const TEXT_MUTED = "#64748b";
-const LOGO_URL = "https://educhamp.manus.space/manus-storage/educhamp-logo-64_28201452.png";
+const LOGO_URL = "https://educhamp.app/manus-storage/educhamp-logo-64_28201452.png";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

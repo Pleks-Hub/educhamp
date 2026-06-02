@@ -18,7 +18,7 @@ const BG_COLOR = "#f8fafc";    // slate-50
 const CARD_BG = "#ffffff";
 const TEXT_PRIMARY = "#0f172a"; // slate-900
 const TEXT_MUTED = "#64748b";   // slate-500
-const LOGO_URL = "https://educhamp.manus.space/manus-storage/educhamp-logo-64_28201452.png";
+const LOGO_URL = "https://educhamp.app/manus-storage/educhamp-logo-64_28201452.png";
 
 export function buildPasswordResetEmail(data: PasswordResetEmailData): {
   html: string;
