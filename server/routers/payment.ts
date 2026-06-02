@@ -38,6 +38,7 @@ import {
   listPaymentAuditLog,
   listSubscriptionCards,
   adminDeleteCard,
+  checkStudentParentBillingCoverage,
 } from "../db";
 import {
   stripe,
@@ -370,14 +371,31 @@ export const paymentRouter = router({
   // ── Protected: check billing status (card on file + plan) ──────────────────
   getBillingStatus: protectedProcedure.query(async ({ ctx }) => {
     const sub = await getUserSubscription(ctx.user.id);
+    // For student accounts without their own subscription, check parent billing coverage
+    let coveredByParent = false;
+    let parentPlanName: string | null = null;
+    if (ctx.user.accountType === "student" && !sub) {
+      const coverage = await checkStudentParentBillingCoverage(ctx.user.id);
+      coveredByParent = coverage.covered;
+      parentPlanName = coverage.planName;
+    }
     return {
-      hasSubscription: !!sub,
-      cardOnFile: sub?.cardOnFile ?? false,
-      planName: sub?.planName ?? null,
-      status: sub?.status ?? null,
+      hasSubscription: !!sub || coveredByParent,
+      cardOnFile: sub?.cardOnFile ?? coveredByParent,
+      planName: sub?.planName ?? parentPlanName ?? null,
+      status: sub?.status ?? (coveredByParent ? "active" : null),
       suspendedAt: sub?.suspendedAt ?? null,
       maxStudents: sub?.planName ? (getPlanByKey(sub.planName)?.maxStudents ?? 1) : 0,
+      coveredByParent,
     };
+  }),
+
+  // ── Protected: check if student is covered by parent's billing ──────────
+  checkParentBillingCoverage: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user.accountType !== "student") {
+      return { covered: false, parentId: null, parentName: null, planName: null };
+    }
+    return checkStudentParentBillingCoverage(ctx.user.id);
   }),
 
   // ── Protected: check student slot availability for parent ──────────────────

@@ -14,6 +14,7 @@ import {
   GraduationCap, School, CheckCircle2, Mail, Phone,
   ArrowRight, ArrowLeft, Loader2, UserCheck, AlertCircle,
   Users, Copy, Share2, ShieldAlert, Target, RefreshCw,
+  CreditCard,
 } from "lucide-react";
 
 const US_STATES = [
@@ -177,6 +178,21 @@ export default function StudentOnboarding() {
   const acceptInvite = trpc.onboarding.acceptStudentInvite.useMutation();
   const completeOnboarding = trpc.onboarding.completeOnboarding.useMutation();
   const inviteParent = trpc.onboarding.inviteParent.useMutation();
+  const notifyParentForBilling = trpc.onboarding.notifyParentForBilling.useMutation();
+
+  // Check if student is already covered by parent billing
+  const billingStatusQuery = trpc.payment.getBillingStatus.useQuery(undefined, {
+    staleTime: 30_000,
+  });
+  const isCoveredByParent = billingStatusQuery.data?.coveredByParent === true;
+  const hasSubscription = billingStatusQuery.data?.hasSubscription === true;
+
+  // Whether this student is a minor (under 13) for billing purposes
+  const isMinorForBilling = studentAge !== null && studentAge < 13;
+
+  // Track whether billing notification was sent to parent
+  const [billingNotifSent, setBillingNotifSent] = useState(false);
+  const [billingNotifEmail, setBillingNotifEmail] = useState("");
   const requestCoppaConsent = trpc.coppa.requestConsent.useMutation({
     onSuccess: () => {
       setCoppaConsentSent(true);
@@ -276,6 +292,27 @@ export default function StudentOnboarding() {
       }
     } catch (err: any) {
       toast.error(err?.message ?? "Failed to send invite. Please try again.");
+    }
+  }
+
+  async function handleNotifyParentForBilling() {
+    // For minors without parent coverage, send billing notification to parent
+    const emailToUse = parentEmail || coppaConsentEmail;
+    if (!emailToUse) {
+      toast.error("Please provide your parent's email address first.");
+      return;
+    }
+    try {
+      const result = await notifyParentForBilling.mutateAsync({
+        parentEmail: emailToUse,
+        parentName: parentName || undefined,
+        origin: window.location.origin,
+      });
+      setBillingNotifSent(true);
+      setBillingNotifEmail(result.parentEmail);
+      toast.success("Notification sent to your parent! They'll set up billing for you.");
+    } catch (err: any) {
+      toast.error(err?.message ?? "Failed to notify parent. Please try again.");
     }
   }
 
@@ -857,34 +894,146 @@ export default function StudentOnboarding() {
           </Card>
         )}
 
-        {/* Step 3: Confirm & Finish */}
+        {/* Step 3: Billing & Finish */}
         {step === 3 && (
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                <CardTitle>You're all set!</CardTitle>
+                {(isCoveredByParent || hasSubscription)
+                  ? <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                  : <CreditCard className="h-5 w-5 text-indigo-600" />}
+                <CardTitle>
+                  {(isCoveredByParent || hasSubscription)
+                    ? "You're all set!"
+                    : isMinorForBilling
+                      ? "Parent billing required"
+                      : "Set up billing"}
+                </CardTitle>
               </div>
-              <CardDescription>Your profile is ready. Here's what you can do next.</CardDescription>
+              <CardDescription>
+                {(isCoveredByParent || hasSubscription)
+                  ? "Your profile is ready. Here's what you can do next."
+                  : isMinorForBilling
+                    ? "Billing must be set up by a parent or guardian."
+                    : "A payment card on file is required to activate your account — even for the free plan."}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-4 space-y-2">
-                <h3 className="text-sm font-semibold text-indigo-900">Getting started with EduChamp</h3>
-                <ul className="text-sm text-indigo-800 space-y-1.5">
-                  {[
-                    "Browse your grade-appropriate courses and enrol in the ones that match your goals",
-                    "Take the placement diagnostic to find your exact starting point in each course",
-                    "Work through units at your own pace with EduBot, your AI learning coach",
-                    "Take unit quizzes to unlock the next level and track your mastery",
-                    "Your parent can track your progress from their dashboard",
-                  ].map((item, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {/* Case 1: Already covered by parent billing or has own subscription */}
+              {(isCoveredByParent || hasSubscription) && (
+                <>
+                  <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-sm text-emerald-800">
+                    <div className="font-medium flex items-center gap-1 mb-1">
+                      <CheckCircle2 className="h-4 w-4" /> Billing covered
+                    </div>
+                    {isCoveredByParent
+                      ? "Your parent's billing covers your account. No payment setup needed from you."
+                      : "Your billing is active. You're ready to start learning."}
+                  </div>
+                  <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-4 space-y-2">
+                    <h3 className="text-sm font-semibold text-indigo-900">Getting started with EduChamp</h3>
+                    <ul className="text-sm text-indigo-800 space-y-1.5">
+                      {[
+                        "Browse your grade-appropriate courses and enrol in the ones that match your goals",
+                        "Take the placement diagnostic to find your exact starting point in each course",
+                        "Work through units at your own pace with EduBot, your AI learning coach",
+                        "Take unit quizzes to unlock the next level and track your mastery",
+                      ].map((item, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              )}
+
+              {/* Case 2: Minor (under 13) — cannot enter own card */}
+              {!isCoveredByParent && !hasSubscription && isMinorForBilling && !billingNotifSent && (
+                <>
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
+                    <div className="font-medium flex items-center gap-1 mb-2">
+                      <ShieldAlert className="h-4 w-4" /> Age restriction
+                    </div>
+                    <p>Because you are under 13, you cannot enter payment information directly. Please ask your parent or guardian to:</p>
+                    <ol className="list-decimal list-inside mt-2 space-y-1">
+                      <li>Log in to their EduChamp account</li>
+                      <li>Add a payment card on file</li>
+                      <li>Link you to their profile</li>
+                    </ol>
+                    <p className="mt-2">Once they complete this, you'll have immediate access.</p>
+                  </div>
+                  {(parentEmail || coppaConsentEmail) ? (
+                    <Button
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2"
+                      onClick={handleNotifyParentForBilling}
+                      disabled={notifyParentForBilling.isPending}
+                    >
+                      {notifyParentForBilling.isPending
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <Mail className="h-4 w-4" />}
+                      Notify {parentName || "Parent"} to Set Up Billing
+                    </Button>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">Enter your parent's email to send them a billing setup notification:</p>
+                      <input
+                        type="email"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        placeholder="parent@example.com"
+                        value={parentEmail}
+                        onChange={e => setParentEmail(e.target.value)}
+                      />
+                      <Button
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2"
+                        onClick={handleNotifyParentForBilling}
+                        disabled={notifyParentForBilling.isPending || !parentEmail}
+                      >
+                        {notifyParentForBilling.isPending
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <Mail className="h-4 w-4" />}
+                        Send Billing Notification
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Case 2b: Minor — notification sent confirmation */}
+              {!isCoveredByParent && !hasSubscription && isMinorForBilling && billingNotifSent && (
+                <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-sm text-green-800 space-y-2">
+                  <div className="font-medium flex items-center gap-1">
+                    <CheckCircle2 className="h-4 w-4" /> Notification sent!
+                  </div>
+                  <p>A billing setup notification has been sent to <strong>{billingNotifEmail}</strong>.</p>
+                  <p>Once your parent completes billing and links your account, you'll have immediate access. You can close this page and come back later.</p>
+                </div>
+              )}
+
+              {/* Case 3: Student 13+ without coverage — can set up own billing */}
+              {!isCoveredByParent && !hasSubscription && !isMinorForBilling && (
+                <>
+                  <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-4 text-sm text-indigo-800">
+                    <p>A payment card on file is required before you can access EduChamp — even on the free plan. You can set up billing now, or ask your parent to do it from their account.</p>
+                  </div>
+                  <Button
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2"
+                    onClick={() => {
+                      handleFinish();
+                    }}
+                    disabled={acceptInvite.isPending || completeOnboarding.isPending}
+                  >
+                    {(acceptInvite.isPending || completeOnboarding.isPending)
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <ArrowRight className="h-4 w-4" />}
+                    Continue to Billing Setup
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground">
+                    You'll be redirected to add a payment card after completing onboarding.
+                  </p>
+                </>
+              )}
 
               {(inviteInfo || parentInviteSent) && (
                 <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
@@ -901,16 +1050,30 @@ export default function StudentOnboarding() {
                 <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
                   <ArrowLeft className="h-4 w-4 mr-2" /> Back
                 </Button>
-                <Button
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700"
-                  onClick={handleFinish}
-                  disabled={acceptInvite.isPending || completeOnboarding.isPending}
-                >
-                  {(acceptInvite.isPending || completeOnboarding.isPending)
-                    ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    : <CheckCircle2 className="h-4 w-4 mr-2" />}
-                  Start Learning!
-                </Button>
+                {(isCoveredByParent || hasSubscription) && (
+                  <Button
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                    onClick={handleFinish}
+                    disabled={acceptInvite.isPending || completeOnboarding.isPending}
+                  >
+                    {(acceptInvite.isPending || completeOnboarding.isPending)
+                      ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                    Start Learning!
+                  </Button>
+                )}
+                {isMinorForBilling && billingNotifSent && (
+                  <Button
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                    onClick={handleFinish}
+                    disabled={acceptInvite.isPending || completeOnboarding.isPending}
+                  >
+                    {(acceptInvite.isPending || completeOnboarding.isPending)
+                      ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                    Finish Setup
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

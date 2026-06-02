@@ -4144,3 +4144,56 @@ export async function getWeeklyDigestDataForParent(parentId: number): Promise<We
 
   return results;
 }
+
+// ─── Billing Coverage Check ──────────────────────────────────────────────────
+/**
+ * Check if a student is covered by a parent's active billing (card on file).
+ * Returns the parent's subscription info if the student is linked to a parent
+ * who has an active subscription with a card on file.
+ */
+export async function checkStudentParentBillingCoverage(studentId: number): Promise<{
+  covered: boolean;
+  parentId: number | null;
+  parentName: string | null;
+  planName: string | null;
+}> {
+  const db = await getDb();
+  if (!db) return { covered: false, parentId: null, parentName: null, planName: null };
+  const { subscriptions } = await import("../drizzle/schema");
+  // Find all active parent links for this student
+  const parentLinks = await db
+    .select({
+      parentId: parentChildren.parentId,
+      parentName: users.name,
+    })
+    .from(parentChildren)
+    .innerJoin(users, eq(users.id, parentChildren.parentId))
+    .where(and(eq(parentChildren.childId, studentId), eq(parentChildren.isActive, true)));
+  if (parentLinks.length === 0) {
+    return { covered: false, parentId: null, parentName: null, planName: null };
+  }
+  // Check if any linked parent has an active subscription with card on file
+  for (const link of parentLinks) {
+    const sub = await db
+      .select({
+        planName: subscriptions.planName,
+        status: subscriptions.status,
+        cardOnFile: subscriptions.cardOnFile,
+      })
+      .from(subscriptions)
+      .where(and(
+        eq(subscriptions.userId, link.parentId),
+        eq(subscriptions.cardOnFile, true),
+      ))
+      .limit(1);
+    if (sub.length > 0 && (sub[0].status === "active" || sub[0].status === "trialing")) {
+      return {
+        covered: true,
+        parentId: link.parentId,
+        parentName: link.parentName,
+        planName: sub[0].planName,
+      };
+    }
+  }
+  return { covered: false, parentId: parentLinks[0]?.parentId ?? null, parentName: parentLinks[0]?.parentName ?? null, planName: null };
+}

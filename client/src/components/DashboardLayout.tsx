@@ -184,6 +184,7 @@ function DashboardLayoutContent({
   const billingStatus = billingStatusQuery.data;
   const noCardOnFile = billingStatus && !billingStatus.hasSubscription;
   const isSuspended = billingStatus?.suspendedAt != null;
+  const isStudentAccount = user?.accountType === "student";
   const isAccessLocked =
     (
       sub?.status === "past_due" ||
@@ -193,7 +194,8 @@ function DashboardLayoutContent({
     ) &&
     !location.startsWith("/billing") &&
     !location.startsWith("/admin") &&
-    !location.startsWith("/settings");
+    !location.startsWith("/settings") &&
+    !location.startsWith("/profile");
 
   const planDisplayName = sub?.planName === "premium_family" ? "Premium Family" : sub?.planName === "family" ? "Family Plan" : sub?.planName ?? "your plan";
   const periodEndDate = sub?.currentPeriodEnd
@@ -423,32 +425,42 @@ function DashboardLayoutContent({
                 )}
               </div>
               <h2 className="mb-2 text-xl font-bold text-foreground">
-                {noCardOnFile
-                  ? "Set up billing to get started"
-                  : isSuspended
-                    ? "Account suspended"
-                    : sub?.status === "past_due"
-                      ? "Payment required"
-                      : "Subscription ended"}
+                {noCardOnFile && isStudentAccount
+                  ? "Waiting for parent billing setup"
+                  : noCardOnFile
+                    ? "Set up billing to get started"
+                    : isSuspended
+                      ? "Account suspended"
+                      : sub?.status === "past_due"
+                        ? "Payment required"
+                        : "Subscription ended"}
               </h2>
               <p className="mb-6 text-sm text-muted-foreground">
-                {noCardOnFile
-                  ? "A payment card on file is required before you can access EduChamp. Set up your billing information to activate your free plan."
-                  : isSuspended
-                    ? "Your account has been suspended by an administrator. Please contact support for more information."
-                    : sub?.status === "past_due"
-                      ? "A payment is overdue. Please update your payment method to restore access."
-                      : periodEndDate
-                        ? `Your subscription ended on ${periodEndDate}. Reactivate to continue learning.`
-                        : "Your subscription has ended. Reactivate to continue learning."}
+                {noCardOnFile && isStudentAccount
+                  ? "Billing must be set up by a parent or guardian. Please ask your parent to log in to their EduChamp account, add a payment card, and link you to their profile."
+                  : noCardOnFile
+                    ? "A payment card on file is required before you can access EduChamp. Set up your billing information to activate your free plan."
+                    : isSuspended
+                      ? "Your account has been suspended by an administrator. Please contact support for more information."
+                      : sub?.status === "past_due"
+                        ? "A payment is overdue. Please update your payment method to restore access."
+                        : periodEndDate
+                          ? `Your subscription ended on ${periodEndDate}. Reactivate to continue learning.`
+                          : "Your subscription has ended. Reactivate to continue learning."}
               </p>
-              {!isSuspended && (
+              {!isSuspended && !isStudentAccount && (
                 <Button
                   className="w-full mb-3"
                   onClick={() => setLocation(noCardOnFile ? "/billing/setup" : "/billing")}
                 >
                   {noCardOnFile ? "Set up billing" : "Reactivate your plan"}
                 </Button>
+              )}
+              {noCardOnFile && isStudentAccount && (
+                <div className="rounded-lg bg-indigo-50 border border-indigo-200 p-4 mb-3 text-left">
+                  <p className="text-sm text-indigo-900 font-medium mb-1">What happens next?</p>
+                  <p className="text-xs text-indigo-800">A notification has been sent to your parent or guardian. Once they complete billing setup and link your account, you'll have immediate access.</p>
+                </div>
               )}
               <p className="text-xs text-muted-foreground">
                 Need help?{" "}

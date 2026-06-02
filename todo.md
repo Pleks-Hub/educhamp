@@ -2503,3 +2503,15 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UI: Activity preference selector in Profile notification preferences card
 - [x] Server: Weekly digest handler uses parent's activity preference to tailor at-home suggestions
 - [x] Tests: preview digest, celebration badge, activity preference — 25 tests passing (1091 total)
+
+### Billing Setup Flow — Parent/Guardian & Student (Sprint)
+- [x] Server: `checkParentBillingCoverage` procedure — check if student is linked to parent with active subscription/cardOnFile
+- [x] Server: Update `getBillingStatus` to include `coveredByParent` flag for student accounts
+- [x] DashboardLayout: Skip billing gate for students covered by parent billing
+- [x] StudentOnboarding: Add billing step — before billing UI, check if already linked to parent with billing → skip
+- [x] StudentOnboarding: Age gate at billing step — if >=13 show card entry form, if <13 show parent notification message
+- [x] ParentOnboarding: Redirect to /billing/setup after onboarding completes (enforce card-on-file before platform access)
+- [x] Server: Send email + in-app notification to parent when minor reaches billing step
+- [ ] Server: Send email + in-app notification to student when parent completes billing and links them (deferred — requires webhook from parent billing completion)
+- [x] Edge case: Minor with no parent on file — prompt for parent email, validate not student's own, send notification
+- [x] Tests: billing coverage check, parent notification on minor billing, student access after parent links — 14 tests passing (1105 total)

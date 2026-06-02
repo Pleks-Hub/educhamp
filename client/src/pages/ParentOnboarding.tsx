@@ -92,6 +92,12 @@ export default function ParentOnboarding() {
   const generateGoal = trpc.onboarding.generateGoalAlignment.useMutation();
   const completeOnboarding = trpc.onboarding.completeOnboarding.useMutation();
 
+  // Check billing status to determine if parent needs to set up billing after onboarding
+  const billingStatusQuery = trpc.payment.getBillingStatus.useQuery(undefined, {
+    staleTime: 30_000,
+  });
+  const needsBilling = billingStatusQuery.data && !billingStatusQuery.data.hasSubscription && !billingStatusQuery.data.cardOnFile;
+
   async function handleStep1() {
     setAgeError(null);
 
@@ -152,8 +158,13 @@ export default function ParentOnboarding() {
       }
     }
     await completeOnboarding.mutateAsync();
-    toast.success("Welcome to EduChamp! Let's get started.");
-    navigate("/");
+    if (needsBilling) {
+      toast.success("Welcome! Let's set up billing to activate your account.");
+      navigate("/billing/setup");
+    } else {
+      toast.success("Welcome to EduChamp! Let's get started.");
+      navigate("/");
+    }
   }
 
   const progress = ((step - 1) / totalSteps) * 100;

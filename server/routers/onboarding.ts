@@ -36,6 +36,7 @@ import {
 import { isYoungLearnerGrade } from "../educhamp-helpers";
 import { validateGuardianAge, validateStudentAge } from "../../shared/ageValidation";
 import { buildParentInviteEmail } from "../emailTemplates/parentInvite";
+import { buildParentBillingNotificationEmail } from "../emailTemplates/parentBillingNotification";
 import { sendEmail } from "../emailService";
 import { invokeLLM } from "../_core/llm";
 import { notifyOwner } from "../_core/notification";
@@ -757,5 +758,97 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         ...(input.languageLevel !== undefined ? { languageLevel: input.languageLevel } : {}),
       });
       return { success: true };
+    }),
+
+  /**
+   * Student (minor): notify parent/guardian that billing setup is needed.
+   * If the student has a linked parent, sends email + in-app notification.
+   * If not, requires parentEmail input to send the notification.
+   */
+  notifyParentForBilling: protectedProcedure
+    .input(
+      z.object({
+        parentEmail: z.string().email().max(320).optional(),
+        parentName: z.string().max(256).optional(),
+        origin: z.string().url(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { getParentsByChildId, getDb } = await import("../db");
+      const { userNotifications } = await import("../../drizzle/schema");
+
+      const studentName = ctx.user.name ?? "Your student";
+
+      // Check if student already has a linked parent
+      const parents = await getParentsByChildId(ctx.user.id);
+      let targetEmail = parents[0]?.parentEmail ?? input.parentEmail;
+      let targetParentName = parents[0]?.parentName ?? input.parentName;
+      let targetParentId = parents[0]?.parentId ?? null;
+
+      if (!targetEmail && !input.parentEmail) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No parent is linked to your account. Please provide a parent email address.",
+        });
+      }
+
+      if (!targetEmail) targetEmail = input.parentEmail!;
+      if (!targetParentName) targetParentName = input.parentName;
+
+      // Validate email is not the student's own
+      if (targetEmail.toLowerCase().trim() === (ctx.user.email ?? "").toLowerCase().trim()) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Parent email must be different from your own email.",
+        });
+      }
+
+      const billingSetupUrl = `${input.origin}/billing/setup`;
+
+      // Send email notification
+      const emailData = buildParentBillingNotificationEmail({
+        studentName,
+        parentName: targetParentName ?? undefined,
+        billingSetupUrl,
+      });
+
+      let emailSent = false;
+      await sendEmail({
+        to: targetEmail,
+        subject: emailData.subject,
+        html: emailData.html,
+        text: emailData.text,
+        templateName: "parent-billing-notification",
+        referenceId: `billing-notify-${ctx.user.id}`,
+      }).then(() => { emailSent = true; }).catch((err) => {
+        console.error("[BillingNotify] Failed to send email:", err);
+      });
+
+      // Send in-app notification if parent has an account
+      if (targetParentId) {
+        const db = await getDb();
+        if (db) {
+          await db.insert(userNotifications).values({
+            userId: targetParentId,
+            type: "billing_setup_needed",
+            title: "Billing Setup Needed",
+            message: `${studentName} is trying to access EduChamp. To activate their account, please complete billing setup and add them to your profile.`,
+            isRead: false,
+            metadata: JSON.stringify({
+              studentId: ctx.user.id,
+              studentName,
+              action: "billing_setup",
+            }),
+          });
+        }
+      }
+
+      // Notify owner for audit
+      notifyOwner({
+        title: "Minor Student Needs Billing",
+        content: `Student ${studentName} (ID: ${ctx.user.id}) triggered billing notification to ${targetEmail}.\nEmail sent: ${emailSent ? "yes" : "no"}`,
+      }).catch(() => {});
+
+      return { sent: true, emailSent, parentEmail: targetEmail };
     }),
 });
