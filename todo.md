@@ -2436,3 +2436,26 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UI: Video player — support YouTube embeds, direct MP4 URLs, and a "Video coming soon" stub state
 - [x] UI: Admin content panel — video URL input field per lesson (inline edit)
 - [x] Tests: videoUrl nullable, updateLessonVideo auth guard, video tab rendering — 31/31 passing
+
+### Module: Billing, Subscription & Access Control (June 2026)
+- [x] Schema: Add "free" plan to PLANS map with $0 price, 1-student limit
+- [x] Schema: Add maxStudents field to plan definitions (free=1, family=3, premium=5)
+- [x] Schema: Add cardOnFile boolean + stripePaymentMethodId to subscriptions table
+- [x] Schema: Add billingDelegation table for student→parent billing requests
+- [x] Server: Stripe Setup Intent flow for card-on-file capture (no charge)
+- [x] Server: Free plan activation after card capture (Stripe customer + $0 subscription)
+- [x] Server: Access gating middleware — no card on file = redirect to billing capture
+- [x] Server: Student-slot enforcement — check parent's plan limit before adding student
+- [x] Server: Student-initiated billing delegation (age-gated: ≥18 self-pay, <18 parent request)
+- [x] Server: Parent billing request acceptance flow (new payer or add to existing plan)
+- [x] Server: Trial-to-paid transition — billing starts only after successful payment
+- [x] Server: Card expiry check heartbeat job + email reminders
+- [x] Server: Admin subscription management — suspend, restart, stop, terminate, manual create
+- [x] UI: Billing capture step (card on file) before plan selection
+- [x] UI: Plan selection page with Free/Family/Premium tiers
+- [x] UI: Access gate overlay — "Add payment method to continue"
+- [x] UI: Student billing delegation flow (age-appropriate self-pay vs parent request)
+- [x] UI: Parent billing request notification + acceptance UI
+- [x] UI: Card expiry warning banner + update card flow
+- [x] UI: Admin subscription management console (view/filter/suspend/restart/stop/terminate/manual)
+- [x] Tests: Card-on-file enforcement, plan limits, billing delegation, access gating — 30/30 passing, 1035 total

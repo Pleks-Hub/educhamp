@@ -42,6 +42,7 @@ const STATUS_BADGE: Record<string, { label: string; class: string; icon: React.E
 };
 
 const PLAN_DISPLAY: Record<string, { name: string; color: string }> = {
+  free: { name: "Free Plan", color: "text-slate-600" },
   family: { name: "Family Plan", color: "text-indigo-600" },
   premium_family: { name: "Premium Family", color: "text-purple-600" },
   isd_school: { name: "ISD / School", color: "text-blue-600" },
@@ -89,6 +90,7 @@ export default function Billing() {
   const [changePlanLoading, setChangePlanLoading] = useState(false);
 
   const { data: sub, isLoading } = trpc.payment.getMySubscription.useQuery();
+  const { data: billingStatus } = trpc.payment.getBillingStatus.useQuery();
 
   // Show success toast when returning from plan change
   useEffect(() => {
@@ -265,6 +267,26 @@ export default function Billing() {
               )}
             </div>
 
+            {/* Card on file info */}
+            {billingStatus?.cardOnFile && sub?.cardLast4 && (
+              <div className="rounded-lg bg-muted/50 border px-4 py-3 flex items-center gap-3">
+                <CreditCard className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium capitalize">
+                    {sub.cardBrand ?? "Card"} ending in {sub.cardLast4}
+                  </p>
+                  {sub.cardExpMonth && sub.cardExpYear && (
+                    <p className="text-xs text-muted-foreground">
+                      Expires {String(sub.cardExpMonth).padStart(2, "0")}/{sub.cardExpYear}
+                    </p>
+                  )}
+                </div>
+                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
+                  Active
+                </Badge>
+              </div>
+            )}
+
             {sub.cancelAtPeriodEnd && (
               <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
@@ -315,23 +337,21 @@ export default function Billing() {
           </CardContent>
         </Card>
       ) : (
-        /* No subscription */
+        /* No subscription — redirect to billing setup */
         <Card>
           <CardContent className="pt-8 pb-8 text-center space-y-4">
-            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-              <DollarSign className="h-6 w-6 text-muted-foreground" />
+            <div className="mx-auto w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+              <CreditCard className="h-6 w-6 text-indigo-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-lg">No active subscription</h3>
+              <h3 className="font-semibold text-lg">Set up billing to get started</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                You are currently on the free plan. Upgrade to unlock all features.
+                A payment card on file is required. Add a card to activate your free plan.
               </p>
             </div>
-            <NavTooltip content={BILLING_TOOLTIPS.upgrade} side="top">
-              <Button onClick={() => navigate("/#pricing")} className="gap-2">
-                View Plans <ArrowRight className="h-4 w-4" />
-              </Button>
-            </NavTooltip>
+            <Button onClick={() => navigate("/billing/setup")} className="gap-2">
+              Set up billing <ArrowRight className="h-4 w-4" />
+            </Button>
           </CardContent>
         </Card>
       )}

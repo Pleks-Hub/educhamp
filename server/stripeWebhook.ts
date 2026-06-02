@@ -10,10 +10,12 @@ import {
   recordCouponRedemption,
   getDb,
   getUserById,
+  updateSubscriptionCard,
 } from "./db";
 import { users, subscriptions } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { sendEmail } from "./emailService";
+import { getCardDetailsFromPaymentMethod } from "./stripe";
 import { buildTrialReminderEmail } from "./emailTemplates/trialReminder";
 import { buildTrialExpiryEmail } from "./emailTemplates/trialExpiry";
 import { buildTrialWelcomeEmail } from "./emailTemplates/trialWelcome";
@@ -121,6 +123,23 @@ export async function handleStripeEvent(event: any, appBaseUrl: string = "https:
           stripeCheckoutSessionId: session.id,
           amountCents: session.amount_total ?? undefined,
         });
+
+        // Capture card details from the checkout session's payment method
+        try {
+          if (session.subscription && session.customer) {
+            const stripeSub = await stripe.subscriptions.retrieve(session.subscription as string);
+            const pmId = stripeSub.default_payment_method as string | null;
+            if (pmId) {
+              const cardDetails = await getCardDetailsFromPaymentMethod(pmId);
+              if (cardDetails) {
+                await updateSubscriptionCard(userId, cardDetails);
+                console.log(`[Webhook] Card captured for user ${userId}: ${cardDetails.cardBrand} ****${cardDetails.cardLast4}`);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("[Webhook] Card capture failed (non-blocking):", err);
+        }
 
         // Record coupon redemption if applicable
         if (couponIdStr) {

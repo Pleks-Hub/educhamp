@@ -1,4 +1,5 @@
 import { z } from "zod";
+import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import {
@@ -17,6 +18,23 @@ import {
   listSubscriptions,
   logPaymentEvent,
   getPaymentAnalytics,
+  updateSubscriptionCard,
+  createFreeSubscription,
+  countParentStudents,
+  createBillingDelegation,
+  getBillingDelegationByToken,
+  getPendingBillingDelegationsForEmail,
+  acceptBillingDelegation,
+  rejectBillingDelegation,
+  getStudentBillingDelegations,
+  adminSuspendSubscription,
+  adminResumeSubscription,
+  adminUpdateSubscriptionStatus,
+  adminCreateSubscription,
+  getSubscriptionById,
+  listSubscriptionsWithUsers,
+  getExpiringCardSubscriptions,
+  getUserById,
 } from "../db";
 import {
   stripe,
@@ -24,6 +42,9 @@ import {
   getPlanByKey,
   calculateDiscount,
   getOrCreateStripeCustomer,
+  createSetupIntent,
+  getCardDetailsFromPaymentMethod,
+  setDefaultPaymentMethod,
   type CouponValidationResult,
 } from "../stripe";
 import { ENV } from "../_core/env";
@@ -68,6 +89,8 @@ export const paymentRouter = router({
       monthly: plan.monthly,
       annual: plan.annual,
       features: plan.features,
+      maxStudents: plan.maxStudents,
+      isFree: plan.isFree ?? false,
     }));
   }),
 
@@ -287,6 +310,212 @@ export const paymentRouter = router({
     return getUserSubscription(ctx.user.id);
   }),
 
+  // ── Protected: create Setup Intent for card capture (no charge) ─────────────
+  createSetupIntent: protectedProcedure
+    .input(z.object({ origin: z.string().url() }))
+    .mutation(async ({ ctx }) => {
+      const stripeCustomerId = await getOrCreateStripeCustomer(
+        ctx.user.id,
+        ctx.user.email ?? "",
+        ctx.user.name
+      );
+      const si = await createSetupIntent(stripeCustomerId);
+      return { clientSecret: si.client_secret, stripeCustomerId };
+    }),
+
+  // ── Protected: confirm card captured & activate free plan ───────────────────
+  confirmCardAndActivateFreePlan: protectedProcedure
+    .input(
+      z.object({
+        paymentMethodId: z.string(),
+        stripeCustomerId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Get card details from Stripe
+      const cardDetails = await getCardDetailsFromPaymentMethod(input.paymentMethodId);
+      if (!cardDetails) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid payment method" });
+      }
+
+      // Set as default payment method
+      await setDefaultPaymentMethod(input.stripeCustomerId, input.paymentMethodId);
+
+      // Check if user already has a subscription
+      const existing = await getUserSubscription(ctx.user.id);
+      if (existing) {
+        // Just update card on file
+        await updateSubscriptionCard(ctx.user.id, cardDetails);
+        return { success: true, plan: existing.planName };
+      }
+
+      // Create free plan subscription
+      await createFreeSubscription(ctx.user.id, input.stripeCustomerId, cardDetails);
+
+      await logPaymentEvent({
+        userId: ctx.user.id,
+        event: "free_plan.activated",
+        stripeObjectId: input.paymentMethodId,
+        amountCents: 0,
+        currency: "usd",
+        metadata: { planKey: "free", stripeCustomerId: input.stripeCustomerId },
+      });
+
+      return { success: true, plan: "free" };
+    }),
+
+  // ── Protected: check billing status (card on file + plan) ──────────────────
+  getBillingStatus: protectedProcedure.query(async ({ ctx }) => {
+    const sub = await getUserSubscription(ctx.user.id);
+    return {
+      hasSubscription: !!sub,
+      cardOnFile: sub?.cardOnFile ?? false,
+      planName: sub?.planName ?? null,
+      status: sub?.status ?? null,
+      suspendedAt: sub?.suspendedAt ?? null,
+      maxStudents: sub?.planName ? (getPlanByKey(sub.planName)?.maxStudents ?? 1) : 0,
+    };
+  }),
+
+  // ── Protected: check student slot availability for parent ──────────────────
+  checkStudentSlots: protectedProcedure.query(async ({ ctx }) => {
+    const sub = await getUserSubscription(ctx.user.id);
+    if (!sub) return { available: false, current: 0, max: 0, reason: "No subscription" };
+    const plan = getPlanByKey(sub.planName);
+    const maxStudents = plan?.maxStudents ?? 1;
+    const currentStudents = await countParentStudents(ctx.user.id);
+    return {
+      available: currentStudents < maxStudents,
+      current: currentStudents,
+      max: maxStudents,
+      planName: sub.planName,
+    };
+  }),
+
+  // ── Protected: update card on file ─────────────────────────────────────────
+  updateCard: protectedProcedure
+    .input(z.object({ paymentMethodId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const sub = await getUserSubscription(ctx.user.id);
+      if (!sub?.stripeCustomerId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "No subscription found" });
+      }
+      const cardDetails = await getCardDetailsFromPaymentMethod(input.paymentMethodId);
+      if (!cardDetails) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid payment method" });
+      }
+      await setDefaultPaymentMethod(sub.stripeCustomerId, input.paymentMethodId);
+      await updateSubscriptionCard(ctx.user.id, cardDetails);
+      return { success: true, card: cardDetails };
+    }),
+
+  // ── Protected: billing delegation (student requests parent to pay) ─────────
+  createBillingDelegation: protectedProcedure
+    .input(
+      z.object({
+        parentEmail: z.string().email(),
+        parentName: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const token = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      await createBillingDelegation({
+        studentId: ctx.user.id,
+        parentEmail: input.parentEmail.toLowerCase(),
+        parentName: input.parentName,
+        token,
+        expiresAt,
+      });
+
+      // Send email to parent
+      try {
+        const { sendEmail } = await import("../emailService");
+        await sendEmail({
+          to: input.parentEmail,
+          subject: `${ctx.user.name ?? "A student"} needs your help to access EduChamp`,
+          html: `<p>Hi ${input.parentName ?? "there"},</p>
+            <p><strong>${ctx.user.name ?? "A student"}</strong> has requested you to set up billing for their EduChamp account.</p>
+            <p>Please log in to EduChamp to review and accept this request. You can add the student to your existing plan or set up a new one.</p>
+            <p>This request expires in 7 days.</p>`,
+          text: `${ctx.user.name ?? "A student"} has requested you to set up billing for their EduChamp account. Please log in to review.`,
+          templateName: "billing_delegation_request",
+          referenceId: `delegation_${token}`,
+        });
+      } catch (err) {
+        console.warn("[BillingDelegation] Email send failed:", err);
+      }
+
+      return { success: true, expiresAt };
+    }),
+
+  // ── Protected: get my billing delegations (student view) ───────────────────
+  getMyBillingDelegations: protectedProcedure.query(async ({ ctx }) => {
+    return getStudentBillingDelegations(ctx.user.id);
+  }),
+
+  // ── Protected: get pending billing delegation requests (parent view) ───────
+  getPendingBillingRequests: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.user.email) return [];
+    return getPendingBillingDelegationsForEmail(ctx.user.email);
+  }),
+
+  // ── Protected: accept billing delegation (parent) ──────────────────────────
+  acceptBillingDelegation: protectedProcedure
+    .input(z.object({ token: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const delegation = await getBillingDelegationByToken(input.token);
+      if (!delegation) throw new TRPCError({ code: "NOT_FOUND", message: "Request not found" });
+      if (delegation.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "Request already processed" });
+      if (new Date() > delegation.expiresAt) throw new TRPCError({ code: "BAD_REQUEST", message: "Request has expired" });
+
+      // Check parent has card on file and plan supports another student
+      const sub = await getUserSubscription(ctx.user.id);
+      if (!sub?.cardOnFile) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "You must have a card on file to accept this request" });
+      }
+      const plan = getPlanByKey(sub.planName);
+      const maxStudents = plan?.maxStudents ?? 1;
+      const currentStudents = await countParentStudents(ctx.user.id);
+      if (currentStudents >= maxStudents) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `Your ${plan?.name ?? "plan"} supports up to ${maxStudents} students. Please upgrade to add more.`,
+        });
+      }
+
+      await acceptBillingDelegation(input.token, ctx.user.id);
+
+      // Link the student to the parent and give them free plan access
+      const { enrollChild } = await import("../db");
+      await enrollChild(ctx.user.id, delegation.studentId);
+
+      // Create free subscription for the student (covered by parent)
+      const studentSub = await getUserSubscription(delegation.studentId);
+      if (!studentSub) {
+        await createFreeSubscription(delegation.studentId, sub.stripeCustomerId ?? "", {
+          stripePaymentMethodId: sub.stripePaymentMethodId ?? "",
+          cardLast4: sub.cardLast4 ?? "",
+          cardBrand: sub.cardBrand ?? "",
+          cardExpMonth: sub.cardExpMonth ?? 0,
+          cardExpYear: sub.cardExpYear ?? 0,
+        });
+      }
+
+      return { success: true };
+    }),
+
+  // ── Protected: reject billing delegation (parent) ──────────────────────────
+  rejectBillingDelegation: protectedProcedure
+    .input(z.object({ token: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const delegation = await getBillingDelegationByToken(input.token);
+      if (!delegation) throw new TRPCError({ code: "NOT_FOUND", message: "Request not found" });
+      if (delegation.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "Request already processed" });
+      await rejectBillingDelegation(input.token);
+      return { success: true };
+    }),
+
   // ── Protected: open Stripe Customer Portal ──────────────────────────────────
   createPortalSession: protectedProcedure
     .input(z.object({ origin: z.string().url() }))
@@ -490,5 +719,162 @@ export const paymentRouter = router({
     getPaymentAnalytics: adminProcedure.query(async () => {
       return getPaymentAnalytics();
     }),
+
+    // ─── Admin: Subscription Management ─────────────────────────────────────
+
+    listSubscriptionsDetailed: adminProcedure
+      .input(
+        z.object({
+          status: z.string().optional(),
+          planName: z.string().optional(),
+          limit: z.number().int().min(1).max(100).default(50),
+          offset: z.number().int().nonnegative().default(0),
+        })
+      )
+      .query(async ({ input }) => {
+        return listSubscriptionsWithUsers(input);
+      }),
+
+    getSubscription: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const sub = await getSubscriptionById(input.id);
+        if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+        return sub;
+      }),
+
+    suspendSubscription: adminProcedure
+      .input(z.object({ id: z.number(), reason: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        await adminSuspendSubscription(input.id, ctx.user.id, input.reason);
+        await logPaymentEvent({
+          userId: ctx.user.id,
+          event: "admin.subscription.suspended",
+          stripeObjectId: String(input.id),
+          metadata: { reason: input.reason, adminId: ctx.user.id },
+        });
+        return { success: true };
+      }),
+
+    resumeSubscription: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        await adminResumeSubscription(input.id);
+        await logPaymentEvent({
+          userId: ctx.user.id,
+          event: "admin.subscription.resumed",
+          stripeObjectId: String(input.id),
+          metadata: { adminId: ctx.user.id },
+        });
+        return { success: true };
+      }),
+
+    updateSubscriptionStatus: adminProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          status: z.enum(["trialing", "active", "past_due", "canceled", "unpaid", "incomplete"]),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await adminUpdateSubscriptionStatus(input.id, input.status);
+        await logPaymentEvent({
+          userId: ctx.user.id,
+          event: "admin.subscription.status_changed",
+          stripeObjectId: String(input.id),
+          metadata: { newStatus: input.status, adminId: ctx.user.id },
+        });
+        return { success: true };
+      }),
+
+    cancelSubscription: adminProcedure
+      .input(z.object({ id: z.number(), immediate: z.boolean().default(false) }))
+      .mutation(async ({ ctx, input }) => {
+        const sub = await getSubscriptionById(input.id);
+        if (!sub) throw new TRPCError({ code: "NOT_FOUND" });
+
+        // Cancel in Stripe if there's a Stripe subscription
+        if (sub.stripeSubscriptionId) {
+          try {
+            if (input.immediate) {
+              await stripe.subscriptions.cancel(sub.stripeSubscriptionId);
+            } else {
+              await stripe.subscriptions.update(sub.stripeSubscriptionId, {
+                cancel_at_period_end: true,
+              });
+            }
+          } catch (err) {
+            console.warn("[Admin] Stripe cancel failed:", err);
+          }
+        }
+
+        if (input.immediate) {
+          await adminUpdateSubscriptionStatus(input.id, "canceled");
+        }
+
+        await logPaymentEvent({
+          userId: ctx.user.id,
+          event: input.immediate ? "admin.subscription.terminated" : "admin.subscription.cancel_scheduled",
+          stripeObjectId: String(input.id),
+          metadata: { adminId: ctx.user.id, immediate: input.immediate },
+        });
+        return { success: true };
+      }),
+
+    createSubscriptionManual: adminProcedure
+      .input(
+        z.object({
+          userId: z.number(),
+          planName: z.enum(["free", "family", "premium_family"]),
+          billingPeriod: z.enum(["monthly", "annual"]),
+          status: z.enum(["trialing", "active"]).default("active"),
+          trialDays: z.number().int().min(0).max(90).optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const plan = getPlanByKey(input.planName);
+        if (!plan) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid plan" });
+
+        const user = await getUserById(input.userId);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+
+        let stripeCustomerId: string | undefined;
+        if (user.email) {
+          stripeCustomerId = await getOrCreateStripeCustomer(input.userId, user.email, user.name);
+        }
+
+        const trialEnd = input.trialDays
+          ? new Date(Date.now() + input.trialDays * 24 * 60 * 60 * 1000)
+          : undefined;
+
+        await adminCreateSubscription({
+          userId: input.userId,
+          planName: input.planName,
+          billingPeriod: input.billingPeriod,
+          status: input.trialDays ? "trialing" : input.status,
+          stripeCustomerId,
+          amountCents: input.billingPeriod === "annual" ? plan.annual.amountCents : plan.monthly.amountCents,
+          trialEnd,
+        });
+
+        await logPaymentEvent({
+          userId: ctx.user.id,
+          event: "admin.subscription.created_manual",
+          stripeObjectId: String(input.userId),
+          metadata: {
+            adminId: ctx.user.id,
+            planName: input.planName,
+            billingPeriod: input.billingPeriod,
+            targetUserId: input.userId,
+          },
+        });
+        return { success: true };
+      }),
+
+    getExpiringCards: adminProcedure
+      .input(z.object({ withinDays: z.number().int().min(1).max(180).default(30) }))
+      .query(async ({ input }) => {
+        return getExpiringCardSubscriptions(input.withinDays);
+      }),
   }),
 });

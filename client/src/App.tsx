@@ -39,6 +39,7 @@ const NewsletterConsole = lazy(() => import("./pages/NewsletterConsole"));
 const ChatManagement = lazy(() => import("./pages/ChatManagement"));
 const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
 const Billing = lazy(() => import("./pages/Billing"));
+const BillingSetup = lazy(() => import("./pages/BillingSetup"));
 const CourseRequestResult = lazy(() => import("./pages/CourseRequestResult"));
 const Verify2FA = lazy(() => import("./pages/Verify2FA"));
 const EarlyDiagnostic = lazy(() => import("./pages/EarlyDiagnostic"));
@@ -114,6 +115,7 @@ function Router() {
                 <Route path="/profile" component={Profile} />
                 <Route path="/referrals" component={Referrals} />
                 <Route path="/billing" component={Billing} />
+                <Route path="/billing/setup" component={BillingSetup} />
                 <Route path="/gamification" component={GamificationHub} />
                 <Route path="/rewards" component={RewardsMarketplace} />
                 <Route path="/adventure-map" component={AdventureMap} />

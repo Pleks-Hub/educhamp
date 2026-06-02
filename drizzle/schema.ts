@@ -1002,6 +1002,19 @@ export const subscriptions = mysqlTable("subscriptions", {
   canceledAt: timestamp("canceledAt"),
   trialEnd: timestamp("trialEnd"),
 
+  // Card on file
+  cardOnFile: boolean("cardOnFile").notNull().default(false),
+  stripePaymentMethodId: varchar("stripePaymentMethodId", { length: 128 }),
+  cardLast4: varchar("cardLast4", { length: 4 }),
+  cardBrand: varchar("cardBrand", { length: 32 }),
+  cardExpMonth: int("cardExpMonth"),
+  cardExpYear: int("cardExpYear"),
+
+  // Admin actions
+  suspendedAt: timestamp("suspendedAt"),
+  suspendedBy: int("suspendedBy"),
+  suspendReason: text("suspendReason"),
+
   // Pricing snapshot
   amountCents: int("amountCents"),
   currency: varchar("currency", { length: 8 }).notNull().default("usd"),
@@ -1015,6 +1028,33 @@ export const subscriptions = mysqlTable("subscriptions", {
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+// ─── Billing Delegations ─────────────────────────────────────────────────────
+/**
+ * When an underage student cannot self-pay, they request a parent/guardian
+ * to become their billing payer. This table tracks those requests.
+ */
+export const billingDelegations = mysqlTable("billingDelegations", {
+  id: int("id").autoincrement().primaryKey(),
+  studentId: int("studentId").notNull(),           // FK → users.id (the student requesting billing)
+  parentEmail: varchar("parentEmail", { length: 320 }).notNull(),
+  parentName: varchar("parentName", { length: 256 }),
+  parentUserId: int("parentUserId"),                // FK → users.id (set when parent accepts)
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  status: mysqlEnum("status", ["pending", "accepted", "rejected", "expired"]).notNull().default("pending"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  acceptedAt: timestamp("acceptedAt"),
+  rejectedAt: timestamp("rejectedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  studentIdIdx: index("billingDelegations_studentId_idx").on(t.studentId),
+  parentEmailIdx: index("billingDelegations_parentEmail_idx").on(t.parentEmail),
+  tokenIdx: index("billingDelegations_token_idx").on(t.token),
+}));
+
+export type BillingDelegation = typeof billingDelegations.$inferSelect;
+export type InsertBillingDelegation = typeof billingDelegations.$inferInsert;
 
 // ─── Payment Audit Log ────────────────────────────────────────────────────────
 

@@ -13,6 +13,7 @@ import { gradePromotionHandler } from "../scheduledHandlers";
 import { inviteExpiryHandler } from "../scheduled/inviteExpiry";
 import { inactivityMonitorHandler } from "../scheduled/inactivityMonitor";
 import { weeklyParentDigestHandler } from "../scheduled/weeklyParentDigest";
+import { cardExpiryReminderHandler } from "../scheduled/cardExpiryReminder";
 import { seedDefaultRoles } from "../db";
 import { seedDefaultBadges } from "../gamification/badges";
 import { seedDefaultQuests } from "../gamification/quests";
@@ -117,6 +118,7 @@ async function startServer() {
   app.post("/api/scheduled/invite-expiry", inviteExpiryHandler);
   app.post("/api/scheduled/inactivity-monitor", inactivityMonitorHandler);
   app.post("/api/scheduled/weekly-parent-digest", weeklyParentDigestHandler);
+  app.post("/api/scheduled/card-expiry-reminder", cardExpiryReminderHandler);
 
   // ── Course request email approve/reject token handler ─────────────────────
   app.get("/api/course-request/token", async (req, res) => {

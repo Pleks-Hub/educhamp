@@ -3536,3 +3536,360 @@ export async function getMasteryRecordsForContext(enrollmentContextId: number) {
     .where(eq(masteryRecords.enrollmentContextId, enrollmentContextId))
     .orderBy(standards.code);
 }
+
+
+// ─── Billing & Access Control Helpers ────────────────────────────────────────
+
+/**
+ * Update subscription with card-on-file details after a Stripe SetupIntent succeeds.
+ */
+export async function updateSubscriptionCard(userId: number, card: {
+  stripePaymentMethodId: string;
+  cardLast4: string;
+  cardBrand: string;
+  cardExpMonth: number;
+  cardExpYear: number;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  const { subscriptions } = await import("../drizzle/schema");
+  const { sql } = await import("drizzle-orm");
+  await db
+    .update(subscriptions)
+    .set({
+      cardOnFile: true,
+      stripePaymentMethodId: card.stripePaymentMethodId,
+      cardLast4: card.cardLast4,
+      cardBrand: card.cardBrand,
+      cardExpMonth: card.cardExpMonth,
+      cardExpYear: card.cardExpYear,
+      updatedAt: sql`NOW()`,
+    })
+    .where(eq(subscriptions.userId, userId));
+}
+
+/**
+ * Create a free-plan subscription record with card on file.
+ */
+export async function createFreeSubscription(userId: number, stripeCustomerId: string, card: {
+  stripePaymentMethodId: string;
+  cardLast4: string;
+  cardBrand: string;
+  cardExpMonth: number;
+  cardExpYear: number;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  const { subscriptions } = await import("../drizzle/schema");
+  await db
+    .insert(subscriptions)
+    .values({
+      userId,
+      planName: "free",
+      billingPeriod: "monthly",
+      status: "active",
+      stripeCustomerId,
+      cardOnFile: true,
+      stripePaymentMethodId: card.stripePaymentMethodId,
+      cardLast4: card.cardLast4,
+      cardBrand: card.cardBrand,
+      cardExpMonth: card.cardExpMonth,
+      cardExpYear: card.cardExpYear,
+      amountCents: 0,
+    });
+}
+
+/**
+ * Count how many students a parent currently has linked (for plan limit enforcement).
+ */
+export async function countParentStudents(parentId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const { parentChildren } = await import("../drizzle/schema");
+  const { count } = await import("drizzle-orm");
+  const rows = await db
+    .select({ total: count() })
+    .from(parentChildren)
+    .where(eq(parentChildren.parentId, parentId));
+  return rows[0]?.total ?? 0;
+}
+
+// ─── Billing Delegation Helpers ──────────────────────────────────────────────
+
+export async function createBillingDelegation(data: {
+  studentId: number;
+  parentEmail: string;
+  parentName?: string;
+  token: string;
+  expiresAt: Date;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  const { billingDelegations } = await import("../drizzle/schema");
+  await db.insert(billingDelegations).values({
+    studentId: data.studentId,
+    parentEmail: data.parentEmail,
+    parentName: data.parentName ?? null,
+    token: data.token,
+    expiresAt: data.expiresAt,
+  });
+}
+
+export async function getBillingDelegationByToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const { billingDelegations } = await import("../drizzle/schema");
+  const rows = await db
+    .select()
+    .from(billingDelegations)
+    .where(eq(billingDelegations.token, token))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getPendingBillingDelegationsForEmail(email: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const { billingDelegations } = await import("../drizzle/schema");
+  const { and } = await import("drizzle-orm");
+  return db
+    .select()
+    .from(billingDelegations)
+    .where(
+      and(
+        eq(billingDelegations.parentEmail, email.toLowerCase()),
+        eq(billingDelegations.status, "pending")
+      )
+    );
+}
+
+export async function acceptBillingDelegation(token: string, parentUserId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const { billingDelegations } = await import("../drizzle/schema");
+  const { sql } = await import("drizzle-orm");
+  await db
+    .update(billingDelegations)
+    .set({
+      status: "accepted",
+      parentUserId,
+      acceptedAt: sql`NOW()`,
+      updatedAt: sql`NOW()`,
+    })
+    .where(eq(billingDelegations.token, token));
+}
+
+export async function rejectBillingDelegation(token: string) {
+  const db = await getDb();
+  if (!db) return;
+  const { billingDelegations } = await import("../drizzle/schema");
+  const { sql } = await import("drizzle-orm");
+  await db
+    .update(billingDelegations)
+    .set({
+      status: "rejected",
+      rejectedAt: sql`NOW()`,
+      updatedAt: sql`NOW()`,
+    })
+    .where(eq(billingDelegations.token, token));
+}
+
+export async function getStudentBillingDelegations(studentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const { billingDelegations } = await import("../drizzle/schema");
+  const { desc } = await import("drizzle-orm");
+  return db
+    .select()
+    .from(billingDelegations)
+    .where(eq(billingDelegations.studentId, studentId))
+    .orderBy(desc(billingDelegations.createdAt));
+}
+
+// ─── Admin Subscription Management ──────────────────────────────────────────
+
+export async function adminSuspendSubscription(subscriptionId: number, adminId: number, reason?: string) {
+  const db = await getDb();
+  if (!db) return;
+  const { subscriptions } = await import("../drizzle/schema");
+  const { sql } = await import("drizzle-orm");
+  await db
+    .update(subscriptions)
+    .set({
+      suspendedAt: sql`NOW()`,
+      suspendedBy: adminId,
+      suspendReason: reason ?? null,
+      updatedAt: sql`NOW()`,
+    })
+    .where(eq(subscriptions.id, subscriptionId));
+}
+
+export async function adminResumeSubscription(subscriptionId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const { subscriptions } = await import("../drizzle/schema");
+  const { sql } = await import("drizzle-orm");
+  await db
+    .update(subscriptions)
+    .set({
+      suspendedAt: null,
+      suspendedBy: null,
+      suspendReason: null,
+      updatedAt: sql`NOW()`,
+    })
+    .where(eq(subscriptions.id, subscriptionId));
+}
+
+export async function adminUpdateSubscriptionStatus(
+  subscriptionId: number,
+  status: "trialing" | "active" | "past_due" | "canceled" | "unpaid" | "incomplete"
+) {
+  const db = await getDb();
+  if (!db) return;
+  const { subscriptions } = await import("../drizzle/schema");
+  const { sql } = await import("drizzle-orm");
+  await db
+    .update(subscriptions)
+    .set({ status, updatedAt: sql`NOW()` })
+    .where(eq(subscriptions.id, subscriptionId));
+}
+
+export async function adminCreateSubscription(data: {
+  userId: number;
+  planName: string;
+  billingPeriod: "monthly" | "annual";
+  status: "trialing" | "active" | "past_due" | "canceled" | "unpaid" | "incomplete";
+  stripeCustomerId?: string;
+  amountCents?: number;
+  trialEnd?: Date;
+}) {
+  const db = await getDb();
+  if (!db) return;
+  const { subscriptions } = await import("../drizzle/schema");
+  await db.insert(subscriptions).values({
+    userId: data.userId,
+    planName: data.planName,
+    billingPeriod: data.billingPeriod,
+    status: data.status,
+    stripeCustomerId: data.stripeCustomerId ?? null,
+    amountCents: data.amountCents ?? 0,
+    trialEnd: data.trialEnd ?? null,
+  });
+}
+
+export async function getSubscriptionById(subscriptionId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const { subscriptions } = await import("../drizzle/schema");
+  const rows = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.id, subscriptionId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function listSubscriptionsWithUsers(opts: {
+  status?: string;
+  planName?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const db = await getDb();
+  if (!db) return { rows: [], total: 0 };
+  const { subscriptions, users } = await import("../drizzle/schema");
+  const { and, count, desc } = await import("drizzle-orm");
+  const conditions = [];
+  if (opts.status) conditions.push(eq(subscriptions.status, opts.status as any));
+  if (opts.planName) conditions.push(eq(subscriptions.planName, opts.planName));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select({
+        id: subscriptions.id,
+        userId: subscriptions.userId,
+        planName: subscriptions.planName,
+        billingPeriod: subscriptions.billingPeriod,
+        status: subscriptions.status,
+        stripeCustomerId: subscriptions.stripeCustomerId,
+        stripeSubscriptionId: subscriptions.stripeSubscriptionId,
+        cardOnFile: subscriptions.cardOnFile,
+        cardLast4: subscriptions.cardLast4,
+        cardBrand: subscriptions.cardBrand,
+        cardExpMonth: subscriptions.cardExpMonth,
+        cardExpYear: subscriptions.cardExpYear,
+        currentPeriodStart: subscriptions.currentPeriodStart,
+        currentPeriodEnd: subscriptions.currentPeriodEnd,
+        cancelAtPeriodEnd: subscriptions.cancelAtPeriodEnd,
+        trialEnd: subscriptions.trialEnd,
+        amountCents: subscriptions.amountCents,
+        suspendedAt: subscriptions.suspendedAt,
+        suspendedBy: subscriptions.suspendedBy,
+        suspendReason: subscriptions.suspendReason,
+        createdAt: subscriptions.createdAt,
+        updatedAt: subscriptions.updatedAt,
+        userName: users.name,
+        userEmail: users.email,
+        userAccountType: users.accountType,
+      })
+      .from(subscriptions)
+      .leftJoin(users, eq(subscriptions.userId, users.id))
+      .where(where)
+      .orderBy(desc(subscriptions.createdAt))
+      .limit(opts.limit ?? 50)
+      .offset(opts.offset ?? 0),
+    db.select({ total: count() }).from(subscriptions).where(where),
+  ]);
+  return { rows, total };
+}
+
+/**
+ * Get subscriptions with expiring cards (within N days).
+ */
+export async function getExpiringCardSubscriptions(withinDays: number = 30) {
+  const db = await getDb();
+  if (!db) return [];
+  const { subscriptions, users } = await import("../drizzle/schema");
+  const { and, inArray } = await import("drizzle-orm");
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1; // 1-12
+  const currentYear = now.getFullYear();
+  // Calculate the target month/year that is withinDays from now
+  const targetDate = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);
+  const targetMonth = targetDate.getMonth() + 1;
+  const targetYear = targetDate.getFullYear();
+
+  const rows = await db
+    .select({
+      subscriptionId: subscriptions.id,
+      userId: subscriptions.userId,
+      cardLast4: subscriptions.cardLast4,
+      cardBrand: subscriptions.cardBrand,
+      cardExpMonth: subscriptions.cardExpMonth,
+      cardExpYear: subscriptions.cardExpYear,
+      planName: subscriptions.planName,
+      userName: users.name,
+      userEmail: users.email,
+      userAccountType: users.accountType,
+    })
+    .from(subscriptions)
+    .leftJoin(users, eq(subscriptions.userId, users.id))
+    .where(
+      and(
+        eq(subscriptions.cardOnFile, true),
+        inArray(subscriptions.status, ["active", "trialing"])
+      )
+    );
+
+  // Filter in JS for month/year comparison
+  return rows.filter((r) => {
+    if (!r.cardExpMonth || !r.cardExpYear) return false;
+    // Card expires at end of exp month
+    if (r.cardExpYear < currentYear) return true; // already expired
+    if (r.cardExpYear === currentYear && r.cardExpMonth < currentMonth) return true;
+    // Expiring within target window
+    if (r.cardExpYear < targetYear) return true;
+    if (r.cardExpYear === targetYear && r.cardExpMonth <= targetMonth) return true;
+    return false;
+  });
+}

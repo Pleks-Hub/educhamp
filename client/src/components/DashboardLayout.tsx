@@ -175,12 +175,25 @@ function DashboardLayoutContent({
     : 0;
   const showTrialBanner = isTrialing && !trialBannerDismissed;
 
-  // Post-trial grace period: show locked overlay for past_due or canceled subscriptions
-  // Allow /billing to remain accessible so users can reactivate
+  // Access gating: lock access if subscription is past_due/canceled OR if no subscription at all (no card on file)
+  // Allow /billing and /admin to remain accessible so users can set up billing or manage
+  const billingStatusQuery = trpc.payment.getBillingStatus.useQuery(undefined, {
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+  const billingStatus = billingStatusQuery.data;
+  const noCardOnFile = billingStatus && !billingStatus.hasSubscription;
+  const isSuspended = billingStatus?.suspendedAt != null;
   const isAccessLocked =
-    (sub?.status === "past_due" || sub?.status === "canceled") &&
+    (
+      sub?.status === "past_due" ||
+      sub?.status === "canceled" ||
+      noCardOnFile ||
+      isSuspended
+    ) &&
     !location.startsWith("/billing") &&
-    !location.startsWith("/admin");
+    !location.startsWith("/admin") &&
+    !location.startsWith("/settings");
 
   const planDisplayName = sub?.planName === "premium_family" ? "Premium Family" : sub?.planName === "family" ? "Family Plan" : sub?.planName ?? "your plan";
   const periodEndDate = sub?.currentPeriodEnd
@@ -396,39 +409,47 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        {/* Post-trial locked-access overlay */}
+        {/* Access-locked overlay: no card, past_due, canceled, or suspended */}
         {isAccessLocked && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
             <div className="mx-4 w-full max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-2xl">
-              <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
-                <Lock className="h-8 w-8 text-destructive" />
+              <div className={`mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full ${noCardOnFile ? 'bg-indigo-100' : isSuspended ? 'bg-amber-100' : 'bg-destructive/10'}`}>
+                {noCardOnFile ? (
+                  <CreditCard className="h-8 w-8 text-indigo-600" />
+                ) : isSuspended ? (
+                  <AlertTriangle className="h-8 w-8 text-amber-600" />
+                ) : (
+                  <Lock className="h-8 w-8 text-destructive" />
+                )}
               </div>
               <h2 className="mb-2 text-xl font-bold text-foreground">
-                {sub?.status === "past_due" ? "Payment required" : "Subscription ended"}
+                {noCardOnFile
+                  ? "Set up billing to get started"
+                  : isSuspended
+                    ? "Account suspended"
+                    : sub?.status === "past_due"
+                      ? "Payment required"
+                      : "Subscription ended"}
               </h2>
-              <p className="mb-1 text-sm font-medium text-muted-foreground">
-                {planDisplayName}
+              <p className="mb-6 text-sm text-muted-foreground">
+                {noCardOnFile
+                  ? "A payment card on file is required before you can access EduChamp. Set up your billing information to activate your free plan."
+                  : isSuspended
+                    ? "Your account has been suspended by an administrator. Please contact support for more information."
+                    : sub?.status === "past_due"
+                      ? "A payment is overdue. Please update your payment method to restore access."
+                      : periodEndDate
+                        ? `Your subscription ended on ${periodEndDate}. Reactivate to continue learning.`
+                        : "Your subscription has ended. Reactivate to continue learning."}
               </p>
-              {periodEndDate && (
-                <p className="mb-6 text-sm text-muted-foreground">
-                  {sub?.status === "past_due"
-                    ? `A payment is overdue. Your access will be restored once the payment is processed.`
-                    : `Your subscription ended on ${periodEndDate}.`}
-                </p>
+              {!isSuspended && (
+                <Button
+                  className="w-full mb-3"
+                  onClick={() => setLocation(noCardOnFile ? "/billing/setup" : "/billing")}
+                >
+                  {noCardOnFile ? "Set up billing" : "Reactivate your plan"}
+                </Button>
               )}
-              {!periodEndDate && (
-                <p className="mb-6 text-sm text-muted-foreground">
-                  {sub?.status === "past_due"
-                    ? "A payment is overdue. Please update your payment method to restore access."
-                    : "Your subscription has ended. Reactivate to continue learning."}
-                </p>
-              )}
-              <Button
-                className="w-full mb-3"
-                onClick={() => setLocation("/billing")}
-              >
-                Reactivate your plan
-              </Button>
               <p className="text-xs text-muted-foreground">
                 Need help?{" "}
                 <a href="mailto:support@educhamp.app" className="underline hover:text-foreground">
