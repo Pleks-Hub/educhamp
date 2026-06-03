@@ -2549,3 +2549,7 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] No memory leaks: all timers/intervals have proper cleanup
 - [x] All 41 test files passing, 1122 total tests
 - [x] Fix parent enrollment grade options: expand from Grade 7-12 to Pre-K through Grade 12
+- [x] Fix Quiz page: add rendering for "open_response" question type (textarea input field)
+- [x] Fix Quiz page: handle edge case where multiple_choice question has empty/null choices (fallback to text input)
+- [x] Fix admin flag resolution: add "Auto-Fix Question" action that converts broken questions to short_answer type with proper input field
+- [x] Add "no_answer_input" flag reason option for students to report missing input fields

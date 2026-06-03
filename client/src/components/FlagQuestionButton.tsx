@@ -30,6 +30,7 @@ import { trpc } from "@/lib/trpc";
 const REASONS = [
   { value: "incorrect_answer", label: "The answer is incorrect" },
   { value: "unclear_question", label: "The question is unclear or confusing" },
+  { value: "no_answer_input", label: "No place to type my answer" },
   { value: "wrong_difficulty", label: "Wrong difficulty level" },
   { value: "out_of_scope", label: "Out of scope for this course" },
   { value: "duplicate", label: "This is a duplicate question" },

@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft,
@@ -596,7 +597,7 @@ export default function Quiz() {
             </div>
           </div>
 
-          {currentQ.questionType === "multiple_choice" && (
+          {currentQ.questionType === "multiple_choice" && parseChoices(currentQ.choices).length > 0 && (
             <RadioGroup
               value={currentAnswer}
               onValueChange={(val) => setAnswers((prev) => ({ ...prev, [String(currentQ.id)]: val }))}
@@ -622,6 +623,24 @@ export default function Quiz() {
             </RadioGroup>
           )}
 
+          {/* Fallback: multiple_choice with empty/null choices — show text input */}
+          {currentQ.questionType === "multiple_choice" && parseChoices(currentQ.choices).length === 0 && (
+            <div className="space-y-2">
+              <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                This question's answer choices are unavailable. Please type your answer below.
+              </div>
+              <Label htmlFor={`fallback-${currentQ.id}`} className="text-sm text-muted-foreground">Your answer:</Label>
+              <Input
+                id={`fallback-${currentQ.id}`}
+                value={currentAnswer}
+                onChange={(e) => setAnswers((prev) => ({ ...prev, [String(currentQ.id)]: e.target.value }))}
+                placeholder="Type your answer..."
+                className="text-sm"
+                onKeyDown={(e) => e.key === "Enter" && handleNext()}
+              />
+            </div>
+          )}
+
           {currentQ.questionType === "short_answer" && (
             <div className="space-y-2">
               <Label htmlFor={`short-answer-${currentQ.id}`} className="text-sm text-muted-foreground">Your answer:</Label>
@@ -633,6 +652,21 @@ export default function Quiz() {
                 className="text-sm"
                 onKeyDown={(e) => e.key === "Enter" && handleNext()}
               />
+            </div>
+          )}
+
+          {currentQ.questionType === "open_response" && (
+            <div className="space-y-2">
+              <Label htmlFor={`open-response-${currentQ.id}`} className="text-sm text-muted-foreground">Write your response:</Label>
+              <Textarea
+                id={`open-response-${currentQ.id}`}
+                value={currentAnswer}
+                onChange={(e) => setAnswers((prev) => ({ ...prev, [String(currentQ.id)]: e.target.value }))}
+                placeholder="Write your full response here..."
+                className="text-sm min-h-[120px] resize-y"
+                rows={5}
+              />
+              <p className="text-xs text-muted-foreground">Show your work and explain your reasoning for full credit.</p>
             </div>
           )}
         </CardContent>

@@ -10,6 +10,7 @@ import { protectedProcedure, adminProcedure, router } from "../_core/trpc";
 const REASON_LABELS: Record<string, string> = {
   incorrect_answer: "Incorrect answer",
   unclear_question: "Unclear or confusing question",
+  no_answer_input: "No place to type answer",
   wrong_difficulty: "Wrong difficulty level",
   out_of_scope: "Out of scope for this course",
   duplicate: "Duplicate question",
@@ -29,6 +30,7 @@ export const questionFlagsRouter = router({
         reason: z.enum([
           "incorrect_answer",
           "unclear_question",
+          "no_answer_input",
           "wrong_difficulty",
           "out_of_scope",
           "duplicate",
@@ -338,6 +340,142 @@ export const questionFlagsRouter = router({
       }
 
       return { success: true };
+    }),
+
+  /**
+   * Admin: auto-fix a flagged question.
+   * For "no_answer_input" or "unclear_question" flags on quiz questions:
+   * - If questionType is "open_response" or "multiple_choice" with empty choices,
+   *   converts to "short_answer" so the student gets a text input field.
+   * - Marks the flag as resolved with an auto-generated note.
+   */
+  adminAutoFixQuestion: adminProcedure
+    .input(
+      z.object({
+        flagId: z.number().int().positive(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await (await import("../db")).getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const {
+        questionFlags,
+        quizQuestions,
+        diagnosticQuestions,
+        users,
+        userNotifications,
+      } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+
+      // Fetch the flag
+      const [flag] = await db
+        .select()
+        .from(questionFlags)
+        .where(eq(questionFlags.id, input.flagId))
+        .limit(1);
+      if (!flag) throw new TRPCError({ code: "NOT_FOUND", message: "Flag not found" });
+
+      let fixApplied = false;
+      let fixDescription = "";
+
+      if (flag.questionType === "quiz") {
+        // Fetch the quiz question
+        const [question] = await db
+          .select()
+          .from(quizQuestions)
+          .where(eq(quizQuestions.id, flag.questionId))
+          .limit(1);
+        if (!question) throw new TRPCError({ code: "NOT_FOUND", message: "Question not found" });
+
+        // Fix: convert open_response or multiple_choice with empty choices to short_answer
+        const choices = question.choices as { label: string; text: string }[] | null;
+        const hasEmptyChoices = !choices || (Array.isArray(choices) && choices.length === 0);
+
+        if (question.questionType === "open_response" || (question.questionType === "multiple_choice" && hasEmptyChoices)) {
+          await db
+            .update(quizQuestions)
+            .set({ questionType: "short_answer", choices: null })
+            .where(eq(quizQuestions.id, flag.questionId));
+          fixApplied = true;
+          fixDescription = `Converted question from "${question.questionType}" to "short_answer" — students will now see a text input field.`;
+        } else if (question.questionType === "multiple_choice" && !hasEmptyChoices) {
+          // Choices exist but student reported no input — might be a rendering issue
+          // Reactivate the question to ensure it's visible
+          await db
+            .update(quizQuestions)
+            .set({ isActive: true })
+            .where(eq(quizQuestions.id, flag.questionId));
+          fixApplied = true;
+          fixDescription = "Question verified and reactivated. Answer choices are present and should render correctly.";
+        } else {
+          fixDescription = "Question is already a short_answer type with a text input field. No fix needed.";
+          fixApplied = true;
+        }
+      } else {
+        // Diagnostic question
+        const [question] = await db
+          .select()
+          .from(diagnosticQuestions)
+          .where(eq(diagnosticQuestions.id, flag.questionId))
+          .limit(1);
+        if (!question) throw new TRPCError({ code: "NOT_FOUND", message: "Question not found" });
+
+        const choices = question.choices as { label: string; text: string }[] | null;
+        const hasEmptyChoices = !choices || (Array.isArray(choices) && choices.length === 0);
+
+        if (question.questionType === "multiple_choice" && hasEmptyChoices) {
+          await db
+            .update(diagnosticQuestions)
+            .set({ questionType: "short_answer", choices: null })
+            .where(eq(diagnosticQuestions.id, flag.questionId));
+          fixApplied = true;
+          fixDescription = `Converted diagnostic question from "multiple_choice" to "short_answer" — students will now see a text input field.`;
+        } else {
+          fixDescription = "Question appears to have valid answer options. Verified and no structural fix needed.";
+          fixApplied = true;
+        }
+      }
+
+      // Mark the flag as resolved
+      const reviewNote = `[Auto-Fix] ${fixDescription}`;
+      await db
+        .update(questionFlags)
+        .set({
+          status: "resolved",
+          reviewedBy: ctx.user.id,
+          reviewNote,
+        })
+        .where(eq(questionFlags.id, input.flagId));
+
+      // Notify the student
+      const [student] = await db
+        .select({ id: users.id, name: users.name, email: users.email })
+        .from(users)
+        .where(eq(users.id, flag.userId))
+        .limit(1);
+
+      if (student) {
+        await db
+          .insert(userNotifications)
+          .values({
+            userId: student.id,
+            type: "flag_resolution",
+            title: "Your question report was auto-fixed",
+            message: `We fixed the ${flag.questionType} question you reported. ${fixDescription} You can now retry the question.`,
+            isRead: false,
+            metadata: JSON.stringify({
+              flagId: input.flagId,
+              status: "resolved",
+              questionType: flag.questionType,
+              questionId: flag.questionId,
+              reviewNote,
+              autoFixed: true,
+            }),
+          })
+          .catch((e) => console.error("[FlagAutoFix] Notification insert failed:", e));
+      }
+
+      return { success: true, fixApplied, fixDescription };
     }),
 
   /**

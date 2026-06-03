@@ -1444,6 +1444,7 @@ export const questionFlags = mysqlTable("questionFlags", {
     "wrong_difficulty",
     "out_of_scope",
     "duplicate",
+    "no_answer_input",
     "other",
   ]).notNull(),
   details: text("details"),

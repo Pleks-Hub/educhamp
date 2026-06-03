@@ -1075,7 +1075,7 @@ export default function Diagnostic() {
               </div>
             </div>
 
-            {currentQ.questionType === "multiple_choice" && (
+            {currentQ.questionType === "multiple_choice" && parseChoices(currentQ.choices).length > 0 && (
               <RadioGroup
                 value={currentAnswer}
                 onValueChange={(val) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: val }))}
@@ -1099,6 +1099,23 @@ export default function Diagnostic() {
                   </div>
                 ))}
               </RadioGroup>
+            )}
+
+            {/* Fallback: multiple_choice with empty/null choices */}
+            {currentQ.questionType === "multiple_choice" && parseChoices(currentQ.choices).length === 0 && (
+              <div className="space-y-2">
+                <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                  This question's answer choices are unavailable. Please type your answer below.
+                </div>
+                <Label className="text-sm text-muted-foreground">Your answer:</Label>
+                <Input
+                  value={currentAnswer}
+                  onChange={(e) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: e.target.value }))}
+                  placeholder="Type your answer..."
+                  className="text-sm"
+                  onKeyDown={(e) => e.key === "Enter" && handleNext()}
+                />
+              </div>
             )}
 
             {currentQ.questionType === "short_answer" && (

@@ -2306,8 +2306,10 @@ const FLAG_STATUS_COLORS: Record<string, string> = {
 const FLAG_REASON_LABELS: Record<string, string> = {
   incorrect_answer: "Incorrect Answer",
   unclear_question: "Unclear Question",
+  no_answer_input: "No Answer Input",
   wrong_difficulty: "Wrong Difficulty",
   out_of_scope: "Out of Scope",
+  duplicate: "Duplicate",
   typo: "Typo / Grammar",
   other: "Other",
 };
@@ -2326,6 +2328,15 @@ function FlaggedQuestionsTab() {
       toast.success("Flag updated");
       setReviewDialog(null);
       setReviewNote("");
+      refetch();
+      utils.questionFlags.adminFlagStats.invalidate();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+  const autoFix = trpc.questionFlags.adminAutoFixQuestion.useMutation({
+    onSuccess: (res) => {
+      toast.success(res.fixApplied ? `Auto-fixed: ${res.fixDescription}` : "No fix needed");
+      setReviewDialog(null);
       refetch();
       utils.questionFlags.adminFlagStats.invalidate();
     },
@@ -2401,6 +2412,11 @@ function FlaggedQuestionsTab() {
                       </Button>
                     )}
                     {(flag.status === "open" || flag.status === "reviewed") && (
+                      <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => autoFix.mutate({ flagId: flag.id })} disabled={autoFix.isPending}>
+                        <Sparkles className="h-3.5 w-3.5 mr-1" />Auto-Fix
+                      </Button>
+                    )}
+                    {(flag.status === "open" || flag.status === "reviewed") && (
                       <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => updateFlag.mutate({ flagId: flag.id, status: "resolved" })}>
                         <CheckCircle2 className="h-3.5 w-3.5 mr-1" />Resolve
                       </Button>
@@ -2451,6 +2467,9 @@ function FlaggedQuestionsTab() {
             </Button>
             <Button onClick={() => reviewDialog && updateFlag.mutate({ flagId: reviewDialog.id, status: "reviewed", reviewNote: reviewNote || undefined })}>
               Mark Reviewed
+            </Button>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => reviewDialog && autoFix.mutate({ flagId: reviewDialog.id })} disabled={autoFix.isPending}>
+              <Sparkles className="h-3.5 w-3.5 mr-1" />Auto-Fix
             </Button>
             <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => reviewDialog && updateFlag.mutate({ flagId: reviewDialog.id, status: "resolved", reviewNote: reviewNote || undefined })}>
               Resolve
