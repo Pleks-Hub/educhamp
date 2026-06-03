@@ -2548,3 +2548,4 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] No hooks-after-return violations in other pages (false positives confirmed)
 - [x] No memory leaks: all timers/intervals have proper cleanup
 - [x] All 41 test files passing, 1122 total tests
+- [x] Fix parent enrollment grade options: expand from Grade 7-12 to Pre-K through Grade 12

@@ -366,8 +366,8 @@ function EnrolChildModal({ open, onClose, onSuccess }: { open: boolean; onClose:
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {["7","8","9","10","11","12"].map((g) => (
-                      <SelectItem key={g} value={g}>Grade {g}</SelectItem>
+                    {["Pre-K","Kindergarten","1","2","3","4","5","6","7","8","9","10","11","12"].map((g) => (
+                      <SelectItem key={g} value={g}>{["Pre-K","Kindergarten"].includes(g) ? g : `Grade ${g}`}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
