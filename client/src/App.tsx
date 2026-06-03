@@ -54,6 +54,7 @@ const Certificates = lazy(() => import("./pages/Certificates"));
 const StudentNotifications = lazy(() => import("./pages/StudentNotifications"));
 const StudentSetup = lazy(() => import("./pages/StudentSetup"));
 const StudentLogin = lazy(() => import("./pages/StudentLogin"));
+const StudentForgotPassword = lazy(() => import("./pages/StudentForgotPassword"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -92,6 +93,7 @@ function Router() {
         <Route path="/certificate/:token" component={CertificatePage} />
         <Route path="/student-setup" component={StudentSetup} />
         <Route path="/student-login" component={StudentLogin} />
+        <Route path="/student-forgot-password" component={StudentForgotPassword} />
 
         {/* Admin console — standalone, no sidebar */}
         <Route path="/admin" component={AdminDashboard} />

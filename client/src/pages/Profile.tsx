@@ -434,20 +434,147 @@ export default function Profile() {
         </Card>
       )}
 
-      {/* Account Security Note */}
-      <Card className="border-muted bg-muted/30">
-        <CardContent className="pt-4 pb-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-            <div className="text-sm text-muted-foreground">
-              <strong className="text-foreground">Note:</strong> EduChamp uses secure single sign-on.
-              Your account credentials are managed by your identity provider. To update your email or
-              password, please visit your account settings through the sign-in portal.
+      {/* Change Password (for students with local auth password) */}
+      {user.passwordHash && <ChangePasswordCard />}
+
+      {/* Account Security Note (only for OAuth users without password) */}
+      {!user.passwordHash && (
+        <Card className="border-muted bg-muted/30">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <div className="text-sm text-muted-foreground">
+                <strong className="text-foreground">Note:</strong> EduChamp uses secure single sign-on.
+                Your account credentials are managed by your identity provider. To update your email or
+                password, please visit your account settings through the sign-in portal.
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
+  );
+}
+
+// ─── Change Password Card ─────────────────────────────────────────────────────
+function ChangePasswordCard() {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswords, setShowPasswords] = useState(false);
+
+  const changePassword = trpc.studentAuth.changePassword.useMutation({
+    onSuccess: () => {
+      toast.success("Password changed successfully!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const passwordStrength = (() => {
+    if (!newPassword) return { label: "", color: "" };
+    let score = 0;
+    if (newPassword.length >= 8) score++;
+    if (newPassword.length >= 12) score++;
+    if (/[a-z]/.test(newPassword)) score++;
+    if (/[A-Z]/.test(newPassword)) score++;
+    if (/\d/.test(newPassword)) score++;
+    if (/[^a-zA-Z0-9]/.test(newPassword)) score++;
+    if (score <= 2) return { label: "Weak", color: "text-red-500" };
+    if (score <= 3) return { label: "Fair", color: "text-amber-500" };
+    if (score <= 4) return { label: "Good", color: "text-blue-500" };
+    return { label: "Strong", color: "text-emerald-500" };
+  })();
+
+  const canSubmit =
+    currentPassword.length > 0 &&
+    newPassword.length >= 8 &&
+    confirmPassword === newPassword &&
+    /[a-z]/.test(newPassword) &&
+    /[A-Z]/.test(newPassword) &&
+    /\d/.test(newPassword);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <KeyRound className="h-4 w-4" />
+          Change Password
+        </CardTitle>
+        <CardDescription>
+          Update your sign-in password. Must be at least 8 characters with uppercase, lowercase, and a number.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="current-password">Current Password</Label>
+          <Input
+            id="current-password"
+            type={showPasswords ? "text" : "password"}
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Enter current password"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="new-password">New Password</Label>
+          <Input
+            id="new-password"
+            type={showPasswords ? "text" : "password"}
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Enter new password"
+          />
+          {newPassword && (
+            <p className={`text-xs ${passwordStrength.color}`}>
+              Strength: {passwordStrength.label}
+            </p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+          <Input
+            id="confirm-new-password"
+            type={showPasswords ? "text" : "password"}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Confirm new password"
+          />
+          {confirmPassword && confirmPassword !== newPassword && (
+            <p className="text-xs text-red-500">Passwords do not match.</p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+            onClick={() => setShowPasswords(!showPasswords)}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            {showPasswords ? "Hide" : "Show"} passwords
+          </button>
+        </div>
+        <Button
+          className="w-full gap-2"
+          onClick={() =>
+            changePassword.mutate({
+              currentPassword,
+              newPassword,
+              confirmNewPassword: confirmPassword,
+            })
+          }
+          disabled={!canSubmit || changePassword.isPending}
+        >
+          {changePassword.isPending ? (
+            <><Loader2 className="h-4 w-4 animate-spin" />Updating…</>
+          ) : (
+            <>Update Password</>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

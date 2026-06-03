@@ -38,6 +38,9 @@ export default function StudentSetup() {
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token") || "";
 
+  const mode = params.get("mode") || "setup"; // "setup" or "reset"
+  const isReset = mode === "reset";
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -165,17 +168,19 @@ export default function StudentSetup() {
           </div>
           <div className="text-center">
             <h1 className="text-xl font-bold">EduChamp</h1>
-            <p className="text-xs text-muted-foreground">Set Up Your Account</p>
+            <p className="text-xs text-muted-foreground">{isReset ? "Reset Password" : "Set Up Your Account"}</p>
           </div>
         </div>
 
         <Card>
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-xl">
-              Welcome, {tokenQuery.data?.studentName || "Student"}!
+              {isReset ? "Reset your password" : `Welcome, ${tokenQuery.data?.studentName || "Student"}!`}
             </CardTitle>
             <CardDescription>
-              Create a password to access your learning dashboard.
+              {isReset
+                ? "Enter a new password for your account."
+                : "Create a password to access your learning dashboard."}
               {tokenQuery.data?.email && (
                 <span className="block mt-1 font-medium text-foreground">{tokenQuery.data.email}</span>
               )}
@@ -284,10 +289,10 @@ export default function StudentSetup() {
                 {createPassword.isPending ? (
                   <span className="flex items-center gap-2">
                     <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                    Creating account...
+                    {isReset ? "Resetting password..." : "Creating account..."}
                   </span>
                 ) : (
-                  "Create Password & Sign In"
+                  isReset ? "Reset Password & Sign In" : "Create Password & Sign In"
                 )}
               </Button>
 

@@ -299,4 +299,91 @@ export const studentAuthRouter = router({
       if (!user) return { eligible: false, reason: "No account found with this email." };
       return { eligible: true, studentName: user.name ?? "Student" };
     }),
+
+  /**
+   * Change password for a logged-in student who already has a password
+   */
+  changePassword: protectedProcedure
+    .input(
+      z.object({
+        currentPassword: z.string().min(1),
+        newPassword: z.string().min(8),
+        confirmNewPassword: z.string().min(8),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (input.newPassword !== input.confirmNewPassword) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "New passwords do not match." });
+      }
+
+      const validation = validatePassword(input.newPassword);
+      if (!validation.valid) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: validation.message! });
+      }
+
+      // Verify current password
+      if (!ctx.user.passwordHash) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No password set. Use the setup link to create one first." });
+      }
+
+      const isValid = await bcrypt.compare(input.currentPassword, ctx.user.passwordHash);
+      if (!isValid) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Current password is incorrect." });
+      }
+
+      // Hash and save new password
+      const hash = await bcrypt.hash(input.newPassword, 12);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable." });
+
+      await db.update(users).set({ passwordHash: hash }).where(eq(users.id, ctx.user.id));
+
+      return { success: true };
+    }),
+
+  /**
+   * Request a password reset email (forgot password for student local auth)
+   */
+  requestPasswordReset: publicProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(async ({ input }) => {
+      // Always return success to prevent email enumeration
+      const user = await getUserByEmail(input.email);
+      if (!user || !user.passwordHash) {
+        // Don't reveal whether the account exists
+        return { success: true, message: "If an account with that email exists, a reset link has been sent." };
+      }
+
+      // Create a reset token (reusing the same token infrastructure)
+      const token = await createSetupToken(user.id);
+      const resetUrl = `https://educhamp.app/student-setup?token=${token}&mode=reset`;
+
+      // Send reset email
+      await sendEmail({
+        to: user.email!,
+        subject: "Reset Your EduChamp Password",
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+            <div style="text-align: center; margin-bottom: 32px;">
+              <h1 style="color: #0d9488; margin: 0;">EduChamp</h1>
+            </div>
+            <div style="background: #f8fafc; border-radius: 12px; padding: 32px; border: 1px solid #e2e8f0;">
+              <h2 style="margin: 0 0 16px; color: #1e293b;">Password Reset Request</h2>
+              <p style="color: #475569; line-height: 1.6;">Hi ${user.name ?? "Student"},</p>
+              <p style="color: #475569; line-height: 1.6;">We received a request to reset your password. Click the button below to create a new password:</p>
+              <div style="text-align: center; margin: 24px 0;">
+                <a href="${resetUrl}" style="display: inline-block; background: #0d9488; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">Reset Password</a>
+              </div>
+              <p style="color: #64748b; font-size: 14px; line-height: 1.5;">This link expires in 7 days. If you didn't request this, you can safely ignore this email.</p>
+              <p style="color: #64748b; font-size: 14px; line-height: 1.5;">Or copy this link: <a href="${resetUrl}" style="color: #0d9488;">${resetUrl}</a></p>
+            </div>
+            <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 24px;">EduChamp — AI-Powered Learning</p>
+          </div>
+        `,
+        text: `Hi ${user.name ?? "Student"}, reset your EduChamp password here: ${resetUrl} (expires in 7 days).`,
+        templateName: "passwordReset",
+      });
+
+      return { success: true, message: "If an account with that email exists, a reset link has been sent." };
+    }),
 });

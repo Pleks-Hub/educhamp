@@ -2557,3 +2557,6 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Student password creation: add password hash column, create-password page, email link to student after parent enrollment
 - [x] Student sign-in: allow parent-enrolled students to sign in with email + password (local auth)
 - [x] Student Apple ID sign-in: if student's registered email matches Apple ID email, allow Apple sign-in
+- [x] E2E test: enroll student from Parent Dashboard, verify setup email, test password creation + login
+- [x] Add password change/update to student Profile page
+- [x] Add forgot-password flow for student local auth (email + password students)
