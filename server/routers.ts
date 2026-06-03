@@ -196,12 +196,17 @@ export const appRouter = router({
       const currentEnrollment = enrollments.find((e) => e.enrollment.isCurrent) ?? enrollments[0];
       const activeCourseId = currentEnrollment?.enrollment.courseId ?? 1;
 
-      const [courseUnits, unitProgressData, masteryData, quizAttemptsData] = await Promise.all([
+      const [courseUnits, unitProgressData, allMasteryData, quizAttemptsData, courseSkillRows] = await Promise.all([
         getUnitsForCourse(activeCourseId),
         getUserUnitProgress(userId),
         getUserMastery(userId),
         getQuizAttemptsForUser(userId),
+        getSkillsForCourse(activeCourseId),
       ]);
+
+      // Filter mastery to only include skills from the active course
+      const courseSkillIds = new Set(courseSkillRows.map((r) => r.skill.skillId));
+      const masteryData = allMasteryData.filter((m) => courseSkillIds.has(m.skillId));
 
       const progressMap = new Map(unitProgressData.map((p) => [p.unitId, p]));
       const masteryMap = new Map(masteryData.map((m) => [m.skillId, m]));
@@ -256,12 +261,14 @@ export const appRouter = router({
     }),
 
     getMastery: protectedProcedure.query(async ({ ctx }) => {
-      const [masteryData, allSkills] = await Promise.all([
+      const activeCourseId = await getActiveCourseIdForUser(ctx.user.id);
+      const [masteryData, courseSkillRows] = await Promise.all([
         getUserMastery(ctx.user.id),
-        getAllSkills(),
+        getSkillsForCourse(activeCourseId),
       ]);
       const masteryMap = new Map(masteryData.map((m) => [m.skillId, m]));
-      return allSkills.map((skill) => {
+      return courseSkillRows.map((row) => {
+        const skill = row.skill;
         const mastery = masteryMap.get(skill.skillId);
         return {
           ...skill,

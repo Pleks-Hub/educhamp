@@ -249,29 +249,30 @@ export const paymentRouter = router({
       const priceEntry = input.billingPeriod === "annual" ? plan.annual : plan.monthly;
       const stripePriceId = priceEntry.stripePriceId;
 
-      // Build line items — prefer pre-created Stripe Price ID for proper subscription management
-      const lineItem = stripePriceId
-        ? { price: stripePriceId, quantity: 1 }
-        : {
-            price_data: {
-              currency: "usd",
-              product_data: {
-                name: `${plan.name} — ${input.billingPeriod === "annual" ? "Annual" : "Monthly"}`,
-                description: plan.features.slice(0, 3).join(" · "),
+      // Build line items — prefer pre-created Stripe Price ID, with fallback to price_data
+      const buildLineItem = (usePriceId: boolean) =>
+        usePriceId && stripePriceId
+          ? { price: stripePriceId, quantity: 1 }
+          : {
+              price_data: {
+                currency: "usd" as const,
+                product_data: {
+                  name: `${plan.name} — ${input.billingPeriod === "annual" ? "Annual" : "Monthly"}`,
+                  description: plan.features.slice(0, 3).join(" · "),
+                },
+                unit_amount: amountCents,
+                recurring: { interval: (input.billingPeriod === "annual" ? "year" : "month") as "year" | "month" },
               },
-              unit_amount: amountCents,
-              recurring: { interval: (input.billingPeriod === "annual" ? "year" : "month") as "year" | "month" },
-            },
-            quantity: 1,
-          };
+              quantity: 1,
+            };
 
-      const session = await stripe.checkout.sessions.create({
+      // Try with price ID first, fall back to price_data if price doesn't exist in this Stripe account
+      const checkoutParams = {
         customer: stripeCustomerId,
-        mode: "subscription",
-        payment_method_types: ["card", "paypal", "us_bank_account"],
-        allow_promotion_codes: !stripeCouponId, // allow manual codes if no server-side coupon
+        mode: "subscription" as const,
+        payment_method_types: ["card" as const],
+        allow_promotion_codes: !stripeCouponId,
         discounts: stripeCouponId ? [{ coupon: stripeCouponId }] : undefined,
-        line_items: [lineItem],
         subscription_data: {
           trial_period_days: 14,
           metadata: {
@@ -290,7 +291,25 @@ export const paymentRouter = router({
         },
         success_url: `${input.origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${input.origin}/#pricing`,
-      });
+      };
+
+      let session;
+      try {
+        session = await stripe.checkout.sessions.create({
+          ...checkoutParams,
+          line_items: [buildLineItem(true)],
+        });
+      } catch (err: any) {
+        // If the price ID doesn't exist (e.g., live vs test mode mismatch), fall back to price_data
+        if (err?.code === "resource_missing" || err?.message?.includes("No such price")) {
+          session = await stripe.checkout.sessions.create({
+            ...checkoutParams,
+            line_items: [buildLineItem(false)],
+          });
+        } else {
+          throw err;
+        }
+      }
 
       // Log the checkout initiation
       await logPaymentEvent({
