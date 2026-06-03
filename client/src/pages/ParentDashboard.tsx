@@ -1714,6 +1714,25 @@ function GradeOverrideInline({ child }: { child: ChildSummary }) {
   );
 }
 
+function ResendSetupEmailButton({ childId, childName }: { childId: number; childName: string }) {
+  const sendSetup = trpc.studentAuth.sendSetupEmail.useMutation({
+    onSuccess: () => toast.success(`Setup email sent to ${childName}!`),
+    onError: (err) => toast.error(err.message || "Failed to send setup email"),
+  });
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => sendSetup.mutate({ childId })}
+      disabled={sendSetup.isPending}
+      className="gap-1.5"
+    >
+      {sendSetup.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+      {sendSetup.isPending ? "Sending..." : "Resend Setup Email"}
+    </Button>
+  );
+}
+
 function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: () => void }) {
   const [editOpen, setEditOpen] = useState(false);
   // Activity timeline filters
@@ -1790,19 +1809,22 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
             </div>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-          onClick={() => {
-            if (confirm(`Remove ${child.name} from your account? Their progress data will be preserved.`)) {
-              removeChild.mutate({ childId: child.childId });
-              onRemove();
-            }
-          }}
-        >
-          <Trash2 className="h-4 w-4 mr-1" /> Remove
-        </Button>
+        <div className="flex items-center gap-2">
+          <ResendSetupEmailButton childId={child.childId} childName={child.name ?? "Student"} />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={() => {
+              if (confirm(`Remove ${child.name} from your account? Their progress data will be preserved.`)) {
+                removeChild.mutate({ childId: child.childId });
+                onRemove();
+              }
+            }}
+          >
+            <Trash2 className="h-4 w-4 mr-1" /> Remove
+          </Button>
+        </div>
       </div>
 
       {/* Stats row */}

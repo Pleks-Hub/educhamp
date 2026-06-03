@@ -1,0 +1,302 @@
+/**
+ * Student Local Authentication Router
+ *
+ * Handles password creation and email+password login for parent-enrolled students
+ * who don't have OAuth credentials.
+ */
+import { z } from "zod";
+import { TRPCError } from "@trpc/server";
+import { publicProcedure, protectedProcedure, router } from "../_core/trpc";
+import { nanoid } from "nanoid";
+import bcrypt from "bcryptjs";
+import {
+  getUserByEmail,
+  getDb,
+} from "../db";
+import { users } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
+import { sdk } from "../_core/sdk";
+import { sendEmail } from "../emailService";
+import { buildStudentSetupEmail } from "../emailTemplates/studentSetup";
+import { COOKIE_NAME } from "@shared/const";
+
+// ─── Setup Token Management ──────────────────────────────────────────────────
+
+// In-memory token store (for simplicity; could be moved to DB for persistence)
+// Token format: { userId, email, expiresAt }
+interface SetupToken {
+  userId: number;
+  email: string;
+  studentName: string;
+  expiresAt: Date;
+  usedAt?: Date;
+}
+
+// We'll use the existing passwordResetTokens table for setup tokens too
+import { passwordResetTokens } from "../../drizzle/schema";
+
+async function createSetupToken(userId: number): Promise<string> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const token = nanoid(48);
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  await db.insert(passwordResetTokens).values({
+    userId,
+    token,
+    expiresAt,
+  });
+  return token;
+}
+
+async function getSetupToken(token: string) {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db
+    .select()
+    .from(passwordResetTokens)
+    .where(eq(passwordResetTokens.token, token))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+async function markSetupTokenUsed(token: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(passwordResetTokens)
+    .set({ usedAt: new Date() })
+    .where(eq(passwordResetTokens.token, token));
+}
+
+// ─── Password Helpers ────────────────────────────────────────────────────────
+
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+function validatePassword(password: string): { valid: boolean; message?: string } {
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    return { valid: false, message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.` };
+  }
+  if (!PASSWORD_REGEX.test(password)) {
+    return {
+      valid: false,
+      message: "Password must contain at least one uppercase letter, one lowercase letter, and one number.",
+    };
+  }
+  return { valid: true };
+}
+
+// ─── Cookie helpers ──────────────────────────────────────────────────────────
+
+function getSessionCookieOptions(req: any) {
+  const isSecure = req.headers["x-forwarded-proto"] === "https" || req.protocol === "https";
+  return {
+    httpOnly: true,
+    secure: isSecure,
+    sameSite: "lax" as const,
+    path: "/",
+  };
+}
+
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+
+// ─── Router ──────────────────────────────────────────────────────────────────
+
+export const studentAuthRouter = router({
+  /**
+   * Validate a setup token (used on the student-setup page)
+   */
+  validateSetupToken: publicProcedure
+    .input(z.object({ token: z.string() }))
+    .query(async ({ input }) => {
+      const record = await getSetupToken(input.token);
+      if (!record) return { valid: false, reason: "Token not found." };
+      if (record.usedAt) return { valid: false, reason: "This link has already been used." };
+      if (record.expiresAt < new Date()) return { valid: false, reason: "This link has expired. Ask your parent to resend it." };
+
+      // Get the user info
+      const db = await getDb();
+      if (!db) return { valid: false, reason: "Service unavailable." };
+      const userRows = await db.select().from(users).where(eq(users.id, record.userId)).limit(1);
+      const user = userRows[0];
+      if (!user) return { valid: false, reason: "Account not found." };
+
+      return {
+        valid: true,
+        studentName: user.name ?? "Student",
+        email: user.email ?? "",
+        hasPassword: !!user.passwordHash,
+      };
+    }),
+
+  /**
+   * Create password for a parent-enrolled student (via setup token)
+   */
+  createPassword: publicProcedure
+    .input(
+      z.object({
+        token: z.string(),
+        password: z.string().min(8),
+        confirmPassword: z.string().min(8),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      // Validate passwords match
+      if (input.password !== input.confirmPassword) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Passwords do not match." });
+      }
+
+      // Validate password strength
+      const validation = validatePassword(input.password);
+      if (!validation.valid) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: validation.message! });
+      }
+
+      // Validate token
+      const record = await getSetupToken(input.token);
+      if (!record) throw new TRPCError({ code: "NOT_FOUND", message: "Invalid setup link." });
+      if (record.usedAt) throw new TRPCError({ code: "BAD_REQUEST", message: "This link has already been used." });
+      if (record.expiresAt < new Date()) throw new TRPCError({ code: "BAD_REQUEST", message: "This link has expired." });
+
+      // Hash password and save
+      const hash = await bcrypt.hash(input.password, 12);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Service unavailable." });
+
+      await db.update(users).set({
+        passwordHash: hash,
+        status: "active",
+      }).where(eq(users.id, record.userId));
+
+      // Mark token as used
+      await markSetupTokenUsed(input.token);
+
+      // Get the user to create a session
+      const userRows = await db.select().from(users).where(eq(users.id, record.userId)).limit(1);
+      const user = userRows[0];
+      if (!user) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "User not found." });
+
+      // Create session token and set cookie
+      const sessionToken = await sdk.createSessionToken(user.openId, {
+        name: user.name || "",
+        expiresInMs: ONE_YEAR_MS,
+      });
+
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+
+      return { success: true, studentName: user.name ?? "Student" };
+    }),
+
+  /**
+   * Email + Password login for parent-enrolled students
+   */
+  loginWithPassword: publicProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        password: z.string().min(1),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const user = await getUserByEmail(input.email);
+      if (!user) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password." });
+      }
+
+      if (!user.passwordHash) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "No password set for this account. Check your email for a setup link, or sign in with Apple/Google.",
+        });
+      }
+
+      const isValid = await bcrypt.compare(input.password, user.passwordHash);
+      if (!isValid) {
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password." });
+      }
+
+      // Check account status
+      if (user.status === "suspended" || user.status === "deactivated") {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Your account has been suspended. Contact your parent or support." });
+      }
+
+      // Create session
+      const sessionToken = await sdk.createSessionToken(user.openId, {
+        name: user.name || "",
+        expiresInMs: ONE_YEAR_MS,
+      });
+
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
+
+      // Update last sign in
+      const db = await getDb();
+      if (db) {
+        await db.update(users).set({ lastSignedIn: new Date(), lastLoginAt: new Date() }).where(eq(users.id, user.id));
+      }
+
+      return { success: true, name: user.name ?? "Student" };
+    }),
+
+  /**
+   * Send/resend setup email to a child (called by parent)
+   */
+  sendSetupEmail: protectedProcedure
+    .input(z.object({ childId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      // Verify parent-child relationship
+      const { parentChildren } = await import("../../drizzle/schema");
+      const link = await db
+        .select()
+        .from(parentChildren)
+        .where(eq(parentChildren.parentId, ctx.user.id))
+        .limit(100);
+      const childLink = link.find((l) => l.childId === input.childId && l.isActive);
+      if (!childLink) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this student." });
+      }
+
+      // Get child info
+      const childRows = await db.select().from(users).where(eq(users.id, input.childId)).limit(1);
+      const child = childRows[0];
+      if (!child || !child.email) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Student not found or has no email." });
+      }
+
+      // Create setup token
+      const token = await createSetupToken(child.id);
+      const setupUrl = `https://educhamp.app/student-setup?token=${token}`;
+
+      // Send email
+      const emailContent = buildStudentSetupEmail({
+        studentName: child.name ?? "Student",
+        parentName: ctx.user.name ?? "Your parent",
+        setupUrl,
+      });
+
+      await sendEmail({
+        to: child.email,
+        subject: emailContent.subject,
+        html: emailContent.html,
+        text: emailContent.text,
+        templateName: "studentSetup",
+      });
+
+      return { success: true };
+    }),
+
+  /**
+   * Check if a student can use Apple Sign-In (email matches)
+   */
+  checkAppleSignInEligibility: publicProcedure
+    .input(z.object({ email: z.string().email() }))
+    .query(async ({ input }) => {
+      const user = await getUserByEmail(input.email);
+      if (!user) return { eligible: false, reason: "No account found with this email." };
+      return { eligible: true, studentName: user.name ?? "Student" };
+    }),
+});

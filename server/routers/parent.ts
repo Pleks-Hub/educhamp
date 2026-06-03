@@ -32,10 +32,14 @@ import {
   getUserProfile,
   getActiveCourseIdForUser,
   getUnitsForCourse,
+  getDb,
 } from "../db";
 import { getMasteryLabel, getAdaptivePath, isYoungLearnerGrade } from "../educhamp-helpers";
 import { sendEmail } from "../emailService";
 import { buildCourseRequestOutcomeEmail } from "../emailTemplates/courseRequestNotification";
+import { buildStudentSetupEmail } from "../emailTemplates/studentSetup";
+import { passwordResetTokens } from "../../drizzle/schema";
+import { nanoid } from "nanoid";
 
 export const parentRouter = router({
   /**
@@ -296,9 +300,35 @@ export const parentRouter = router({
       await enrollChild(ctx.user.id, child.id, input.nickname ?? input.name, input.relationship ?? "parent");
 
       notifyOwner({
-        title: `New Student Created — ${ctx.user.name}`,
+        title: `New Student Created \u2014 ${ctx.user.name}`,
         content: `${ctx.user.name} created and enrolled a new student: ${input.name} (${input.email}), Grade ${input.grade}.`,
       }).catch(() => {});
+
+      // Send setup email to the newly enrolled student (non-blocking)
+      try {
+        const db = await getDb();
+        if (db) {
+          const token = nanoid(48);
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+          await db.insert(passwordResetTokens).values({ userId: child.id, token, expiresAt });
+          const origin = ctx.req.headers.origin || "https://educhamp.app";
+          const setupUrl = `${origin}/student-setup?token=${token}`;
+          const emailContent = buildStudentSetupEmail({
+            studentName: input.name,
+            parentName: ctx.user.name ?? "Your parent",
+            setupUrl,
+          });
+          await sendEmail({
+            to: input.email,
+            subject: emailContent.subject,
+            html: emailContent.html,
+            text: emailContent.text,
+            templateName: "studentSetup",
+          });
+        }
+      } catch (err) {
+        console.error("[createAndEnroll] Failed to send setup email:", err);
+      }
 
       return { success: true, childId: child.id, childName: child.name };
     }),

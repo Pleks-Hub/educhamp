@@ -52,6 +52,8 @@ const ExamPrep = lazy(() => import("./pages/ExamPrep"));
 const CertificatePage = lazy(() => import("./pages/CertificatePage"));
 const Certificates = lazy(() => import("./pages/Certificates"));
 const StudentNotifications = lazy(() => import("./pages/StudentNotifications"));
+const StudentSetup = lazy(() => import("./pages/StudentSetup"));
+const StudentLogin = lazy(() => import("./pages/StudentLogin"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -88,6 +90,8 @@ function Router() {
         <Route path="/consent/deny" component={ConsentApproval} />
         <Route path="/consent/waiting" component={CoppaConsentWaiting} />
         <Route path="/certificate/:token" component={CertificatePage} />
+        <Route path="/student-setup" component={StudentSetup} />
+        <Route path="/student-login" component={StudentLogin} />
 
         {/* Admin console — standalone, no sidebar */}
         <Route path="/admin" component={AdminDashboard} />

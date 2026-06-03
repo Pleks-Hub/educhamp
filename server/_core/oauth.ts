@@ -34,15 +34,48 @@ export function registerOAuthRoutes(app: Express) {
 
       // Check if this is a new user before upserting
       const existingUser = await db.getUserByOpenId(userInfo.openId);
-      const isNewUser = !existingUser;
+      let isNewUser = !existingUser;
 
-      await db.upsertUser({
-        openId: userInfo.openId,
-        name: userInfo.name || null,
-        email: userInfo.email ?? null,
-        loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-        lastSignedIn: new Date(),
-      });
+      // ── Account linking for parent-enrolled students ──────────────────────
+      // If this OAuth openId is new but the email matches a parent-enrolled student
+      // (who has a synthetic child_xxx openId), link the accounts by updating the
+      // existing student's openId to the OAuth openId so they can use OAuth going forward.
+      if (isNewUser && userInfo.email) {
+        const existingByEmail = await db.getUserByEmail(userInfo.email);
+        if (existingByEmail && existingByEmail.openId.startsWith("child_")) {
+          // Link: update the parent-enrolled student's openId to the OAuth openId
+          const dbConn = await db.getDb();
+          if (dbConn) {
+            const { users } = await import("../../drizzle/schema");
+            const { eq } = await import("drizzle-orm");
+            await dbConn.update(users).set({
+              openId: userInfo.openId,
+              loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+              name: userInfo.name || existingByEmail.name,
+              lastSignedIn: new Date(),
+            }).where(eq(users.id, existingByEmail.id));
+            isNewUser = false; // They already have an account, just linked
+            console.log(`[OAuth] Linked parent-enrolled student ${existingByEmail.email} (id=${existingByEmail.id}) to OAuth openId ${userInfo.openId}`);
+          }
+        } else {
+          // Normal new user flow
+          await db.upsertUser({
+            openId: userInfo.openId,
+            name: userInfo.name || null,
+            email: userInfo.email ?? null,
+            loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+            lastSignedIn: new Date(),
+          });
+        }
+      } else {
+        await db.upsertUser({
+          openId: userInfo.openId,
+          name: userInfo.name || null,
+          email: userInfo.email ?? null,
+          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+          lastSignedIn: new Date(),
+        });
+      }
 
       // Send welcome notification for first-time sign-ups
       if (isNewUser) {

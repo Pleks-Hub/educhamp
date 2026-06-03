@@ -2553,3 +2553,7 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Fix Quiz page: handle edge case where multiple_choice question has empty/null choices (fallback to text input)
 - [x] Fix admin flag resolution: add "Auto-Fix Question" action that converts broken questions to short_answer type with proper input field
 - [x] Add "no_answer_input" flag reason option for students to report missing input fields
+- [x] Apple Sign-In: detect Apple device, show only on Apple devices, graceful error on non-Apple
+- [x] Student password creation: add password hash column, create-password page, email link to student after parent enrollment
+- [x] Student sign-in: allow parent-enrolled students to sign in with email + password (local auth)
+- [x] Student Apple ID sign-in: if student's registered email matches Apple ID email, allow Apple sign-in

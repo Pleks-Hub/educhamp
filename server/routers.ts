@@ -14,6 +14,7 @@ import { gamificationRouter } from "./routers/gamification";
 import { questionFlagsRouter } from "./routers/questionFlags";
 import { coppaRouter } from "./routers/coppa";
 import { certificateRouter } from "./routers/certificate";
+import { studentAuthRouter } from "./routers/studentAuth";
 import { awardXp } from "./gamification/xp";
 import { checkAndAwardBadges } from "./gamification/badges";
 import { recordActivity } from "./gamification/streaks";
@@ -84,6 +85,7 @@ export const appRouter = router({
   questionFlags: questionFlagsRouter,
   coppa: coppaRouter,
   certificate: certificateRouter,
+  studentAuth: studentAuthRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

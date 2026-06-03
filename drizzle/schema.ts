@@ -24,6 +24,7 @@ export const users = mysqlTable("users", {
   accountType: mysqlEnum("accountType", ["student", "parent", "teacher"]).default("student").notNull(),
     grade: varchar("grade", { length: 16 }).default("9"),
   school: varchar("school", { length: 256 }),
+  passwordHash: varchar("passwordHash", { length: 256 }),
   status: mysqlEnum("status", ["active", "suspended", "deactivated", "pending_verification", "archived", "deleted"]).notNull().default("active"),
   billingPeriod: mysqlEnum("billingPeriod", ["monthly", "annual"]).default("monthly"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
