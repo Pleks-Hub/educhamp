@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -928,7 +928,7 @@ function CourseRequestsPanel({ childId, childName }: { childId: number; childNam
 
 // ─── Child Courses Panel ─────────────────────────────────────────────────────
 
-function ChildCoursesPanel({ childId, childName }: { childId: number; childName: string }) {
+function ChildCoursesPanel({ childId, childName, childGrade }: { childId: number; childName: string; childGrade: string | null }) {
   const utils = trpc.useUtils();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
@@ -937,8 +937,37 @@ function ChildCoursesPanel({ childId, childName }: { childId: number; childName:
   const { data: courses, isLoading } = trpc.parent.getChildAllCourses.useQuery({ childId });
   const { data: allCourses } = trpc.parent.getAvailableCourses.useQuery(undefined, { enabled: addDialogOpen });
 
+  const [selectedGradeFilter, setSelectedGradeFilter] = useState<string | null>(null);
+
   const enrolledCourseIds = new Set((courses ?? []).map((c: { courseId: number }) => c.courseId));
   const availableCourses = (allCourses ?? []).filter((c: { id: number }) => !enrolledCourseIds.has(c.id));
+
+  // Group available courses by grade level
+  const coursesByGrade = useMemo(() => {
+    const groups: Record<string, typeof availableCourses> = {};
+    for (const c of availableCourses) {
+      const grade = (c as any).gradeLevel ?? "Other";
+      if (!groups[grade]) groups[grade] = [];
+      groups[grade].push(c);
+    }
+    // Sort grades: numeric first (ascending), then alpha
+    const sorted = Object.entries(groups).sort(([a], [b]) => {
+      const aNum = parseInt(a);
+      const bNum = parseInt(b);
+      if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+      if (!isNaN(aNum)) return -1;
+      if (!isNaN(bNum)) return 1;
+      return a.localeCompare(b);
+    });
+    return sorted;
+  }, [availableCourses]);
+
+  // Auto-select the child's grade when dialog opens
+  const gradeLabels = coursesByGrade.map(([g]) => g);
+  const effectiveFilter = selectedGradeFilter ?? (childGrade && gradeLabels.includes(childGrade) ? childGrade : null);
+  const filteredCourses = effectiveFilter
+    ? availableCourses.filter((c: any) => c.gradeLevel === effectiveFilter)
+    : availableCourses;
 
   const assignCourse = trpc.parent.assignCourseToStudent.useMutation({
     onSuccess: () => {
@@ -1039,27 +1068,71 @@ function ChildCoursesPanel({ childId, childName }: { childId: number; childName:
         </div>
       )}
 
-      {/* Add Course dialog */}
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+      {/* Add Course dialog — organized by grade */}
+      <Dialog open={addDialogOpen} onOpenChange={(open) => { setAddDialogOpen(open); if (!open) setSelectedGradeFilter(null); }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Add a Course for {childName}</DialogTitle>
             <DialogDescription>
-              Select a course to assign directly. This bypasses the student request flow and enrols {childName} immediately.
+              {childGrade ? (
+                <>Showing courses for Grade {childGrade} (auto-detected). You can select a different grade below.</>
+              ) : (
+                <>Select a grade group to browse available courses, then assign them to {childName}.</>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 max-h-80 overflow-y-auto py-2">
+
+          {/* Grade filter tabs */}
+          {coursesByGrade.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pb-1">
+              <Button
+                variant={effectiveFilter === null ? "default" : "outline"}
+                size="sm"
+                className="h-7 text-xs px-2.5"
+                onClick={() => setSelectedGradeFilter(null)}
+              >
+                All
+              </Button>
+              {coursesByGrade.map(([grade]) => (
+                <Button
+                  key={grade}
+                  variant={effectiveFilter === grade ? "default" : "outline"}
+                  size="sm"
+                  className={`h-7 text-xs px-2.5 ${childGrade === grade && effectiveFilter !== grade ? "ring-1 ring-primary/50" : ""}`}
+                  onClick={() => setSelectedGradeFilter(grade)}
+                >
+                  {/^\d+$/.test(grade) ? `Grade ${grade}` : grade}
+                  {childGrade === grade && <span className="ml-1 text-[10px] opacity-70">★</span>}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          {/* Course list */}
+          <div className="space-y-2 max-h-72 overflow-y-auto py-1">
             {availableCourses.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">
                 {childName} is already enrolled in all available courses.
               </p>
+            ) : filteredCourses.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                No additional courses available for this grade. Try selecting a different grade.
+              </p>
             ) : (
-              availableCourses.map((course) => (
+              filteredCourses.map((course: any) => (
                 <div key={course.id} className="flex items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted/40 transition-colors">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{course.title}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="text-sm font-medium truncate">{course.title}</p>
+                      {course.subject && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">{course.subject}</Badge>
+                      )}
+                    </div>
                     {course.description && (
                       <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{course.description}</p>
+                    )}
+                    {effectiveFilter === null && course.gradeLevel && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Grade {course.gradeLevel}</p>
                     )}
                   </div>
                   <Button
@@ -1075,7 +1148,11 @@ function ChildCoursesPanel({ childId, childName }: { childId: number; childName:
               ))
             )}
           </div>
-          <div className="flex justify-end">
+
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">
+              {filteredCourses.length} course{filteredCourses.length !== 1 ? "s" : ""} available
+            </p>
             <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Close</Button>
           </div>
         </DialogContent>
@@ -1860,7 +1937,7 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
 
         {/* Courses tab — multi-course overview */}
         <TabsContent value="courses" className="mt-4">
-          <ChildCoursesPanel childId={child.childId} childName={child.name ?? "Student"} />
+          <ChildCoursesPanel childId={child.childId} childName={child.name ?? "Student"} childGrade={child.grade} />
         </TabsContent>
 
         {/* Course Requests tab */}

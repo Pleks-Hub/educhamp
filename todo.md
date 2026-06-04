@@ -2564,3 +2564,7 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Update emailSettings database row to use noreply@educhamp.co
 - [x] Verify educhamp.co domain in Resend dashboard
 - [x] Test email delivery end-to-end with new domain
+- [x] Fix: Hide Parent Dashboard nav item from student accounts (students should not see or access it)
+- [x] Fix: Prevent students from using parent dashboard to add other students (role-based access)
+- [x] Harmonize Sign In and Student Login into one unified sign-in flow (better UX)
+- [x] Improve course selection UX: organize courses by grade group, auto-populate for student's grade, allow parent to add/remove

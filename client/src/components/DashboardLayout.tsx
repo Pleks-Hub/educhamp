@@ -274,13 +274,15 @@ function DashboardLayoutContent({
                 );
               })}
 
-              {/* Parent Dashboard + Referrals — always visible */}
-              {!isCollapsed && (
-                <div className="px-2 pt-2 pb-1">
-                  <div className="h-px bg-sidebar-border" />
-                </div>
-              )}
-              {[parentMenuItem, certificatesMenuItem, referralMenuItem, billingMenuItem].map((item) => {
+              {/* Parent Dashboard + Referrals — hidden from student accounts */}
+              {!isStudentAccount && (
+                <>
+                  {!isCollapsed && (
+                    <div className="px-2 pt-2 pb-1">
+                      <div className="h-px bg-sidebar-border" />
+                    </div>
+                  )}
+                  {[parentMenuItem, certificatesMenuItem, referralMenuItem, billingMenuItem].map((item) => {
                 const isActive = location.startsWith(item.path);
                 return (
                   <SidebarMenuItem key={item.path}>
@@ -303,6 +305,8 @@ function DashboardLayoutContent({
                   </SidebarMenuItem>
                 );
               })}
+                </>
+              )}
             </SidebarMenu>
           </SidebarContent>
 

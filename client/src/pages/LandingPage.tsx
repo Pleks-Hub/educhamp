@@ -516,17 +516,11 @@ export default function LandingPage() {
 
             <div className="hidden md:flex items-center gap-3">
               <a
-                href="/student-login"
-                className="text-sm text-slate-500 hover:text-indigo-600 transition-colors font-medium px-2 py-1.5"
-              >
-                Student Login
-              </a>
-              <button
-                onClick={handleSignIn}
+                href="/sign-in"
                 className="text-sm text-slate-600 hover:text-indigo-600 transition-colors font-medium px-3 py-1.5"
               >
                 Sign In
-              </button>
+              </a>
               <button
                 onClick={() => openSignUp()}
                 className="text-sm bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 transition-colors font-medium active:scale-95"
@@ -554,9 +548,8 @@ export default function LandingPage() {
             <a href="#pricing" className="block text-sm font-semibold text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
             <a href="#schools" className="block text-sm text-slate-600 hover:text-indigo-600 py-1 font-medium" onClick={() => setMobileMenuOpen(false)}>Schools &amp; Districts</a>
             <a href="#faq" className="block text-sm text-slate-600 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>FAQ</a>
-            <a href="/student-login" className="block text-sm text-slate-500 hover:text-indigo-600 py-1" onClick={() => setMobileMenuOpen(false)}>Student Login</a>
             <div className="flex gap-2 pt-2">
-              <button onClick={handleSignIn} className="flex-1 text-sm border border-slate-200 rounded-lg py-2 text-slate-700 hover:bg-slate-50 transition-colors">Sign In</button>
+              <a href="/sign-in" className="flex-1 text-sm border border-slate-200 rounded-lg py-2 text-slate-700 hover:bg-slate-50 transition-colors text-center" onClick={() => setMobileMenuOpen(false)}>Sign In</a>
               <button onClick={() => { setMobileMenuOpen(false); openSignUp(); }} className="flex-1 text-sm bg-indigo-600 text-white rounded-lg py-2 hover:bg-indigo-700 transition-colors">Sign Up Free</button>
             </div>
           </div>
@@ -1341,7 +1334,7 @@ export default function LandingPage() {
               <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
               <a href="#schools" className="hover:text-white transition-colors">Schools</a>
               <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
-              <button onClick={handleSignIn} className="hover:text-white transition-colors">Sign In</button>
+              <a href="/sign-in" className="hover:text-white transition-colors">Sign In</a>
             </div>
             <p className="text-xs text-slate-600">© {new Date().getFullYear()} EduChamp. All rights reserved.</p>
           </div>

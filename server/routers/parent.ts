@@ -47,6 +47,9 @@ export const parentRouter = router({
    * This is a one-way operation — once a parent, always a parent.
    */
   becomeParent: protectedProcedure.mutation(async ({ ctx }) => {
+    if (ctx.user.accountType === "student") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "A student account cannot also be a parent account. Please sign in with a separate parent or guardian account." });
+    }
     await updateUserAccountType(ctx.user.id, "parent");
     return { success: true };
   }),
@@ -570,7 +573,7 @@ export const parentRouter = router({
   getAvailableCourses: protectedProcedure.query(async () => {
     const { getAllCourses } = await import("../db");
     const all = await getAllCourses();
-    return all.map((c) => ({ id: c.id, title: c.title, description: c.description }));
+    return all.map((c) => ({ id: c.id, title: c.title, description: c.description, gradeLevel: c.gradeLevel, subject: c.subject }));
   }),
 
   /**
