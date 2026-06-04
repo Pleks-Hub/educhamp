@@ -14,8 +14,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { toast } from "sonner";
 import {
   User, Shield, ShieldCheck, ShieldOff, KeyRound, Copy, RefreshCw,
-  CheckCircle2, AlertTriangle, Loader2, QrCode, Palette, Bell, Eye, Mail, ChevronRight
+  CheckCircle2, AlertTriangle, Loader2, QrCode, Palette, Bell, Eye, Mail, ChevronRight, Sparkles
 } from "lucide-react";
+import { useLocation } from "wouter";
 import { usePalette, PALETTES, type PaletteId } from "@/contexts/PaletteContext";
 
 // ─── 2FA Setup Flow ───────────────────────────────────────────────────────────
@@ -434,6 +435,9 @@ export default function Profile() {
         </Card>
       )}
 
+      {/* Revisit Welcome Tour (students only) */}
+      {user.accountType === "student" && <WelcomeTourCard />}
+
       {/* Change Password (for students with local auth password) */}
       {user.passwordHash && <ChangePasswordCard />}
 
@@ -453,6 +457,36 @@ export default function Profile() {
         </Card>
       )}
     </div>
+  );
+}
+
+// ─── Welcome Tour Card ───────────────────────────────────────────────────────
+function WelcomeTourCard() {
+  const [, navigate] = useLocation();
+
+  const handleRevisitTour = () => {
+    localStorage.removeItem("educhamp_student_onboarded");
+    navigate("/student-welcome");
+  };
+
+  return (
+    <Card className="transition-all duration-200 hover:shadow-md">
+      <CardContent className="flex items-center justify-between p-5">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+            <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div>
+            <p className="font-medium">Welcome Tour</p>
+            <p className="text-sm text-muted-foreground">Revisit the platform introduction guide</p>
+          </div>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleRevisitTour} className="gap-1.5">
+          <Sparkles className="h-3.5 w-3.5" />
+          Start Tour
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 

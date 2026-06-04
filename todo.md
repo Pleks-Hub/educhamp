@@ -2571,3 +2571,6 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Bulk course assignment: let parents select multiple courses with checkboxes and assign all at once
 - [x] Student onboarding welcome screen: show guided tour after first password creation and sign-in
 - [x] Parent notification email: send parent an email when their child first activates their account
+- [x] Add "Revisit Welcome Tour" button in student Profile settings
+- [x] Weekly parent digest email: summarize child's learning activity (lessons, mastery, quizzes) sent weekly (already implemented)
+- [x] Bulk course removal: let parents select multiple courses and remove them all at once
