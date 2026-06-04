@@ -311,7 +311,7 @@ export const parentRouter = router({
           const token = nanoid(48);
           const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
           await db.insert(passwordResetTokens).values({ userId: child.id, token, expiresAt });
-          const origin = ctx.req.headers.origin || "https://educhamp.app";
+          const origin = ctx.req.headers.origin || "https://educhamp.co";
           const setupUrl = `${origin}/student-setup?token=${token}`;
           const emailContent = buildStudentSetupEmail({
             studentName: input.name,
@@ -449,7 +449,7 @@ export const parentRouter = router({
           getUserById(request.studentId),
         ]);
         if (student?.email && course) {
-          const origin = input.origin ?? "https://educhamp.app";
+          const origin = input.origin ?? "https://educhamp.co";
           const emailContent = buildCourseRequestOutcomeEmail({
             studentName: student.name ?? "Student",
             courseName: course.title,
@@ -495,7 +495,7 @@ export const parentRouter = router({
           getUserById(request.studentId),
         ]);
         if (student?.email && course) {
-          const origin = input.origin ?? "https://educhamp.app";
+          const origin = input.origin ?? "https://educhamp.co";
           const emailContent = buildCourseRequestOutcomeEmail({
             studentName: student.name ?? "Student",
             courseName: course.title,

@@ -90,15 +90,15 @@ export function buildFlagResolutionEmail(data: FlagResolutionEmailData): {
       <a href="${data.dashboardUrl}" class="cta">Back to Dashboard →</a>
     </div>
     <div class="footer">
-      <p>EduChamp — AI-Powered Pre-K–12 Learning · <a href="mailto:support@educhamp.app">support@educhamp.app</a></p>
+      <p>EduChamp — AI-Powered Pre-K–12 Learning · <a href="mailto:support@educhamp.co">support@educhamp.co</a></p>
     </div>
   </div>
 </body>
 </html>`;
 
   const text = isResolved
-    ? `Hi ${data.studentName},\n\nYour report about a ${data.questionType} question has been RESOLVED by our team.\n\nReported question: "${truncatedQuestion}"\nYour reason: ${data.reason}${data.reviewNote ? `\n\nNote from our team: ${data.reviewNote}` : ""}\n\nThank you for helping us improve EduChamp!\n\nDashboard: ${data.dashboardUrl}\n\n---\nEduChamp — support@educhamp.app`
-    : `Hi ${data.studentName},\n\nOur team has reviewed your report about a ${data.questionType} question and determined no changes are needed at this time.\n\nReported question: "${truncatedQuestion}"\nYour reason: ${data.reason}${data.reviewNote ? `\n\nNote from our team: ${data.reviewNote}` : ""}\n\nDashboard: ${data.dashboardUrl}\n\n---\nEduChamp — support@educhamp.app`;
+    ? `Hi ${data.studentName},\n\nYour report about a ${data.questionType} question has been RESOLVED by our team.\n\nReported question: "${truncatedQuestion}"\nYour reason: ${data.reason}${data.reviewNote ? `\n\nNote from our team: ${data.reviewNote}` : ""}\n\nThank you for helping us improve EduChamp!\n\nDashboard: ${data.dashboardUrl}\n\n---\nEduChamp — support@educhamp.co`
+    : `Hi ${data.studentName},\n\nOur team has reviewed your report about a ${data.questionType} question and determined no changes are needed at this time.\n\nReported question: "${truncatedQuestion}"\nYour reason: ${data.reason}${data.reviewNote ? `\n\nNote from our team: ${data.reviewNote}` : ""}\n\nDashboard: ${data.dashboardUrl}\n\n---\nEduChamp — support@educhamp.co`;
 
   return { subject, html, text };
 }

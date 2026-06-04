@@ -52,8 +52,8 @@ export async function inactivityMonitorHandler(req: Request, res: Response) {
     if (!db) return res.status(500).json({ error: "DB unavailable" });
 
     const origin = process.env.VITE_FRONTEND_FORGE_API_URL
-      ? "https://educhamp.app"
-      : "https://educhamp.app";
+      ? "https://educhamp.co"
+      : "https://educhamp.co";
 
     const results: Record<string, { processed: number; emailsSent: number }> = {};
 

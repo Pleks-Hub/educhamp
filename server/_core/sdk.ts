@@ -303,13 +303,13 @@ class SDKServer {
 
     // P0-1: block suspended, deleted, deactivated, or archived accounts
     if (user.status === "suspended") {
-      throw ForbiddenError("Your account has been suspended. Please contact support@educhamp.app.");
+      throw ForbiddenError("Your account has been suspended. Please contact support@educhamp.co.");
     }
     if (user.status === "deleted" || user.status === "archived") {
       throw ForbiddenError("Account not found.");
     }
     if (user.status === "deactivated") {
-      throw ForbiddenError("Your account has been deactivated. Please contact support@educhamp.app.");
+      throw ForbiddenError("Your account has been deactivated. Please contact support@educhamp.co.");
     }
 
     await db.upsertUser({

@@ -91,7 +91,7 @@ export async function getEmailProvider(): Promise<{
   const provider = new ResendProvider(apiKey);
 
   // Parse "Name <email@domain.com>" or plain "email@domain.com" from the env var
-  const fromEnv = ENV.resendFromEmail || "EduChamp <invites@educhamp.app>";
+  const fromEnv = ENV.resendFromEmail || "EduChamp <noreply@educhamp.co>";
   const match = fromEnv.match(/^(.+?)\s*<(.+?)>$/);
   const fromName = match ? match[1].trim() : "EduChamp";
   const fromAddress = match ? match[2].trim() : fromEnv;

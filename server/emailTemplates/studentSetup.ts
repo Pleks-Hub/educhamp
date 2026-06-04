@@ -16,7 +16,7 @@ const BG_COLOR = "#f8fafc";
 const CARD_BG = "#ffffff";
 const TEXT_PRIMARY = "#0f172a";
 const TEXT_MUTED = "#64748b";
-const LOGO_URL = "https://educhamp.app/manus-storage/educhamp-logo-64_28201452.png";
+const LOGO_URL = "https://educhamp.co/manus-storage/educhamp-logo-64_28201452.png";
 
 export function buildStudentSetupEmail(data: StudentSetupEmailData): {
   html: string;
@@ -80,11 +80,11 @@ export function buildStudentSetupEmail(data: StudentSetupEmailData): {
         </p>
       </div>
       <div class="footer">
-        <p>Questions? Email us at <a href="mailto:support@educhamp.app">support@educhamp.app</a></p>
+        <p>Questions? Email us at <a href="mailto:support@educhamp.co">support@educhamp.co</a></p>
         <p style="margin-top:12px;">
           © ${new Date().getFullYear()} EduChamp · AI-Powered Learning Solution<br/>
-          <a href="https://educhamp.app/privacy">Privacy Policy</a> &nbsp;·&nbsp;
-          <a href="https://educhamp.app/terms">Terms of Service</a>
+          <a href="https://educhamp.co/privacy">Privacy Policy</a> &nbsp;·&nbsp;
+          <a href="https://educhamp.co/terms">Terms of Service</a>
         </p>
       </div>
     </div>
@@ -101,7 +101,7 @@ ${setupUrl}
 
 Tip: If you have an Apple device, you can also sign in using your Apple ID (as long as the email matches).
 
-Questions? support@educhamp.app
+Questions? support@educhamp.co
 © ${new Date().getFullYear()} EduChamp — AI-Powered Learning Solution
 `;
 

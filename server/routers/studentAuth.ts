@@ -269,7 +269,7 @@ export const studentAuthRouter = router({
 
       // Create setup token
       const token = await createSetupToken(child.id);
-      const setupUrl = `https://educhamp.app/student-setup?token=${token}`;
+      const setupUrl = `https://educhamp.co/student-setup?token=${token}`;
 
       // Send email
       const emailContent = buildStudentSetupEmail({
@@ -356,7 +356,7 @@ export const studentAuthRouter = router({
 
       // Create a reset token (reusing the same token infrastructure)
       const token = await createSetupToken(user.id);
-      const resetUrl = `https://educhamp.app/student-setup?token=${token}&mode=reset`;
+      const resetUrl = `https://educhamp.co/student-setup?token=${token}&mode=reset`;
 
       // Send reset email
       await sendEmail({

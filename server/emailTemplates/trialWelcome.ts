@@ -154,12 +154,12 @@ export function buildTrialWelcomeEmail(data: TrialWelcomeEmailData): {
           <tr>
             <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:24px 40px;text-align:center;">
               <p style="color:#94a3b8;font-size:13px;margin:0 0 8px;">
-                Questions? Reply to this email or visit <a href="https://educhamp.app" style="color:#6366f1;text-decoration:none;">educhamp.app</a>
+                Questions? Reply to this email or visit <a href="https://educhamp.co" style="color:#6366f1;text-decoration:none;">educhamp.co</a>
               </p>
               <p style="color:#94a3b8;font-size:12px;margin:0;">
                 You're receiving this because you started a trial at EduChamp.<br/>
                 ${data.billingPortalUrl ? `<a href="${data.billingPortalUrl}" style="color:#94a3b8;">Manage billing</a> · ` : ""}
-                <a href="https://educhamp.app" style="color:#94a3b8;">educhamp.app</a>
+                <a href="https://educhamp.co" style="color:#94a3b8;">educhamp.co</a>
               </p>
             </td>
           </tr>
@@ -186,7 +186,7 @@ First charge: ${data.firstChargeAmount} on ${data.firstChargeDate}
 
 Go to your dashboard: ${data.dashboardUrl}
 
-Questions? Reply to this email or visit https://educhamp.app
+Questions? Reply to this email or visit https://educhamp.co
 
 — The EduChamp Team`;
 

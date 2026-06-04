@@ -4,9 +4,9 @@
  */
 
 export const BRAND = {
-  fromAddress: "EduChamp <hi@educhamp.app>",
-  supportEmail: "hi@educhamp.app",
-  logoUrl: "https://educhamp.app/manus-storage/educhamp-logo-64_7d30d62b.png",
+  fromAddress: "EduChamp <noreply@educhamp.co>",
+  supportEmail: "support@educhamp.co",
+  logoUrl: "https://educhamp.co/manus-storage/educhamp-logo-64_7d30d62b.png",
   brandColor: "#6C63FF",
   accentColor: "#FF6584",
   bgColor: "#0F0F1A",
@@ -16,8 +16,8 @@ export const BRAND = {
   textMuted: "#A0A0B8",
   borderColor: "#2A2A3E",
   appName: "EduChamp",
-  websiteUrl: "https://educhamp.app",
-  supportUrl: "https://educhamp.app/support",
+  websiteUrl: "https://educhamp.co",
+  supportUrl: "https://educhamp.co/support",
 };
 
 export interface WrapEmailHtmlOptions {

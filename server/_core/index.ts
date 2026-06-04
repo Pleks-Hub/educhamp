@@ -148,7 +148,7 @@ async function startServer() {
 
   // ── Dynamic sitemap.xml ──────────────────────────────────────────────────────────────
   app.get("/api/sitemap.xml", (_req, res) => {
-    const BASE = "https://educhamp.app";
+    const BASE = "https://educhamp.co";
     const now = new Date().toISOString().split("T")[0];
 
     // Static public pages and landing-page anchor sections

@@ -26,7 +26,7 @@ function getAppBaseUrl(req: Request): string {
   if (origin && origin.startsWith("http")) return origin;
   const host = (req as any).headers?.host as string | undefined;
   if (host) return `https://${host}`;
-  return process.env.VITE_APP_URL ?? "https://educhamp.app";
+  return process.env.VITE_APP_URL ?? "https://educhamp.co";
 }
 
 export function registerStripeWebhook(app: Express) {
@@ -93,7 +93,7 @@ async function getUserIdFromMetadata(metadata: Record<string, string>): Promise<
   return isNaN(parsed) ? null : parsed;
 }
 
-export async function handleStripeEvent(event: any, appBaseUrl: string = "https://educhamp.app") {
+export async function handleStripeEvent(event: any, appBaseUrl: string = "https://educhamp.co") {
   const obj = event.data?.object;
 
   switch (event.type) {

@@ -318,7 +318,7 @@ export const questionFlagsRouter = router({
               "../emailTemplates/flagResolutionNotification"
             );
             const { sendEmail } = await import("../emailService");
-            const dashboardUrl = `${process.env.VITE_OAUTH_PORTAL_URL ?? "https://educhamp.app"}/dashboard`;
+            const dashboardUrl = `${process.env.VITE_OAUTH_PORTAL_URL ?? "https://educhamp.co"}/dashboard`;
             const emailPayload = buildFlagResolutionEmail({
               studentName: student.name ?? "Student",
               status: input.status,

@@ -347,7 +347,7 @@ export const parentToolsRouter = router({
     weekStart.setHours(0, 0, 0, 0);
     const weekEnd = new Date(now);
     weekEnd.setHours(23, 59, 59, 999);
-    const appUrl = ctx.req.headers.origin || "https://educhamp.app";
+    const appUrl = ctx.req.headers.origin || "https://educhamp.co";
 
     const digestChildren: WeeklyDigestChild[] = [];
 

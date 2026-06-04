@@ -46,7 +46,7 @@ export async function bootstrapEmailService(): Promise<void> {
     }
 
     // Parse "Name <email@domain.com>" or plain address from RESEND_FROM_EMAIL
-    const fromEnv = ENV.resendFromEmail || "EduChamp <invites@educhamp.app>";
+    const fromEnv = ENV.resendFromEmail || "EduChamp <noreply@educhamp.co>";
     const match = fromEnv.match(/^(.+?)\s*<(.+?)>$/);
     const fromName = match ? match[1].trim() : "EduChamp";
     const fromAddress = match ? match[2].trim() : fromEnv;

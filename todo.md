@@ -2560,3 +2560,7 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] E2E test: enroll student from Parent Dashboard, verify setup email, test password creation + login
 - [x] Add password change/update to student Profile page
 - [x] Add forgot-password flow for student local auth (email + password students)
+- [x] Update RESEND_FROM_EMAIL env default to noreply@educhamp.co
+- [x] Update emailSettings database row to use noreply@educhamp.co
+- [x] Verify educhamp.co domain in Resend dashboard
+- [x] Test email delivery end-to-end with new domain

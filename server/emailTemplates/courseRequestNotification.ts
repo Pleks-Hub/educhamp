@@ -103,8 +103,8 @@ export function buildCourseRequestNotificationEmail(data: CourseRequestNotificat
       </div>
     </div>
     <div class="footer">
-      <p>You received this email because you are a parent/guardian on <a href="https://educhamp.app">EduChamp</a>.</p>
-      <p style="margin-top:8px;">Questions? <a href="mailto:support@educhamp.app">support@educhamp.app</a></p>
+      <p>You received this email because you are a parent/guardian on <a href="https://educhamp.co">EduChamp</a>.</p>
+      <p style="margin-top:8px;">Questions? <a href="mailto:support@educhamp.co">support@educhamp.co</a></p>
     </div>
   </div>
 </body>
@@ -130,7 +130,7 @@ ${data.dashboardUrl}
 
 ---
 EduChamp — AI-Powered Pre-K–12 Learning
-support@educhamp.app`;
+support@educhamp.co`;
 
   return { subject, html, text };
 }
@@ -201,15 +201,15 @@ export function buildCourseRequestOutcomeEmail(data: CourseRequestOutcomeData): 
       <a href="${data.dashboardUrl}" class="cta">Go to Dashboard →</a>
     </div>
     <div class="footer">
-      <p>EduChamp — AI-Powered Pre-K–12 Learning · <a href="mailto:support@educhamp.app">support@educhamp.app</a></p>
+      <p>EduChamp — AI-Powered Pre-K–12 Learning · <a href="mailto:support@educhamp.co">support@educhamp.co</a></p>
     </div>
   </div>
 </body>
 </html>`;
 
   const text = data.approved
-    ? `Hi ${data.studentName},\n\nYour request to enroll in "${data.courseName}" has been APPROVED by your parent or guardian.\n\nThe course is now available on your dashboard:\n${data.dashboardUrl}\n\n---\nEduChamp — support@educhamp.app`
-    : `Hi ${data.studentName},\n\nYour request to enroll in "${data.courseName}" was not approved at this time.${data.rejectionReason ? `\n\nNote from your parent: "${data.rejectionReason}"` : ""}\n\nIf you have questions, please speak with your parent or guardian.\n\nDashboard: ${data.dashboardUrl}\n\n---\nEduChamp — support@educhamp.app`;
+    ? `Hi ${data.studentName},\n\nYour request to enroll in "${data.courseName}" has been APPROVED by your parent or guardian.\n\nThe course is now available on your dashboard:\n${data.dashboardUrl}\n\n---\nEduChamp — support@educhamp.co`
+    : `Hi ${data.studentName},\n\nYour request to enroll in "${data.courseName}" was not approved at this time.${data.rejectionReason ? `\n\nNote from your parent: "${data.rejectionReason}"` : ""}\n\nIf you have questions, please speak with your parent or guardian.\n\nDashboard: ${data.dashboardUrl}\n\n---\nEduChamp — support@educhamp.co`;
 
   return { subject, html, text };
 }

@@ -29,7 +29,7 @@ const BG_COLOR = "#f8fafc";    // slate-50
 const CARD_BG = "#ffffff";
 const TEXT_PRIMARY = "#0f172a"; // slate-900
 const TEXT_MUTED = "#64748b";   // slate-500
-const LOGO_URL = "https://educhamp.app/manus-storage/educhamp-logo-64_28201452.png";
+const LOGO_URL = "https://educhamp.co/manus-storage/educhamp-logo-64_28201452.png";
 
 export function buildParentInviteEmail(data: ParentInviteEmailData): { html: string; text: string; subject: string } {
   const {
@@ -218,7 +218,7 @@ export function buildParentInviteEmail(data: ParentInviteEmailData): { html: str
               </p>
               <p style="margin:12px 0 0;font-size:12px;color:#94a3b8;">
                 © ${new Date().getFullYear()} EduChamp. All rights reserved. &nbsp;|&nbsp;
-                <a href="https://educhamp.app" style="color:${BRAND_COLOR};text-decoration:none;">educhamp.app</a>
+                <a href="https://educhamp.co" style="color:${BRAND_COLOR};text-decoration:none;">educhamp.co</a>
               </p>
             </td>
           </tr>
@@ -268,7 +268,7 @@ If it expires, ask ${studentName} to send a new invitation from their EduChamp d
 You received this email because a student on EduChamp invited you as their parent or guardian.
 If you don't recognise this student, you can safely ignore this email.
 
-© ${new Date().getFullYear()} EduChamp | https://educhamp.app
+© ${new Date().getFullYear()} EduChamp | https://educhamp.co
 `.trim();
 
   const subject = data.isExistingUser

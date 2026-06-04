@@ -760,7 +760,7 @@ export const adminRouter = router({
           <h2 style="margin:0 0 16px;color:#1e293b;font-size:22px">Hi ${request.fullName},</h2>
           <div style="color:#475569;font-size:15px;line-height:1.7;white-space:pre-wrap">${input.replyMessage.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
           <hr style="border:none;border-top:1px solid #e2e8f0;margin:32px 0">
-          <a href="https://educhamp.app" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:15px">Visit EduChamp →</a>
+          <a href="https://educhamp.co" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:15px">Visit EduChamp →</a>
         </td></tr>
         <tr><td style="background:#f8fafc;padding:24px 40px;text-align:center;border-top:1px solid #e2e8f0">
           <p style="margin:0;color:#94a3b8;font-size:12px">EduChamp · AI-Powered Pre-K–12 Adaptive Learning</p>
@@ -770,7 +770,7 @@ export const adminRouter = router({
   </table>
 </body>
 </html>`,
-        text: `Hi ${request.fullName},\n\n${input.replyMessage}\n\nThe EduChamp Team\nhttps://educhamp.app`,
+        text: `Hi ${request.fullName},\n\n${input.replyMessage}\n\nThe EduChamp Team\nhttps://educhamp.co`,
       });
 
       // Update status and mark responded
@@ -1088,7 +1088,7 @@ export const adminRouter = router({
       const now = Date.now();
       const lastActive = student.lastActiveAt ?? student.lastSignedIn;
       const inactiveDays = Math.floor((now - new Date(lastActive).getTime()) / 86_400_000);
-      const origin = "https://educhamp.app";
+      const origin = "https://educhamp.co";
       if (student.email) {
         const email = buildInactivityEmail({
           studentName: student.name ?? "Student",
@@ -1255,9 +1255,9 @@ export const adminRouter = router({
     const map: Record<string, string> = {};
     for (const row of rows) map[row.key] = row.value;
     return {
-      fromAddress: map["email.fromAddress"] ?? "EduChamp <hi@educhamp.app>",
+      fromAddress: map["email.fromAddress"] ?? "EduChamp <noreply@educhamp.co>",
       fromName: map["email.fromName"] ?? "EduChamp",
-      replyTo: map["email.replyTo"] ?? "hi@educhamp.app",
+      replyTo: map["email.replyTo"] ?? "noreply@educhamp.co",
       categories: map["email.categories"]
         ? (JSON.parse(map["email.categories"]) as Record<string, boolean>)
         : {
@@ -1341,7 +1341,7 @@ export const adminRouter = router({
     }),
 
   /**
-   * Fetch Resend domain list and DNS record status for educhamp.app.
+   * Fetch Resend domain list and DNS record status for educhamp.co.
    */
   getResendDomainStatus: adminProcedure.query(async () => {
     const { Resend } = await import("resend");

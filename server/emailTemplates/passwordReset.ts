@@ -18,7 +18,7 @@ const BG_COLOR = "#f8fafc";    // slate-50
 const CARD_BG = "#ffffff";
 const TEXT_PRIMARY = "#0f172a"; // slate-900
 const TEXT_MUTED = "#64748b";   // slate-500
-const LOGO_URL = "https://educhamp.app/manus-storage/educhamp-logo-64_28201452.png";
+const LOGO_URL = "https://educhamp.co/manus-storage/educhamp-logo-64_28201452.png";
 
 export function buildPasswordResetEmail(data: PasswordResetEmailData): {
   html: string;
@@ -86,11 +86,11 @@ export function buildPasswordResetEmail(data: PasswordResetEmailData): {
 
       <!-- Footer -->
       <div class="footer">
-        <p>Questions? Email us at <a href="mailto:support@educhamp.app">support@educhamp.app</a></p>
+        <p>Questions? Email us at <a href="mailto:support@educhamp.co">support@educhamp.co</a></p>
         <p style="margin-top:12px;">
           © ${new Date().getFullYear()} EduChamp · AI-Powered Learning Solution<br/>
-          <a href="https://educhamp.app/privacy">Privacy Policy</a> &nbsp;·&nbsp;
-          <a href="https://educhamp.app/terms">Terms of Service</a>
+          <a href="https://educhamp.co/privacy">Privacy Policy</a> &nbsp;·&nbsp;
+          <a href="https://educhamp.co/terms">Terms of Service</a>
         </p>
       </div>
     </div>
@@ -107,7 +107,7 @@ ${resetUrl}
 
 If you didn't request this, you can safely ignore this email. Your account is still secure.
 
-Questions? support@educhamp.app
+Questions? support@educhamp.co
 © ${new Date().getFullYear()} EduChamp — AI-Powered Learning Solution
 `;
 

@@ -464,7 +464,7 @@ function DashboardLayoutContent({
               )}
               <p className="text-xs text-muted-foreground">
                 Need help?{" "}
-                <a href="mailto:support@educhamp.app" className="underline hover:text-foreground">
+                <a href="mailto:support@educhamp.co" className="underline hover:text-foreground">
                   Contact support
                 </a>
               </p>

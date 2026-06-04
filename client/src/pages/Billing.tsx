@@ -738,7 +738,7 @@ export default function Billing() {
       {/* Help */}
       <p className="text-xs text-center text-muted-foreground">
         Questions about billing?{" "}
-        <a href="mailto:support@educhamp.app" className="text-indigo-600 hover:underline">
+        <a href="mailto:support@educhamp.co" className="text-indigo-600 hover:underline">
           Contact support
         </a>
       </p>

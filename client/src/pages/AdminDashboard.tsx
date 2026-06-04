@@ -468,7 +468,7 @@ const CMS_SECTIONS = [
   { key: "onboarding.welcome.title", section: "onboarding", label: "Onboarding Welcome Title", contentType: "text" as const, defaultValue: "Welcome to EduChamp!" },
   { key: "onboarding.welcome.body", section: "onboarding", label: "Onboarding Welcome Body", contentType: "richtext" as const, defaultValue: "Let's get you set up. First, tell us a bit about yourself." },
   { key: "footer.tagline", section: "footer", label: "Footer Tagline", contentType: "text" as const, defaultValue: "Empowering every student to reach their potential." },
-  { key: "footer.contact", section: "footer", label: "Contact Email", contentType: "text" as const, defaultValue: "support@educhamp.app" },
+  { key: "footer.contact", section: "footer", label: "Contact Email", contentType: "text" as const, defaultValue: "support@educhamp.co" },
 ];
 
 function CmsTab() {
@@ -2903,8 +2903,8 @@ function EmailSettingsTab() {
             <>
               <div className="space-y-1.5">
                 <Label>From Address</Label>
-                <Input value={fromAddress} onChange={(e) => setFromAddress(e.target.value)} placeholder="hi@educhamp.app" />
-                <p className="text-xs text-muted-foreground">Must be from a verified Resend domain (e.g. educhamp.app)</p>
+                <Input value={fromAddress} onChange={(e) => setFromAddress(e.target.value)} placeholder="noreply@educhamp.co" />
+                <p className="text-xs text-muted-foreground">Must be from a verified Resend domain (e.g. educhamp.co)</p>
               </div>
               <div className="space-y-1.5">
                 <Label>Display Name</Label>
@@ -2913,7 +2913,7 @@ function EmailSettingsTab() {
               </div>
               <div className="space-y-1.5">
                 <Label>Reply-To Address</Label>
-                <Input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="hi@educhamp.app" />
+                <Input value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="noreply@educhamp.co" />
                 <p className="text-xs text-muted-foreground">Where replies from recipients will be directed</p>
               </div>
               <Button onClick={() => saveSettings.mutate({ fromAddress, fromName, replyTo })} disabled={saveSettings.isPending}>
@@ -2947,7 +2947,7 @@ function EmailSettingsTab() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-base flex items-center gap-2"><Server className="h-4 w-4" />Domain Authentication Status</CardTitle>
-              <CardDescription>SPF, DKIM, and DMARC records for educhamp.app</CardDescription>
+              <CardDescription>SPF, DKIM, and DMARC records for educhamp.co</CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={() => refetchDomain()} disabled={domainLoading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${domainLoading ? "animate-spin" : ""}`} />Refresh
@@ -2965,7 +2965,7 @@ function EmailSettingsTab() {
           ) : domainStatus.domains.length === 0 ? (
             <div className="rounded-lg bg-amber-50 border border-amber-200 p-4">
               <p className="text-sm font-medium text-amber-800 flex items-center gap-2"><AlertTriangle className="h-4 w-4" />No domains found in Resend</p>
-              <p className="text-sm text-amber-700 mt-1">Add <strong>educhamp.app</strong> in your Resend dashboard, then add the provided DNS records to your domain registrar.</p>
+              <p className="text-sm text-amber-700 mt-1">Add <strong>educhamp.co</strong> in your Resend dashboard, then add the provided DNS records to your domain registrar.</p>
               <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline mt-2">
                 Open Resend Domains →
               </a>

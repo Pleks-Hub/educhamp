@@ -27,7 +27,7 @@ const BG_COLOR = "#f8fafc";    // slate-50
 const CARD_BG = "#ffffff";
 const TEXT_PRIMARY = "#0f172a"; // slate-900
 const TEXT_MUTED = "#64748b";   // slate-500
-const LOGO_URL = "https://educhamp.app/manus-storage/educhamp-logo-64_28201452.png";
+const LOGO_URL = "https://educhamp.co/manus-storage/educhamp-logo-64_28201452.png";
 
 export function buildTrialReminderEmail(data: TrialReminderEmailData): {
   html: string;
@@ -134,7 +134,7 @@ export function buildTrialReminderEmail(data: TrialReminderEmailData): {
         </p>
 
         <!-- CTA -->
-        <a href="https://educhamp.app/billing" class="cta-btn">
+        <a href="https://educhamp.co/billing" class="cta-btn">
           View My Subscription
         </a>
         <a href="${billingPortalUrl}" class="cancel-link">
@@ -144,11 +144,11 @@ export function buildTrialReminderEmail(data: TrialReminderEmailData): {
 
       <!-- Footer -->
       <div class="footer">
-        <p>Questions? Email us at <a href="mailto:support@educhamp.app">support@educhamp.app</a></p>
+        <p>Questions? Email us at <a href="mailto:support@educhamp.co">support@educhamp.co</a></p>
         <p style="margin-top:12px;">
           © ${new Date().getFullYear()} EduChamp · AI-Powered Learning Solution<br/>
-          <a href="https://educhamp.app/privacy">Privacy Policy</a> &nbsp;·&nbsp;
-          <a href="https://educhamp.app/terms">Terms of Service</a>
+          <a href="https://educhamp.co/privacy">Privacy Policy</a> &nbsp;·&nbsp;
+          <a href="https://educhamp.co/terms">Terms of Service</a>
         </p>
       </div>
     </div>
@@ -169,9 +169,9 @@ If you'd like to continue, no action is needed — your subscription starts auto
 
 To cancel before being charged, visit: ${billingPortalUrl}
 
-View your subscription: https://educhamp.app/billing
+View your subscription: https://educhamp.co/billing
 
-Questions? support@educhamp.app
+Questions? support@educhamp.co
 © ${new Date().getFullYear()} EduChamp — AI-Powered Learning Solution
 `;
 

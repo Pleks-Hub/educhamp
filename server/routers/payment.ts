@@ -415,7 +415,7 @@ export const paymentRouter = router({
                 const emailData = buildBillingActivatedStudentEmail({
                   studentName: child.name || "there",
                   parentName: ctx.user.name || "Your parent/guardian",
-                  loginUrl: "https://educhamp.app",
+                  loginUrl: "https://educhamp.co",
                 });
                 await sendEmail({
                   to: child.email,

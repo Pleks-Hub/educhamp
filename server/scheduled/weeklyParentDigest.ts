@@ -171,7 +171,7 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
     const weekEnd = new Date(now);
     weekEnd.setHours(23, 59, 59, 999);
 
-    const appUrl = "https://educhamp.app";
+    const appUrl = "https://educhamp.co";
 
     // ── Fetch eligible parents (opted-in, has email) ───────────────────────────
     const parentUsers = await getWeeklyDigestEligibleParents();

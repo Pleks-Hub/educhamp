@@ -45,8 +45,8 @@ class ErrorBoundary extends Component<Props, State> {
             </p>
             <p className="text-sm text-muted-foreground mb-6">
               Try reloading the page. If the problem persists, contact{" "}
-              <a href="mailto:support@educhamp.app" className="underline hover:text-foreground">
-                support@educhamp.app
+              <a href="mailto:support@educhamp.co" className="underline hover:text-foreground">
+                support@educhamp.co
               </a>{" "}
               with error code{" "}
               <code className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">

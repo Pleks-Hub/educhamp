@@ -352,26 +352,26 @@ export const landingRouter = router({
               </table>
             </td></tr>
           </table>
-          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6">In the meantime, feel free to explore EduChamp at <a href="https://educhamp.app" style="color:#4f46e5;text-decoration:none">educhamp.app</a> or reply to this email if you have any questions.</p>
-          <a href="https://educhamp.app" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:15px">Explore EduChamp →</a>
+          <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6">In the meantime, feel free to explore EduChamp at <a href="https://educhamp.co" style="color:#4f46e5;text-decoration:none">educhamp.co</a> or reply to this email if you have any questions.</p>
+          <a href="https://educhamp.co" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:8px;font-weight:600;font-size:15px">Explore EduChamp →</a>
         </td></tr>
         <!-- Footer -->
         <tr><td style="background:#f8fafc;padding:24px 40px;text-align:center;border-top:1px solid #e2e8f0">
-          <p style="margin:0;color:#94a3b8;font-size:12px">EduChamp · AI-Powered Pre-K–12 Adaptive Learning · <a href="https://educhamp.app" style="color:#94a3b8">educhamp.app</a></p>
+          <p style="margin:0;color:#94a3b8;font-size:12px">EduChamp · AI-Powered Pre-K–12 Adaptive Learning · <a href="https://educhamp.co" style="color:#94a3b8">educhamp.co</a></p>
         </td></tr>
       </table>
     </td></tr>
   </table>
 </body>
 </html>`,
-        text: `Hi ${input.fullName},\n\nThank you for your ${interestLabel} request for ${input.schoolName}. Our team will reach out within 1–2 business days.\n\nRequest Summary:\n- School: ${input.schoolName}\n- Role: ${input.roleTitle}\n- Interest: ${interestLabel}\n\nExplore EduChamp: https://educhamp.app\n\nThe EduChamp Team`,
+        text: `Hi ${input.fullName},\n\nThank you for your ${interestLabel} request for ${input.schoolName}. Our team will reach out within 1–2 business days.\n\nRequest Summary:\n- School: ${input.schoolName}\n- Role: ${input.roleTitle}\n- Interest: ${interestLabel}\n\nExplore EduChamp: https://educhamp.co\n\nThe EduChamp Team`,
       });
 
       // Internal notification to admin
       const { notifyOwner } = await import("../_core/notification");
       await notifyOwner({
         title: `New ${interestLabel} Request — ${input.schoolName}`,
-        content: `${input.fullName} (${input.roleTitle}) at ${input.schoolName} submitted a ${interestLabel} request.\nEmail: ${input.email}${input.phone ? `\nPhone: ${input.phone}` : ""}${input.numStudents ? `\nStudents: ${input.numStudents}` : ""}\n\nView in Admin Console: https://educhamp.app/admin`,
+        content: `${input.fullName} (${input.roleTitle}) at ${input.schoolName} submitted a ${interestLabel} request.\nEmail: ${input.email}${input.phone ? `\nPhone: ${input.phone}` : ""}${input.numStudents ? `\nStudents: ${input.numStudents}` : ""}\n\nView in Admin Console: https://educhamp.co/admin`,
       });
 
       return { ok: true, requestId };
