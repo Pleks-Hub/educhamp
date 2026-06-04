@@ -56,6 +56,7 @@ const StudentSetup = lazy(() => import("./pages/StudentSetup"));
 const StudentLogin = lazy(() => import("./pages/StudentLogin"));
 const StudentForgotPassword = lazy(() => import("./pages/StudentForgotPassword"));
 const SignIn = lazy(() => import("./pages/SignIn"));
+const StudentWelcome = lazy(() => import("./pages/StudentWelcome"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -93,6 +94,7 @@ function Router() {
         <Route path="/consent/waiting" component={CoppaConsentWaiting} />
         <Route path="/certificate/:token" component={CertificatePage} />
         <Route path="/student-setup" component={StudentSetup} />
+        <Route path="/student-welcome" component={StudentWelcome} />
         <Route path="/sign-in" component={SignIn} />
         <Route path="/student-login" component={SignIn} />
         <Route path="/student-forgot-password" component={StudentForgotPassword} />

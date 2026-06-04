@@ -56,7 +56,9 @@ export default function StudentSetup() {
   const createPassword = trpc.studentAuth.createPassword.useMutation({
     onSuccess: () => {
       // Redirect to home after successful password creation (session cookie is set)
-      setTimeout(() => navigate("/"), 1500);
+      // First-time setup → welcome tour; password reset → home
+      const isResetMode = new URLSearchParams(window.location.search).get("mode") === "reset";
+      setTimeout(() => navigate(isResetMode ? "/" : "/student-welcome"), 1500);
     },
   });
 

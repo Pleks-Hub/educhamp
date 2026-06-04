@@ -538,6 +538,25 @@ export const parentRouter = router({
     }),
 
   /**
+   * Parent: bulk-assign multiple courses to a linked student at once.
+   */
+  bulkAssignCourses: protectedProcedure
+    .input(z.object({ studentId: z.number(), courseIds: z.array(z.number()).min(1).max(20) }))
+    .mutation(async ({ ctx, input }) => {
+      const link = await getParentChildLink(ctx.user.id, input.studentId);
+      if (!link || !link.isActive) throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this student." });
+      let enrolled = 0;
+      for (const courseId of input.courseIds) {
+        const course = await getCourseById(courseId);
+        if (course) {
+          await enrollUserInCourse(input.studentId, courseId);
+          enrolled++;
+        }
+      }
+      return { success: true, enrolled };
+    }),
+
+  /**
    * Parent: remove a course from a linked student's enrollments.
    */
   removeCourseFromStudent: protectedProcedure

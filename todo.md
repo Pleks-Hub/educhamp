@@ -2568,3 +2568,6 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Fix: Prevent students from using parent dashboard to add other students (role-based access)
 - [x] Harmonize Sign In and Student Login into one unified sign-in flow (better UX)
 - [x] Improve course selection UX: organize courses by grade group, auto-populate for student's grade, allow parent to add/remove
+- [x] Bulk course assignment: let parents select multiple courses with checkboxes and assign all at once
+- [x] Student onboarding welcome screen: show guided tour after first password creation and sign-in
+- [x] Parent notification email: send parent an email when their child first activates their account

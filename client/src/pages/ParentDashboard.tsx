@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
   Award, Users, UserPlus, BookOpen, Trophy, TrendingUp, AlertTriangle,
@@ -969,6 +970,8 @@ function ChildCoursesPanel({ childId, childName, childGrade }: { childId: number
     ? availableCourses.filter((c: any) => c.gradeLevel === effectiveFilter)
     : availableCourses;
 
+  const [selectedCourseIds, setSelectedCourseIds] = useState<Set<number>>(new Set());
+
   const assignCourse = trpc.parent.assignCourseToStudent.useMutation({
     onSuccess: () => {
       toast.success("Course assigned!", { description: `${childName} has been enrolled.` });
@@ -977,6 +980,43 @@ function ChildCoursesPanel({ childId, childName, childGrade }: { childId: number
     },
     onError: (err) => toast.error(err.message),
   });
+
+  const bulkAssign = trpc.parent.bulkAssignCourses.useMutation({
+    onSuccess: (data) => {
+      toast.success(`${data.enrolled} course${data.enrolled !== 1 ? "s" : ""} assigned!`, { description: `${childName} has been enrolled.` });
+      utils.parent.getChildAllCourses.invalidate();
+      setSelectedCourseIds(new Set());
+      setAddDialogOpen(false);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const toggleCourse = (courseId: number) => {
+    setSelectedCourseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(courseId)) next.delete(courseId);
+      else next.add(courseId);
+      return next;
+    });
+  };
+
+  const selectAllFiltered = () => {
+    const ids = filteredCourses.map((c: any) => c.id);
+    setSelectedCourseIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id: number) => next.add(id));
+      return next;
+    });
+  };
+
+  const deselectAllFiltered = () => {
+    const ids = new Set(filteredCourses.map((c: any) => c.id));
+    setSelectedCourseIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id: number) => next.delete(id));
+      return next;
+    });
+  };
 
   const removeCourse = trpc.parent.removeCourseFromStudent.useMutation({
     onSuccess: () => {
@@ -1068,16 +1108,16 @@ function ChildCoursesPanel({ childId, childName, childGrade }: { childId: number
         </div>
       )}
 
-      {/* Add Course dialog — organized by grade */}
-      <Dialog open={addDialogOpen} onOpenChange={(open) => { setAddDialogOpen(open); if (!open) setSelectedGradeFilter(null); }}>
+      {/* Add Course dialog — organized by grade with bulk selection */}
+      <Dialog open={addDialogOpen} onOpenChange={(open) => { setAddDialogOpen(open); if (!open) { setSelectedGradeFilter(null); setSelectedCourseIds(new Set()); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add a Course for {childName}</DialogTitle>
+            <DialogTitle>Add Courses for {childName}</DialogTitle>
             <DialogDescription>
               {childGrade ? (
-                <>Showing courses for Grade {childGrade} (auto-detected). You can select a different grade below.</>
+                <>Showing courses for Grade {childGrade} (auto-detected). Select multiple courses and assign them all at once.</>
               ) : (
-                <>Select a grade group to browse available courses, then assign them to {childName}.</>
+                <>Select a grade group to browse available courses, check the ones you want, then assign them to {childName}.</>
               )}
             </DialogDescription>
           </DialogHeader>
@@ -1108,8 +1148,39 @@ function ChildCoursesPanel({ childId, childName, childGrade }: { childId: number
             </div>
           )}
 
-          {/* Course list */}
-          <div className="space-y-2 max-h-72 overflow-y-auto py-1">
+          {/* Select all / deselect all */}
+          {filteredCourses.length > 0 && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs px-2"
+                  onClick={selectAllFiltered}
+                >
+                  Select All
+                </Button>
+                {selectedCourseIds.size > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs px-2 text-muted-foreground"
+                    onClick={deselectAllFiltered}
+                  >
+                    Deselect All
+                  </Button>
+                )}
+              </div>
+              {selectedCourseIds.size > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {selectedCourseIds.size} selected
+                </Badge>
+              )}
+            </div>
+          )}
+
+          {/* Course list with checkboxes */}
+          <div className="space-y-1.5 max-h-72 overflow-y-auto py-1">
             {availableCourses.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">
                 {childName} is already enrolled in all available courses.
@@ -1119,41 +1190,56 @@ function ChildCoursesPanel({ childId, childName, childGrade }: { childId: number
                 No additional courses available for this grade. Try selecting a different grade.
               </p>
             ) : (
-              filteredCourses.map((course: any) => (
-                <div key={course.id} className="flex items-center justify-between gap-3 rounded-lg border p-3 hover:bg-muted/40 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <p className="text-sm font-medium truncate">{course.title}</p>
-                      {course.subject && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">{course.subject}</Badge>
+              filteredCourses.map((course: any) => {
+                const isSelected = selectedCourseIds.has(course.id);
+                return (
+                  <div
+                    key={course.id}
+                    className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+                      isSelected ? "bg-primary/5 border-primary/30" : "hover:bg-muted/40"
+                    }`}
+                    onClick={() => toggleCourse(course.id)}
+                  >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={() => toggleCourse(course.id)}
+                      className="shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-sm font-medium truncate">{course.title}</p>
+                        {course.subject && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">{course.subject}</Badge>
+                        )}
+                      </div>
+                      {course.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{course.description}</p>
+                      )}
+                      {effectiveFilter === null && course.gradeLevel && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">Grade {course.gradeLevel}</p>
                       )}
                     </div>
-                    {course.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{course.description}</p>
-                    )}
-                    {effectiveFilter === null && course.gradeLevel && (
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Grade {course.gradeLevel}</p>
-                    )}
                   </div>
-                  <Button
-                    size="sm"
-                    className="shrink-0 gap-1.5"
-                    onClick={() => assignCourse.mutate({ studentId: childId, courseId: course.id })}
-                    disabled={assignCourse.isPending}
-                  >
-                    {assignCourse.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                    Assign
-                  </Button>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pt-2 border-t">
             <p className="text-xs text-muted-foreground">
               {filteredCourses.length} course{filteredCourses.length !== 1 ? "s" : ""} available
             </p>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Close</Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+              <Button
+                disabled={selectedCourseIds.size === 0 || bulkAssign.isPending}
+                onClick={() => bulkAssign.mutate({ studentId: childId, courseIds: Array.from(selectedCourseIds) })}
+                className="gap-1.5"
+              >
+                {bulkAssign.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                Assign {selectedCourseIds.size > 0 ? `(${selectedCourseIds.size})` : ""}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

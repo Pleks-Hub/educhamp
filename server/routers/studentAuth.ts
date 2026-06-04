@@ -185,6 +185,33 @@ export const studentAuthRouter = router({
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
+      // Notify parent(s) that the student has activated their account (non-blocking)
+      import("../db").then(async ({ getParentsByChildId }) => {
+        try {
+          const parents = await getParentsByChildId(user.id);
+          const { buildStudentActivatedEmail } = await import("../emailTemplates/studentActivated");
+          for (const parent of parents) {
+            if (parent.parentEmail) {
+              const emailContent = buildStudentActivatedEmail({
+                parentName: parent.parentName || "Parent",
+                studentName: user.name || "Student",
+                studentEmail: user.email || "",
+                activatedAt: new Date(),
+              });
+              await sendEmail({
+                to: parent.parentEmail,
+                subject: emailContent.subject,
+                html: emailContent.html,
+                text: emailContent.text,
+                templateName: "studentActivated",
+              });
+            }
+          }
+        } catch (err) {
+          console.error("[createPassword] Failed to notify parent:", err);
+        }
+      });
+
       return { success: true, studentName: user.name ?? "Student" };
     }),
 
