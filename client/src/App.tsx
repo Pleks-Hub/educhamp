@@ -58,6 +58,7 @@ const StudentLogin = lazy(() => import("./pages/StudentLogin"));
 const StudentForgotPassword = lazy(() => import("./pages/StudentForgotPassword"));
 const SignIn = lazy(() => import("./pages/SignIn"));
 const StudentWelcome = lazy(() => import("./pages/StudentWelcome"));
+const PracticeWeakSkills = lazy(() => import("./pages/PracticeWeakSkills"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -123,6 +124,7 @@ function Router() {
                 <Route path="/course-welcome" component={CourseWelcome} />
                 <Route path="/progress" component={Progress} />
                 <Route path="/skills" component={Skills} />
+                <Route path="/practice" component={PracticeWeakSkills} />
                 <Route path="/parent" component={ParentDashboard} />
                 <Route path="/profile" component={Profile} />
                 <Route path="/settings/notifications" component={StudentNotifications} />

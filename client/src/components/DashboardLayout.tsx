@@ -43,6 +43,7 @@ import {
   Shield,
   Sigma,
   Sparkles,
+  Target,
   User,
   Users,
 } from "lucide-react";
@@ -68,6 +69,7 @@ const secondaryItems = [
   { icon: Library, label: "Browse Courses", path: "/courses" },
   { icon: CalendarDays, label: "Learning Plan", path: "/learning-plan" },
   { icon: Sigma, label: "Skill Index", path: "/skills" },
+  { icon: Target, label: "Practice Weak Skills", path: "/practice" },
   { icon: FileText, label: "Exam Prep", path: "/exam-prep" },
 ];
 

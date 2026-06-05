@@ -23,6 +23,7 @@ import {
   subscribeToNewsletter,
   enrollChild,
   updateUserAccountType,
+  updateUserGrade,
   getParentChildLink,
   getGradeDefaultCourse,
   enrollUserInCourse,
@@ -119,6 +120,11 @@ export const onboardingRouter = router({
         onboardingStep: 1,
         ...(autoParentLed ? { parentLedMode: true } : {}),
       });
+      // Sync gradeLevel to users.grade so auto-enrollment uses the correct grade
+      if (input.gradeLevel) {
+        const normalised = input.gradeLevel.replace(/^Grade\s+/i, "").trim();
+        await updateUserGrade(ctx.user.id, normalised || input.gradeLevel);
+      }
       return { success: true };
     }),
 

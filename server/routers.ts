@@ -15,6 +15,7 @@ import { questionFlagsRouter } from "./routers/questionFlags";
 import { coppaRouter } from "./routers/coppa";
 import { certificateRouter } from "./routers/certificate";
 import { studentAuthRouter } from "./routers/studentAuth";
+import { skillPracticeRouter } from "./routers/skillPractice";
 import { awardXp } from "./gamification/xp";
 import { checkAndAwardBadges } from "./gamification/badges";
 import { recordActivity } from "./gamification/streaks";
@@ -86,6 +87,7 @@ export const appRouter = router({
   coppa: coppaRouter,
   certificate: certificateRouter,
   studentAuth: studentAuthRouter,
+  skillPractice: skillPracticeRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
@@ -174,8 +176,12 @@ export const appRouter = router({
       let enrollments = await getUserCourseEnrollments(userId);
       let wasAutoEnrolled = false;
       if (enrollments.length === 0 && ctx.user.accountType === "student") {
-        const { getGradeDefaultCourse: _getDefault, enrollUserInCourse: _enroll, setUserActiveCourse: _setActive } = await import("./db");
-        const defaultCourse = await _getDefault(ctx.user.grade ?? "9");
+        const { getGradeDefaultCourse: _getDefault, enrollUserInCourse: _enroll, setUserActiveCourse: _setActive, getUserProfile: _getProfile } = await import("./db");
+        // Prefer gradeLevel from profile (set during onboarding) over users.grade (DB default "9")
+        const profile = await _getProfile(userId);
+        const rawGrade = (profile as any)?.gradeLevel ?? ctx.user.grade ?? "9";
+        const gradeLevel = rawGrade.replace(/^Grade\s+/i, "").trim() || "9";
+        const defaultCourse = await _getDefault(gradeLevel);
         const defaultCourseId = defaultCourse?.id ?? 1;
         await _enroll(userId, defaultCourseId);
         await _setActive(userId, defaultCourseId);

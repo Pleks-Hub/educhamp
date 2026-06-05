@@ -610,6 +610,13 @@ export async function updateUserAccountType(userId: number, accountType: "studen
   await db.update(users).set(updates).where(eq(users.id, userId));
 }
 
+/** Update the users.grade column so auto-enrollment picks the correct default course. */
+export async function updateUserGrade(userId: number, grade: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ grade }).where(eq(users.id, userId));
+}
+
 export async function getChildProgressSummary(childId: number) {
   const db = await getDb();
   if (!db) return null;

@@ -2765,3 +2765,29 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
   - Old behavior: Unit 1 resolved to "Reading Foundations" (Algebra I, courseId 1)
   - Fixed behavior: Unit 1 resolves to "Place Value & Number Sense" (Grade 3 Math, courseId 30006)
   - Grade 3 ELA shows phonics questions, Grade 3 Science shows matter questions, etc.
+
+## Fix Algebra I Default Assignment & COPPA Compliance (Jun 5 2026)
+
+- [x] Investigate why Algebra I is auto-assigned on signup (users.grade defaults to "9" and is never updated from profile)
+- [x] Fix course assignment logic so students get grade-appropriate courses on signup
+- [x] Add date of birth field to student signup flow (already exists in StudentOnboarding step 1)
+- [x] Add date of birth field to parent signup flow (already exists in ParentOnboarding step 1)
+- [x] Implement COPPA age validation (validateStudentAge: 3-21, validateGuardianAge: state-aware 18/19/21)
+- [x] Ensure no student can sign up without a parent if under 13 (COPPA consent email sent for grades ≤ 6)
+- [x] Remove Algebra I as default course assignment (fixed: profile.gradeLevel synced to users.grade)
+
+## Quiz Density Increase (Jun 5 2026)
+
+- [x] Add more quiz questions for Pre-K courses (target 20+ per unit)
+- [x] Add more quiz questions for Kindergarten courses (target 20+ per unit)
+- [x] Add more quiz questions for Grade 1 courses (target 20+ per unit)
+- [x] Add more quiz questions for Grade 2 courses (target 20+ per unit)
+- Total: 365 new questions inserted across 63 units (all now have 20+ questions)
+
+## Skill-Level Practice Mode (Jun 5 2026)
+
+- [x] Create server procedure to fetch weak skills below mastery threshold
+- [x] Create server procedure to get practice questions for weak skills
+- [x] Create server procedure to submit practice answers with immediate feedback
+- [x] Create PracticeWeakSkills page component (select → quiz → results flow)
+- [x] Add navigation to practice weak skills from sidebar (Target icon)
