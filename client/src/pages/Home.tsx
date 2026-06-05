@@ -510,6 +510,94 @@ function StreakAtRiskBanner({ currentStreak, streakFreezeCount }: { currentStrea
   );
 }
 
+// ─── Quick Practice Widget ───────────────────────────────────────────────────
+
+function QuickPracticeWidget() {
+  const [, setLocation] = useLocation();
+  const { data, isLoading } = trpc.skillPractice.getDueReviews.useQuery({ limit: 3 });
+
+  if (isLoading) {
+    return (
+      <Card className="border shadow-sm">
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-purple-500" />
+            Quick Practice
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <Skeleton className="h-16 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const dueSkills = data?.dueSkills ?? [];
+  const stats = data?.stats;
+
+  if (dueSkills.length === 0 && (stats?.totalScheduled ?? 0) === 0) {
+    return null; // Don't show widget if no review history
+  }
+
+  return (
+    <Card className="border shadow-sm bg-gradient-to-b from-purple-500/5 to-transparent">
+      <CardHeader className="pb-2 pt-4 px-4">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <RefreshCw className="h-4 w-4 text-purple-500" />
+          Quick Practice
+          {(stats?.dueNow ?? 0) > 0 && (
+            <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">
+              {stats!.dueNow} due
+            </Badge>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4 space-y-2">
+        {dueSkills.length > 0 ? (
+          <>
+            <p className="text-xs text-muted-foreground">Skills ready for review:</p>
+            <div className="space-y-1.5">
+              {dueSkills.map((skill) => (
+                <div
+                  key={skill.skillId}
+                  className="flex items-center justify-between p-2 rounded-md bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                  onClick={() => setLocation("/practice-weak-skills")}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Target className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                    <span className="text-xs font-medium truncate">{skill.skillName}</span>
+                  </div>
+                  {skill.daysSinceReview !== null && (
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {skill.daysSinceReview}d ago
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full gap-2 mt-2 border-purple-200 text-purple-700 hover:bg-purple-50"
+              onClick={() => setLocation("/practice-weak-skills")}
+            >
+              <Target className="h-3.5 w-3.5" /> Practice Now
+            </Button>
+          </>
+        ) : (
+          <div className="text-center py-2">
+            <CheckCircle2 className="h-6 w-6 text-green-500 mx-auto mb-1" />
+            <p className="text-xs text-muted-foreground">All caught up! No skills due for review.</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              {stats?.totalScheduled ?? 0} skills tracked
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -901,6 +989,9 @@ export default function Home() {
         <div className="space-y-4">
           {/* Learning Streak */}
           <StreakTracker />
+
+          {/* Quick Practice Widget — spaced repetition due skills */}
+          <QuickPracticeWidget />
 
           {/* Your Next Step — contextual guidance */}
           <Card className="border shadow-sm bg-gradient-to-b from-primary/5 to-transparent">

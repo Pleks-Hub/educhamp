@@ -1,5 +1,6 @@
 import {
   boolean,
+  decimal,
   index,
   int,
   json,
@@ -2004,3 +2005,31 @@ export const parentPlanSuggestions = mysqlTable("parentPlanSuggestions", {
 }));
 export type ParentPlanSuggestion = typeof parentPlanSuggestions.$inferSelect;
 export type InsertParentPlanSuggestion = typeof parentPlanSuggestions.$inferInsert;
+
+
+// ─── Spaced Repetition Review Schedule ───────────────────────────────────────
+export const skillReviewSchedule = mysqlTable("skillReviewSchedule", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  skillId: varchar("skillId", { length: 32 }).notNull(),
+  courseId: int("courseId").notNull(),
+  // SM-2 algorithm fields
+  easeFactor: decimal("easeFactor", { precision: 4, scale: 2 }).notNull().default("2.50"), // starts at 2.5
+  interval: int("interval").notNull().default(1), // days until next review
+  repetitions: int("repetitions").notNull().default(0), // consecutive correct reviews
+  // Scheduling
+  lastReviewedAt: timestamp("lastReviewedAt"),
+  nextReviewAt: timestamp("nextReviewAt").notNull(), // when this skill is due for review
+  // Performance tracking
+  totalReviews: int("totalReviews").notNull().default(0),
+  correctReviews: int("correctReviews").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  userIdx: index("skillReview_userId_idx").on(t.userId),
+  userSkillIdx: uniqueIndex("skillReview_userId_skillId_idx").on(t.userId, t.skillId),
+  nextReviewIdx: index("skillReview_nextReview_idx").on(t.userId, t.nextReviewAt),
+  courseIdx: index("skillReview_courseId_idx").on(t.courseId),
+}));
+export type SkillReviewSchedule = typeof skillReviewSchedule.$inferSelect;
+export type InsertSkillReviewSchedule = typeof skillReviewSchedule.$inferInsert;

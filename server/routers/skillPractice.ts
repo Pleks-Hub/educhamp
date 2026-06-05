@@ -5,6 +5,7 @@ import { getActiveCourseIdForUser, getSkillsForCourse, getUserMastery, getDb } f
 import { quizQuestions } from "../../drizzle/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { getMasteryLabel, getAdaptivePath } from "../educhamp-helpers";
+import { getSkillsDueForReview, updateReviewSchedule, getReviewStats } from "../spacedRepetition";
 
 export const skillPracticeRouter = router({
   /**
@@ -104,8 +105,8 @@ export const skillPracticeRouter = router({
     }),
 
   /**
-   * Submit practice answers and get feedback (no mastery update, just feedback).
-   * Practice mode gives immediate per-question feedback.
+   * Submit practice answers and get feedback.
+   * Updates spaced repetition schedule based on per-skill performance.
    */
   submitPractice: studentProcedure
     .input(z.object({
@@ -114,7 +115,7 @@ export const skillPracticeRouter = router({
         answer: z.string(),
       })),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return { results: [], score: 0, total: 0 };
 
@@ -156,11 +157,78 @@ export const skillPracticeRouter = router({
 
       const correctCount = results.filter((r) => r.correct).length;
 
+      // Update spaced repetition schedules per skill
+      const skillScores = new Map<string, { correct: number; total: number }>();
+      for (const r of results) {
+        if (r.skillTag) {
+          const existing = skillScores.get(r.skillTag) || { correct: 0, total: 0 };
+          existing.total++;
+          if (r.correct) existing.correct++;
+          skillScores.set(r.skillTag, existing);
+        }
+      }
+
+      const activeCourseId = await getActiveCourseIdForUser(ctx.user.id);
+      const reviewUpdates: Array<{ skillId: string; nextReviewAt: Date; interval: number }> = [];
+      for (const [skillId, { correct, total }] of Array.from(skillScores.entries())) {
+        const score = Math.round((correct / total) * 100);
+        try {
+          const result = await updateReviewSchedule(ctx.user.id, skillId, activeCourseId, score);
+          reviewUpdates.push({ skillId, nextReviewAt: result.nextReviewAt, interval: result.interval });
+        } catch (e) {
+          // Non-critical: don't fail the whole submission
+        }
+      }
+
       return {
         results,
         score: correctCount,
         total: results.length,
         percentage: Math.round((correctCount / results.length) * 100),
+        reviewUpdates,
       };
     }),
+
+  /**
+   * Get skills due for spaced repetition review.
+   */
+  getDueReviews: studentProcedure
+    .input(z.object({ limit: z.number().min(1).max(20).optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+      const activeCourseId = await getActiveCourseIdForUser(userId);
+      const limit = input?.limit ?? 10;
+
+      const dueSkills = await getSkillsDueForReview(userId, activeCourseId, limit);
+      const stats = await getReviewStats(userId, activeCourseId);
+
+      // Enrich with skill names from course skills
+      const courseSkills = await getSkillsForCourse(activeCourseId);
+      const skillNameMap = new Map(courseSkills.map((r) => [r.skill.skillId, r.skill.skillName]));
+      const skillUnitMap = new Map(courseSkills.map((r) => [r.skill.skillId, { unitId: r.unit.id, unitTitle: r.unit.title }]));
+
+      const enrichedDue = dueSkills.map((s) => ({
+        ...s,
+        skillName: skillNameMap.get(s.skillId) || s.skillId,
+        unitTitle: skillUnitMap.get(s.skillId)?.unitTitle || "Unknown",
+        unitId: skillUnitMap.get(s.skillId)?.unitId || 0,
+        daysSinceReview: s.lastReviewedAt
+          ? Math.floor((Date.now() - new Date(s.lastReviewedAt).getTime()) / (1000 * 60 * 60 * 24))
+          : null,
+      }));
+
+      return {
+        dueSkills: enrichedDue,
+        stats,
+      };
+    }),
+
+  /**
+   * Get review statistics for the dashboard widget.
+   */
+  getReviewStats: studentProcedure.query(async ({ ctx }) => {
+    const userId = ctx.user.id;
+    const activeCourseId = await getActiveCourseIdForUser(userId);
+    return getReviewStats(userId, activeCourseId);
+  }),
 });

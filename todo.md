@@ -2791,3 +2791,18 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Create server procedure to submit practice answers with immediate feedback
 - [x] Create PracticeWeakSkills page component (select → quiz → results flow)
 - [x] Add navigation to practice weak skills from sidebar (Target icon)
+
+## Fix Blank Quiz Questions & New Features (Jun 5 2026)
+
+- [x] Investigate blank/missing multiple choice answers in Grade 3 courses
+  Root cause: 894 questions had choices stored as plain strings ["hat","tree"] instead of objects [{label:"A",text:"hat"}]
+  Also: 894 questions were misassigned to courseId=1 (Algebra I) instead of their correct courses
+  Also: 729 additional questions had courseId mismatch with their unit's courseId
+- [x] Fix all blank/incomplete quiz questions across all courses
+  - Converted 894 string-format choices to proper {label, text} object format
+  - Fixed 1623 total courseId mismatches (now all match unit's courseId)
+  - 0 MC questions with NULL choices remaining
+  - All 6333 MC questions now have valid object-format choices
+- [x] Add spaced repetition scheduling (SM-2 algorithm, skillReviewSchedule table, auto-updates on practice)
+- [x] Add Quick Practice widget to student dashboard (3 weak skills, one-click)
+- [x] Expand diagnostic question banks for courses with < 40 questions (all 16 Pre-K through Grade 2 courses now at 40+, 295 new questions added)
