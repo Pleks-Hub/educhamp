@@ -31,6 +31,18 @@ export async function bootstrapEmailService(): Promise<void> {
       .limit(1);
 
     if (active) {
+      // Ensure fromAddress is always noreply@educhamp.co
+      const [row] = await db
+        .select({ fromAddress: emailSettings.fromAddress })
+        .from(emailSettings)
+        .where(eq(emailSettings.id, active.id))
+        .limit(1);
+      if (row && row.fromAddress !== "noreply@educhamp.co") {
+        await db.update(emailSettings)
+          .set({ fromAddress: "noreply@educhamp.co", fromName: "EduChamp" })
+          .where(eq(emailSettings.id, active.id));
+        console.log(`[EmailService] Corrected fromAddress to noreply@educhamp.co (was: ${row.fromAddress})`);
+      }
       console.log(`[EmailService] Active provider: ${active.provider} (id: ${active.id})`);
       return;
     }

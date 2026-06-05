@@ -2813,3 +2813,19 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Add notification badge to Practice Weak Skills sidebar item showing due review count
 - [x] Add practice streak tracking (consecutive days with at least one practice session)
 - [x] Show practice streak in Quick Practice widget with flame icon and day count
+
+## Email Sender Fix & New Features (Jun 5 2026)
+
+- [x] Fix email sender: all notifications must use noreply@educhamp.co (not reply@mail.manus.im)
+  - Enforced noreply@educhamp.co in emailService.ts, factory.ts, and bootstrap.ts
+  - Updated RESEND_FROM_EMAIL env var and DB emailSettings row
+- [x] Add weekly review summary email (Mondays) — notifies students of accumulated due reviews and streak status
+  - Created email template (server/emailTemplates/weeklyStudentReviewSummary.ts)
+  - Created scheduled handler (POST /api/scheduled/weekly-student-review-summary)
+  - Added admin.scheduleWeeklyStudentReviewSummary mutation (Monday 9 AM UTC)
+- [x] Implement streak freeze functionality — students can spend XP/badges to save a streak on missed days
+  - Added streak.purchaseFreeze mutation (200 XP cost, max 3 freezes)
+  - Shows freeze count + buy button in Quick Practice widget
+- [x] Add animated celebration when student completes all due reviews for the day (confetti/checkmark)
+  - Added reviews_complete event to CelebrationOverlay
+  - Triggers confetti + banner in PracticeWeakSkills results when dueNow === 0

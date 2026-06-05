@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle, ArrowLeft, CheckCircle2, XCircle, Target, Zap, Trophy, RotateCcw } from "lucide-react";
+import { useCelebration } from "@/components/CelebrationOverlay";
 import { toast } from "sonner";
 
 type PracticeState = "select" | "quiz" | "results";
@@ -32,9 +33,41 @@ export default function PracticeWeakSkills() {
     { enabled: state === "quiz" && selectedUnitIds.length > 0 }
   );
 
+  const { celebrate } = useCelebration();
+  const celebratedRef = useRef(false);
+
+  // Query review stats to detect when all reviews are done
+  const reviewStatsQuery = trpc.skillPractice.getReviewStats.useQuery(undefined, {
+    enabled: state === "results",
+    staleTime: 0,
+  });
+
+  // Trigger celebration when all reviews are done after submitting practice
+  useEffect(() => {
+    if (
+      state === "results" &&
+      reviewStatsQuery.data &&
+      reviewStatsQuery.data.dueNow === 0 &&
+      reviewStatsQuery.data.totalScheduled > 0 &&
+      !celebratedRef.current
+    ) {
+      celebratedRef.current = true;
+      celebrate("reviews_complete", "All Reviews Done! 🎉");
+    }
+  }, [state, reviewStatsQuery.data, celebrate]);
+
   const submitMutation = trpc.skillPractice.submitPractice.useMutation({
-    onSuccess: () => {
+    onSuccess: (data) => {
       setState("results");
+      // Trigger celebration for great scores
+      const pct = data.percentage ?? 0;
+      if (pct === 100) {
+        celebrate("quiz_perfect", "Perfect Practice!");
+      } else if (pct >= 80) {
+        celebrate("quiz_pass", "Great Practice!");
+      }
+      // Invalidate review stats so the effect above can detect all-done state
+      reviewStatsQuery.refetch();
     },
     onError: () => {
       toast.error("Failed to submit practice. Please try again.");
@@ -414,6 +447,19 @@ export default function PracticeWeakSkills() {
             );
           })}
         </div>
+
+        {/* All reviews done banner */}
+        {reviewStatsQuery.data && reviewStatsQuery.data.dueNow === 0 && reviewStatsQuery.data.totalScheduled > 0 && (
+          <Card className="border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 dark:border-emerald-800">
+            <CardContent className="pt-5 pb-5 text-center">
+              <div className="text-3xl mb-2 animate-bounce">\u2705</div>
+              <h3 className="text-lg font-bold text-emerald-700 dark:text-emerald-300">All Reviews Complete!</h3>
+              <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-1">
+                You&apos;ve finished all your due reviews for today. Your spaced repetition schedule is up to date!
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="flex gap-3">
           <Button variant="outline" className="flex-1" onClick={resetPractice}>

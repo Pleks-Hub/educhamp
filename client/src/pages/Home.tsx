@@ -37,6 +37,7 @@ import {
   UserCheck,
   XCircle,
   Flame,
+  Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -519,6 +520,16 @@ function QuickPracticeWidget() {
   const streakQuery = trpc.streak.getStats.useQuery(undefined, { staleTime: 60_000 });
   const currentStreak = streakQuery.data?.currentStreak ?? 0;
   const todayActive = streakQuery.data?.todayActive ?? false;
+  const streakFreezes = streakQuery.data?.streakFreezes ?? 0;
+  const purchaseFreeze = trpc.streak.purchaseFreeze.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Streak freeze purchased! You now have ${data.newFreezeCount} freeze${data.newFreezeCount !== 1 ? "s" : ""}.`);
+      streakQuery.refetch();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
 
   if (isLoading) {
     return (
@@ -569,6 +580,22 @@ function QuickPracticeWidget() {
         {todayActive && currentStreak > 0 && (
           <p className="text-[10px] text-green-600 mt-1">Streak active today — {currentStreak} day{currentStreak !== 1 ? "s" : ""} strong!</p>
         )}
+        {/* Streak Freeze indicator */}
+        <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-1 text-[10px] text-blue-600">
+            <Shield className="h-3 w-3" />
+            <span>{streakFreezes} freeze{streakFreezes !== 1 ? "s" : ""}</span>
+          </div>
+          {streakFreezes < 3 && (
+            <button
+              className="text-[10px] text-purple-600 hover:text-purple-800 underline underline-offset-2 disabled:opacity-50 disabled:no-underline"
+              disabled={purchaseFreeze.isPending}
+              onClick={() => purchaseFreeze.mutate()}
+            >
+              {purchaseFreeze.isPending ? "Buying..." : "Buy freeze (200 XP)"}
+            </button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="px-4 pb-4 space-y-2">
         {dueSkills.length > 0 ? (

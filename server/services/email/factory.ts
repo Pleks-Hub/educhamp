@@ -90,11 +90,9 @@ export async function getEmailProvider(): Promise<{
   const { ResendProvider } = await import("./providers/resend");
   const provider = new ResendProvider(apiKey);
 
-  // Parse "Name <email@domain.com>" or plain "email@domain.com" from the env var
-  const fromEnv = ENV.resendFromEmail || "EduChamp <noreply@educhamp.co>";
-  const match = fromEnv.match(/^(.+?)\s*<(.+?)>$/);
-  const fromName = match ? match[1].trim() : "EduChamp";
-  const fromAddress = match ? match[2].trim() : fromEnv;
+  // Always enforce noreply@educhamp.co regardless of env var value
+  const fromAddress = "noreply@educhamp.co";
+  const fromName = "EduChamp";
 
   console.log(`[EmailService] Using Manus built-in Resend provider (env fallback) — from: ${fromAddress}`);
 

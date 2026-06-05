@@ -1663,6 +1663,68 @@ export const appRouter = router({
       const { recordLearningActivity } = await import("./db");
       return recordLearningActivity(ctx.user.id);
     }),
+    /** Purchase a streak freeze using XP (costs 200 XP). Max 3 freezes. */
+    purchaseFreeze: protectedProcedure.mutation(async ({ ctx }) => {
+      const { getDb } = await import("./db");
+      const { streakStats, studentLevels, xpLedger } = await import("../drizzle/schema");
+      const { eq, sql } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+
+      const FREEZE_COST_XP = 200;
+      const MAX_FREEZES = 3;
+
+      // Get current streak stats
+      const [stats] = await db.select().from(streakStats).where(eq(streakStats.userId, ctx.user.id)).limit(1);
+      const currentFreezes = stats?.streakFreezes ?? 0;
+      if (currentFreezes >= MAX_FREEZES) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `You already have the maximum of ${MAX_FREEZES} streak freezes.` });
+      }
+
+      // Check XP balance
+      const [levelRow] = await db.select({ totalXp: studentLevels.totalXp }).from(studentLevels).where(eq(studentLevels.userId, ctx.user.id)).limit(1);
+      const totalXp = levelRow?.totalXp ?? 0;
+      if (totalXp < FREEZE_COST_XP) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: `Not enough XP. You need ${FREEZE_COST_XP} XP but have ${totalXp}.` });
+      }
+
+      // Deduct XP
+      await db.update(studentLevels)
+        .set({ totalXp: sql`${studentLevels.totalXp} - ${FREEZE_COST_XP}` })
+        .where(eq(studentLevels.userId, ctx.user.id));
+
+      // Record XP spend in ledger (negative amount)
+      await db.insert(xpLedger).values({
+        userId: ctx.user.id,
+        amount: -FREEZE_COST_XP,
+        source: "streak_freeze_purchase",
+        sourceId: `freeze_${Date.now()}`,
+        description: "Purchased a streak freeze",
+      });
+
+      // Add streak freeze
+      if (stats) {
+        await db.update(streakStats)
+          .set({ streakFreezes: stats.streakFreezes + 1 })
+          .where(eq(streakStats.userId, ctx.user.id));
+      } else {
+        await db.insert(streakStats).values({
+          userId: ctx.user.id,
+          currentStreak: 0,
+          longestStreak: 0,
+          lastActivityDate: null,
+          streakFreezes: 2, // 1 default + 1 purchased
+          totalActiveDays: 0,
+        });
+      }
+
+      return {
+        success: true,
+        newFreezeCount: (stats?.streakFreezes ?? 1) + 1,
+        xpSpent: FREEZE_COST_XP,
+        remainingXp: totalXp - FREEZE_COST_XP,
+      };
+    }),
   }),
 
   // ─── Learning Plan Router ──────────────────────────────────────────────────

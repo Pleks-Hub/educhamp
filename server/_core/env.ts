@@ -8,7 +8,16 @@ export const ENV = {
   forgeApiUrl: process.env.BUILT_IN_FORGE_API_URL ?? "",
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   resendApiKey: process.env.RESEND_API_KEY ?? "",
-  resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "EduChamp <noreply@educhamp.co>",
+  resendFromEmail: (() => {
+    const raw = process.env.RESEND_FROM_EMAIL ?? "EduChamp <noreply@educhamp.co>";
+    // Decode unicode-escaped angle brackets that may come from env injection
+    const decoded = raw.replace(/\\u003c/g, "<").replace(/\\u003e/g, ">");
+    // Enforce noreply@educhamp.co as the only allowed sender domain
+    if (!decoded.includes("noreply@educhamp.co")) {
+      return "EduChamp <noreply@educhamp.co>";
+    }
+    return decoded;
+  })(),
   resendWebhookSecret: process.env.RESEND_WEBHOOK_SECRET ?? "",
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",

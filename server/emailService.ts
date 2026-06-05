@@ -109,10 +109,9 @@ export async function suppressEmail(
 
 // ─── Core send function ───────────────────────────────────────────────────────
 
-// From address is configurable via RESEND_FROM_EMAIL env var
-// Default: "EduChamp <noreply@educhamp.co>" (requires domain verification in Resend dashboard)
+// From address is always noreply@educhamp.co — enforced regardless of env var
 function getFromAddress(): string {
-  return ENV.resendFromEmail || "EduChamp <noreply@educhamp.co>";
+  return "EduChamp <noreply@educhamp.co>";
 }
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;

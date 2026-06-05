@@ -20,7 +20,8 @@ export type CelebrationEvent =
   | "quiz_pass"
   | "quiz_perfect"
   | "badge_earn"
-  | "unit_complete";
+  | "unit_complete"
+  | "reviews_complete";
 
 interface CelebrationState {
   active: boolean;
@@ -77,6 +78,12 @@ const EVENT_CONFIG: Record<
     emoji: "🚀",
     defaultLabel: "Unit Complete!",
     color: "from-blue-400 to-cyan-300",
+    duration: 3500,
+  },
+  reviews_complete: {
+    emoji: "✅",
+    defaultLabel: "All Reviews Done!",
+    color: "from-emerald-400 to-teal-300",
     duration: 3500,
   },
 };
