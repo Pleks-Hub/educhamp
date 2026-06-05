@@ -4408,3 +4408,204 @@ export async function deleteLearningPlan(planId: number) {
   if (!db) return;
   await db.update(learningPlans).set({ isActive: false }).where(eq(learningPlans.id, planId));
 }
+
+// ─── Billing Exemptions ──────────────────────────────────────────────────────
+
+export async function getActiveBillingExemption(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const { billingExemptions } = await import("../drizzle/schema");
+  const { and, eq, or, isNull, gte } = await import("drizzle-orm");
+  const [exemption] = await db.select().from(billingExemptions)
+    .where(and(
+      eq(billingExemptions.userId, userId),
+      eq(billingExemptions.status, "active"),
+      or(
+        eq(billingExemptions.type, "perpetual"),
+        and(
+          eq(billingExemptions.type, "time_limited"),
+          or(isNull(billingExemptions.endDate), gte(billingExemptions.endDate, new Date()))
+        )
+      )
+    ))
+    .orderBy(billingExemptions.createdAt)
+    .limit(1);
+  return exemption ?? null;
+}
+
+export async function getEnforcingBillingExemption(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const { billingExemptions } = await import("../drizzle/schema");
+  const { and, eq, lte } = await import("drizzle-orm");
+  // An exemption in "enforcing" status means the grace period is over and billing is required
+  const [exemption] = await db.select().from(billingExemptions)
+    .where(and(
+      eq(billingExemptions.userId, userId),
+      eq(billingExemptions.status, "enforcing"),
+      lte(billingExemptions.enforcementDate, new Date())
+    ))
+    .limit(1);
+  return exemption ?? null;
+}
+
+export async function grantBillingExemption(data: {
+  userId: number;
+  type: "perpetual" | "time_limited";
+  reason: string;
+  grantedBy: number;
+  startDate?: Date;
+  endDate?: Date | null;
+  enforcementDate?: Date | null;
+  notifyDate?: Date | null;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  const { billingExemptions } = await import("../drizzle/schema");
+  const [result] = await db.insert(billingExemptions).values({
+    userId: data.userId,
+    type: data.type,
+    reason: data.reason,
+    grantedBy: data.grantedBy,
+    startDate: data.startDate ?? new Date(),
+    endDate: data.endDate ?? null,
+    enforcementDate: data.enforcementDate ?? null,
+    notifyDate: data.notifyDate ?? null,
+    status: "active",
+  }).$returningId();
+  return result;
+}
+
+export async function revokeBillingExemption(exemptionId: number, revokedBy: number, reason?: string, enforcementDate?: Date) {
+  const db = await getDb();
+  if (!db) return;
+  const { billingExemptions } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  await db.update(billingExemptions).set({
+    status: enforcementDate ? "enforcing" : "revoked",
+    revokedAt: new Date(),
+    revokedBy,
+    revokeReason: reason ?? null,
+    enforcementDate: enforcementDate ?? null,
+  }).where(eq(billingExemptions.id, exemptionId));
+}
+
+export async function updateBillingExemption(exemptionId: number, updates: {
+  endDate?: Date | null;
+  enforcementDate?: Date | null;
+  notifyDate?: Date | null;
+  reason?: string;
+  status?: "active" | "expired" | "revoked" | "enforcing";
+}) {
+  const db = await getDb();
+  if (!db) return;
+  const { billingExemptions } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  await db.update(billingExemptions).set(updates).where(eq(billingExemptions.id, exemptionId));
+}
+
+export async function listBillingExemptions(opts: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const db = await getDb();
+  if (!db) return { rows: [], total: 0 };
+  const { billingExemptions } = await import("../drizzle/schema");
+  const { users } = await import("../drizzle/schema");
+  const { and, eq, count, desc, sql } = await import("drizzle-orm");
+  
+  const conditions: any[] = [];
+  if (opts.status && opts.status !== "all") {
+    conditions.push(eq(billingExemptions.status, opts.status as any));
+  }
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  
+  const [rows, [{ total }]] = await Promise.all([
+    db.select({
+      id: billingExemptions.id,
+      userId: billingExemptions.userId,
+      type: billingExemptions.type,
+      reason: billingExemptions.reason,
+      grantedBy: billingExemptions.grantedBy,
+      startDate: billingExemptions.startDate,
+      endDate: billingExemptions.endDate,
+      enforcementDate: billingExemptions.enforcementDate,
+      notifyDate: billingExemptions.notifyDate,
+      status: billingExemptions.status,
+      revokedAt: billingExemptions.revokedAt,
+      revokedBy: billingExemptions.revokedBy,
+      revokeReason: billingExemptions.revokeReason,
+      notificationSent: billingExemptions.notificationSent,
+      enforcementNotificationSent: billingExemptions.enforcementNotificationSent,
+      createdAt: billingExemptions.createdAt,
+      userName: users.name,
+      userEmail: users.email,
+      userAccountType: users.accountType,
+    })
+      .from(billingExemptions)
+      .leftJoin(users, eq(billingExemptions.userId, users.id))
+      .where(where)
+      .orderBy(desc(billingExemptions.createdAt))
+      .limit(opts.limit ?? 50)
+      .offset(opts.offset ?? 0),
+    db.select({ total: count() }).from(billingExemptions).where(where),
+  ]);
+  return { rows, total: Number(total) };
+}
+
+export async function getExemptionById(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const { billingExemptions } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  const [row] = await db.select().from(billingExemptions).where(eq(billingExemptions.id, id)).limit(1);
+  return row ?? null;
+}
+
+export async function getExpiringExemptions() {
+  const db = await getDb();
+  if (!db) return [];
+  const { billingExemptions } = await import("../drizzle/schema");
+  const { users } = await import("../drizzle/schema");
+  const { and, eq, lte, gte, isNotNull } = await import("drizzle-orm");
+  
+  const now = new Date();
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  
+  // Find active time_limited exemptions expiring within 7 days that haven't been notified
+  return db.select({
+    id: billingExemptions.id,
+    userId: billingExemptions.userId,
+    endDate: billingExemptions.endDate,
+    enforcementDate: billingExemptions.enforcementDate,
+    userName: users.name,
+    userEmail: users.email,
+  })
+    .from(billingExemptions)
+    .leftJoin(users, eq(billingExemptions.userId, users.id))
+    .where(and(
+      eq(billingExemptions.status, "active"),
+      eq(billingExemptions.type, "time_limited"),
+      eq(billingExemptions.notificationSent, false),
+      isNotNull(billingExemptions.endDate),
+      lte(billingExemptions.endDate, sevenDaysFromNow),
+      gte(billingExemptions.endDate, now)
+    ));
+}
+
+export async function markExemptionNotified(exemptionId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const { billingExemptions } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  await db.update(billingExemptions).set({ notificationSent: true }).where(eq(billingExemptions.id, exemptionId));
+}
+
+export async function expireExemption(exemptionId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const { billingExemptions } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  await db.update(billingExemptions).set({ status: "expired" }).where(eq(billingExemptions.id, exemptionId));
+}

@@ -1943,3 +1943,37 @@ export type LearningPlanBlock = {
   priority: "high" | "medium" | "low";
   notes?: string;
 };
+
+// ─── Billing Exemptions ─────────────────────────────────────────────────────
+/**
+ * Admin-granted billing exemptions that allow users (parent or student) to access
+ * the platform without a card on file or active paid subscription.
+ * Supports perpetual exemptions and time-limited ones with enforcement dates.
+ */
+export const billingExemptions = mysqlTable("billingExemptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),                    // FK → users.id
+  type: mysqlEnum("type", ["perpetual", "time_limited"]).notNull(),
+  reason: text("reason").notNull(),                   // Admin's reason for granting
+  grantedBy: int("grantedBy").notNull(),              // FK → users.id (admin)
+  startDate: timestamp("startDate").defaultNow().notNull(),
+  endDate: timestamp("endDate"),                      // null for perpetual
+  enforcementDate: timestamp("enforcementDate"),      // when billing will be enforced after exemption ends
+  notifyDate: timestamp("notifyDate"),                // when to send advance notice to user
+  status: mysqlEnum("status", ["active", "expired", "revoked", "enforcing"]).notNull().default("active"),
+  revokedAt: timestamp("revokedAt"),
+  revokedBy: int("revokedBy"),                        // FK → users.id (admin who revoked)
+  revokeReason: text("revokeReason"),
+  notificationSent: boolean("notificationSent").notNull().default(false),
+  enforcementNotificationSent: boolean("enforcementNotificationSent").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  userIdIdx: index("billingExemptions_userId_idx").on(t.userId),
+  statusIdx: index("billingExemptions_status_idx").on(t.status),
+  endDateIdx: index("billingExemptions_endDate_idx").on(t.endDate),
+  grantedByIdx: index("billingExemptions_grantedBy_idx").on(t.grantedBy),
+}));
+
+export type BillingExemption = typeof billingExemptions.$inferSelect;
+export type InsertBillingExemption = typeof billingExemptions.$inferInsert;

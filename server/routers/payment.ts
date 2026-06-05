@@ -39,6 +39,15 @@ import {
   listSubscriptionCards,
   adminDeleteCard,
   checkStudentParentBillingCoverage,
+  getActiveBillingExemption,
+  grantBillingExemption,
+  revokeBillingExemption,
+  updateBillingExemption,
+  listBillingExemptions,
+  getExemptionById,
+  getExpiringExemptions,
+  markExemptionNotified,
+  expireExemption,
 } from "../db";
 import {
   stripe,
@@ -438,22 +447,28 @@ export const paymentRouter = router({
   // ── Protected: check billing status (card on file + plan) ──────────────────
   getBillingStatus: protectedProcedure.query(async ({ ctx }) => {
     const sub = await getUserSubscription(ctx.user.id);
+    // Check for active billing exemption (admin-granted free access)
+    const exemption = await getActiveBillingExemption(ctx.user.id);
+    const isExempt = !!exemption;
     // For student accounts without their own subscription, check parent billing coverage
     let coveredByParent = false;
     let parentPlanName: string | null = null;
-    if (ctx.user.accountType === "student" && !sub) {
+    if (ctx.user.accountType === "student" && !sub && !isExempt) {
       const coverage = await checkStudentParentBillingCoverage(ctx.user.id);
       coveredByParent = coverage.covered;
       parentPlanName = coverage.planName;
     }
     return {
-      hasSubscription: !!sub || coveredByParent,
-      cardOnFile: sub?.cardOnFile ?? coveredByParent,
-      planName: sub?.planName ?? parentPlanName ?? null,
-      status: sub?.status ?? (coveredByParent ? "active" : null),
+      hasSubscription: !!sub || coveredByParent || isExempt,
+      cardOnFile: sub?.cardOnFile ?? (coveredByParent || isExempt),
+      planName: sub?.planName ?? parentPlanName ?? (isExempt ? "exempt" : null),
+      status: sub?.status ?? (coveredByParent ? "active" : isExempt ? "active" : null),
       suspendedAt: sub?.suspendedAt ?? null,
-      maxStudents: sub?.planName ? (getPlanByKey(sub.planName)?.maxStudents ?? 1) : 0,
+      maxStudents: sub?.planName ? (getPlanByKey(sub.planName)?.maxStudents ?? 1) : (isExempt ? 10 : 0),
       coveredByParent,
+      isExempt,
+      exemptionType: exemption?.type ?? null,
+      exemptionEndDate: exemption?.endDate ?? null,
     };
   }),
 
@@ -1031,6 +1046,187 @@ export const paymentRouter = router({
           metadata: { adminId: ctx.user.id },
         });
         return { success: true };
+      }),
+
+    // ─── Billing Exemptions ─────────────────────────────────────────────────
+
+    listExemptions: adminProcedure
+      .input(z.object({
+        status: z.string().optional(),
+        limit: z.number().int().min(1).max(100).default(50),
+        offset: z.number().int().nonnegative().default(0),
+      }))
+      .query(async ({ input }) => {
+        return listBillingExemptions(input);
+      }),
+
+    grantExemption: adminProcedure
+      .input(z.object({
+        userId: z.number(),
+        type: z.enum(["perpetual", "time_limited"]),
+        reason: z.string().min(1),
+        endDate: z.date().optional(),
+        enforcementDate: z.date().optional(),
+        notifyDate: z.date().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // Validate user exists
+        const user = await getUserById(input.userId);
+        if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+
+        // Check if user already has an active exemption
+        const existing = await getActiveBillingExemption(input.userId);
+        if (existing) {
+          throw new TRPCError({ code: "CONFLICT", message: "User already has an active billing exemption" });
+        }
+
+        const result = await grantBillingExemption({
+          userId: input.userId,
+          type: input.type,
+          reason: input.reason,
+          grantedBy: ctx.user.id,
+          endDate: input.endDate ?? null,
+          enforcementDate: input.enforcementDate ?? null,
+          notifyDate: input.notifyDate ?? null,
+        });
+
+        await logPaymentEvent({
+          userId: ctx.user.id,
+          event: "admin.exemption.granted",
+          stripeObjectId: String(input.userId),
+          metadata: {
+            adminId: ctx.user.id,
+            targetUserId: input.userId,
+            type: input.type,
+            reason: input.reason,
+            endDate: input.endDate?.toISOString() ?? null,
+          },
+        });
+
+        // Send notification email to user about their exemption
+        try {
+          const { sendEmail } = await import("../emailService");
+          if (user.email) {
+            await sendEmail({
+              to: user.email,
+              subject: "EduChamp — Free Access Granted",
+              html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px">
+                <h2 style="color:#4f46e5">Free Access Granted!</h2>
+                <p>Hi ${user.name || "there"},</p>
+                <p>Great news! An administrator has granted you free access to EduChamp${input.type === "time_limited" && input.endDate ? ` until ${input.endDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}` : " with no expiration date"}.</p>
+                <p>You can now access all features without needing to set up billing.</p>
+                <p><strong>Reason:</strong> ${input.reason}</p>
+                <p><a href="https://educhamp.co" style="display:inline-block;padding:10px 20px;background:#4f46e5;color:white;border-radius:8px;text-decoration:none">Go to EduChamp</a></p>
+                <p style="color:#6b7280;font-size:12px;margin-top:20px">If you have questions, contact support@educhamp.co</p>
+              </div>`,
+              text: `Free access granted to EduChamp. ${input.type === "time_limited" && input.endDate ? `Valid until ${input.endDate.toLocaleDateString()}.` : "No expiration."} Reason: ${input.reason}`,
+              templateName: "exemption_granted",
+            }).catch(() => {});
+          }
+        } catch {}
+
+        return { success: true, id: result?.id };
+      }),
+
+    revokeExemption: adminProcedure
+      .input(z.object({
+        exemptionId: z.number(),
+        reason: z.string().optional(),
+        enforcementDate: z.date().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const exemption = await getExemptionById(input.exemptionId);
+        if (!exemption) throw new TRPCError({ code: "NOT_FOUND", message: "Exemption not found" });
+        if (exemption.status !== "active") {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Can only revoke active exemptions" });
+        }
+
+        await revokeBillingExemption(
+          input.exemptionId,
+          ctx.user.id,
+          input.reason,
+          input.enforcementDate
+        );
+
+        await logPaymentEvent({
+          userId: ctx.user.id,
+          event: "admin.exemption.revoked",
+          stripeObjectId: String(input.exemptionId),
+          metadata: {
+            adminId: ctx.user.id,
+            targetUserId: exemption.userId,
+            reason: input.reason,
+            enforcementDate: input.enforcementDate?.toISOString() ?? null,
+          },
+        });
+
+        // Send notification to user about billing enforcement
+        try {
+          const user = await getUserById(exemption.userId);
+          if (user?.email) {
+            const { sendEmail } = await import("../emailService");
+            const enfDate = input.enforcementDate
+              ? input.enforcementDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+              : "immediately";
+            await sendEmail({
+              to: user.email,
+              subject: "EduChamp — Billing Setup Required",
+              html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px">
+                <h2 style="color:#f59e0b">Action Required: Set Up Billing</h2>
+                <p>Hi ${user.name || "there"},</p>
+                <p>Your free access period on EduChamp is ending. Billing will be required starting <strong>${enfDate}</strong>.</p>
+                ${input.reason ? `<p><strong>Reason:</strong> ${input.reason}</p>` : ""}
+                <p>To continue using EduChamp without interruption, please set up your billing information before the enforcement date.</p>
+                <p><a href="https://educhamp.co/billing/setup" style="display:inline-block;padding:10px 20px;background:#4f46e5;color:white;border-radius:8px;text-decoration:none">Set Up Billing</a></p>
+                <p style="color:#6b7280;font-size:12px;margin-top:20px">If you have questions, contact support@educhamp.co</p>
+              </div>`,
+              text: `Your free access on EduChamp is ending. Billing required starting ${enfDate}. Set up billing at https://educhamp.co/billing/setup`,
+              templateName: "exemption_revoked",
+            }).catch(() => {});
+          }
+        } catch {}
+
+        return { success: true };
+      }),
+
+    updateExemption: adminProcedure
+      .input(z.object({
+        exemptionId: z.number(),
+        endDate: z.date().nullish(),
+        enforcementDate: z.date().nullish(),
+        notifyDate: z.date().nullish(),
+        reason: z.string().optional(),
+        status: z.enum(["active", "expired", "revoked", "enforcing"]).optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const exemption = await getExemptionById(input.exemptionId);
+        if (!exemption) throw new TRPCError({ code: "NOT_FOUND", message: "Exemption not found" });
+
+        const updates: any = {};
+        if (input.endDate !== undefined) updates.endDate = input.endDate;
+        if (input.enforcementDate !== undefined) updates.enforcementDate = input.enforcementDate;
+        if (input.notifyDate !== undefined) updates.notifyDate = input.notifyDate;
+        if (input.reason) updates.reason = input.reason;
+        if (input.status) updates.status = input.status;
+
+        await updateBillingExemption(input.exemptionId, updates);
+
+        await logPaymentEvent({
+          userId: ctx.user.id,
+          event: "admin.exemption.updated",
+          stripeObjectId: String(input.exemptionId),
+          metadata: { adminId: ctx.user.id, updates },
+        });
+
+        return { success: true };
+      }),
+
+    getExemption: adminProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        const exemption = await getExemptionById(input.id);
+        if (!exemption) throw new TRPCError({ code: "NOT_FOUND" });
+        return exemption;
       }),
   }),
 });

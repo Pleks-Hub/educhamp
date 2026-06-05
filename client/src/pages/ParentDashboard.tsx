@@ -2833,6 +2833,13 @@ export default function ParentDashboard() {
     },
   });
 
+    // Auto-select the first (and only) child so parent doesn't have to click
+  useEffect(() => {
+    if (children && children.length === 1 && children[0] && !selectedChildId) {
+      setSelectedChildId(children[0].childId);
+    }
+  }, [children, selectedChildId]);
+
   if (loading || childrenLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -2843,13 +2850,6 @@ export default function ParentDashboard() {
       </div>
     );
   }
-
-    // Auto-select the first (and only) child so parent doesn't have to click
-  useEffect(() => {
-    if (children && children.length === 1 && children[0] && !selectedChildId) {
-      setSelectedChildId(children[0].childId);
-    }
-  }, [children, selectedChildId]);
 
   const selectedChild = children?.find((c) => c?.childId === selectedChildId) ?? null;
   return (

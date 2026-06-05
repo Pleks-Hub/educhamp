@@ -195,7 +195,10 @@ function DashboardLayoutContent({
   const noCardOnFile = billingStatus && !billingStatus.hasSubscription;
   const isSuspended = billingStatus?.suspendedAt != null;
   const isStudentAccount = user?.accountType === "student";
+  // Users with active billing exemptions are never access-locked
+  const isExempt = !!(billingStatus as any)?.isExempt;
   const isAccessLocked =
+    !isExempt &&
     (
       sub?.status === "past_due" ||
       sub?.status === "canceled" ||
@@ -205,7 +208,8 @@ function DashboardLayoutContent({
     !location.startsWith("/billing") &&
     !location.startsWith("/admin") &&
     !location.startsWith("/settings") &&
-    !location.startsWith("/profile");
+    !location.startsWith("/profile") &&
+    !location.startsWith("/parent");
 
   const planDisplayName = sub?.planName === "premium_family" ? "Premium Family" : sub?.planName === "family" ? "Family Plan" : sub?.planName ?? "your plan";
   const periodEndDate = sub?.currentPeriodEnd

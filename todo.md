@@ -2675,3 +2675,27 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 ### Parent Weekly Progress Email
 - [x] Server: weeklyParentDigest scheduled handler (every Monday 8AM UTC)
 - [x] Email: comprehensive summary of all children's progress, mastery changes, quiz scores
+
+## Admin Billing Exemption & Management System (June 2026)
+
+### Parent Portal Fix
+- [x] Fix React hooks violation (useEffect after early return in ParentDashboard.tsx)
+- [x] Add /parent to access gate exemption list in DashboardLayout
+
+### Admin Billing Management
+- [x] DB: billingExemptions table (userId, type, reason, grantedBy, startDate, endDate, status, notifyDate, enforcementDate)
+- [x] Server: admin.grantBillingExemption — grant free access (perpetual or time-limited)
+- [x] Server: admin.revokeBillingExemption — revoke and set enforcement date
+- [x] Server: admin.listBillingExemptions — list all exemptions with user info
+- [x] Server: admin.updateBillingExemption — modify dates/reason
+- [x] Modify getBillingStatus to check for active exemptions (bypass billing gate)
+- [x] Admin UI: Enhanced Subscriptions tab with billing overview (start dates, amounts, exemption badges)
+- [x] Admin UI: Grant Exemption dialog (user search, perpetual/time-limited, reason)
+- [x] Admin UI: Revoke/Enforce dialog (set notification date + enforcement date)
+- [x] Billing enforcement: when exemption expires, gate access and prompt billing setup
+- [x] Email: notify user when exemption is about to expire (7 days before)
+- [x] Email: notify user when admin enforces billing on previously exempt user
+- [x] User-facing: show billing setup prompt when exemption expires
+- [x] Ensure exempt users get full platform access without card on file
+- [x] Ensure existing paying users are unaffected by exemption logic
+- [x] Write vitest tests for exemption grant/revoke/expiry flows
