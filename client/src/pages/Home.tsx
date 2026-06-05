@@ -36,6 +36,7 @@ import {
   BookMarked,
   UserCheck,
   XCircle,
+  Flame,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -515,6 +516,9 @@ function StreakAtRiskBanner({ currentStreak, streakFreezeCount }: { currentStrea
 function QuickPracticeWidget() {
   const [, setLocation] = useLocation();
   const { data, isLoading } = trpc.skillPractice.getDueReviews.useQuery({ limit: 3 });
+  const streakQuery = trpc.streak.getStats.useQuery(undefined, { staleTime: 60_000 });
+  const currentStreak = streakQuery.data?.currentStreak ?? 0;
+  const todayActive = streakQuery.data?.todayActive ?? false;
 
   if (isLoading) {
     return (
@@ -542,15 +546,29 @@ function QuickPracticeWidget() {
   return (
     <Card className="border shadow-sm bg-gradient-to-b from-purple-500/5 to-transparent">
       <CardHeader className="pb-2 pt-4 px-4">
-        <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          <RefreshCw className="h-4 w-4 text-purple-500" />
-          Quick Practice
-          {(stats?.dueNow ?? 0) > 0 && (
-            <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">
-              {stats!.dueNow} due
-            </Badge>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-purple-500" />
+            Quick Practice
+            {(stats?.dueNow ?? 0) > 0 && (
+              <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">
+                {stats!.dueNow} due
+              </Badge>
+            )}
+          </CardTitle>
+          {currentStreak > 0 && (
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+              <Flame className="h-3.5 w-3.5" />
+              <span className="text-xs font-bold">{currentStreak}</span>
+            </div>
           )}
-        </CardTitle>
+        </div>
+        {!todayActive && currentStreak > 0 && (
+          <p className="text-[10px] text-orange-600 mt-1">Practice today to keep your {currentStreak}-day streak!</p>
+        )}
+        {todayActive && currentStreak > 0 && (
+          <p className="text-[10px] text-green-600 mt-1">Streak active today — {currentStreak} day{currentStreak !== 1 ? "s" : ""} strong!</p>
+        )}
       </CardHeader>
       <CardContent className="px-4 pb-4 space-y-2">
         {dueSkills.length > 0 ? (

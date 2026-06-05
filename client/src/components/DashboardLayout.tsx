@@ -197,6 +197,14 @@ function DashboardLayoutContent({
   const noCardOnFile = billingStatus && !billingStatus.hasSubscription;
   const isSuspended = billingStatus?.suspendedAt != null;
   const isStudentAccount = user?.accountType === "student";
+
+  // Spaced repetition review stats for sidebar badge
+  const reviewStatsQuery = trpc.skillPractice.getReviewStats.useQuery(undefined, {
+    staleTime: 60_000,
+    enabled: !!isStudentAccount,
+  });
+  const dueReviewCount = reviewStatsQuery.data?.dueNow ?? 0;
+
   // Users with active billing exemptions are never access-locked
   const isExempt = !!(billingStatus as any)?.isExempt;
   const isAccessLocked =
@@ -333,21 +341,32 @@ function DashboardLayoutContent({
               {/* Secondary tools — only for students */}
               {isStudentAccount && secondaryItems.map((item) => {
                 const isActive = item.path === location || (item.path !== "/" && location.startsWith(item.path));
+                const showReviewBadge = item.path === "/practice" && dueReviewCount > 0;
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
+                      tooltip={showReviewBadge ? `${item.label} (${dueReviewCount} due)` : item.label}
                       className={`h-9 rounded-lg transition-all duration-150 ${
                         isActive
                           ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
                           : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                       }`}
                     >
-                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="relative shrink-0">
+                        <item.icon className="h-4 w-4" />
+                        {showReviewBadge && isCollapsed && (
+                          <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-orange-500" />
+                        )}
+                      </span>
                       <span className="text-sm">{item.label}</span>
-                      {isActive && !isCollapsed && (
+                      {showReviewBadge && !isCollapsed && !isActive && (
+                        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 px-1.5 text-[10px] font-bold text-white">
+                          {dueReviewCount > 99 ? "99+" : dueReviewCount}
+                        </span>
+                      )}
+                      {isActive && !isCollapsed && !showReviewBadge && (
                         <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
                       )}
                     </SidebarMenuButton>

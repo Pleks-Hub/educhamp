@@ -2806,3 +2806,10 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Add spaced repetition scheduling (SM-2 algorithm, skillReviewSchedule table, auto-updates on practice)
 - [x] Add Quick Practice widget to student dashboard (3 weak skills, one-click)
 - [x] Expand diagnostic question banks for courses with < 40 questions (all 16 Pre-K through Grade 2 courses now at 40+, 295 new questions added)
+
+## Spaced Repetition Badge & Practice Streaks (Jun 5 2026)
+
+- [x] Add server endpoint to get count of skills due for review (based on SM-2 nextReviewAt)
+- [x] Add notification badge to Practice Weak Skills sidebar item showing due review count
+- [x] Add practice streak tracking (consecutive days with at least one practice session)
+- [x] Show practice streak in Quick Practice widget with flame icon and day count
