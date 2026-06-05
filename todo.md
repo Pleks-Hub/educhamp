@@ -2749,3 +2749,10 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Verify exam prep is already course-aware (uses courseId input)
 - [x] Verify diagnostic is already course-aware (uses getDiagnosticQuestionsForCourse)
 - [x] Verify all courses serve their own questions, not Algebra I questions
+
+## Assessment Templates & Diagnostic Questions Expansion (Jun 5 2026)
+
+- [x] Generate assessment templates for remaining 69 courses (74/74 now covered)
+- [x] Add diagnostic questions for English II (courseId 210001) — 50 questions
+- [x] Add diagnostic questions for U.S. History (courseId 210002) — 50 questions
+- [x] Test cross-course fix via API (Grade 3 Math unit 1 resolves to 'Place Value & Number Sense', not Algebra I)
