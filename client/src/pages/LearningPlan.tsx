@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   Calendar,
@@ -18,6 +20,7 @@ import {
   Trash2,
   Edit2,
   Info,
+  Pencil,
 } from "lucide-react";
 
 const DAYS_OF_WEEK = [
@@ -44,6 +47,180 @@ type PlanBlock = {
   priority: "high" | "medium" | "low";
   notes?: string;
 };
+
+// ─── Suggestion Card with Modify & Accept ────────────────────────────────────
+function SuggestionCard({ suggestion, respondMutation, createMutation, utils }: {
+  suggestion: any;
+  respondMutation: any;
+  createMutation: any;
+  utils: any;
+}) {
+  const [modifyOpen, setModifyOpen] = useState(false);
+  const [modHours, setModHours] = useState(suggestion.hoursPerWeek);
+  const [modDays, setModDays] = useState<string[]>(suggestion.preferredDays as string[] || []);
+  const [modNote, setModNote] = useState("");
+
+  const toggleDay = (dayId: string) => {
+    setModDays(prev => prev.includes(dayId) ? prev.filter(d => d !== dayId) : [...prev, dayId]);
+  };
+
+  const handleAccept = () => {
+    respondMutation.mutate({ suggestionId: suggestion.id, status: "accepted", response: "Sounds good!" });
+    createMutation.mutateAsync({
+      title: suggestion.title || "My Learning Plan",
+      hoursPerWeek: suggestion.hoursPerWeek,
+      preferredDays: suggestion.preferredDays as string[],
+      schedule: (suggestion.schedule as any)?.blocks || [],
+    }).then(() => utils.learningPlan.getActive.invalidate());
+  };
+
+  const handleModifyAccept = () => {
+    if (modDays.length === 0) {
+      toast.error("Please select at least one day");
+      return;
+    }
+    const responseMsg = modNote
+      ? `Modified: ${modHours}h/week on ${modDays.length} days. Note: ${modNote}`
+      : `Modified: ${modHours}h/week on ${modDays.length} days`;
+    respondMutation.mutate({ suggestionId: suggestion.id, status: "modified", response: responseMsg });
+    // Create plan with modified parameters — use the suggestion schedule as base but adjust
+    createMutation.mutateAsync({
+      title: suggestion.title || "My Learning Plan",
+      hoursPerWeek: modHours,
+      preferredDays: modDays,
+      schedule: (suggestion.schedule as any)?.blocks || [],
+    }).then(() => {
+      utils.learningPlan.getActive.invalidate();
+      toast.success("Plan created with your adjustments!");
+    });
+    setModifyOpen(false);
+  };
+
+  return (
+    <>
+      <Card className="border-primary/40 bg-primary/5">
+        <CardContent className="py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <Badge variant="secondary" className="text-xs">From {suggestion.parentName || "Parent"}</Badge>
+                <span className="text-xs text-muted-foreground">{new Date(suggestion.createdAt).toLocaleDateString()}</span>
+              </div>
+              <p className="text-sm font-medium">{suggestion.title}</p>
+              {suggestion.message && <p className="text-xs text-muted-foreground mt-1 italic">"{suggestion.message}"</p>}
+              <p className="text-xs text-muted-foreground mt-1">{suggestion.hoursPerWeek}h/week \u2022 {(suggestion.preferredDays as string[]).length} days</p>
+            </div>
+            <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+              <Button size="sm" variant="default" onClick={handleAccept} disabled={respondMutation.isPending}>
+                <Check className="h-3 w-3 mr-1" /> Accept
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setModifyOpen(true)} disabled={respondMutation.isPending}>
+                <Pencil className="h-3 w-3 mr-1" /> Modify & Accept
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => respondMutation.mutate({ suggestionId: suggestion.id, status: "declined", response: "I'll create my own plan." })} disabled={respondMutation.isPending}>
+                Decline
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Modify & Accept Dialog */}
+      <Dialog open={modifyOpen} onOpenChange={setModifyOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-4 w-4 text-primary" />
+              Modify & Accept Plan
+            </DialogTitle>
+            <DialogDescription>
+              Adjust the hours and days to fit your schedule, then accept the plan with your changes.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 py-2">
+            {/* Hours adjustment */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Study time per week</label>
+              <div className="text-center">
+                <span className="text-3xl font-bold text-primary">{modHours}</span>
+                <span className="text-sm text-muted-foreground ml-2">hours / week</span>
+              </div>
+              <Slider
+                value={[modHours]}
+                onValueChange={([v]) => setModHours(v)}
+                min={1}
+                max={20}
+                step={1}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1 hr</span>
+                <span>10 hrs</span>
+                <span>20 hrs</span>
+              </div>
+              {modHours !== suggestion.hoursPerWeek && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Changed from {suggestion.hoursPerWeek}h \u2192 {modHours}h
+                </p>
+              )}
+            </div>
+
+            {/* Days adjustment */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Preferred days</label>
+              <div className="grid grid-cols-7 gap-1.5">
+                {DAYS_OF_WEEK.map(day => (
+                  <button
+                    key={day.id}
+                    type="button"
+                    onClick={() => toggleDay(day.id)}
+                    className={`flex flex-col items-center gap-0.5 p-2 rounded-lg border transition-all duration-150 text-xs ${
+                      modDays.includes(day.id)
+                        ? "border-primary bg-primary/10 text-primary font-medium"
+                        : "border-border text-muted-foreground hover:border-primary/50"
+                    }`}
+                  >
+                    <span>{day.label}</span>
+                    {modDays.includes(day.id) && <Check className="h-2.5 w-2.5" />}
+                  </button>
+                ))}
+              </div>
+              {modDays.length === 0 && (
+                <p className="text-xs text-destructive">Select at least one day</p>
+              )}
+            </div>
+
+            {/* Optional note */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Note to parent (optional)</label>
+              <Textarea
+                value={modNote}
+                onChange={e => setModNote(e.target.value)}
+                placeholder="e.g., I have soccer on Tuesdays so I moved that day..."
+                rows={2}
+                className="resize-none text-sm"
+              />
+            </div>
+
+            {/* Summary */}
+            <div className="bg-muted/50 rounded-lg p-3 space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Your modified plan:</p>
+              <p className="text-sm">{modHours}h/week across {modDays.length} days (~{Math.round((modHours * 60) / Math.max(modDays.length, 1))} min/session)</p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setModifyOpen(false)}>Cancel</Button>
+            <Button onClick={handleModifyAccept} disabled={respondMutation.isPending || modDays.length === 0}>
+              <Check className="h-3.5 w-3.5 mr-1" /> Accept with Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
 
 // ─── Step 1: Setup Wizard ─────────────────────────────────────────────────────
 function PlanSetupWizard({ onGenerate, isGenerating }: { onGenerate: (hours: number, days: string[]) => void; isGenerating: boolean }) {
@@ -393,38 +570,13 @@ export default function LearningPlanPage() {
       {pendingSuggestions.length > 0 && (
         <div className="mb-6 space-y-3">
           {pendingSuggestions.map((suggestion: any) => (
-            <Card key={suggestion.id} className="border-primary/40 bg-primary/5">
-              <CardContent className="py-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="secondary" className="text-xs">From {suggestion.parentName || "Parent"}</Badge>
-                      <span className="text-xs text-muted-foreground">{new Date(suggestion.createdAt).toLocaleDateString()}</span>
-                    </div>
-                    <p className="text-sm font-medium">{suggestion.title}</p>
-                    {suggestion.message && <p className="text-xs text-muted-foreground mt-1 italic">"{suggestion.message}"</p>}
-                    <p className="text-xs text-muted-foreground mt-1">{suggestion.hoursPerWeek}h/week • {(suggestion.preferredDays as string[]).length} days</p>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <Button size="sm" variant="default" onClick={() => {
-                      respondMutation.mutate({ suggestionId: suggestion.id, status: "accepted", response: "Sounds good!" });
-                      // Also create the plan based on suggestion
-                      createMutation.mutateAsync({
-                        title: suggestion.title || "My Learning Plan",
-                        hoursPerWeek: suggestion.hoursPerWeek,
-                        preferredDays: suggestion.preferredDays as string[],
-                        schedule: (suggestion.schedule as any).blocks || [],
-                      }).then(() => utils.learningPlan.getActive.invalidate());
-                    }} disabled={respondMutation.isPending}>
-                      <Check className="h-3 w-3 mr-1" /> Accept
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => respondMutation.mutate({ suggestionId: suggestion.id, status: "declined", response: "I'll create my own plan." })} disabled={respondMutation.isPending}>
-                      Decline
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <SuggestionCard
+              key={suggestion.id}
+              suggestion={suggestion}
+              respondMutation={respondMutation}
+              createMutation={createMutation}
+              utils={utils}
+            />
           ))}
         </div>
       )}

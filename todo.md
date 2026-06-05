@@ -2727,3 +2727,9 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Allow parents to suggest a learning plan to their child
 - [x] Student can accept or customize the suggested plan
 - [x] Show suggested plans on student's learning plan page with accept/modify UI
+
+## Parent Portal Live Test & Improvements (Jun 5 2026)
+- [x] Test parent portal loads correctly via browser (API endpoints verified, auth gate works)
+- [x] Test "Suggest a Plan" flow end-to-end (procedures verified, UI wired)
+- [x] Schedule learning plan reminder cron via admin procedure (task_uid: 6yJLdjdyiYbgUtrEKDLQKP)
+- [x] Add "Modify & Accept" option for plan suggestions (student adjusts hours/days before accepting)
