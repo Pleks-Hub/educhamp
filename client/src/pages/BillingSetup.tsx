@@ -210,8 +210,8 @@ export default function BillingSetup() {
           </p>
         </div>
         <div className="flex flex-col gap-3">
-          <Button onClick={() => navigate("/dashboard")} className="gap-2" size="lg">
-            Go to Dashboard <ArrowRight className="h-4 w-4" />
+          <Button onClick={() => navigate("/parent")} className="gap-2" size="lg">
+            Go to Parent Dashboard <ArrowRight className="h-4 w-4" />
           </Button>
           <Button variant="outline" onClick={() => navigate("/billing")} size="sm">
             Manage billing settings
@@ -329,7 +329,7 @@ export default function BillingSetup() {
           </Card>
 
           <div className="text-center">
-            <Button onClick={() => navigate("/dashboard")} className="gap-2" size="lg">
+            <Button onClick={() => navigate("/parent")} className="gap-2" size="lg">
               Continue with Free Plan <ArrowRight className="h-4 w-4" />
             </Button>
             <p className="text-xs text-muted-foreground mt-2">

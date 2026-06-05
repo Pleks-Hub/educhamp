@@ -173,7 +173,7 @@ function adaptivePathBadge(path: string | null) {
 
 // ─── Enrol Child Modal ────────────────────────────────────────────────────────
 
-function EnrolChildModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: () => void }) {
+function EnrolChildModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: (childId?: number) => void }) {
   const [tab, setTab] = useState<"invite" | "email" | "new">("invite");
   const [email, setEmail] = useState("");
   const [nickname, setNickname] = useState("");
@@ -216,8 +216,8 @@ function EnrolChildModal({ open, onClose, onSuccess }: { open: boolean; onClose:
 
   const createAndEnroll = trpc.parent.createAndEnroll.useMutation({
     onSuccess: (data) => {
-      toast.success(`${data.childName} has been created and added to your account.`);
-      onSuccess();
+      toast.success(`${data.childName} has been created and added. Now let's assign their courses!`);
+      onSuccess(data.childId);
       onClose();
       setNewName(""); setNewEmail(""); setNewGrade("9"); setNewSchool("");
     },
@@ -1102,10 +1102,20 @@ function ChildCoursesPanel({ childId, childName, childGrade }: { childId: number
       </div>
 
       {(!courses || courses.length === 0) ? (
-        <div className="text-center py-8 space-y-2">
-          <BookOpen className="h-10 w-10 text-muted-foreground mx-auto" />
-          <p className="text-sm font-medium text-foreground">{childName} is not enrolled in any courses yet.</p>
-          <p className="text-xs text-muted-foreground">Use the "Add Course" button above to assign a course directly.</p>
+        <div className="text-center py-10 space-y-4 border-2 border-dashed border-primary/20 rounded-xl bg-primary/5">
+          <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <BookOpen className="h-7 w-7 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-foreground">Next step: Assign courses to {childName}</p>
+            <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+              Select courses for {childName}'s grade level. We'll recommend the best ones automatically.
+            </p>
+          </div>
+          <Button className="gap-2" onClick={() => setAddDialogOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Choose Courses Now
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2823,20 +2833,36 @@ export default function ParentDashboard() {
 
       {/* No children enrolled */}
       {(!children || children.length === 0) && (
-        <Card className="text-center py-16">
-          <CardContent className="space-y-4">
-            <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mx-auto">
-              <Users className="h-8 w-8 text-muted-foreground" />
+        <Card className="border-dashed border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardContent className="py-12 text-center space-y-6">
+            <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto ring-4 ring-primary/5">
+              <Users className="h-10 w-10 text-primary" />
             </div>
-            <div>
-              <h3 className="text-lg font-semibold">No students enrolled yet</h3>
-              <p className="text-muted-foreground text-sm mt-1 max-w-sm mx-auto">
-                Enrol your children to monitor their progress, mastery scores, quiz results, and adaptive learning path across all courses.
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold">Welcome! Let's add your first student</h3>
+              <p className="text-muted-foreground text-sm max-w-md mx-auto">
+                Get started in 3 simple steps: add your child's info, select their courses, and they'll receive an email to activate their account.
               </p>
             </div>
-            <Button onClick={() => setEnrolOpen(true)} className="gap-2">
-              <UserPlus className="h-4 w-4" />
-              Enrol Your First Student
+            <div className="flex items-center justify-center gap-8 text-xs text-muted-foreground">
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold">1</div>
+                <span>Add student</span>
+              </div>
+              <div className="w-6 h-px bg-border" />
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-sm font-bold">2</div>
+                <span>Select courses</span>
+              </div>
+              <div className="w-6 h-px bg-border" />
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-sm font-bold">3</div>
+                <span>Student activates</span>
+              </div>
+            </div>
+            <Button onClick={() => setEnrolOpen(true)} size="lg" className="gap-2 px-8">
+              <UserPlus className="h-5 w-5" />
+              Add Your First Student
             </Button>
           </CardContent>
         </Card>
@@ -2970,7 +2996,13 @@ export default function ParentDashboard() {
       <EnrolChildModal
         open={enrolOpen}
         onClose={() => setEnrolOpen(false)}
-        onSuccess={() => utils.parent.listChildren.invalidate()}
+        onSuccess={(childId) => {
+          utils.parent.listChildren.invalidate();
+          if (childId) {
+            // Auto-select the newly created child so parent sees their detail panel with course assignment
+            setTimeout(() => setSelectedChildId(childId), 300);
+          }
+        }}
       />
     </div>
   );

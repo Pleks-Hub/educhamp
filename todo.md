@@ -2574,3 +2574,22 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Add "Revisit Welcome Tour" button in student Profile settings
 - [x] Weekly parent digest email: summarize child's learning activity (lessons, mastery, quizzes) sent weekly (already implemented)
 - [x] Bulk course removal: let parents select multiple courses and remove them all at once
+- [x] Audit & fix parent onboarding flow: sign-up → add child → select courses → payment (guided wizard)
+- [x] Audit & fix student onboarding flow: sign-up → link parent → access courses (streamlined)
+- [x] Fix broken handshakes between parent and student flows (enrollment, notifications, access)
+- [x] Remove unnecessary steps and screens from both flows
+- [x] Ensure students only see what they need (no parent features visible)
+- [x] Ensure parents have guided, intuitive setup experience
+
+## UX Overhaul Details (Parent + Student Flows)
+
+- [x] BillingSetup: redirect to /parent (Parent Dashboard) after billing completion instead of /dashboard
+- [x] ParentOnboarding: redirect to /parent with "Let's add your first student" toast after onboarding
+- [x] ParentDashboard: improved empty state (no children) with 3-step visual guide and prominent CTA
+- [x] ParentDashboard: EnrolChildModal passes childId back via onSuccess for auto-selection
+- [x] ParentDashboard: ChildCoursesPanel no-courses empty state with guided "Choose Courses Now" CTA
+- [x] Student auto-enrollment: getDashboard auto-enrolls parent-enrolled students in grade-default course on first login
+- [x] StudentWelcome: navigates to / (student dashboard) after tour completion
+- [x] StudentSetup: navigates to /student-welcome after first password creation
+- [x] Student dashboard: EmptyEnrollmentState with "Browse & Enrol in Courses" CTA for edge cases
+- [x] Verified: all 1145 tests passing, zero TypeScript errors

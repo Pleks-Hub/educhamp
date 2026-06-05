@@ -162,8 +162,8 @@ export default function ParentOnboarding() {
       toast.success("Welcome! Let's set up billing to activate your account.");
       navigate("/billing/setup");
     } else {
-      toast.success("Welcome to EduChamp! Let's get started.");
-      navigate("/");
+      toast.success("Welcome to EduChamp! Let's add your first student.");
+      navigate("/parent");
     }
   }
 
