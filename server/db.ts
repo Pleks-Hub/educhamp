@@ -110,10 +110,14 @@ export async function getAllUnits() {
   return db.select().from(units).orderBy(units.sortOrder);
 }
 
-export async function getUnitByNumber(unitNumber: number) {
+export async function getUnitByNumber(unitNumber: number, courseId?: number) {
   const db = await getDb();
   if (!db) return null;
-  const result = await db.select().from(units).where(eq(units.unitNumber, unitNumber)).limit(1);
+  const conditions = [eq(units.unitNumber, unitNumber)];
+  if (courseId) {
+    conditions.push(eq(units.courseId, courseId));
+  }
+  const result = await db.select().from(units).where(and(...conditions)).limit(1);
   return result[0] ?? null;
 }
 
@@ -159,9 +163,16 @@ export async function getSkillsForCourse(courseId: number) {
     .orderBy(skills.sortOrder);
 }
 
-export async function getSkillsByUnit(unitNumber: number) {
+export async function getSkillsByUnit(unitNumber: number, courseId?: number) {
   const db = await getDb();
   if (!db) return [];
+  if (courseId) {
+    // Get the unit for this course to find the correct unitId
+    const unit = await db.select().from(units).where(and(eq(units.unitNumber, unitNumber), eq(units.courseId, courseId))).limit(1);
+    if (unit[0]) {
+      return db.select().from(skills).where(eq(skills.unitId, unit[0].id)).orderBy(skills.sortOrder);
+    }
+  }
   return db.select().from(skills).where(eq(skills.unitNumber, unitNumber)).orderBy(skills.sortOrder);
 }
 

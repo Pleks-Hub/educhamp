@@ -32,17 +32,15 @@ export default function AdventureMap() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  const { data: units, isLoading: unitsLoading, isError: unitsError } = trpc.curriculum.getUnits.useQuery(undefined, {
-    staleTime: 60_000,
-  });
-
-  const { data: dashboardData, isLoading: progressLoading } = trpc.progress.getDashboard.useQuery(undefined, {
+  const { data: dashboardData, isLoading: dashLoading, isError: unitsError } = trpc.progress.getDashboard.useQuery(undefined, {
     enabled: !!user,
     staleTime: 30_000,
   });
+  // Use dashboard.units which is already filtered to the active course
+  const units = dashboardData?.units;
   const allProgress = dashboardData?.units;
 
-  const isLoading = unitsLoading || progressLoading;
+  const isLoading = dashLoading;
 
   const unitNodes: UnitNode[] = useMemo(() => {
     if (!units) return [];

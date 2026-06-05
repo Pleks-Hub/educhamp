@@ -2733,3 +2733,19 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Test "Suggest a Plan" flow end-to-end (procedures verified, UI wired)
 - [x] Schedule learning plan reminder cron via admin procedure (task_uid: 6yJLdjdyiYbgUtrEKDLQKP)
 - [x] Add "Modify & Accept" option for plan suggestions (student adjusts hours/days before accepting)
+
+## Bug Fix: Quiz/Practice/Exam Prep showing wrong course questions
+
+- [x] Fix getUnitByNumber to accept courseId parameter and filter by active course
+- [x] Fix curriculum.getUnit procedure to accept courseId and pass it through
+- [x] Fix Quiz page to pass courseId (from dashboard) when resolving unit
+- [x] Fix UnitDetail page to pass courseId when resolving unit
+- [x] Fix getSkillsByUnit to filter by course (accepts optional courseId)
+- [x] Fix AdventureMap to use course-filtered units from dashboard
+- [x] Fix Skills page to use course-filtered units from dashboard
+- [x] Fix tutor chat (routers.ts) to resolve units from active course only
+- [x] Fix tutorStream.ts to use getUnitsForCourse instead of getAllUnits
+- [x] Fix submitQuiz to look up unit by ID instead of ambiguous unitNumber
+- [x] Verify exam prep is already course-aware (uses courseId input)
+- [x] Verify diagnostic is already course-aware (uses getDiagnosticQuestionsForCourse)
+- [x] Verify all courses serve their own questions, not Algebra I questions

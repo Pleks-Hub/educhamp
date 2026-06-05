@@ -119,13 +119,18 @@ export default function Quiz() {
   const [questionTimings, setQuestionTimings] = useState<{ questionId: number; seconds: number }[]>([]);
   const questionStartRef = useRef<number>(Date.now());
 
-  const { data: unit } = trpc.curriculum.getUnit.useQuery({ unitNumber }, { enabled: !isNaN(unitNumber) });
+  // Fetch dashboard for timed exam settings, active course, and next unit after quiz completion
+  const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!user });
+  const activeCourseId = dashboard?.activeCourseId ?? undefined;
+
+  const { data: unit } = trpc.curriculum.getUnit.useQuery(
+    { unitNumber, courseId: activeCourseId },
+    { enabled: !isNaN(unitNumber) && !!activeCourseId }
+  );
   const { data: questions, isLoading } = trpc.quiz.getQuestions.useQuery(
     { unitId: unit?.id ?? 0 },
     { enabled: started && !!unit?.id }
   );
-  // Fetch dashboard for timed exam settings and next unit after quiz completion
-  const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!user });
 
   const isTimedExam = dashboard?.isTimedExam ?? false;
   const timeLimitMinutes = dashboard?.timeLimitMinutes ?? null;

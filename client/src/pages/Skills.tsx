@@ -43,8 +43,8 @@ export default function Skills() {
 
   const { data: skills, isLoading, isError: skillsError } = trpc.curriculum.getAllSkills.useQuery(undefined, { enabled: !!user });
   const { data: masteryData } = trpc.progress.getMastery.useQuery(undefined, { enabled: !!user });
-  const { data: units } = trpc.curriculum.getUnits.useQuery();
   const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!user });
+  const units = dashboard?.units;
   const courseTitle = dashboard?.courseTitle ?? "";
 
   const masteryMap = useMemo(() => {

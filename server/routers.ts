@@ -107,9 +107,9 @@ export const appRouter = router({
     }),
 
     getUnit: publicProcedure
-      .input(z.object({ unitNumber: z.number() }))
+      .input(z.object({ unitNumber: z.number(), courseId: z.number().optional() }))
       .query(async ({ input }) => {
-        return getUnitByNumber(input.unitNumber);
+        return getUnitByNumber(input.unitNumber, input.courseId);
       }),
 
     getLessons: publicProcedure
@@ -125,9 +125,9 @@ export const appRouter = router({
       }),
 
     getSkillsByUnit: publicProcedure
-      .input(z.object({ unitNumber: z.number() }))
+      .input(z.object({ unitNumber: z.number(), courseId: z.number().optional() }))
       .query(async ({ input }) => {
-        return getSkillsByUnit(input.unitNumber);
+        return getSkillsByUnit(input.unitNumber, input.courseId);
       }),
 
     getAllSkills: protectedProcedure.query(async ({ ctx }) => {
@@ -450,7 +450,11 @@ export const appRouter = router({
 
         // If this unit is now completed, unlock the next unit in the same course
         if (newStatus === "completed") {
-          const unit = await getUnitByNumber(input.unitNumber);
+          // Use unitId directly to get the correct unit (avoids ambiguity with unitNumber across courses)
+          const { units: unitsTable } = await import("../drizzle/schema");
+          const { eq: eqOp } = await import("drizzle-orm");
+          const db = await getDb();
+          const [unit] = db ? await db.select().from(unitsTable).where(eqOp(unitsTable.id, input.unitId)).limit(1) : [null];
           if (unit?.courseId) {
             const courseUnits = await getUnitsForCourse(unit.courseId);
             const sortedUnits = courseUnits.sort((a, b) => a.sortOrder - b.sortOrder);
@@ -990,11 +994,11 @@ export const appRouter = router({
 
                 // Build mastery context
         const masteryData = await getUserMastery(ctx.user.id);
-        const unitData = input.unitNumber ? await getAllUnits() : [];
-        const currentUnit = unitData.find((u) => u.unitNumber === input.unitNumber);
         // Fetch active course for course-scoped guardrails
         const activeCourseId = await getActiveCourseIdForUser(ctx.user.id);
         const activeCourse = activeCourseId ? await getCourseById(activeCourseId) : null;
+        const unitData = input.unitNumber && activeCourseId ? await getUnitsForCourse(activeCourseId) : [];
+        const currentUnit = unitData.find((u) => u.unitNumber === input.unitNumber);
         // Build system prompt with full course context
         const systemPrompt = buildTutorSystemPrompt(
           ctx.user.name ?? "Student",

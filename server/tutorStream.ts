@@ -197,9 +197,8 @@ export function registerTutorStreamRoute(app: Express) {
       const recentHistory = history.slice(-20);
 
       // ── Gather full student context ───────────────────────────────────────
-      const [masteryData, allUnitsAll, diagnosticAttempt, allQuizAttempts, unitProgressData, enrollments, activeCourseId] = await Promise.all([
+      const [masteryData, diagnosticAttempt, allQuizAttempts, unitProgressData, enrollments, activeCourseId] = await Promise.all([
         getUserMastery(contextUserId),
-        getAllUnits(),
         getLatestDiagnosticAttempt(contextUserId),
         getQuizAttemptsForUser(contextUserId),
         getUserUnitProgress(contextUserId),
@@ -211,10 +210,11 @@ export function registerTutorStreamRoute(app: Express) {
       const activeEnrollment = enrollments.find((e) => e.enrollment.courseId === activeCourseId) ?? enrollments[0];
       const activeCourse = activeEnrollment?.course;
 
-      // Filter units to only those belonging to the active course
-      const allUnits = activeCourse
-        ? allUnitsAll.filter((u: { courseId?: number }) => u.courseId === activeCourse.id)
-        : allUnitsAll;
+      // Get units for the active course only (not all units across all courses)
+      const { getUnitsForCourse } = await import("./db");
+      const allUnits = activeCourseId
+        ? await getUnitsForCourse(activeCourseId)
+        : await getAllUnits();
 
       // Load preferred name and ai welcome message from user profile
       let preferredName: string | null = null;

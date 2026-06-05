@@ -26,23 +26,25 @@ export default function UnitDetail() {
   const unitNumber = parseInt(params.unitNumber ?? "1", 10);
   const [, setLocation] = useLocation();
 
+  const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!user });
+  const activeCourseId = dashboard?.activeCourseId ?? undefined;
+
   const { data: unit, isLoading: unitLoading } = trpc.curriculum.getUnit.useQuery(
-    { unitNumber },
-    { enabled: !isNaN(unitNumber) }
+    { unitNumber, courseId: activeCourseId },
+    { enabled: !isNaN(unitNumber) && !!activeCourseId }
   );
   const { data: lessons, isLoading: lessonsLoading } = trpc.curriculum.getLessons.useQuery(
     { unitId: unit?.id ?? 0 },
     { enabled: !!unit?.id }
   );
   const { data: skills } = trpc.curriculum.getSkillsByUnit.useQuery(
-    { unitNumber },
-    { enabled: !isNaN(unitNumber) }
+    { unitNumber, courseId: activeCourseId },
+    { enabled: !isNaN(unitNumber) && !!activeCourseId }
   );
   const { data: lessonProgress } = trpc.progress.getLessonProgress.useQuery(
     { unitId: unit?.id ?? 0 },
     { enabled: !!unit?.id && !!user }
   );
-  const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!user });
 
   const markComplete = trpc.progress.markLessonComplete.useMutation({
     onSuccess: () => toast.success("Lesson marked as complete!"),
