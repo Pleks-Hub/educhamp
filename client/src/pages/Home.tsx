@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GuidedTour } from "@/components/GuidedTour";
 import { SeasonalChallengeBanner } from "@/components/SeasonalChallengeBanner";
+import { StreakTracker } from "@/components/StreakTracker";
 
 import {
   AlertCircle,
@@ -898,6 +899,9 @@ export default function Home() {
 
         {/* Right column: Quick actions + Mastery + Diagnostic */}
         <div className="space-y-4">
+          {/* Learning Streak */}
+          <StreakTracker />
+
           {/* Your Next Step — contextual guidance */}
           <Card className="border shadow-sm bg-gradient-to-b from-primary/5 to-transparent">
             <CardHeader className="pb-2 pt-4 px-4">

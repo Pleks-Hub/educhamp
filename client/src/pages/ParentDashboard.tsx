@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import {
@@ -19,7 +20,8 @@ import {
   Pencil, Trash2, Mail, Plus, X, Star, Target, Brain, ShieldAlert,
   FileText, Download, StickyNote, Flag, TrendingDown, Zap,
   Loader2, Link2, Copy, Bell, CheckCheck, XCircle, UserCheck, Info,
-  Send, Share2, BookMarked, ThumbsUp, ThumbsDown, AlertCircle, Sparkles
+  Send, Share2, BookMarked, ThumbsUp, ThumbsDown, AlertCircle, Sparkles,
+  CalendarDays
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { StreamdownRenderer } from "@/components/StreamdownRenderer";
@@ -2113,6 +2115,59 @@ function ChildRecommendationsPanel({ childId, childName }: { childId: number; ch
   );
 }
 
+function ChildLearningPlanPanel({ childId, childName }: { childId: number; childName: string }) {
+  const { data: plan, isLoading } = trpc.learningPlan.getForStudent.useQuery({ studentId: childId });
+
+  if (isLoading) {
+    return <div className="space-y-3"><Skeleton className="h-4 w-48" /><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>;
+  }
+
+  if (!plan) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <CalendarDays className="h-10 w-10 mx-auto mb-3 opacity-40" />
+        <p className="font-medium">{childName} hasn't created a learning plan yet</p>
+        <p className="text-sm mt-1">Once they set up a plan, you'll be able to track their schedule here.</p>
+      </div>
+    );
+  }
+
+  const blocks = (plan.schedule as unknown as Array<{ courseId: number; courseName: string; day: string; startTime: string; endTime: string; focus: string }>) || [];
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const activeDays = days.filter(d => blocks.some(b => b.day === d));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h4 className="font-semibold text-sm">{plan.title || "Learning Plan"}</h4>
+          <p className="text-xs text-muted-foreground">{plan.hoursPerWeek}h/week across {activeDays.length} days</p>
+        </div>
+        <Badge variant="outline" className="text-xs">
+          Created {new Date(plan.createdAt).toLocaleDateString()}
+        </Badge>
+      </div>
+
+      <div className="grid gap-2">
+        {activeDays.map(day => (
+          <div key={day} className="border rounded-lg p-3">
+            <p className="text-xs font-medium text-muted-foreground mb-2">{day}</p>
+            <div className="space-y-1">
+              {blocks.filter(b => b.day === day).map((block, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm">
+                  <span className="text-xs text-muted-foreground w-24">{block.startTime} - {block.endTime}</span>
+                  <span className="font-medium">{block.courseName}</span>
+                  {block.focus && <span className="text-xs text-muted-foreground">({block.focus})</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: () => void }) {
   const [editOpen, setEditOpen] = useState(false);
   // Activity timeline filters
@@ -2237,6 +2292,7 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
           <TabsTrigger value="certificates" className="text-xs">🎓 Certs</TabsTrigger>
           <TabsTrigger value="report" className="text-xs">Export</TabsTrigger>
           <TabsTrigger value="recommended" className="text-xs">Suggest</TabsTrigger>
+          <TabsTrigger value="plan" className="text-xs">📅 Plan</TabsTrigger>
         </TabsList>
 
         {/* Courses tab — multi-course overview */}
@@ -2502,6 +2558,10 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
         {/* AI Course Recommendations */}
         <TabsContent value="recommended" className="mt-4">
           <ChildRecommendationsPanel childId={child.childId} childName={child.name ?? "Student"} />
+        </TabsContent>
+
+        <TabsContent value="plan" className="mt-4">
+          <ChildLearningPlanPanel childId={child.childId} childName={child.name ?? "Student"} />
         </TabsContent>
       </Tabs>
 

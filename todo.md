@@ -2649,3 +2649,29 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Add notification bell to parent dashboard (milestone notifications visible)
 - [x] Add AI course recommendations tab ("Suggest" tab with one-click assign)
 - [x] Ensure all parent processes work without needing support
+
+## Learning Streak & Learning Plan (June 2026)
+
+### Learning Streak Tracker
+- [x] DB: learningStreaks + streakStats tables (migration applied)
+- [x] Server: streak.getStats procedure (returns current streak, longest streak, weekly activity)
+- [x] Server: streak.recordActivity procedure (records daily learning activity)
+- [x] Server: recordLearningActivity called in lesson completion + quiz submission flows
+- [x] UI: StreakTracker component with fanfare animations and milestone badges
+- [x] UI: StreakTracker added to student dashboard right sidebar
+
+### Student Learning Plan
+- [x] DB: learningPlans table (userId, title, hoursPerWeek, preferredDays, schedule JSON, isActive)
+- [x] Server: learningPlan.getActive — get student's active learning plan
+- [x] Server: learningPlan.getForStudent — parent can view child's plan by studentId
+- [x] Server: learningPlan.create — create a new learning plan
+- [x] Server: learningPlan.update — update an existing plan
+- [x] Server: learningPlan.delete — delete a plan
+- [x] Server: learningPlan.generate — AI-powered schedule generation based on enrolled courses + mastery
+- [x] UI: /learning-plan route — wizard-style page for students to create/manage study schedule
+- [x] UI: Sidebar link added (CalendarDays icon in Tools section)
+- [x] UI: Parent Dashboard — "📅 Plan" tab showing child's learning plan (ChildLearningPlanPanel)
+
+### Parent Weekly Progress Email
+- [x] Server: weeklyParentDigest scheduled handler (every Monday 8AM UTC)
+- [x] Email: comprehensive summary of all children's progress, mastery changes, quiz scores

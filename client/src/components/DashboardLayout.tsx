@@ -28,6 +28,7 @@ import {
   BarChart3,
   BookOpen,
   Brain,
+  CalendarDays,
   ChevronRight,
   ClipboardList,
   CreditCard,
@@ -65,6 +66,7 @@ const secondaryItems = [
   { icon: ClipboardList, label: "Placement Test", path: "/diagnostic" },
   { icon: BarChart3, label: "My Progress", path: "/progress" },
   { icon: Library, label: "Browse Courses", path: "/courses" },
+  { icon: CalendarDays, label: "Learning Plan", path: "/learning-plan" },
   { icon: Sigma, label: "Skill Index", path: "/skills" },
   { icon: FileText, label: "Exam Prep", path: "/exam-prep" },
 ];

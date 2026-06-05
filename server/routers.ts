@@ -314,6 +314,7 @@ export const appRouter = router({
           updateQuestProgress(ctx.user.id, "xp_earned", 50),
           awardHousePoints(ctx.user.id, 10),
           checkAndAwardBadges(ctx.user.id, { type: "lesson_complete", lessonCount: 1 }),
+          import("./db").then(m => m.recordLearningActivity(ctx.user.id)),
         ]).catch(() => {});
 
         // Re-fetch AFTER the mark so the count is accurate (no +1 double-count)
@@ -610,6 +611,7 @@ export const appRouter = router({
           awardHousePoints(ctx.user.id, score >= 75 ? 25 : 5),
           checkAndAwardBadges(ctx.user.id, { type: "quiz_pass", score, quizAttemptCount: 1 }),
           ...(newStatus === "completed" ? [checkAndAwardBadges(ctx.user.id, { type: "unit_complete" })] : []),
+          import("./db").then(m => m.recordLearningActivity(ctx.user.id)),
         ]).catch(() => {});
 
         return {
@@ -1636,6 +1638,102 @@ export const appRouter = router({
           itemCount: template.itemCount,
           assessmentRegime: template.assessmentRegime,
         };
+      }),
+  }),
+
+  // ─── Streak Router ──────────────────────────────────────────────────────────
+  streak: router({
+    getStats: protectedProcedure.query(async ({ ctx }) => {
+      const { getStreakStats: _getStats, getWeeklyActivity: _getWeekly } = await import("./db");
+      const stats = await _getStats(ctx.user.id);
+      const weeklyActivity = await _getWeekly(ctx.user.id);
+      return { ...stats, weeklyActivity };
+    }),
+    recordActivity: protectedProcedure.mutation(async ({ ctx }) => {
+      const { recordLearningActivity } = await import("./db");
+      return recordLearningActivity(ctx.user.id);
+    }),
+  }),
+
+  // ─── Learning Plan Router ──────────────────────────────────────────────────
+  learningPlan: router({
+    getActive: protectedProcedure.query(async ({ ctx }) => {
+      const { getActiveLearningPlan } = await import("./db");
+      return getActiveLearningPlan(ctx.user.id);
+    }),
+    getForStudent: protectedProcedure
+      .input(z.object({ studentId: z.number() }))
+      .query(async ({ input }) => {
+        const { getActiveLearningPlan } = await import("./db");
+        return getActiveLearningPlan(input.studentId);
+      }),
+    create: protectedProcedure
+      .input(z.object({
+        title: z.string().optional(),
+        hoursPerWeek: z.number().min(1).max(40),
+        preferredDays: z.array(z.string()),
+        schedule: z.any(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { createLearningPlan } = await import("./db");
+        return createLearningPlan(ctx.user.id, input);
+      }),
+    update: protectedProcedure
+      .input(z.object({
+        planId: z.number(),
+        title: z.string().optional(),
+        hoursPerWeek: z.number().min(1).max(40).optional(),
+        preferredDays: z.array(z.string()).optional(),
+        schedule: z.any().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { updateLearningPlan } = await import("./db");
+        const { planId, ...updates } = input;
+        return updateLearningPlan(planId, updates);
+      }),
+    delete: protectedProcedure
+      .input(z.object({ planId: z.number() }))
+      .mutation(async ({ input }) => {
+        const { deleteLearningPlan } = await import("./db");
+        return deleteLearningPlan(input.planId);
+      }),
+    generate: protectedProcedure
+      .input(z.object({
+        hoursPerWeek: z.number().min(1).max(40),
+        preferredDays: z.array(z.string()),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { getAllCourseProgressForUser } = await import("./db");
+        const courseProgress = await getAllCourseProgressForUser(ctx.user.id);
+        if (courseProgress.length === 0) return { blocks: [] };
+
+        const totalMinutes = input.hoursPerWeek * 60;
+        const minutesPerDay = Math.round(totalMinutes / input.preferredDays.length);
+        const blocks: { day: string; courseId: number; courseName: string; durationMinutes: number; priority: "high" | "medium" | "low"; notes?: string }[] = [];
+
+        const coursePriorities = courseProgress.map(c => {
+          const mastery = c.progressPercent ?? 0;
+          const priority: "high" | "medium" | "low" = mastery < 50 ? "high" : mastery < 75 ? "medium" : "low";
+          return { courseId: c.courseId, courseName: c.courseTitle, priority, mastery };
+        }).sort((a, b) => a.mastery - b.mastery);
+
+        let dayIndex = 0;
+        for (const course of coursePriorities) {
+          const daysForCourse = course.priority === "high" ? 3 : course.priority === "medium" ? 2 : 1;
+          for (let i = 0; i < daysForCourse && dayIndex < input.preferredDays.length * 2; i++) {
+            const day = input.preferredDays[dayIndex % input.preferredDays.length];
+            blocks.push({
+              day,
+              courseId: course.courseId,
+              courseName: course.courseName,
+              durationMinutes: Math.min(minutesPerDay, 60),
+              priority: course.priority,
+              notes: course.priority === "high" ? "Focus area — needs more practice" : undefined,
+            });
+            dayIndex++;
+          }
+        }
+        return { blocks };
       }),
   }),
 });

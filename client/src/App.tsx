@@ -52,6 +52,7 @@ const ExamPrep = lazy(() => import("./pages/ExamPrep"));
 const CertificatePage = lazy(() => import("./pages/CertificatePage"));
 const Certificates = lazy(() => import("./pages/Certificates"));
 const StudentNotifications = lazy(() => import("./pages/StudentNotifications"));
+const LearningPlan = lazy(() => import("./pages/LearningPlan"));
 const StudentSetup = lazy(() => import("./pages/StudentSetup"));
 const StudentLogin = lazy(() => import("./pages/StudentLogin"));
 const StudentForgotPassword = lazy(() => import("./pages/StudentForgotPassword"));
@@ -128,6 +129,7 @@ function Router() {
                 <Route path="/referrals" component={Referrals} />
                 <Route path="/billing" component={Billing} />
                 <Route path="/billing/setup" component={BillingSetup} />
+                <Route path="/learning-plan" component={LearningPlan} />
                 <Route path="/gamification" component={GamificationHub} />
                 <Route path="/rewards" component={RewardsMarketplace} />
                 <Route path="/adventure-map" component={AdventureMap} />

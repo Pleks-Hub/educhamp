@@ -655,3 +655,50 @@ html, body {
     backdrop-filter: blur(4px);
   }
 }
+
+/* ─── Streak Tracker Animations ─────────────────────────────────────────── */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-10px) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes milestone-pop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-confetti {
+  animation: confetti-fall 1.5s ease-out forwards;
+}
+
+.animate-milestone-pop {
+  animation: milestone-pop 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 2s ease-in-out infinite;
+}

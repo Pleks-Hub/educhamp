@@ -351,6 +351,13 @@
       "when": 1780421437469,
       "tag": "0049_breezy_captain_cross",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "5",
+      "when": 1780639896473,
+      "tag": "0050_cultured_vance_astro",
+      "breakpoints": true
     }
   ]
 }

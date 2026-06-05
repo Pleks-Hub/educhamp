@@ -1873,3 +1873,73 @@ export const courseCertificates = mysqlTable("courseCertificates", {
 }));
 export type CourseCertificate = typeof courseCertificates.$inferSelect;
 export type InsertCourseCertificate = typeof courseCertificates.$inferInsert;
+
+// ─── Learning Streaks ────────────────────────────────────────────────────────
+
+/**
+ * Tracks daily learning activity for streak calculation.
+ * One row per user per day (UTC date string YYYY-MM-DD).
+ */
+export const learningStreaks = mysqlTable("learningStreaks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  activityDate: varchar("activityDate", { length: 10 }).notNull(), // YYYY-MM-DD
+  activitiesCount: int("activitiesCount").notNull().default(1),    // how many activities that day
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  userDateUnique: uniqueIndex("streak_user_date_unique").on(t.userId, t.activityDate),
+  userIdx: index("streak_user_idx").on(t.userId),
+}));
+export type LearningStreak = typeof learningStreaks.$inferSelect;
+
+/**
+ * Stores the user's current streak state for fast lookup.
+ */
+export const streakStats = mysqlTable("streakStats", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  currentStreak: int("currentStreak").notNull().default(0),
+  longestStreak: int("longestStreak").notNull().default(0),
+  lastActivityDate: varchar("lastActivityDate", { length: 10 }),  // YYYY-MM-DD
+  streakFreezes: int("streakFreezes").notNull().default(1),       // available freezes
+  totalActiveDays: int("totalActiveDays").notNull().default(0),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type StreakStats = typeof streakStats.$inferSelect;
+
+// ─── Learning Plans ──────────────────────────────────────────────────────────
+
+/**
+ * A student's optional weekly learning plan.
+ * Stores the plan configuration and schedule.
+ */
+export const learningPlans = mysqlTable("learningPlans", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 256 }).default("My Learning Plan"),
+  hoursPerWeek: int("hoursPerWeek").notNull().default(5),
+  preferredDays: json("preferredDays").$type<string[]>().notNull(), // ["mon","tue","wed","thu","fri"]
+  schedule: json("schedule").$type<LearningPlanSchedule>().notNull(),
+  isActive: boolean("isActive").notNull().default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  userIdx: index("plan_user_idx").on(t.userId),
+  activeIdx: index("plan_active_idx").on(t.userId, t.isActive),
+}));
+export type LearningPlan = typeof learningPlans.$inferSelect;
+export type InsertLearningPlan = typeof learningPlans.$inferInsert;
+
+/** Shape of the schedule JSON field */
+export type LearningPlanSchedule = {
+  blocks: LearningPlanBlock[];
+};
+
+export type LearningPlanBlock = {
+  day: string;           // "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"
+  courseId: number;
+  courseName: string;
+  durationMinutes: number;
+  priority: "high" | "medium" | "low";
+  notes?: string;
+};

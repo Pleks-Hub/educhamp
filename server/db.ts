@@ -40,6 +40,9 @@ import {
   districts,
   assessmentTemplates,
   unitStandards,
+  learningStreaks,
+  streakStats,
+  learningPlans,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -4232,4 +4235,176 @@ export async function checkStudentParentBillingCoverage(studentId: number): Prom
     }
   }
   return { covered: false, parentId: parentLinks[0]?.parentId ?? null, parentName: parentLinks[0]?.parentName ?? null, planName: null };
+}
+
+
+// ─── Learning Streak Functions ───────────────────────────────────────────────
+
+/**
+ * Record a learning activity for today. Updates streak stats.
+ * Called whenever student completes a quiz, lesson, or AI chat session.
+ */
+export async function recordLearningActivity(userId: number): Promise<{ currentStreak: number; isNewDay: boolean; milestone: number | null }> {
+  const db = await getDb();
+  if (!db) return { currentStreak: 0, isNewDay: false, milestone: null };
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD UTC
+
+  // Upsert today's activity record
+  await db.insert(learningStreaks)
+    .values({ userId, activityDate: today, activitiesCount: 1 })
+    .onDuplicateKeyUpdate({ set: { activitiesCount: sql`${learningStreaks.activitiesCount} + 1` } });
+
+  // Get or create streak stats
+  const [existing] = await db.select().from(streakStats).where(eq(streakStats.userId, userId)).limit(1);
+
+  if (!existing) {
+    await db.insert(streakStats).values({
+      userId,
+      currentStreak: 1,
+      longestStreak: 1,
+      lastActivityDate: today,
+      totalActiveDays: 1,
+      streakFreezes: 1,
+    });
+    return { currentStreak: 1, isNewDay: true, milestone: null };
+  }
+
+  // Already recorded today
+  if (existing.lastActivityDate === today) {
+    return { currentStreak: existing.currentStreak, isNewDay: false, milestone: null };
+  }
+
+  // Calculate if streak continues
+  const lastDate = existing.lastActivityDate ? new Date(existing.lastActivityDate + "T00:00:00Z") : null;
+  const todayDate = new Date(today + "T00:00:00Z");
+  const daysDiff = lastDate ? Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)) : 999;
+
+  let newStreak: number;
+  if (daysDiff === 1) {
+    newStreak = existing.currentStreak + 1;
+  } else if (daysDiff === 2 && existing.streakFreezes > 0) {
+    newStreak = existing.currentStreak + 1;
+    await db.update(streakStats)
+      .set({ streakFreezes: existing.streakFreezes - 1 })
+      .where(eq(streakStats.userId, userId));
+  } else {
+    newStreak = 1;
+  }
+
+  const newLongest = Math.max(existing.longestStreak, newStreak);
+  const newTotal = existing.totalActiveDays + 1;
+
+  await db.update(streakStats)
+    .set({
+      currentStreak: newStreak,
+      longestStreak: newLongest,
+      lastActivityDate: today,
+      totalActiveDays: newTotal,
+    })
+    .where(eq(streakStats.userId, userId));
+
+  // Check for milestone
+  const milestones = [3, 7, 14, 30, 60, 100, 200, 365];
+  const milestone = milestones.includes(newStreak) ? newStreak : null;
+
+  return { currentStreak: newStreak, isNewDay: true, milestone };
+}
+
+/**
+ * Get a user's streak stats.
+ */
+export async function getStreakStats(userId: number) {
+  const db = await getDb();
+  if (!db) return { currentStreak: 0, longestStreak: 0, totalActiveDays: 0, streakFreezes: 1, lastActivityDate: null as string | null, todayActive: false };
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [stats] = await db.select().from(streakStats).where(eq(streakStats.userId, userId)).limit(1);
+
+  if (!stats) {
+    return { currentStreak: 0, longestStreak: 0, totalActiveDays: 0, streakFreezes: 1, lastActivityDate: null as string | null, todayActive: false };
+  }
+
+  const lastDate = stats.lastActivityDate ? new Date(stats.lastActivityDate + "T00:00:00Z") : null;
+  const todayDate = new Date(today + "T00:00:00Z");
+  const daysDiff = lastDate ? Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)) : 999;
+
+  let currentStreak = stats.currentStreak;
+  if (daysDiff > 2) {
+    currentStreak = 0;
+  } else if (daysDiff === 2 && stats.streakFreezes <= 0) {
+    currentStreak = 0;
+  }
+
+  return {
+    currentStreak,
+    longestStreak: stats.longestStreak,
+    totalActiveDays: stats.totalActiveDays,
+    streakFreezes: stats.streakFreezes,
+    lastActivityDate: stats.lastActivityDate,
+    todayActive: stats.lastActivityDate === today,
+  };
+}
+
+/**
+ * Get the last 7 days of activity for the streak calendar.
+ */
+export async function getWeeklyActivity(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const today = new Date();
+  const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+  const rows = await db.select({
+    date: learningStreaks.activityDate,
+    count: learningStreaks.activitiesCount,
+  })
+    .from(learningStreaks)
+    .where(and(
+      eq(learningStreaks.userId, userId),
+      gte(learningStreaks.activityDate, sevenDaysAgo)
+    ))
+    .orderBy(learningStreaks.activityDate);
+
+  return rows.map(r => ({ date: r.date, count: r.count }));
+}
+
+// ─── Learning Plan Functions ─────────────────────────────────────────────────
+
+export async function createLearningPlan(userId: number, plan: { title?: string; hoursPerWeek: number; preferredDays: string[]; schedule: any }) {
+  const db = await getDb();
+  if (!db) return null;
+  // Deactivate existing plans
+  await db.update(learningPlans).set({ isActive: false }).where(eq(learningPlans.userId, userId));
+  // Create new plan
+  const result = await db.insert(learningPlans).values({
+    userId,
+    title: plan.title || "My Learning Plan",
+    hoursPerWeek: plan.hoursPerWeek,
+    preferredDays: plan.preferredDays,
+    schedule: plan.schedule,
+    isActive: true,
+  });
+  return result;
+}
+
+export async function getActiveLearningPlan(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const [plan] = await db.select().from(learningPlans)
+    .where(and(eq(learningPlans.userId, userId), eq(learningPlans.isActive, true)))
+    .orderBy(desc(learningPlans.updatedAt))
+    .limit(1);
+  return plan ?? null;
+}
+
+export async function updateLearningPlan(planId: number, updates: { title?: string; hoursPerWeek?: number; preferredDays?: string[]; schedule?: any }) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(learningPlans).set(updates).where(eq(learningPlans.id, planId));
+}
+
+export async function deleteLearningPlan(planId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(learningPlans).set({ isActive: false }).where(eq(learningPlans.id, planId));
 }
