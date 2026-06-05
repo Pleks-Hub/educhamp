@@ -15,6 +15,7 @@ import { inactivityMonitorHandler } from "../scheduled/inactivityMonitor";
 import { weeklyParentDigestHandler } from "../scheduled/weeklyParentDigest";
 import { cardExpiryReminderHandler } from "../scheduled/cardExpiryReminder";
 import { parentBillingReminderHandler } from "../scheduled/parentBillingReminder";
+import { pendingCourseRequestDigestHandler } from "../scheduled/pendingCourseRequestDigest";
 import { seedDefaultRoles } from "../db";
 import { seedDefaultBadges } from "../gamification/badges";
 import { seedDefaultQuests } from "../gamification/quests";
@@ -121,6 +122,7 @@ async function startServer() {
   app.post("/api/scheduled/weekly-parent-digest", weeklyParentDigestHandler);
   app.post("/api/scheduled/card-expiry-reminder", cardExpiryReminderHandler);
   app.post("/api/scheduled/parent-billing-reminder", parentBillingReminderHandler);
+  app.post("/api/scheduled/pending-course-request-digest", pendingCourseRequestDigestHandler);
 
   // ── Course request email approve/reject token handler ─────────────────────
   app.get("/api/course-request/token", async (req, res) => {

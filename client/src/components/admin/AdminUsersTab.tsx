@@ -230,7 +230,7 @@ export function AdminUsersTab() {
 
   // Bulk selection state
   const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
-  const [bulkAction, setBulkAction] = useState<"status" | "assign-course" | "remove-course" | null>(null);
+  const [bulkAction, setBulkAction] = useState<"status" | "assign-course" | "remove-course" | "suspend-course" | null>(null);
   const [bulkStatusTarget, setBulkStatusTarget] = useState<"active" | "suspended" | "deactivated" | "deleted">("suspended");
   const [bulkCourseId, setBulkCourseId] = useState<number | null>(null);
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
@@ -245,6 +245,10 @@ export function AdminUsersTab() {
   });
   const bulkRemoveCourse = trpc.admin.bulkRemoveCourse.useMutation({
     onSuccess: (r) => { toast.success(`Bulk remove: ${r.successCount} removed, ${r.failCount} failed.`); setSelectedUserIds(new Set()); setBulkAction(null); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const bulkSuspendCourse = trpc.admin.bulkSuspendCourses.useMutation({
+    onSuccess: (r) => { toast.success(`Bulk suspend: ${r.suspended} suspended, ${r.skipped} skipped.`); setSelectedUserIds(new Set()); setBulkAction(null); refetch(); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -270,6 +274,8 @@ export function AdminUsersTab() {
       bulkAssignCourse.mutate({ userIds: ids, courseId: bulkCourseId });
     } else if (bulkAction === "remove-course" && bulkCourseId) {
       bulkRemoveCourse.mutate({ userIds: ids, courseId: bulkCourseId });
+    } else if (bulkAction === "suspend-course" && bulkCourseId) {
+      bulkSuspendCourse.mutate({ userIds: ids, courseIds: [bulkCourseId] });
     }
     setShowBulkConfirm(false);
   }
@@ -391,6 +397,10 @@ export function AdminUsersTab() {
               <Button size="sm" className="h-7 text-xs" variant="outline" disabled={!bulkCourseId}
                 onClick={() => { setBulkAction("remove-course"); setShowBulkConfirm(true); }}>
                 Remove
+              </Button>
+              <Button size="sm" className="h-7 text-xs" variant="outline" disabled={!bulkCourseId}
+                onClick={() => { setBulkAction("suspend-course"); setShowBulkConfirm(true); }}>
+                Suspend
               </Button>
             </div>
             <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground"

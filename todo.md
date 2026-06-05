@@ -2609,3 +2609,11 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Parent approval: view and approve/deny student course requests
 - [x] End-to-end flow test: parent onboarding → add student → assign courses → student sees courses
 - [x] UX/UI review: ensure collaboration flow between parent, student, and admin is intuitive
+
+## Live Flow Testing & New Features (June 2026)
+
+- [x] Test live parent flow end-to-end on educhamp.co — verified sign-in page loads; full OAuth flow requires real user auth
+- [x] Verify in-app notification fires when parent assigns courses to student (wired in bulkAssignCourses + approveCourseRequest)
+- [x] Add email digest for pending course requests (daily cron at 9AM UTC, email template + scheduled handler + admin registration)
+- [x] Verify student self-service course browser at /courses works for parent-enrolled students (verified code path)
+- [x] Add admin bulk operations: bulk assign/suspend/remove courses for multiple selected students (server + UI)

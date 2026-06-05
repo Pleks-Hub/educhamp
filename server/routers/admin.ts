@@ -239,6 +239,88 @@ export const adminRouter = router({
       return { success: true };
     }),
 
+  // ── Bulk Operations ────────────────────────────────────────────────────────
+  bulkAssignCourses: adminProcedure
+    .input(z.object({
+      userIds: z.array(z.number()).min(1).max(100),
+      courseIds: z.array(z.number()).min(1).max(50),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      let enrolled = 0;
+      let skipped = 0;
+      for (const userId of input.userIds) {
+        for (const courseId of input.courseIds) {
+          try {
+            await enrollUserInCourse(userId, courseId);
+            enrolled++;
+          } catch {
+            skipped++; // already enrolled or other issue
+          }
+        }
+      }
+      await logAdminAction(ctx.user.id, "user.bulk_course_assign", "system", 0, {
+        userIds: input.userIds,
+        courseIds: input.courseIds,
+        enrolled,
+        skipped,
+      });
+      return { success: true, enrolled, skipped };
+    }),
+
+  bulkSuspendCourses: adminProcedure
+    .input(z.object({
+      userIds: z.array(z.number()).min(1).max(100),
+      courseIds: z.array(z.number()).min(1).max(50),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      let suspended = 0;
+      let skipped = 0;
+      for (const userId of input.userIds) {
+        for (const courseId of input.courseIds) {
+          try {
+            await suspendEnrollment(userId, courseId);
+            suspended++;
+          } catch {
+            skipped++;
+          }
+        }
+      }
+      await logAdminAction(ctx.user.id, "user.bulk_course_suspend", "system", 0, {
+        userIds: input.userIds,
+        courseIds: input.courseIds,
+        suspended,
+        skipped,
+      });
+      return { success: true, suspended, skipped };
+    }),
+
+  bulkRemoveCourses: adminProcedure
+    .input(z.object({
+      userIds: z.array(z.number()).min(1).max(100),
+      courseIds: z.array(z.number()).min(1).max(50),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      let removed = 0;
+      let skipped = 0;
+      for (const userId of input.userIds) {
+        for (const courseId of input.courseIds) {
+          try {
+            await removeStudentFromCourse(userId, courseId);
+            removed++;
+          } catch {
+            skipped++;
+          }
+        }
+      }
+      await logAdminAction(ctx.user.id, "user.bulk_course_remove", "system", 0, {
+        userIds: input.userIds,
+        courseIds: input.courseIds,
+        removed,
+        skipped,
+      });
+      return { success: true, removed, skipped };
+    }),
+
   getUserRoles: adminProcedure
     .input(z.object({ userId: z.number() }))
     .query(async ({ input }) => {
@@ -1025,6 +1107,28 @@ export const adminRouter = router({
       }, sessionToken);
       await upsertPlatformSetting("weeklyParentDigestCronTaskUid", job.taskUid, "Task UID for the weekly parent digest heartbeat cron");
       await logAdminAction(ctx.user.id, "digest.scheduleWeeklyParentDigest", "digest", null, {
+        taskUid: job.taskUid,
+        nextExecutionAt: job.nextExecutionAt,
+      });
+      return { success: true, taskUid: job.taskUid, nextExecutionAt: job.nextExecutionAt };
+    }),
+
+  /** Schedule the daily pending course request digest cron (runs daily at 9 AM UTC). */
+  schedulePendingCourseRequestDigest: adminProcedure
+    .mutation(async ({ ctx }) => {
+      const { createHeartbeatJob } = await import("../_core/heartbeat");
+      const { parse: parseCookie } = await import("cookie");
+      const { COOKIE_NAME } = await import("../../shared/const");
+      const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
+      if (!sessionToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "No session cookie" });
+      const job = await createHeartbeatJob({
+        name: "pending-course-request-digest",
+        cron: "0 0 9 * * *", // Daily at 09:00 UTC
+        path: "/api/scheduled/pending-course-request-digest",
+        description: "Daily email digest for parents with unreviewed course requests older than 24 hours",
+      }, sessionToken);
+      await upsertPlatformSetting("pendingCourseRequestDigestCronTaskUid", job.taskUid, "Task UID for the daily pending course request digest cron");
+      await logAdminAction(ctx.user.id, "digest.schedulePendingCourseRequestDigest", "digest", null, {
         taskUid: job.taskUid,
         nextExecutionAt: job.nextExecutionAt,
       });
