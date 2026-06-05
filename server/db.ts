@@ -1333,6 +1333,42 @@ export async function getUserCourseEnrollments(userId: number) {
     .where(and(eq(userCourseEnrollments.userId, userId), eq(userCourseEnrollments.isActive, true)));
 }
 
+/**
+ * Admin: get ALL enrollments for a user (including suspended/inactive ones).
+ * Returns both active and inactive enrollments so admin can manage them.
+ */
+export async function getAllUserEnrollmentsAdmin(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ enrollment: userCourseEnrollments, course: courses })
+    .from(userCourseEnrollments)
+    .innerJoin(courses, eq(userCourseEnrollments.courseId, courses.id))
+    .where(eq(userCourseEnrollments.userId, userId));
+}
+
+/**
+ * Admin: suspend an enrollment (set isActive = false without deleting).
+ * Preserves progress data.
+ */
+export async function suspendEnrollment(userId: number, courseId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(userCourseEnrollments)
+    .set({ isActive: false, isCurrent: false })
+    .where(and(eq(userCourseEnrollments.userId, userId), eq(userCourseEnrollments.courseId, courseId)));
+}
+
+/**
+ * Admin: unsuspend/reactivate an enrollment (set isActive = true).
+ */
+export async function unsuspendEnrollment(userId: number, courseId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(userCourseEnrollments)
+    .set({ isActive: true })
+    .where(and(eq(userCourseEnrollments.userId, userId), eq(userCourseEnrollments.courseId, courseId)));
+}
+
 export async function getUnitsForCourse(courseId: number) {
   const db = await getDb();
   if (!db) return [];

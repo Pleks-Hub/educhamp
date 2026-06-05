@@ -468,13 +468,28 @@ export const parentRouter = router({
             referenceId: String(request.id),
           });
         }
-      } catch (emailErr) {
+            } catch (emailErr) {
         console.error("[approveCourseRequest] Failed to send student notification email:", emailErr);
       }
-
+      // In-app notification for student
+      try {
+        const { userNotifications } = await import("../../drizzle/schema");
+        const db = await getDb();
+        const course = await getCourseById(request.courseId);
+        if (db && course) {
+          await db.insert(userNotifications).values({
+            userId: request.studentId,
+            type: "course_request_approved",
+            title: `Course request approved: ${course.title}`,
+            message: `Your request for ${course.title} has been approved! You can now access this course from your dashboard.`,
+            metadata: JSON.stringify({ courseId: request.courseId, approvedBy: ctx.user.id }),
+          });
+        }
+      } catch (notifErr) {
+        console.error("[approveCourseRequest] Failed to create in-app notification:", notifErr);
+      }
       return { success: true };
     }),
-
   /**
    * Parent: reject a pending course request.
    * Sends a branded notification email to the student after a successful DB update.
@@ -515,13 +530,30 @@ export const parentRouter = router({
             referenceId: String(request.id),
           });
         }
-      } catch (emailErr) {
+            } catch (emailErr) {
         console.error("[rejectCourseRequest] Failed to send student notification email:", emailErr);
       }
-
+      // In-app notification for student
+      try {
+        const { userNotifications } = await import("../../drizzle/schema");
+        const db = await getDb();
+        const course = await getCourseById(request.courseId);
+        if (db && course) {
+          await db.insert(userNotifications).values({
+            userId: request.studentId,
+            type: "course_request_rejected",
+            title: `Course request update: ${course.title}`,
+            message: input.rejectionReason
+              ? `Your request for ${course.title} was not approved. Reason: ${input.rejectionReason}`
+              : `Your request for ${course.title} was not approved at this time. You can browse other courses or talk to your parent.`,
+            metadata: JSON.stringify({ courseId: request.courseId, rejectedBy: ctx.user.id, reason: input.rejectionReason }),
+          });
+        }
+      } catch (notifErr) {
+        console.error("[rejectCourseRequest] Failed to create in-app notification:", notifErr);
+      }
       return { success: true };
     }),
-
   /**
    * Parent: directly assign a course to a linked student (no request needed).
    */
@@ -546,11 +578,38 @@ export const parentRouter = router({
       const link = await getParentChildLink(ctx.user.id, input.studentId);
       if (!link || !link.isActive) throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this student." });
       let enrolled = 0;
+      const courseNames: string[] = [];
       for (const courseId of input.courseIds) {
         const course = await getCourseById(courseId);
         if (course) {
           await enrollUserInCourse(input.studentId, courseId);
           enrolled++;
+          courseNames.push(course.title);
+        }
+      }
+      // Send in-app notification to the student
+      if (enrolled > 0) {
+        try {
+          const { userNotifications } = await import("../../drizzle/schema");
+          const db = await getDb();
+          if (db) {
+            const parentName = ctx.user.name ?? "Your parent";
+            const title = enrolled === 1
+              ? `New course assigned: ${courseNames[0]}`
+              : `${enrolled} new courses assigned`;
+            const message = enrolled === 1
+              ? `${parentName} has enrolled you in ${courseNames[0]}. Head to your dashboard to start learning!`
+              : `${parentName} has enrolled you in ${courseNames.join(", ")}. Head to your dashboard to explore your new courses!`;
+            await db.insert(userNotifications).values({
+              userId: input.studentId,
+              type: "course_assigned",
+              title,
+              message,
+              metadata: JSON.stringify({ courseIds: input.courseIds, assignedBy: ctx.user.id }),
+            });
+          }
+        } catch (err) {
+          console.error("[bulkAssignCourses] Failed to create student notification:", err);
         }
       }
       return { success: true, enrolled };

@@ -39,11 +39,24 @@ function UserCourseManagementDialog({ userId, onClose, courses }: { userId: numb
     onError: (e) => toast.error(e.message),
   });
   const removeUser = trpc.admin.removeStudentFromCourse.useMutation({
-    onSuccess: () => { toast.success("Course removed"); refetch(); },
+    onSuccess: () => { toast.success("Course removed permanently"); refetch(); },
     onError: (e) => toast.error(e.message),
   });
-  const enrolledIds = new Set((enrollments ?? []).map((e: any) => e.courseId));
+  const suspendMut = trpc.admin.suspendEnrollment.useMutation({
+    onSuccess: () => { toast.success("Enrollment suspended"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const unsuspendMut = trpc.admin.unsuspendEnrollment.useMutation({
+    onSuccess: () => { toast.success("Enrollment reactivated"); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const enrolledIds = new Set((enrollments ?? []).map((e: any) => e.enrollment.courseId));
   const availableCourses = courses.filter((c: any) => c.isActive && !enrolledIds.has(c.id));
+
+  const activeEnrollments = (enrollments ?? []).filter((e: any) => e.enrollment.isActive);
+  const suspendedEnrollments = (enrollments ?? []).filter((e: any) => !e.enrollment.isActive);
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
@@ -53,32 +66,88 @@ function UserCourseManagementDialog({ userId, onClose, courses }: { userId: numb
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto">
+          {/* Active enrollments */}
           <div>
-            <h4 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Enrolled Courses</h4>
+            <h4 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Active Courses ({activeEnrollments.length})</h4>
             {isLoading ? (
               <div className="space-y-2">{[1,2].map(i => <Skeleton key={i} className="h-10" />)}</div>
-            ) : (enrollments ?? []).length === 0 ? (
-              <p className="text-sm text-muted-foreground py-2">No courses enrolled yet.</p>
+            ) : activeEnrollments.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">No active courses.</p>
             ) : (
               <div className="space-y-2">
-                {(enrollments ?? []).map((e: any) => (
-                  <div key={e.courseId} className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/30">
-                    <div>
-                      <p className="text-sm font-medium">{e.courseTitle ?? `Course #${e.courseId}`}</p>
-                      <p className="text-xs text-muted-foreground">Enrolled {new Date(e.enrolledAt).toLocaleDateString()}</p>
+                {activeEnrollments.map((e: any) => (
+                  <div key={e.enrollment.courseId} className="flex items-center justify-between p-2.5 rounded-lg border bg-muted/30">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium truncate">{e.course.title}</p>
+                        {e.enrollment.isCurrent && <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">Active</Badge>}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {e.course.subject} · Grade {e.course.gradeLevel} · Enrolled {new Date(e.enrollment.enrolledAt).toLocaleDateString()}
+                      </p>
                     </div>
-                    <Button
-                      variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700"
-                      onClick={() => removeUser.mutate({ userId, courseId: e.courseId })}
-                      disabled={removeUser.isPending}
-                    >
-                      <UserMinus className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost" size="icon" className="h-7 w-7 text-amber-600 hover:text-amber-800"
+                        onClick={() => suspendMut.mutate({ userId, courseId: e.enrollment.courseId })}
+                        disabled={suspendMut.isPending}
+                        title="Suspend (student loses access but progress is preserved)"
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700"
+                        onClick={() => removeUser.mutate({ userId, courseId: e.enrollment.courseId })}
+                        disabled={removeUser.isPending}
+                        title="Remove permanently"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
+
+          {/* Suspended enrollments */}
+          {suspendedEnrollments.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold mb-2 text-amber-600 uppercase tracking-wide">Suspended ({suspendedEnrollments.length})</h4>
+              <div className="space-y-2">
+                {suspendedEnrollments.map((e: any) => (
+                  <div key={e.enrollment.courseId} className="flex items-center justify-between p-2.5 rounded-lg border border-amber-200 bg-amber-50">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate text-amber-900">{e.course.title}</p>
+                      <p className="text-xs text-amber-700">
+                        {e.course.subject} · Grade {e.course.gradeLevel} · Suspended
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:text-emerald-800"
+                        onClick={() => unsuspendMut.mutate({ userId, courseId: e.enrollment.courseId })}
+                        disabled={unsuspendMut.isPending}
+                        title="Reactivate enrollment"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700"
+                        onClick={() => removeUser.mutate({ userId, courseId: e.enrollment.courseId })}
+                        disabled={removeUser.isPending}
+                        title="Remove permanently"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Add new course */}
           {availableCourses.length > 0 && (
             <div>
               <h4 className="text-sm font-semibold mb-2 text-muted-foreground uppercase tracking-wide">Add Course</h4>

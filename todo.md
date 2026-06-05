@@ -2593,3 +2593,19 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] StudentSetup: navigates to /student-welcome after first password creation
 - [x] Student dashboard: EmptyEnrollmentState with "Browse & Enrol in Courses" CTA for edge cases
 - [x] Verified: all 1145 tests passing, zero TypeScript errors
+
+## Admin Course Management & Parent/Student Flow Enhancements
+
+- [x] Admin: view all courses assigned to each student in admin panel (shows active + suspended)
+- [x] Admin: add courses to a student from admin panel
+- [x] Admin: remove courses from a student from admin panel
+- [x] Admin: suspend/unsuspend course enrollment for a student
+- [x] Parent: bulk add courses by grade year (auto-populate grade-appropriate courses)
+- [x] Parent: add courses outside student's grade level (cross-grade selection)
+- [x] Parent: remove courses from student (already implemented, verified UX)
+- [x] Student notification: push in-app notification when parent assigns new courses
+- [x] Student self-service course browser: browse available courses (/courses page)
+- [x] Student course request: request courses with parent approval workflow
+- [x] Parent approval: view and approve/deny student course requests
+- [x] End-to-end flow test: parent onboarding → add student → assign courses → student sees courses
+- [x] UX/UI review: ensure collaboration flow between parent, student, and admin is intuitive

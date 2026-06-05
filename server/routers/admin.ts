@@ -29,6 +29,9 @@ import {
   getAdminAuditLog,
   enrollUserInCourse,
   getUserCourseEnrollments,
+  getAllUserEnrollmentsAdmin,
+  suspendEnrollment,
+  unsuspendEnrollment,
   getUnitsForCourse,
   setUserActiveCourse,
   setStudentGradeLevel,
@@ -211,7 +214,29 @@ export const adminRouter = router({
   getUserEnrollments: adminProcedure
     .input(z.object({ userId: z.number() }))
     .query(async ({ input }) => {
-      return getUserCourseEnrollments(input.userId);
+      return getAllUserEnrollmentsAdmin(input.userId);
+    }),
+
+  suspendEnrollment: adminProcedure
+    .input(z.object({ userId: z.number(), courseId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await suspendEnrollment(input.userId, input.courseId);
+      await logAdminAction(ctx.user.id, "user.course_suspend", "user", input.userId, {
+        courseId: input.courseId,
+        suspendedBy: ctx.user.id,
+      });
+      return { success: true };
+    }),
+
+  unsuspendEnrollment: adminProcedure
+    .input(z.object({ userId: z.number(), courseId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await unsuspendEnrollment(input.userId, input.courseId);
+      await logAdminAction(ctx.user.id, "user.course_unsuspend", "user", input.userId, {
+        courseId: input.courseId,
+        unsuspendedBy: ctx.user.id,
+      });
+      return { success: true };
     }),
 
   getUserRoles: adminProcedure
