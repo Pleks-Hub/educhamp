@@ -19,7 +19,7 @@ import {
   Pencil, Trash2, Mail, Plus, X, Star, Target, Brain, ShieldAlert,
   FileText, Download, StickyNote, Flag, TrendingDown, Zap,
   Loader2, Link2, Copy, Bell, CheckCheck, XCircle, UserCheck, Info,
-  Send, Share2, BookMarked, ThumbsUp, ThumbsDown, AlertCircle
+  Send, Share2, BookMarked, ThumbsUp, ThumbsDown, AlertCircle, Sparkles
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { StreamdownRenderer } from "@/components/StreamdownRenderer";
@@ -33,6 +33,48 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+
+// ─── Parent Notification Bell ────────────────────────────────────────────────
+
+function ParentNotificationBell() {
+  const { data } = trpc.notifications.getMyNotifications.useQuery(
+    { limit: 20, onlyUnread: false },
+    { refetchInterval: 60_000 }
+  );
+  const utils = trpc.useUtils();
+  const markAllRead = trpc.notifications.markAllRead.useMutation({
+    onSuccess: () => utils.notifications.getMyNotifications.invalidate(),
+  });
+  const unread = data?.unreadCount ?? 0;
+  if (!data || data.notifications.length === 0) return null;
+  return (
+    <div className="relative group">
+      <Button variant="ghost" size="icon" className="relative h-9 w-9" onClick={() => markAllRead.mutate()} aria-label={unread > 0 ? `Notifications — ${unread} unread` : "Notifications"}>
+        <Bell className="h-4 w-4" />
+        {unread > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center" aria-hidden="true">
+            {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+      </Button>
+      <div className="absolute right-0 top-10 w-80 bg-popover border border-border rounded-xl shadow-lg z-50 hidden group-focus-within:block">
+        <div className="p-3 border-b border-border flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Notifications</h2>
+          {unread > 0 && <button className="text-xs text-primary hover:underline" onClick={() => markAllRead.mutate()}>Mark all read</button>}
+        </div>
+        <div className="max-h-72 overflow-y-auto divide-y divide-border">
+          {data.notifications.map((n) => (
+            <div key={n.id} className={`p-3 text-sm ${!n.isRead ? "bg-primary/5" : ""}`}>
+              <p className="font-medium text-foreground">{n.title}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{n.message}</p>
+              <p className="text-xs text-muted-foreground mt-1">{new Date(n.createdAt).toLocaleString()}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Child Certificates Panel ────────────────────────────────────────────────
 
@@ -2000,6 +2042,77 @@ function ResendSetupEmailButton({ childId, childName }: { childId: number; child
   );
 }
 
+function ChildRecommendationsPanel({ childId, childName }: { childId: number; childName: string }) {
+  // getRecommendations is a protectedProcedure with no input (uses ctx.user.id)
+  // For parent viewing child recommendations, we'll use the catalog data filtered by child's grade
+  const { data: recs, isLoading } = trpc.courses.getRecommendations.useQuery();
+  const utils = trpc.useUtils();
+  const assignCourses = trpc.parent.bulkAssignCourses.useMutation({
+    onSuccess: () => {
+      toast.success("Course assigned successfully!");
+      utils.parent.listChildren.invalidate();
+      utils.courses.getRecommendations.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!recs || recs.length === 0) {
+    return (
+      <div className="text-center py-12 space-y-3">
+        <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto">
+          <Sparkles className="h-6 w-6 text-muted-foreground" />
+        </div>
+        <p className="text-sm text-muted-foreground">No recommendations available yet.</p>
+        <p className="text-xs text-muted-foreground">Recommendations appear after {childName} completes a diagnostic test or progresses through courses.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Sparkles className="h-4 w-4 text-primary" />
+        <h3 className="text-sm font-semibold">AI-Powered Course Suggestions for {childName}</h3>
+      </div>
+      <p className="text-xs text-muted-foreground">Based on {childName}'s diagnostic scores, mastery levels, and learning progress.</p>
+      <div className="grid gap-3">
+        {recs.map((rec) => (
+          <div key={rec.courseId} className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-sm truncate">{rec.title}</div>
+              <p className="text-xs text-muted-foreground mt-0.5">{rec.reason}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                  {rec.score}% match
+                </span>
+                <span className="text-xs text-muted-foreground">Grade {rec.gradeLevel}</span>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0"
+              disabled={assignCourses.isPending}
+              onClick={() => assignCourses.mutate({ studentId: childId, courseIds: [rec.courseId] })}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Assign
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: () => void }) {
   const [editOpen, setEditOpen] = useState(false);
   // Activity timeline filters
@@ -2123,6 +2236,7 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
           <TabsTrigger value="achievements" className="text-xs">🏆 Rewards</TabsTrigger>
           <TabsTrigger value="certificates" className="text-xs">🎓 Certs</TabsTrigger>
           <TabsTrigger value="report" className="text-xs">Export</TabsTrigger>
+          <TabsTrigger value="recommended" className="text-xs">Suggest</TabsTrigger>
         </TabsList>
 
         {/* Courses tab — multi-course overview */}
@@ -2384,6 +2498,10 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
         {/* Export tab */}
         <TabsContent value="report" className="mt-4">
           <ReportExportPanel childId={child.childId} childName={child.name ?? "Student"} />
+        </TabsContent>
+        {/* AI Course Recommendations */}
+        <TabsContent value="recommended" className="mt-4">
+          <ChildRecommendationsPanel childId={child.childId} childName={child.name ?? "Student"} />
         </TabsContent>
       </Tabs>
 
@@ -2666,8 +2784,14 @@ export default function ParentDashboard() {
     );
   }
 
-  const selectedChild = children?.find((c) => c?.childId === selectedChildId) ?? null;
+    // Auto-select the first (and only) child so parent doesn't have to click
+  useEffect(() => {
+    if (children && children.length === 1 && children[0] && !selectedChildId) {
+      setSelectedChildId(children[0].childId);
+    }
+  }, [children, selectedChildId]);
 
+  const selectedChild = children?.find((c) => c?.childId === selectedChildId) ?? null;
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
       {/* Page header */}
@@ -2683,10 +2807,13 @@ export default function ParentDashboard() {
             Monitor your children's progress, mastery levels, and learning paths across all enrolled courses.
           </p>
         </div>
-        <Button onClick={() => setEnrolOpen(true)} className="gap-2">
-          <UserPlus className="h-4 w-4" />
-          Enrol a Student
-        </Button>
+        <div className="flex items-center gap-3">
+          <ParentNotificationBell />
+          <Button onClick={() => setEnrolOpen(true)} className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            Enrol a Student
+          </Button>
+        </div>
       </div>
 
       {/* ── Pending Student Enrollment Requests banner ── */}

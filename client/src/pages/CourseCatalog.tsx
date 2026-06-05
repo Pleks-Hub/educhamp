@@ -4,13 +4,12 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+
 import { toast } from "sonner";
 import {
   BookOpen,
   Calculator,
   CheckCircle2,
-  ChevronRight,
   Clock,
   FlaskConical,
   Globe,
@@ -22,7 +21,7 @@ import {
   Sparkles,
   Star,
   XCircle,
-  GraduationCap,
+
 } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -124,9 +123,6 @@ export default function CourseCatalog() {
     onError: (err) => toast.error(err.message ?? "Failed to submit request."),
   });
 
-  const setActiveCourse = trpc.admin.setActiveCourse.useMutation({
-    onSuccess: () => utils.admin.myEnrollments.invalidate(),
-  });
 
   // Build courseId → request status map
   const requestStatusMap = useMemo(() => {
@@ -200,15 +196,12 @@ export default function CourseCatalog() {
     }
   }
 
-  async function handleSwitch(courseId: number, title: string) {
-    try {
-      await setActiveCourse.mutateAsync({ courseId });
-      toast.success(`Switched to ${title}`);
-      navigate("/curriculum");
-    } catch (err: any) {
-      toast.error(err?.message ?? "Failed to switch course.");
-    }
-  }
+
+  // AI-powered recommendations
+  const recommendationsQuery = trpc.courses.getRecommendations.useQuery(undefined, {
+    enabled: !!user && user.accountType === "student",
+  });
+  const recommendations = recommendationsQuery.data ?? [];
 
   const hasActiveFilters = search || gradeFilter !== "all" || subjectFilter !== "all";
 
@@ -217,9 +210,9 @@ export default function CourseCatalog() {
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Full Course Catalogue</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Browse Courses</h1>
         <p className="text-slate-500 mt-1">
-          Browse 70+ courses from Pre-K through Grade 12, AP, and SAT Prep — all standards-aligned.
+          Explore courses outside your current enrollment. Request access and your parent will be notified for approval.
         </p>
         <div className="flex flex-wrap gap-2 mt-3">
           {recommendedCount > 0 && (
@@ -243,49 +236,54 @@ export default function CourseCatalog() {
         </div>
       </div>
 
-      {/* ── My Courses (enrolled) ──────────────────────────────────────────── */}
+      {/* ── Enrolled notice ──────────────────────────────────────────────── */}
       {enrolledCourses.length > 0 && (
-        <div>
-          <h2 className="text-base font-semibold text-slate-700 mb-3 flex items-center gap-2">
-            <GraduationCap className="h-4 w-4 text-emerald-600" />
-            My Courses
-            <span className="text-slate-400 text-xs font-normal">
-              {enrolledCourses.length} enrolled
-            </span>
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-2">
-            {enrolledCourses.map((course) => {
-              const meta = subjectMeta(course.subject);
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+          <span>You're enrolled in <strong>{enrolledCourses.length}</strong> course{enrolledCourses.length > 1 ? "s" : ""}. Manage them from your <button onClick={() => navigate("/")} className="underline font-medium hover:text-emerald-900">Dashboard</button>.</span>
+        </div>
+      )}
+
+      {/* ── AI Recommendations ─────────────────────────────────────────────── */}
+      {recommendations.length > 0 && !hasActiveFilters && (
+        <div className="rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50/80 to-purple-50/40 p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-1.5 rounded-lg bg-indigo-100">
+              <Sparkles className="h-4 w-4 text-indigo-600" />
+            </div>
+            <h2 className="text-base font-semibold text-slate-900">Recommended for You</h2>
+            <span className="text-xs text-slate-500 ml-auto">Based on your grade level and progress</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {recommendations.slice(0, 3).map((rec) => {
+              const meta = subjectMeta(rec.subject);
               const SubjectIcon = meta.icon;
+              const reqStatus = requestStatusMap.get(rec.courseId);
+              const isRequesting = requestingId === rec.courseId;
               return (
-                <div
-                  key={course.id}
-                  className="relative rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 transition-all hover:shadow-md"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border text-xs font-medium ${meta.bg} ${meta.colour}`}>
-                      <SubjectIcon className="h-3 w-3" />
-                      {meta.label}
+                <div key={rec.courseId} className="rounded-lg border border-indigo-100 bg-white p-3 hover:shadow-sm transition-shadow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`p-1 rounded ${meta.bg}`}>
+                      <SubjectIcon className={`h-3.5 w-3.5 ${meta.colour}`} />
                     </div>
-                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">
-                      <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Enrolled
-                    </Badge>
+                    <span className="text-xs text-slate-500">{gradeLabel(rec.gradeLevel)}</span>
                   </div>
-                  <h3 className="font-semibold text-slate-900 text-sm leading-snug mb-1">{course.title}</h3>
-                  <p className="text-xs text-slate-500 mb-3">{course.courseCode} · {gradeLabel(course.gradeLevel)}</p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full gap-1 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
-                    onClick={() => handleSwitch(course.id, course.title)}
-                  >
-                    Switch to this course <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
+                  <h3 className="font-medium text-sm text-slate-900 mb-1 line-clamp-1">{rec.title}</h3>
+                  <p className="text-xs text-indigo-600 mb-2">{rec.reason}</p>
+                  {reqStatus?.status === "pending" ? (
+                    <div className="text-xs text-amber-600 flex items-center gap-1"><Clock className="h-3 w-3" /> Pending approval</div>
+                  ) : reqStatus?.status === "approved" ? (
+                    <div className="text-xs text-emerald-600 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Approved</div>
+                  ) : (
+                    <Button size="sm" className="w-full h-7 text-xs bg-indigo-600 hover:bg-indigo-700" onClick={() => handleRequest(rec.courseId)} disabled={isRequesting}>
+                      {isRequesting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                      Request Access
+                    </Button>
+                  )}
                 </div>
               );
             })}
           </div>
-          <Separator className="mt-4" />
         </div>
       )}
 

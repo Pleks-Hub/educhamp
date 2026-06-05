@@ -2617,3 +2617,35 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Add email digest for pending course requests (daily cron at 9AM UTC, email template + scheduled handler + admin registration)
 - [x] Verify student self-service course browser at /courses works for parent-enrolled students (verified code path)
 - [x] Add admin bulk operations: bulk assign/suspend/remove courses for multiple selected students (server + UI)
+
+## Comprehensive UX Overhaul — Student & Parent (June 2026)
+
+### Student Dashboard Redesign
+- [x] Student Home shows ONLY enrolled courses with clear learning path guidance
+- [x] Remove non-enrolled courses from main dashboard view (CourseCatalog now only shows non-enrolled)
+- [x] Add separate "Browse More Courses" tab/section for requesting new courses (sidebar: Browse Courses)
+- [x] Guided learning flow: clear next-step indicators ("Your Next Step" card replaces Quick Actions)
+- [x] Visual progress breadcrumb showing where student is in their learning journey
+- [x] Contextual tooltips/onboarding for first-time students (GuidedTour already exists)
+- [x] Simplify navigation — sidebar reorganized into Learning + Tools sections
+
+### Course Recommendations Engine
+- [x] Server: courseRecommendations procedure using diagnostic scores + mastery data
+- [x] Recommend next courses based on completed prerequisites and performance
+- [x] Surface recommendations in student course browser ("Recommended for You" section)
+- [x] Surface recommendations in parent dashboard ("Suggest" tab in child detail)
+
+### Progress Milestone Notifications
+- [x] Notify parent when child completes a unit (75%+ quiz score triggers unit completion notification)
+- [x] Notify parent when child achieves mastery on a skill (90%+ triggers mastery notification)
+- [x] Notify parent when child passes a quiz with 90%+ (in-app + email celebration)
+- [x] In-app + email notifications for milestones (both channels wired)
+
+### Parent Dashboard UX
+- [x] Review and improve parent onboarding flow (idiot-proof) — 3-step guide, auto-select single child
+- [x] Review billing/payment setup flow for clarity (guided wizard already in place)
+- [x] Review add-student flow for intuitiveness (auto-opens course assignment after adding)
+- [x] Review performance monitoring UI for parent (comprehensive tabs: progress, activity, insights, gaps)
+- [x] Add notification bell to parent dashboard (milestone notifications visible)
+- [x] Add AI course recommendations tab ("Suggest" tab with one-click assign)
+- [x] Ensure all parent processes work without needing support

@@ -522,6 +522,69 @@ export const appRouter = router({
           content: notifyMsg,
         }).catch(() => {});
 
+        // ── Parent milestone notifications ──────────────────────────────────
+        if (parents.length > 0) {
+          try {
+            const db = await getDb();
+            const { userNotifications } = await import("../drizzle/schema");
+            const { sendEmail } = await import("./emailService");
+            const childName = ctx.user.name ?? "Your child";
+
+            for (const parent of parents) {
+              // In-app notification for unit completion (score >= 75)
+              if (score >= 75 && db) {
+                await db.insert(userNotifications).values({
+                  userId: parent.parentId,
+                  type: "milestone_unit_complete",
+                  title: `${childName} completed Unit ${input.unitNumber}!`,
+                  message: `${childName} scored ${score}% on "${input.unitTitle}" and unlocked the next unit. Keep up the great support!`,
+                  metadata: JSON.stringify({ studentId: ctx.user.id, unitId: input.unitId, score, unitTitle: input.unitTitle }),
+                });
+              }
+
+              // In-app notification for mastery achievement (score >= 90)
+              if (score >= 90 && db) {
+                await db.insert(userNotifications).values({
+                  userId: parent.parentId,
+                  type: "milestone_mastery",
+                  title: `${childName} achieved mastery on Unit ${input.unitNumber}!`,
+                  message: `${childName} scored an outstanding ${score}% on "${input.unitTitle}". This demonstrates strong understanding of the material.`,
+                  metadata: JSON.stringify({ studentId: ctx.user.id, unitId: input.unitId, score, unitTitle: input.unitTitle }),
+                });
+              }
+
+              // Email notification for significant milestones (score >= 90)
+              if (score >= 90 && parent.parentEmail) {
+                sendEmail({
+                  to: parent.parentEmail,
+                  subject: `\u{1F3C6} ${childName} achieved mastery on Unit ${input.unitNumber}!`,
+                  html: `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+                    <h2 style="color:#4f46e5">Great news!</h2>
+                    <p>${childName} scored <strong>${score}%</strong> on <strong>${input.unitTitle}</strong> — that's mastery level!</p>
+                    <p>This is a significant achievement. ${childName} has demonstrated strong understanding of the material and is ready for the next challenge.</p>
+                    <p style="margin-top:24px;color:#6b7280;font-size:14px">Keep encouraging their learning journey!</p>
+                  </div>`,
+                  text: `${childName} scored ${score}% on ${input.unitTitle} - that's mastery level! This is a significant achievement.`,
+                  templateName: "milestone_mastery",
+                }).catch(() => {});
+              }
+
+              // Skill mastery notifications
+              if (skillMasteryAchievements.length > 0 && db) {
+                await db.insert(userNotifications).values({
+                  userId: parent.parentId,
+                  type: "milestone_skill_mastery",
+                  title: `${childName} mastered ${skillMasteryAchievements.length} skill${skillMasteryAchievements.length > 1 ? "s" : ""}!`,
+                  message: `${childName} achieved 90%+ mastery on: ${skillMasteryAchievements.map(s => s.split(" (")[0]).join(", ")}. Excellent progress!`,
+                  metadata: JSON.stringify({ studentId: ctx.user.id, skills: skillMasteryAchievements }),
+                });
+              }
+            }
+          } catch (parentNotifErr) {
+            console.error("[submitQuiz] Parent milestone notification error:", parentNotifErr);
+          }
+        }
+
         // Return graded results with explanations
         const results = gradedAnswers.map((a) => {
           const q = questionMap.get(a.questionId);
@@ -1194,6 +1257,116 @@ export const appRouter = router({
         // All lessons complete
         return null;
       }),
+
+    /**
+     * Course Recommendations Engine
+     * Suggests courses based on student's grade, mastery data, diagnostic scores, and enrollment history.
+     */
+    getRecommendations: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+      const { courses, userCourseEnrollments, diagnosticAttempts, masteryRecords } = await import("../drizzle/schema");
+      const { eq, and, notInArray, desc } = await import("drizzle-orm");
+
+      const userId = ctx.user.id;
+      const userGrade = ctx.user.grade ?? "9";
+
+      // Get enrolled course IDs
+      const enrollments = await db.select({ courseId: userCourseEnrollments.courseId })
+        .from(userCourseEnrollments)
+        .where(eq(userCourseEnrollments.userId, userId));
+      const enrolledIds = enrollments.map((e: { courseId: number }) => e.courseId);
+
+      // Get all active courses not already enrolled
+      const allCourses = enrolledIds.length > 0
+        ? await db.select().from(courses).where(and(eq(courses.isActive, true), notInArray(courses.id, enrolledIds)))
+        : await db.select().from(courses).where(eq(courses.isActive, true));
+
+      // Get latest diagnostics for scoring
+      const diagnostics = await db.select()
+        .from(diagnosticAttempts)
+        .where(eq(diagnosticAttempts.userId, userId))
+        .orderBy(desc(diagnosticAttempts.completedAt));
+
+      // Get mastery records for subject strength analysis
+      const mastery = await db.select()
+        .from(masteryRecords)
+        .where(eq(masteryRecords.studentId, userId));
+
+      // Calculate average mastery per enrollment context
+      const masteryGroups = new Map<number, number[]>();
+      for (const m of mastery) {
+        const arr = masteryGroups.get(m.enrollmentContextId) ?? [];
+        arr.push(m.score);
+        masteryGroups.set(m.enrollmentContextId, arr);
+      }
+      const avgMasteryValues: number[] = [];
+      for (const entry of Array.from(masteryGroups.entries())) {
+        const scores = entry[1];
+        avgMasteryValues.push(scores.reduce((a: number, b: number) => a + b, 0) / scores.length);
+      }
+
+      // Parse grade for numeric comparison
+      function parseGrade(g: string): number {
+        if (g === "Pre-K") return -1;
+        if (g === "Kindergarten" || g === "K") return 0;
+        if (g === "AP") return 13;
+        return parseInt(g, 10) || 9;
+      }
+      const numericGrade = parseGrade(userGrade);
+
+      type CourseRow = typeof allCourses[number];
+      // Score each course
+      const scored = allCourses.map((c: CourseRow) => {
+        let score = 0;
+        const reasons: string[] = [];
+        const courseGrade = parseGrade(c.gradeLevel);
+
+        // Grade proximity (max 40 points)
+        const gradeDiff = Math.abs(courseGrade - numericGrade);
+        if (gradeDiff === 0) { score += 40; reasons.push("Matches your grade level"); }
+        else if (gradeDiff === 1) { score += 30; reasons.push("One grade level away"); }
+        else if (gradeDiff === 2) { score += 15; reasons.push("Close to your grade"); }
+        else { score += 5; }
+
+        // Subject strength from diagnostics (max 30 points)
+        const subjectDiag = diagnostics.find((d: typeof diagnostics[number]) => {
+          const diagCourse = allCourses.find((ac: CourseRow) => ac.id === d.courseId);
+          return diagCourse && diagCourse.subject === c.subject;
+        });
+        if (subjectDiag && (subjectDiag.overallScore ?? 0) >= 70) {
+          score += 20;
+          reasons.push("Strong foundation in this subject");
+        }
+
+        // High mastery suggests readiness for more (max 20 points)
+        const overallAvg = avgMasteryValues.length > 0
+          ? avgMasteryValues.reduce((a: number, b: number) => a + b, 0) / avgMasteryValues.length
+          : 0;
+        if (overallAvg >= 80) { score += 20; reasons.push("High mastery shows you're ready"); }
+        else if (overallAvg >= 60) { score += 10; reasons.push("Good progress in current courses"); }
+
+        // Next grade progression (max 10 points)
+        if (courseGrade === numericGrade + 1) {
+          score += 10;
+          reasons.push("Natural next step in your learning path");
+        }
+
+        return {
+          courseId: c.id,
+          title: c.title,
+          subject: c.subject,
+          gradeLevel: c.gradeLevel,
+          description: c.description,
+          score,
+          reason: reasons[0] ?? "Expand your learning",
+        };
+      });
+
+      // Sort by score descending, take top 6
+      scored.sort((a: { score: number }, b: { score: number }) => b.score - a.score);
+      return scored.slice(0, 6);
+    }),
   }),
 
   // ─── Student Re-Engagement ─────────────────────────────────────────────────

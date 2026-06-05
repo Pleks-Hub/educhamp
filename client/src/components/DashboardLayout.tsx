@@ -53,16 +53,24 @@ import { useLocation, Redirect } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import CourseSwitcher from "./CourseSwitcher";
-const menuItems = [
+// Primary learning items — always visible to students
+const primaryItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-  { icon: Library, label: "Course Catalog", path: "/courses" },
-  { icon: BookOpen, label: "Curriculum", path: "/curriculum" },
+  { icon: BookOpen, label: "My Curriculum", path: "/curriculum" },
   { icon: Brain, label: "AI Tutor", path: "/tutor" },
-  { icon: ClipboardList, label: "Diagnostic", path: "/diagnostic" },
-  { icon: BarChart3, label: "Progress", path: "/progress" },
+];
+
+// Secondary tools — visible but grouped under a separator
+const secondaryItems = [
+  { icon: ClipboardList, label: "Placement Test", path: "/diagnostic" },
+  { icon: BarChart3, label: "My Progress", path: "/progress" },
+  { icon: Library, label: "Browse Courses", path: "/courses" },
   { icon: Sigma, label: "Skill Index", path: "/skills" },
   { icon: FileText, label: "Exam Prep", path: "/exam-prep" },
 ];
+
+// Combined for backward compat with activeItem detection
+const menuItems = [...primaryItems, ...secondaryItems];
 
 // Parent Dashboard is shown to all authenticated users — any user can enrol children
 const parentMenuItem = { icon: Users, label: "Parent Dashboard", path: "/parent" };
@@ -250,7 +258,41 @@ function DashboardLayoutContent({
           {/* Navigation */}
           <SidebarContent className="py-3">
             <SidebarMenu className="px-2 gap-0.5">
-              {menuItems.map((item) => {
+              {/* Primary learning items */}
+              {primaryItems.map((item) => {
+                const isActive = item.path === location || (item.path !== "/" && location.startsWith(item.path));
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setLocation(item.path)}
+                      tooltip={item.label}
+                      className={`h-9 rounded-lg transition-all duration-150 ${
+                        isActive
+                          ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
+                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="text-sm">{item.label}</span>
+                      {isActive && !isCollapsed && (
+                        <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+
+              {/* Separator between primary and secondary */}
+              {!isCollapsed && (
+                <div className="px-2 pt-2 pb-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40 px-2">Tools</p>
+                </div>
+              )}
+              {isCollapsed && <div className="h-2" />}
+
+              {/* Secondary tools */}
+              {secondaryItems.map((item) => {
                 const isActive = item.path === location || (item.path !== "/" && location.startsWith(item.path));
                 return (
                   <SidebarMenuItem key={item.path}>

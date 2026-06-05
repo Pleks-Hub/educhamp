@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GuidedTour } from "@/components/GuidedTour";
 import { SeasonalChallengeBanner } from "@/components/SeasonalChallengeBanner";
-import CourseSwitcher from "@/components/CourseSwitcher";
+
 import {
   AlertCircle,
   ArrowRight,
@@ -514,7 +514,7 @@ function StreakAtRiskBanner({ currentStreak, streakFreezeCount }: { currentStrea
 export default function Home() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [courseSwitcherOpen, setCourseSwitcherOpen] = useState(false);
+
 
   const { data: dashboard, isLoading } = trpc.progress.getDashboard.useQuery(undefined, {
     enabled: !!user,
@@ -643,12 +643,7 @@ export default function Home() {
       {/* Guided tour — shown once on first login */}
       <GuidedTour accountType={user?.accountType ?? "student"} />
 
-      {/* Course Switcher / Catalogue dialog */}
-      <CourseSwitcher open={courseSwitcherOpen} onClose={() => {
-        setCourseSwitcherOpen(false);
-        utils.progress.getAllCourseProgress.invalidate();
-        utils.progress.getDashboard.invalidate();
-      }} />
+
 
       {/* Parent invite status banner — shown to students who have sent a parent invite */}
       {user?.accountType === "student" && <ParentInviteBanner />}
@@ -780,10 +775,10 @@ export default function Home() {
                 variant="outline"
                 size="sm"
                 className="gap-1.5 text-xs h-7"
-                onClick={() => setCourseSwitcherOpen(true)}
+                onClick={() => setLocation("/courses")}
               >
                 <Plus className="h-3.5 w-3.5" />
-                Add Course
+                Browse Courses
               </Button>
             </div>
 
@@ -792,7 +787,7 @@ export default function Home() {
                 {[1, 2].map((i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
               </div>
             ) : enrolledCount === 0 ? (
-              <EmptyEnrollmentState onBrowse={() => setCourseSwitcherOpen(true)} />
+              <EmptyEnrollmentState onBrowse={() => setLocation("/courses")} />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {allCourseProgress?.map((cp) => (
@@ -890,7 +885,7 @@ export default function Home() {
                         You've completed all available units. Enrol in another course to keep learning.
                       </p>
                     </div>
-                    <Button variant="outline" onClick={() => setCourseSwitcherOpen(true)} className="gap-2">
+                    <Button variant="outline" onClick={() => setLocation("/courses")} className="gap-2">
                       <Plus className="h-4 w-4" />
                       Browse More Courses
                     </Button>
@@ -903,50 +898,80 @@ export default function Home() {
 
         {/* Right column: Quick actions + Mastery + Diagnostic */}
         <div className="space-y-4">
-          {/* Quick Actions */}
-          <Card className="border shadow-sm">
+          {/* Your Next Step — contextual guidance */}
+          <Card className="border shadow-sm bg-gradient-to-b from-primary/5 to-transparent">
             <CardHeader className="pb-2 pt-4 px-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
-                Quick Actions
+                Your Next Step
               </CardTitle>
             </CardHeader>
-            <CardContent className="px-4 pb-4 space-y-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start gap-2 text-xs"
-                onClick={() => setCourseSwitcherOpen(true)}
-              >
-                <BookOpen className="h-3.5 w-3.5 text-blue-500" />
-                Browse Course Catalogue
+            <CardContent className="px-4 pb-4">
+              {!hasDiagnosticForActiveCourse && enrolledCount > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                      <ClipboardList className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Take the Placement Test</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Find your exact starting point in {dashboard?.courseTitle ?? "your course"} so lessons match your level.</p>
+                    </div>
+                  </div>
+                  <Button size="sm" className="w-full gap-2" onClick={() => setLocation("/course-welcome")}>
+                    <ClipboardList className="h-3.5 w-3.5" /> Start Placement Test
+                  </Button>
+                </div>
+              ) : activeUnit ? (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <PlayCircle className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Continue Unit {activeUnit.unitNumber}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{activeUnit.title} — {activeUnit.lessonsCompleted}/{activeUnit.totalLessons || "—"} lessons done</p>
+                    </div>
+                  </div>
+                  <Button size="sm" className="w-full gap-2" onClick={() => setLocation("/curriculum")}>
+                    <PlayCircle className="h-3.5 w-3.5" /> Continue Learning
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">All caught up!</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">You've completed all available units. Browse more courses or practice with the AI Tutor.</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setLocation("/courses")}>
+                      <BookOpen className="h-3 w-3" /> Browse
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => setLocation("/tutor")}>
+                      <Brain className="h-3 w-3" /> AI Tutor
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Quick Links */}
+          <Card className="border shadow-sm">
+            <CardContent className="p-4 space-y-1.5">
+              <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs h-8" onClick={() => setLocation("/tutor")}>
+                <Brain className="h-3.5 w-3.5 text-purple-500" /> Ask AI Tutor
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start gap-2 text-xs"
-                onClick={() => setLocation("/tutor")}
-              >
-                <Brain className="h-3.5 w-3.5 text-purple-500" />
-                Ask AI Tutor
+              <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs h-8" onClick={() => setLocation("/progress")}>
+                <Target className="h-3.5 w-3.5 text-green-500" /> My Progress
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start gap-2 text-xs"
-                onClick={() => hasDiagnosticForActiveCourse ? setLocation("/diagnostic") : setLocation("/course-welcome")}
-              >
-                <ClipboardList className="h-3.5 w-3.5 text-amber-500" />
-                {hasDiagnosticForActiveCourse ? "Retest Placement" : "Take Placement Test"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start gap-2 text-xs"
-                onClick={() => setLocation("/progress")}
-              >
-                <Target className="h-3.5 w-3.5 text-green-500" />
-                View Progress
+              <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-xs h-8" onClick={() => setLocation("/courses")}>
+                <BookOpen className="h-3.5 w-3.5 text-blue-500" /> Browse Courses
               </Button>
             </CardContent>
           </Card>
