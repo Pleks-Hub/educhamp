@@ -366,6 +366,18 @@ export default function LearningPlanPage() {
     setShowWizard(true);
   };
 
+    // Parent plan suggestions for the student
+  const { data: parentSuggestions } = trpc.planSuggestion.getForStudent.useQuery();
+  const respondMutation = trpc.planSuggestion.respond.useMutation({
+    onSuccess: () => {
+      utils.planSuggestion.getForStudent.invalidate();
+      utils.learningPlan.getActive.invalidate();
+      toast.success("Response sent to your parent!");
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const pendingSuggestions = parentSuggestions?.filter((s: any) => s.status === "pending") ?? [];
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
@@ -377,6 +389,46 @@ export default function LearningPlanPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto page-enter">
+      {/* Parent suggestion banner */}
+      {pendingSuggestions.length > 0 && (
+        <div className="mb-6 space-y-3">
+          {pendingSuggestions.map((suggestion: any) => (
+            <Card key={suggestion.id} className="border-primary/40 bg-primary/5">
+              <CardContent className="py-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="secondary" className="text-xs">From {suggestion.parentName || "Parent"}</Badge>
+                      <span className="text-xs text-muted-foreground">{new Date(suggestion.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-sm font-medium">{suggestion.title}</p>
+                    {suggestion.message && <p className="text-xs text-muted-foreground mt-1 italic">"{suggestion.message}"</p>}
+                    <p className="text-xs text-muted-foreground mt-1">{suggestion.hoursPerWeek}h/week • {(suggestion.preferredDays as string[]).length} days</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <Button size="sm" variant="default" onClick={() => {
+                      respondMutation.mutate({ suggestionId: suggestion.id, status: "accepted", response: "Sounds good!" });
+                      // Also create the plan based on suggestion
+                      createMutation.mutateAsync({
+                        title: suggestion.title || "My Learning Plan",
+                        hoursPerWeek: suggestion.hoursPerWeek,
+                        preferredDays: suggestion.preferredDays as string[],
+                        schedule: (suggestion.schedule as any).blocks || [],
+                      }).then(() => utils.learningPlan.getActive.invalidate());
+                    }} disabled={respondMutation.isPending}>
+                      <Check className="h-3 w-3 mr-1" /> Accept
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => respondMutation.mutate({ suggestionId: suggestion.id, status: "declined", response: "I'll create my own plan." })} disabled={respondMutation.isPending}>
+                      Decline
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {/* Page header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">

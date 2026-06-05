@@ -1132,9 +1132,29 @@ export const adminRouter = router({
         taskUid: job.taskUid,
         nextExecutionAt: job.nextExecutionAt,
       });
+            return { success: true, taskUid: job.taskUid, nextExecutionAt: job.nextExecutionAt };
+    }),
+  /** Schedule the hourly learning plan reminder cron (sends study block reminders to students). */
+  scheduleLearningPlanReminder: adminProcedure
+    .mutation(async ({ ctx }) => {
+      const { createHeartbeatJob } = await import("../_core/heartbeat");
+      const { parse: parseCookie } = await import("cookie");
+      const { COOKIE_NAME } = await import("../../shared/const");
+      const sessionToken = parseCookie(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
+      if (!sessionToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "No session cookie" });
+      const job = await createHeartbeatJob({
+        name: "learning-plan-reminder",
+        cron: "0 0 * * * *", // Every hour at :00
+        path: "/api/scheduled/learning-plan-reminder",
+        description: "Hourly learning plan study block reminder emails for students",
+      }, sessionToken);
+      await upsertPlatformSetting("learningPlanReminderCronTaskUid", job.taskUid, "Task UID for the hourly learning plan reminder cron");
+      await logAdminAction(ctx.user.id, "digest.scheduleLearningPlanReminder", "digest", null, {
+        taskUid: job.taskUid,
+        nextExecutionAt: job.nextExecutionAt,
+      });
       return { success: true, taskUid: job.taskUid, nextExecutionAt: job.nextExecutionAt };
     }),
-
   exportSuppressions: adminProcedure
     .input(z.object({
       search: z.string().optional(),

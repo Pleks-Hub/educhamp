@@ -54,8 +54,12 @@ export const DEFAULT_BADGES = [
   { key: "streak_7",            name: "7-Day Streak",          description: "Learn 7 days in a row",                                category: "consistency",  iconEmoji: "🔥", xpReward: 100, sortOrder: 51 },
   { key: "streak_14",           name: "14-Day Streak",         description: "Learn 14 days in a row",                               category: "consistency",  iconEmoji: "🔥", xpReward: 200, sortOrder: 52 },
   { key: "streak_30",           name: "30-Day Streak",         description: "Learn 30 days in a row",                               category: "consistency",  iconEmoji: "🔥", xpReward: 500, sortOrder: 53 },
-  { key: "consistency_king",    name: "Consistency King",      description: "Complete at least one lesson every day for 7 days",    category: "consistency",  iconEmoji: "👑", xpReward: 150, sortOrder: 54 },
-  { key: "weekend_warrior",     name: "Weekend Warrior",       description: "Learn on both Saturday and Sunday",                    category: "consistency",  iconEmoji: "🏋️", xpReward: 75,  sortOrder: 55 },
+  { key: "streak_60",           name: "60-Day Streak",         description: "Learn 60 days in a row",                               category: "consistency",  iconEmoji: "⭐", xpReward: 800, sortOrder: 54 },
+  { key: "streak_100",          name: "Century Club",           description: "Learn 100 days in a row",                              category: "consistency",  iconEmoji: "💎", xpReward: 1500, sortOrder: 55 },
+  { key: "streak_200",          name: "Legend",                 description: "Learn 200 days in a row",                              category: "consistency",  iconEmoji: "👑", xpReward: 3000, sortOrder: 56 },
+  { key: "streak_365",          name: "Year of Growth",         description: "Learn 365 days in a row — a full year!",               category: "consistency",  iconEmoji: "🌟", xpReward: 5000, sortOrder: 57 },
+  { key: "consistency_king",    name: "Consistency King",      description: "Complete at least one lesson every day for 7 days",    category: "consistency",  iconEmoji: "👑", xpReward: 150, sortOrder: 58 },
+  { key: "weekend_warrior",     name: "Weekend Warrior",       description: "Learn on both Saturday and Sunday",                    category: "consistency",  iconEmoji: "🏋️", xpReward: 75,  sortOrder: 59 },
 
   // ── Special / Seasonal ────────────────────────────────────────────────────
   { key: "summer_quest",        name: "Summer Quest",          description: "Complete the Summer Learning Challenge",                category: "special",      iconEmoji: "☀️", xpReward: 300, sortOrder: 60 },
@@ -172,6 +176,10 @@ export async function checkAndAwardBadges(
       if (event.currentStreak >= 7) await tryAward("streak_7");
       if (event.currentStreak >= 14) await tryAward("streak_14");
       if (event.currentStreak >= 30) await tryAward("streak_30");
+      if (event.currentStreak >= 60) await tryAward("streak_60");
+      if (event.currentStreak >= 100) await tryAward("streak_100");
+      if (event.currentStreak >= 200) await tryAward("streak_200");
+      if (event.currentStreak >= 365) await tryAward("streak_365");
       if (event.currentStreak >= 7) await tryAward("consistency_king");
       break;
 

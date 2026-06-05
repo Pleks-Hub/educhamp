@@ -2699,3 +2699,31 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Ensure exempt users get full platform access without card on file
 - [x] Ensure existing paying users are unaffected by exemption logic
 - [x] Write vitest tests for exemption grant/revoke/expiry flows
+
+## Role/Type System Review & Fixes (June 2026)
+
+### Role vs AccountType Alignment
+- [x] Consolidate role and accountType: when admin changes accountType, auto-sync role field (and vice versa for non-admin roles)
+- [x] Admin UI: merge role/type into single "Account Type" dropdown (student/parent/teacher) + separate "Admin" toggle
+- [x] After role/type change, redirect user to correct onboarding/dashboard on next login
+- [x] Ensure parent→student change blocks parent dashboard access and shows student dashboard
+- [x] Ensure student→parent change grants parent dashboard access and hides student-only features
+
+### Billing Exemption UX Improvements
+- [x] Grant Exemption dialog: add user search by name/email instead of requiring user ID
+- [x] Bulk exemption import: CSV upload for school partnerships (userId or email, type, reason, endDate)
+- [x] Exemption audit trail: show exemption history on admin user detail panel
+
+### Streak Milestone Rewards
+- [x] Award XP badges at streak milestones (7-day, 30-day, 100-day)
+- [x] Surface milestone badges in gamification module
+- [x] Celebratory animation when milestone is reached
+
+### Learning Plan Reminders
+- [x] Email notification to students when scheduled study block is about to start
+- [x] Configurable reminder timing (15min, 30min, 1hr before)
+
+### Parent-Initiated Plan Suggestions
+- [x] Allow parents to suggest a learning plan to their child
+- [x] Student can accept or customize the suggested plan
+- [x] Show suggested plans on student's learning plan page with accept/modify UI

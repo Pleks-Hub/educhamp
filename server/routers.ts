@@ -1736,5 +1736,55 @@ export const appRouter = router({
         return { blocks };
       }),
   }),
+  planSuggestion: router({
+    /** Parent creates a plan suggestion for their child */
+    create: protectedProcedure
+      .input(z.object({
+        studentId: z.number(),
+        title: z.string().optional(),
+        hoursPerWeek: z.number().min(1).max(40),
+        preferredDays: z.array(z.string()),
+        schedule: z.any(),
+        message: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.accountType !== "parent") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only parents can suggest plans" });
+        }
+        const { createPlanSuggestion } = await import("./db");
+        return createPlanSuggestion({
+          parentId: ctx.user.id,
+          studentId: input.studentId,
+          title: input.title,
+          hoursPerWeek: input.hoursPerWeek,
+          preferredDays: input.preferredDays,
+          schedule: input.schedule,
+          message: input.message,
+        });
+      }),
+    /** Get suggestions for the current student */
+    getForStudent: protectedProcedure.query(async ({ ctx }) => {
+      const { getPlanSuggestionsForStudent } = await import("./db");
+      return getPlanSuggestionsForStudent(ctx.user.id);
+    }),
+    /** Get suggestions a parent has made (optionally filtered by child) */
+    getForParent: protectedProcedure
+      .input(z.object({ studentId: z.number().optional() }).optional())
+      .query(async ({ ctx, input }) => {
+        const { getPlanSuggestionsForParent } = await import("./db");
+        return getPlanSuggestionsForParent(ctx.user.id, input?.studentId);
+      }),
+    /** Student responds to a suggestion */
+    respond: protectedProcedure
+      .input(z.object({
+        suggestionId: z.number(),
+        status: z.enum(["accepted", "modified", "declined"]),
+        response: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        const { respondToPlanSuggestion } = await import("./db");
+        return respondToPlanSuggestion(input.suggestionId, ctx.user.id, input.status, input.response);
+      }),
+  }),
 });
 export type AppRouter = typeof appRouter;

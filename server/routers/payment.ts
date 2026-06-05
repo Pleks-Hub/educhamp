@@ -460,7 +460,7 @@ export const paymentRouter = router({
     }
     return {
       hasSubscription: !!sub || coveredByParent || isExempt,
-      cardOnFile: sub?.cardOnFile ?? (coveredByParent || isExempt),
+      cardOnFile: (sub?.cardOnFile) ?? (coveredByParent || isExempt),
       planName: sub?.planName ?? parentPlanName ?? (isExempt ? "exempt" : null),
       status: sub?.status ?? (coveredByParent ? "active" : isExempt ? "active" : null),
       suspendedAt: sub?.suspendedAt ?? null,
@@ -1053,6 +1053,7 @@ export const paymentRouter = router({
     listExemptions: adminProcedure
       .input(z.object({
         status: z.string().optional(),
+        userId: z.number().optional(),
         limit: z.number().int().min(1).max(100).default(50),
         offset: z.number().int().nonnegative().default(0),
       }))

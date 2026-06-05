@@ -264,8 +264,8 @@ function DashboardLayoutContent({
           {/* Navigation */}
           <SidebarContent className="py-3">
             <SidebarMenu className="px-2 gap-0.5">
-              {/* Primary learning items */}
-              {primaryItems.map((item) => {
+              {/* Primary learning items — shown to students and teachers */}
+              {isStudentAccount && primaryItems.map((item) => {
                 const isActive = item.path === location || (item.path !== "/" && location.startsWith(item.path));
                 return (
                   <SidebarMenuItem key={item.path}>
@@ -289,16 +289,47 @@ function DashboardLayoutContent({
                 );
               })}
 
+              {/* Parent-specific primary nav */}
+              {!isStudentAccount && (() => {
+                const parentPrimaryItems = [
+                  { icon: Users, label: "Parent Dashboard", path: "/parent" },
+                  { icon: CreditCard, label: "Billing", path: "/billing" },
+                ];
+                return parentPrimaryItems.map((item) => {
+                  const isActive = item.path === location || (item.path !== "/" && location.startsWith(item.path));
+                  return (
+                    <SidebarMenuItem key={item.label}>
+                      <SidebarMenuButton
+                        isActive={isActive}
+                        onClick={() => setLocation(item.path)}
+                        tooltip={item.label}
+                        className={`h-9 rounded-lg transition-all duration-150 ${
+                          isActive
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
+                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                        }`}
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span className="text-sm">{item.label}</span>
+                        {isActive && !isCollapsed && (
+                          <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
+                        )}
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                });
+              })()}
+
               {/* Separator between primary and secondary */}
-              {!isCollapsed && (
+              {isStudentAccount && !isCollapsed && (
                 <div className="px-2 pt-2 pb-1">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40 px-2">Tools</p>
                 </div>
               )}
-              {isCollapsed && <div className="h-2" />}
+              {isStudentAccount && isCollapsed && <div className="h-2" />}
 
-              {/* Secondary tools */}
-              {secondaryItems.map((item) => {
+              {/* Secondary tools — only for students */}
+              {isStudentAccount && secondaryItems.map((item) => {
                 const isActive = item.path === location || (item.path !== "/" && location.startsWith(item.path));
                 return (
                   <SidebarMenuItem key={item.path}>
@@ -322,7 +353,40 @@ function DashboardLayoutContent({
                 );
               })}
 
-              {/* Parent Dashboard + Referrals — hidden from student accounts */}
+              {/* Extra items for students: referrals, certificates, billing */}
+              {isStudentAccount && (
+                <>
+                  {!isCollapsed && (
+                    <div className="px-2 pt-2 pb-1">
+                      <div className="h-px bg-sidebar-border" />
+                    </div>
+                  )}
+                  {[certificatesMenuItem, referralMenuItem, billingMenuItem].map((item) => {
+                    const isActive = location.startsWith(item.path);
+                    return (
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          onClick={() => setLocation(item.path)}
+                          tooltip={item.label}
+                          className={`h-9 rounded-lg transition-all duration-150 ${
+                            isActive
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
+                              : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                          }`}
+                        >
+                          <item.icon className="h-4 w-4 shrink-0" />
+                          <span className="text-sm">{item.label}</span>
+                          {isActive && !isCollapsed && (
+                            <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
+                          )}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </>
+              )}
+              {/* Extra items for parent accounts: referrals */}
               {!isStudentAccount && (
                 <>
                   {!isCollapsed && (
@@ -330,29 +394,29 @@ function DashboardLayoutContent({
                       <div className="h-px bg-sidebar-border" />
                     </div>
                   )}
-                  {[parentMenuItem, certificatesMenuItem, referralMenuItem, billingMenuItem].map((item) => {
-                const isActive = location.startsWith(item.path);
-                return (
-                  <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      onClick={() => setLocation(item.path)}
-                      tooltip={item.label}
-                      className={`h-9 rounded-lg transition-all duration-150 ${
-                        isActive
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
-                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                      }`}
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="text-sm">{item.label}</span>
-                      {isActive && !isCollapsed && (
-                        <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
-                      )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+                  {[referralMenuItem].map((item) => {
+                    const isActive = location.startsWith(item.path);
+                    return (
+                      <SidebarMenuItem key={item.path}>
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          onClick={() => setLocation(item.path)}
+                          tooltip={item.label}
+                          className={`h-9 rounded-lg transition-all duration-150 ${
+                            isActive
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground font-medium"
+                              : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                          }`}
+                        >
+                          <item.icon className="h-4 w-4 shrink-0" />
+                          <span className="text-sm">{item.label}</span>
+                          {isActive && !isCollapsed && (
+                            <ChevronRight className="ml-auto h-3 w-3 opacity-60" />
+                          )}
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </>
               )}
             </SidebarMenu>

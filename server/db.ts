@@ -43,6 +43,7 @@ import {
   learningStreaks,
   streakStats,
   learningPlans,
+  parentPlanSuggestions,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -588,7 +589,14 @@ export async function createChildAccount(name: string, email: string, grade: str
 export async function updateUserAccountType(userId: number, accountType: "student" | "parent" | "teacher") {
   const db = await getDb();
   if (!db) return;
-  await db.update(users).set({ accountType }).where(eq(users.id, userId));
+  // Sync both accountType and role (for non-admin users) to keep them aligned
+  const [existing] = await db.select({ role: users.role }).from(users).where(eq(users.id, userId)).limit(1);
+  const updates: any = { accountType };
+  // Only sync role if user is not admin (admin is a privilege, not an account type)
+  if (existing && existing.role !== "admin") {
+    updates.role = accountType;
+  }
+  await db.update(users).set(updates).where(eq(users.id, userId));
 }
 
 export async function getChildProgressSummary(childId: number) {
@@ -1204,7 +1212,13 @@ export async function getAllUsers(limit = 100, offset = 0, search?: string) {
 export async function updateUserRole(userId: number, role: "admin" | "student" | "parent" | "teacher") {
   const db = await getDb();
   if (!db) return;
-  await db.update(users).set({ role }).where(eq(users.id, userId));
+  const updates: any = { role };
+  // Sync accountType when role changes to a non-admin value
+  // "admin" is a privilege layer — it doesn't change the user's account type
+  if (role !== "admin") {
+    updates.accountType = role;
+  }
+  await db.update(users).set(updates).where(eq(users.id, userId));
 }
 
 // Note: users table does not have an isActive column; admin can change role to restrict access
@@ -4506,6 +4520,7 @@ export async function updateBillingExemption(exemptionId: number, updates: {
 
 export async function listBillingExemptions(opts: {
   status?: string;
+  userId?: number;
   limit?: number;
   offset?: number;
 }) {
@@ -4518,6 +4533,9 @@ export async function listBillingExemptions(opts: {
   const conditions: any[] = [];
   if (opts.status && opts.status !== "all") {
     conditions.push(eq(billingExemptions.status, opts.status as any));
+  }
+  if (opts.userId) {
+    conditions.push(eq(billingExemptions.userId, opts.userId));
   }
   const where = conditions.length > 0 ? and(...conditions) : undefined;
   
@@ -4608,4 +4626,101 @@ export async function expireExemption(exemptionId: number) {
   const { billingExemptions } = await import("../drizzle/schema");
   const { eq } = await import("drizzle-orm");
   await db.update(billingExemptions).set({ status: "expired" }).where(eq(billingExemptions.id, exemptionId));
+}
+
+// ─── Parent Plan Suggestions ────────────────────────────────────────────────
+
+export async function createPlanSuggestion(data: {
+  parentId: number;
+  studentId: number;
+  title?: string;
+  hoursPerWeek: number;
+  preferredDays: string[];
+  schedule: { blocks: any[] };
+  message?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [result] = await db.insert(parentPlanSuggestions).values({
+    parentId: data.parentId,
+    studentId: data.studentId,
+    title: data.title ?? "Suggested Learning Plan",
+    hoursPerWeek: data.hoursPerWeek,
+    preferredDays: data.preferredDays,
+    schedule: data.schedule as any,
+    message: data.message ?? null,
+  }).$returningId();
+  return result;
+}
+
+export async function getPlanSuggestionsForStudent(studentId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select({
+      id: parentPlanSuggestions.id,
+      parentId: parentPlanSuggestions.parentId,
+      parentName: users.name,
+      title: parentPlanSuggestions.title,
+      hoursPerWeek: parentPlanSuggestions.hoursPerWeek,
+      preferredDays: parentPlanSuggestions.preferredDays,
+      schedule: parentPlanSuggestions.schedule,
+      message: parentPlanSuggestions.message,
+      status: parentPlanSuggestions.status,
+      studentResponse: parentPlanSuggestions.studentResponse,
+      respondedAt: parentPlanSuggestions.respondedAt,
+      createdAt: parentPlanSuggestions.createdAt,
+    })
+    .from(parentPlanSuggestions)
+    .leftJoin(users, eq(users.id, parentPlanSuggestions.parentId))
+    .where(eq(parentPlanSuggestions.studentId, studentId))
+    .orderBy(desc(parentPlanSuggestions.createdAt));
+}
+
+export async function getPlanSuggestionsForParent(parentId: number, studentId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(parentPlanSuggestions.parentId, parentId)];
+  if (studentId) conditions.push(eq(parentPlanSuggestions.studentId, studentId));
+  return db
+    .select({
+      id: parentPlanSuggestions.id,
+      studentId: parentPlanSuggestions.studentId,
+      studentName: users.name,
+      title: parentPlanSuggestions.title,
+      hoursPerWeek: parentPlanSuggestions.hoursPerWeek,
+      preferredDays: parentPlanSuggestions.preferredDays,
+      schedule: parentPlanSuggestions.schedule,
+      message: parentPlanSuggestions.message,
+      status: parentPlanSuggestions.status,
+      studentResponse: parentPlanSuggestions.studentResponse,
+      respondedAt: parentPlanSuggestions.respondedAt,
+      createdAt: parentPlanSuggestions.createdAt,
+    })
+    .from(parentPlanSuggestions)
+    .leftJoin(users, eq(users.id, parentPlanSuggestions.studentId))
+    .where(and(...conditions))
+    .orderBy(desc(parentPlanSuggestions.createdAt));
+}
+
+export async function respondToPlanSuggestion(
+  suggestionId: number,
+  studentId: number,
+  status: "accepted" | "modified" | "declined",
+  response?: string,
+) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const [existing] = await db
+    .select()
+    .from(parentPlanSuggestions)
+    .where(and(eq(parentPlanSuggestions.id, suggestionId), eq(parentPlanSuggestions.studentId, studentId)))
+    .limit(1);
+  if (!existing) throw new Error("Suggestion not found");
+  if (existing.status !== "pending") throw new Error("Suggestion already responded to");
+  await db
+    .update(parentPlanSuggestions)
+    .set({ status, studentResponse: response ?? null, respondedAt: new Date() })
+    .where(eq(parentPlanSuggestions.id, suggestionId));
+  return { success: true };
 }

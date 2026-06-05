@@ -1977,3 +1977,30 @@ export const billingExemptions = mysqlTable("billingExemptions", {
 
 export type BillingExemption = typeof billingExemptions.$inferSelect;
 export type InsertBillingExemption = typeof billingExemptions.$inferInsert;
+
+// ─── Parent Plan Suggestions ────────────────────────────────────────────────
+/**
+ * Parents can suggest a learning plan to their child.
+ * The student can accept, modify, or decline the suggestion.
+ */
+export const parentPlanSuggestions = mysqlTable("parentPlanSuggestions", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),              // FK → users.id (parent)
+  studentId: int("studentId").notNull(),            // FK → users.id (student)
+  title: varchar("title", { length: 256 }).default("Suggested Learning Plan"),
+  hoursPerWeek: int("hoursPerWeek").notNull().default(5),
+  preferredDays: json("preferredDays").$type<string[]>().notNull(),
+  schedule: json("schedule").$type<LearningPlanSchedule>().notNull(),
+  message: text("message"),                          // parent's note to student
+  status: mysqlEnum("status", ["pending", "accepted", "modified", "declined"]).notNull().default("pending"),
+  studentResponse: text("studentResponse"),           // student's message when accepting/declining
+  respondedAt: timestamp("respondedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  parentIdx: index("planSuggestion_parent_idx").on(t.parentId),
+  studentIdx: index("planSuggestion_student_idx").on(t.studentId),
+  statusIdx: index("planSuggestion_status_idx").on(t.status),
+}));
+export type ParentPlanSuggestion = typeof parentPlanSuggestions.$inferSelect;
+export type InsertParentPlanSuggestion = typeof parentPlanSuggestions.$inferInsert;

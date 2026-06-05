@@ -137,6 +137,11 @@ export function registerOAuthRoutes(app: Express) {
             res.redirect(302, isStudent ? "/onboarding/student" : "/onboarding/parent");
             return;
           }
+          // Route to the correct dashboard based on account type
+          if (freshUser.accountType === "parent") {
+            res.redirect(302, "/parent");
+            return;
+          }
         }
         res.redirect(302, "/");
       }

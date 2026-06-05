@@ -427,8 +427,8 @@ export function AdminUsersTab() {
                   />
                 </TableHead>
                 <TableHead>Name / Email</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead>Account Type</TableHead>
+                <TableHead>Admin</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="whitespace-nowrap">DOB / Age</TableHead>
                 <TableHead>Joined</TableHead>
@@ -458,7 +458,9 @@ export function AdminUsersTab() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Select value={user.accountType} onValueChange={(v) => updateAccountType.mutate({ userId: user.id, accountType: v as any })}>
+                    <Select value={user.accountType} onValueChange={(v) => {
+                      updateAccountType.mutate({ userId: user.id, accountType: v as any });
+                    }}>
                       <SelectTrigger className="h-7 w-28 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="student">Student</SelectItem>
@@ -468,15 +470,19 @@ export function AdminUsersTab() {
                     </Select>
                   </TableCell>
                   <TableCell>
-                    <Select value={user.role} onValueChange={(v) => updateRole.mutate({ userId: user.id, role: v as any })}>
-                      <SelectTrigger className="h-7 w-24 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="student">Student</SelectItem>
-                        <SelectItem value="parent">Parent</SelectItem>
-                        <SelectItem value="teacher">Teacher</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Badge
+                      variant={user.role === "admin" ? "default" : "outline"}
+                      className={`text-xs cursor-pointer select-none ${user.role === "admin" ? "bg-violet-600 hover:bg-violet-700" : "hover:bg-muted"}`}
+                      onClick={() => {
+                        if (user.role === "admin") {
+                          updateRole.mutate({ userId: user.id, role: user.accountType as any });
+                        } else {
+                          updateRole.mutate({ userId: user.id, role: "admin" });
+                        }
+                      }}
+                    >
+                      {user.role === "admin" ? "✓ Admin" : "Grant Admin"}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge className={`text-xs ${STATUS_COLORS[user.status ?? "active"] ?? "bg-gray-100 text-gray-600"}`}>
@@ -514,11 +520,20 @@ export function AdminUsersTab() {
                           <Eye className="h-3.5 w-3.5 mr-2" /> View Details
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => updateRole.mutate({ userId: user.id, role: user.role === "admin" ? "student" : "admin" })}>
+                        <DropdownMenuItem onClick={() => {
+                          if (user.role === "admin") {
+                            updateRole.mutate({ userId: user.id, role: user.accountType as any });
+                          } else {
+                            updateRole.mutate({ userId: user.id, role: "admin" });
+                          }
+                        }}>
                           <Shield className="h-3.5 w-3.5 mr-2" />
-                          {user.role === "admin" ? "Demote to Student" : "Promote to Admin"}
+                          {user.role === "admin" ? "Remove Admin" : "Grant Admin"}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateAccountType.mutate({ userId: user.id, accountType: user.accountType === "student" ? "parent" : "student" })}>
+                        <DropdownMenuItem onClick={() => {
+                          const next = user.accountType === "student" ? "parent" : user.accountType === "parent" ? "teacher" : "student";
+                          updateAccountType.mutate({ userId: user.id, accountType: next as any });
+                        }}>
                           <Users className="h-3.5 w-3.5 mr-2" />
                           Switch to {user.accountType === "student" ? "Parent" : user.accountType === "parent" ? "Teacher" : "Student"}
                         </DropdownMenuItem>

@@ -2117,6 +2117,47 @@ function ChildRecommendationsPanel({ childId, childName }: { childId: number; ch
 
 function ChildLearningPlanPanel({ childId, childName }: { childId: number; childName: string }) {
   const { data: plan, isLoading } = trpc.learningPlan.getForStudent.useQuery({ studentId: childId });
+  const { data: mySuggestions } = trpc.planSuggestion.getForParent.useQuery({ studentId: childId });
+  const [showSuggestDialog, setShowSuggestDialog] = useState(false);
+  const [suggestHours, setSuggestHours] = useState(5);
+  const [suggestDays, setSuggestDays] = useState<string[]>(["mon", "tue", "wed", "thu", "fri"]);
+  const [suggestMessage, setSuggestMessage] = useState("");
+  const utils = trpc.useUtils();
+  const suggestMutation = trpc.planSuggestion.create.useMutation({
+    onSuccess: () => {
+      toast.success("Plan suggestion sent to " + childName + "!");
+      setShowSuggestDialog(false);
+      setSuggestMessage("");
+      utils.planSuggestion.getForParent.invalidate();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+
+  const handleSuggestPlan = () => {
+    // Generate a simple schedule based on hours and days
+    const minutesPerDay = Math.round((suggestHours * 60) / suggestDays.length);
+    const blocks = suggestDays.map(day => ({
+      day,
+      courseId: 0,
+      courseName: "Study Session",
+      durationMinutes: Math.min(minutesPerDay, 90),
+      priority: "medium" as const,
+      notes: suggestMessage || undefined,
+    }));
+    suggestMutation.mutate({
+      studentId: childId,
+      title: `Suggested Plan for ${childName}`,
+      hoursPerWeek: suggestHours,
+      preferredDays: suggestDays,
+      schedule: { blocks },
+      message: suggestMessage || undefined,
+    });
+  };
+
+  const dayOptions = [
+    { key: "mon", label: "Mon" }, { key: "tue", label: "Tue" }, { key: "wed", label: "Wed" },
+    { key: "thu", label: "Thu" }, { key: "fri", label: "Fri" }, { key: "sat", label: "Sat" }, { key: "sun", label: "Sun" },
+  ];
 
   if (isLoading) {
     return <div className="space-y-3"><Skeleton className="h-4 w-48" /><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>;
@@ -2124,10 +2165,55 @@ function ChildLearningPlanPanel({ childId, childName }: { childId: number; child
 
   if (!plan) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        <CalendarDays className="h-10 w-10 mx-auto mb-3 opacity-40" />
-        <p className="font-medium">{childName} hasn't created a learning plan yet</p>
-        <p className="text-sm mt-1">Once they set up a plan, you'll be able to track their schedule here.</p>
+      <div className="space-y-4">
+        <div className="text-center py-8 text-muted-foreground">
+          <CalendarDays className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          <p className="font-medium">{childName} hasn't created a learning plan yet</p>
+          <p className="text-sm mt-1">You can suggest a plan for them to follow.</p>
+          <Button size="sm" className="mt-4" onClick={() => setShowSuggestDialog(true)}>
+            Suggest a Plan
+          </Button>
+        </div>
+        {showSuggestDialog && (
+          <div className="border rounded-lg p-4 space-y-4 bg-card">
+            <h4 className="font-semibold text-sm">Suggest a Learning Plan</h4>
+            <div>
+              <label className="text-xs text-muted-foreground">Hours per week</label>
+              <input type="number" min={1} max={40} value={suggestHours} onChange={e => setSuggestHours(Number(e.target.value))} className="w-full border rounded px-3 py-2 text-sm mt-1 bg-background" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Preferred days</label>
+              <div className="flex gap-1 mt-1 flex-wrap">
+                {dayOptions.map(d => (
+                  <button key={d.key} onClick={() => setSuggestDays(prev => prev.includes(d.key) ? prev.filter(x => x !== d.key) : [...prev, d.key])} className={`px-2 py-1 rounded text-xs font-medium transition-colors ${suggestDays.includes(d.key) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Message to {childName} (optional)</label>
+              <textarea value={suggestMessage} onChange={e => setSuggestMessage(e.target.value)} placeholder="e.g. I think 1 hour per day would be great for you!" className="w-full border rounded px-3 py-2 text-sm mt-1 bg-background min-h-[60px]" />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleSuggestPlan} disabled={suggestMutation.isPending || suggestDays.length === 0}>
+                {suggestMutation.isPending ? "Sending..." : "Send Suggestion"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setShowSuggestDialog(false)}>Cancel</Button>
+            </div>
+          </div>
+        )}
+        {mySuggestions && mySuggestions.length > 0 && (
+          <div className="border rounded-lg p-4 space-y-2">
+            <h4 className="text-xs font-medium text-muted-foreground">Your Previous Suggestions</h4>
+            {mySuggestions.map((s: any) => (
+              <div key={s.id} className="flex items-center justify-between text-sm border-b last:border-0 pb-2 last:pb-0">
+                <span>{s.title}</span>
+                <Badge variant={s.status === "accepted" ? "default" : s.status === "declined" ? "destructive" : "secondary"} className="text-xs">{s.status}</Badge>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

@@ -13,7 +13,8 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import {
   User, BookOpen, Brain, Monitor, Users, Shield, Mail, Calendar,
-  Globe, Smartphone, Trash2, Link2, AlertTriangle, CheckCircle2, Clock
+  Globe, Smartphone, Trash2, Link2, AlertTriangle, CheckCircle2, Clock,
+  CreditCard, ShieldCheck, Infinity
 } from "lucide-react";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -113,12 +114,13 @@ function StudentDetailPanel({ userId, onClose }: { userId: number; onClose: () =
 
   return (
     <Tabs defaultValue="profile" className="w-full">
-      <TabsList className="w-full grid grid-cols-5 mb-4">
+      <TabsList className="w-full grid grid-cols-6 mb-4">
         <TabsTrigger value="profile" className="text-xs gap-1"><User className="h-3 w-3" />Profile</TabsTrigger>
         <TabsTrigger value="courses" className="text-xs gap-1"><BookOpen className="h-3 w-3" />Courses</TabsTrigger>
         <TabsTrigger value="mastery" className="text-xs gap-1"><Brain className="h-3 w-3" />Mastery</TabsTrigger>
         <TabsTrigger value="sessions" className="text-xs gap-1"><Monitor className="h-3 w-3" />Sessions</TabsTrigger>
         <TabsTrigger value="parents" className="text-xs gap-1"><Users className="h-3 w-3" />Guardians</TabsTrigger>
+        <TabsTrigger value="billing" className="text-xs gap-1"><CreditCard className="h-3 w-3" />Billing</TabsTrigger>
       </TabsList>
 
       {/* Profile */}
@@ -262,7 +264,77 @@ function StudentDetailPanel({ userId, onClose }: { userId: number; onClose: () =
           </div>
         </div>
       </TabsContent>
+
+      {/* Billing & Exemption Audit Trail */}
+      <TabsContent value="billing" className="space-y-4">
+        <ExemptionAuditTrail userId={userId} />
+      </TabsContent>
     </Tabs>
+  );
+}
+
+// ─── Exemption Audit Trail ─────────────────────────────────────────────────────────────────
+
+function ExemptionAuditTrail({ userId }: { userId: number }) {
+  const { data: exemptionData, isLoading } = trpc.payment.admin.listExemptions.useQuery({ userId, limit: 50, offset: 0 });
+
+  if (isLoading) return <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-8" />)}</div>;
+
+  const exemptions = exemptionData?.rows ?? [];
+
+  return (
+    <div className="space-y-4">
+      <h4 className="text-sm font-semibold flex items-center gap-1.5">
+        <ShieldCheck className="h-4 w-4 text-indigo-500" />
+        Billing Exemption History
+      </h4>
+      {exemptions.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No billing exemptions have been granted to this user.</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs">Type</TableHead>
+              <TableHead className="text-xs">Status</TableHead>
+              <TableHead className="text-xs">Reason</TableHead>
+              <TableHead className="text-xs">Granted</TableHead>
+              <TableHead className="text-xs">End</TableHead>
+              <TableHead className="text-xs">Revoked</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {exemptions.map((ex: any) => (
+              <TableRow key={ex.id}>
+                <TableCell className="text-xs">
+                  <Badge variant="outline" className="text-[10px]">
+                    {ex.type === "perpetual" ? <><Infinity className="h-2.5 w-2.5 mr-0.5" />∞</> : "Time-limited"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-xs">
+                  <Badge variant="outline" className={`text-[10px] ${
+                    ex.status === "active" ? "bg-emerald-100 text-emerald-700" :
+                    ex.status === "revoked" ? "bg-red-100 text-red-700" :
+                    ex.status === "enforcing" ? "bg-amber-100 text-amber-700" :
+                    "bg-gray-100 text-gray-600"
+                  }`}>
+                    {ex.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-xs max-w-[120px] truncate" title={ex.reason}>{ex.reason}</TableCell>
+                <TableCell className="text-xs">{ex.startDate ? new Date(ex.startDate).toLocaleDateString() : "—"}</TableCell>
+                <TableCell className="text-xs">{ex.type === "perpetual" ? "∞" : ex.endDate ? new Date(ex.endDate).toLocaleDateString() : "—"}</TableCell>
+                <TableCell className="text-xs">
+                  {ex.revokedAt ? (
+                    <span className="text-red-600">{new Date(ex.revokedAt).toLocaleDateString()}</span>
+                  ) : "—"}
+                  {ex.revokeReason && <p className="text-[10px] text-muted-foreground truncate max-w-[100px]" title={ex.revokeReason}>{ex.revokeReason}</p>}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
   );
 }
 
