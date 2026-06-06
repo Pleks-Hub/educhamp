@@ -1301,6 +1301,42 @@ export async function getAdminAuditLog(limit = 50) {
   return db.select().from(adminAuditLog).orderBy(desc(adminAuditLog.createdAt)).limit(limit);
 }
 
+export async function getAdminAuditLogPaginated(opts: {
+  limit: number;
+  offset: number;
+  action?: string;
+  targetType?: string;
+  search?: string;
+}) {
+  const db = await getDb();
+  if (!db) return { entries: [], total: 0 };
+  const { adminAuditLog: aal } = await import("../drizzle/schema");
+  const { desc, eq, like, and, sql, count: drizzleCount } = await import("drizzle-orm");
+
+  const conditions: any[] = [];
+  if (opts.action) conditions.push(eq(aal.action, opts.action));
+  if (opts.targetType) conditions.push(eq(aal.targetType, opts.targetType));
+  if (opts.search) conditions.push(like(aal.action, `%${opts.search}%`));
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [entries, totalResult] = await Promise.all([
+    db.select().from(aal).where(where).orderBy(desc(aal.createdAt)).limit(opts.limit).offset(opts.offset),
+    db.select({ value: drizzleCount() }).from(aal).where(where),
+  ]);
+
+  return { entries, total: Number(totalResult[0]?.value ?? 0) };
+}
+
+export async function getAuditLogDistinctActions() {
+  const db = await getDb();
+  if (!db) return [];
+  const { adminAuditLog: aal } = await import("../drizzle/schema");
+  const { sql } = await import("drizzle-orm");
+  const rows = await db.selectDistinct({ action: aal.action }).from(aal);
+  return rows.map(r => r.action);
+}
+
 /**
  * Returns the best default course for a given grade level.
  * Prefers isDefault=true, then falls back to the first active course for that grade.

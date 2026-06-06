@@ -102,6 +102,7 @@ const ADMIN_NAV_GROUPS = [
     items: [
       { id: "settings", label: "Platform Settings", icon: Settings },
       { id: "system", label: "System Health", icon: Server },
+      { id: "webhooks", label: "Alert Webhooks", icon: Zap },
     ],
   },
 ] as const;
@@ -326,6 +327,7 @@ const AdminUsersTab = lazy(() => import("@/components/admin/AdminUsersTab").then
 const AdminCoursesTab = lazy(() => import("@/components/admin/AdminCoursesTab").then(m => ({ default: m.AdminCoursesTab })));
 const AdminSettingsTab = lazy(() => import("@/components/admin/AdminSettingsTab").then(m => ({ default: m.AdminSettingsTab })));
 const AdminAuditLogTab = lazy(() => import("@/components/admin/AdminAuditLogTab").then(m => ({ default: m.AdminAuditLogTab })));
+const AlertWebhooksTab = lazy(() => import("@/components/admin/AlertWebhooksTab").then(m => ({ default: m.AlertWebhooksTab })));
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1843,6 +1845,7 @@ export default function AdminDashboard() {
       case "emailsettings": return <EmailSettingsTab />;
       case "districttransfer": return <DistrictTransferTab />;
       case "system": return <SystemHealthTab />;
+      case "webhooks": return <Suspense fallback={<SectionSkeleton />}><AlertWebhooksTab /></Suspense>;
       default: return null;
     }
   }

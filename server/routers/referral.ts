@@ -100,8 +100,17 @@ export const referralRouter = router({
 
       await recordReferralSignup(referral.id, referral.referrerId, ctx.user.id, ctx.user.email ?? undefined);
 
-      // Audit log only
+      // Audit log + webhook alert
       console.log(`[Audit] Referral Redeemed: ${ctx.user.name ?? ctx.user.email} used code ${input.code} (referrer ID: ${referral.referrerId})`);
+      import("../services/webhookAlerts").then(({ sendAlert }) =>
+        sendAlert({
+          event: "referral_redeemed",
+          title: "Referral Code Redeemed",
+          message: `${ctx.user.name ?? ctx.user.email ?? "Unknown"} used referral code \`${input.code}\` (referrer ID: ${referral.referrerId}).`,
+          severity: "info",
+          metadata: { userId: ctx.user.id, code: input.code, referrerId: referral.referrerId },
+        })
+      ).catch(() => {});
 
       return { success: true, referrerId: referral.referrerId };
     }),

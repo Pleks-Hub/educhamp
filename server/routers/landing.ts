@@ -367,8 +367,17 @@ export const landingRouter = router({
         text: `Hi ${input.fullName},\n\nThank you for your ${interestLabel} request for ${input.schoolName}. Our team will reach out within 1–2 business days.\n\nRequest Summary:\n- School: ${input.schoolName}\n- Role: ${input.roleTitle}\n- Interest: ${interestLabel}\n\nExplore EduChamp: https://educhamp.co\n\nThe EduChamp Team`,
       });
 
-      // Audit log only (no Manus platform notification)
+      // Audit log + webhook alert
       console.log(`[Audit] New ${interestLabel} Request — ${input.schoolName}: ${input.fullName} (${input.email})`);
+      import("../services/webhookAlerts").then(({ sendAlert }) =>
+        sendAlert({
+          event: "demo_request",
+          title: `New ${interestLabel} Request — ${input.schoolName}`,
+          message: `${input.fullName} (${input.roleTitle}) at ${input.schoolName} submitted a ${interestLabel} request.\nEmail: ${input.email}${input.phone ? `\nPhone: ${input.phone}` : ""}`,
+          severity: "info",
+          metadata: { school: input.schoolName, email: input.email, interest: interestLabel },
+        })
+      ).catch(() => {});
 
       return { ok: true, requestId };
     }),

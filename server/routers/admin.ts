@@ -414,6 +414,25 @@ export const adminRouter = router({
       return getAdminAuditLog(input.limit);
     }),
 
+  getAuditLogPaginated: adminProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(100).default(25),
+      offset: z.number().min(0).default(0),
+      action: z.string().optional(),
+      targetType: z.string().optional(),
+      search: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const { getAdminAuditLogPaginated } = await import("../db");
+      return getAdminAuditLogPaginated(input);
+    }),
+
+  getAuditLogDistinctActions: adminProcedure
+    .query(async () => {
+      const { getAuditLogDistinctActions } = await import("../db");
+      return getAuditLogDistinctActions();
+    }),
+
   // ── CMS ────────────────────────────────────────────────────────────────────
   cms: router({
     listContent: adminProcedure
@@ -2410,6 +2429,46 @@ export const adminRouter = router({
         newVideoUrl: input.videoUrl,
       });
       return updated;
+    }),
+
+  // ── Alert Webhooks ────────────────────────────────────────────────────────────
+  getWebhookConfigs: adminProcedure.query(async () => {
+    const { getWebhookConfigs } = await import("../services/webhookAlerts");
+    return getWebhookConfigs();
+  }),
+
+  saveWebhookConfigs: adminProcedure
+    .input(z.object({
+      configs: z.array(z.object({
+        id: z.string(),
+        name: z.string().min(1),
+        url: z.string().url(),
+        events: z.array(z.string()),
+        enabled: z.boolean(),
+        type: z.enum(["slack", "discord", "generic"]),
+      })),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { saveWebhookConfigs } = await import("../services/webhookAlerts");
+      await saveWebhookConfigs(input.configs, ctx.user.id);
+      await logAdminAction(ctx.user.id, "setting.webhook_update", "setting", null, {
+        webhookCount: input.configs.length,
+      });
+      return { success: true };
+    }),
+
+  testWebhook: adminProcedure
+    .input(z.object({
+      id: z.string(),
+      name: z.string(),
+      url: z.string().url(),
+      events: z.array(z.string()),
+      enabled: z.boolean(),
+      type: z.enum(["slack", "discord", "generic"]),
+    }))
+    .mutation(async ({ input }) => {
+      const { testWebhook } = await import("../services/webhookAlerts");
+      return testWebhook(input);
     }),
 });
 

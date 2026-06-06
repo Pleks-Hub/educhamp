@@ -1139,6 +1139,16 @@ export const appRouter = router({
             referenceId: `course-request-${newReq.id}`,
           });
         }
+        // Webhook alert for course request
+        import("./services/webhookAlerts").then(({ sendAlert }) =>
+          sendAlert({
+            event: "course_request",
+            title: "New Course Request",
+            message: `Student ${ctx.user.name ?? ctx.user.email ?? "Unknown"} requested access to course #${input.courseId}.`,
+            severity: "info",
+            metadata: { userId: ctx.user.id, courseId: input.courseId, requestId: newReq.id },
+          })
+        ).catch(() => {});
         return { success: true, alreadyExists: false, requestId: newReq.id };
       }),
 

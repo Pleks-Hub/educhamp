@@ -331,6 +331,17 @@ export async function handleStripeEvent(event: any, appBaseUrl: string = "https:
           nextPaymentAttempt: invoice.next_payment_attempt,
         },
       });
+
+      // Webhook alert for billing issue
+      import("./services/webhookAlerts").then(({ sendAlert }) =>
+        sendAlert({
+          event: "billing_issue",
+          title: "Payment Failed",
+          message: `Invoice payment failed for customer ${invoice.customer}.\nAmount due: ${(invoice.amount_due / 100).toFixed(2)} ${invoice.currency?.toUpperCase()}\nNext attempt: ${invoice.next_payment_attempt ? new Date(invoice.next_payment_attempt * 1000).toLocaleString() : "none"}`,
+          severity: "warning",
+          metadata: { userId: userId ?? "unknown", invoiceId: invoice.id, amount: invoice.amount_due },
+        })
+      ).catch(() => {});
       break;
     }
 

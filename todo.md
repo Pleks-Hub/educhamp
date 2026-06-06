@@ -2833,3 +2833,14 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
   - Removed from: routers.ts, authEnhancements.ts, parent.ts, coParent.ts, landing.ts, onboarding.ts, referral.ts
   - Removed from scheduled: weeklyStudentReviewSummary.ts, weeklyParentDigest.ts, pendingCourseRequestDigest.ts
   - Kept only in _core/systemRouter.ts (admin-only manual trigger, not auto-sent)
+- [x] Add Admin Activity Feed page in Admin Console — surfaces adminAuditLog entries with filtering, search, and pagination
+  - Enhanced AdminAuditLogTab with pagination, action/targetType filters, search, auto-refresh
+  - Added getAuditLogPaginated and getAuditLogDistinctActions procedures to admin router
+- [x] Add Slack/Discord webhook integration for critical admin alerts (demo requests, billing issues)
+  - Created server/services/webhookAlerts.ts with sendAlert(), getWebhookConfigs(), testWebhook()
+  - Added Alert Webhooks tab in Admin Console (CRUD, test, event subscriptions)
+  - Wired sendAlert into: demo_request (landing.ts), billing_issue (stripeWebhook.ts), new_signup (authEnhancements.ts), course_request (routers.ts), referral_redeemed (referral.ts)
+- [x] Schedule the weekly student review summary cron from Admin Console
+  - Created via manus-heartbeat CLI: task_uid VFsFYeejEJis6FnbkwtcXb
+  - Runs every Monday at 09:00 UTC
+  - Next execution: 2026-06-08T09:00:00Z

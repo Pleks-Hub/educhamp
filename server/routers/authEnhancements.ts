@@ -34,6 +34,17 @@ export async function sendWelcomeNotification(user: {
   const displayName = user.name ?? "there";
   const roleLabel = user.accountType === "parent" ? "Parent/Guardian" : "Student";
   console.log(`[Audit] New ${roleLabel} Joined EduChamp: ${user.name ?? user.email ?? "Unknown"} (${user.email})`);
+
+  // Webhook alert for new signup
+  import("../services/webhookAlerts").then(({ sendAlert }) =>
+    sendAlert({
+      event: "new_signup",
+      title: `New ${roleLabel} Signup`,
+      message: `${user.name ?? "Unknown"} (${user.email ?? "no email"}) joined as a ${roleLabel}.`,
+      severity: "info",
+      metadata: { userId: user.id, name: user.name, email: user.email, role: roleLabel },
+    })
+  ).catch(() => {});
 }
 
 // ─── Password Reset ─────────────────────────────────────────────────────────────
