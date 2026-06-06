@@ -23,7 +23,8 @@ import { updateQuestProgress } from "./gamification/quests";
 import { awardHousePoints } from "./gamification/houses";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { invokeLLM } from "./_core/llm";
-import { notifyOwner } from "./_core/notification";
+// notifyOwner removed — all notifications now go through sendEmail (Resend) only.
+// Owner audit events are logged to console for server-side visibility.
 import { protectedProcedure, studentProcedure, publicProcedure, router } from "./_core/trpc";
 import { systemRouter } from "./_core/systemRouter";
 import {
@@ -512,12 +513,9 @@ export const appRouter = router({
           ? `${ctx.user.name} (monitored by ${parentNames})`
           : ctx.user.name ?? "Student";
 
-        // Notify owner of skill mastery achievements
+        // Log skill mastery achievements (no longer sends Manus platform notification)
         if (skillMasteryAchievements.length > 0) {
-          await notifyOwner({
-            title: `Skill Mastery Achieved — ${ctx.user.name}`,
-            content: `${studentLabel} has achieved mastery on: ${skillMasteryAchievements.join(", ")}.`,
-          }).catch(() => {});
+          console.log(`[Audit] Skill Mastery Achieved — ${ctx.user.name}: ${skillMasteryAchievements.join(", ")}`);
         }
 
         // Notify owner
@@ -528,10 +526,7 @@ export const appRouter = router({
           ? `${studentLabel} scored ${score}% on Unit ${input.unitNumber} quiz — below remediation threshold. Intervention recommended.`
           : `${studentLabel} scored ${score}% on Unit ${input.unitNumber} quiz. Continuing guided practice.`;
 
-        await notifyOwner({
-          title: `Quiz Complete: Unit ${input.unitNumber} — ${input.unitTitle}`,
-          content: notifyMsg,
-        }).catch(() => {});
+        console.log(`[Audit] Quiz Complete: Unit ${input.unitNumber} — ${input.unitTitle}: ${notifyMsg}`);
 
         // ── Parent milestone notifications ──────────────────────────────────
         if (parents.length > 0) {

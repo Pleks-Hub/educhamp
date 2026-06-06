@@ -14,7 +14,7 @@ import {
   revokeCoParentAccess,
   verifyCoParentAccess,
 } from "../db";
-import { notifyOwner } from "../_core/notification";
+// notifyOwner removed — all notifications now go through sendEmail (Resend) only.
 import { protectedProcedure, publicProcedure, router } from "../_core/trpc";
 
 /**
@@ -73,11 +73,8 @@ export const coParentRouter = router({
 
       const inviteUrl = `${input.origin}/accept-invite?token=${token}`;
 
-      // Notify the platform owner
-      await notifyOwner({
-        title: "Co-parent invitation sent",
-        content: `${ctx.user.name ?? "A parent"} invited ${input.inviteeEmail} as a ${input.relationship} for student #${input.studentId}. Link: ${inviteUrl}`,
-      });
+      // Audit log only
+      console.log(`[Audit] Co-parent invitation sent: ${ctx.user.name ?? "A parent"} invited ${input.inviteeEmail} for student #${input.studentId}`);
 
       return { token, inviteUrl, expiresAt };
     }),
@@ -132,10 +129,7 @@ export const coParentRouter = router({
 
       const accessRecord = await acceptCoParentInvitation(input.token, ctx.user.id);
 
-      await notifyOwner({
-        title: "Co-parent invitation accepted",
-        content: `${ctx.user.name ?? ctx.user.email} accepted a co-parent invitation for student #${accessRecord.studentId}.`,
-      });
+      console.log(`[Audit] Co-parent invitation accepted: ${ctx.user.name ?? ctx.user.email} for student #${accessRecord.studentId}`);
 
       return { success: true, studentId: accessRecord.studentId };
     }),

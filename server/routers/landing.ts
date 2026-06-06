@@ -367,12 +367,8 @@ export const landingRouter = router({
         text: `Hi ${input.fullName},\n\nThank you for your ${interestLabel} request for ${input.schoolName}. Our team will reach out within 1–2 business days.\n\nRequest Summary:\n- School: ${input.schoolName}\n- Role: ${input.roleTitle}\n- Interest: ${interestLabel}\n\nExplore EduChamp: https://educhamp.co\n\nThe EduChamp Team`,
       });
 
-      // Internal notification to admin
-      const { notifyOwner } = await import("../_core/notification");
-      await notifyOwner({
-        title: `New ${interestLabel} Request — ${input.schoolName}`,
-        content: `${input.fullName} (${input.roleTitle}) at ${input.schoolName} submitted a ${interestLabel} request.\nEmail: ${input.email}${input.phone ? `\nPhone: ${input.phone}` : ""}${input.numStudents ? `\nStudents: ${input.numStudents}` : ""}\n\nView in Admin Console: https://educhamp.co/admin`,
-      });
+      // Audit log only (no Manus platform notification)
+      console.log(`[Audit] New ${interestLabel} Request — ${input.schoolName}: ${input.fullName} (${input.email})`);
 
       return { ok: true, requestId };
     }),

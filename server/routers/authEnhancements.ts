@@ -8,7 +8,7 @@ import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
-import { notifyOwner } from "../_core/notification";
+// notifyOwner removed — all notifications now go through sendEmail (Resend) only.
 import { sendEmail } from "../emailService";
 import { buildPasswordResetEmail } from "../emailTemplates/passwordReset";
 import {
@@ -33,10 +33,7 @@ export async function sendWelcomeNotification(user: {
 }) {
   const displayName = user.name ?? "there";
   const roleLabel = user.accountType === "parent" ? "Parent/Guardian" : "Student";
-  await notifyOwner({
-    title: `🎉 New ${roleLabel} Joined EduChamp: ${user.name ?? user.email ?? "Unknown"}`,
-    content: `A new ${roleLabel.toLowerCase()} has signed up for EduChamp.\n\n**Name:** ${user.name ?? "Not provided"}\n**Email:** ${user.email ?? "Not provided"}\n**Account Type:** ${roleLabel}\n\nWelcome them to the platform!`,
-  });
+  console.log(`[Audit] New ${roleLabel} Joined EduChamp: ${user.name ?? user.email ?? "Unknown"} (${user.email})`);
 }
 
 // ─── Password Reset ─────────────────────────────────────────────────────────────
@@ -68,11 +65,8 @@ export const authEnhancementsRouter = router({
         await sendEmail({ to: user.email, subject, html, text, templateName: "passwordReset" });
       }
 
-      // Notify owner for audit trail only (no reset link exposed)
-      await notifyOwner({
-        title: `Password Reset Requested — ${user.name ?? user.email}`,
-        content: `A password reset email was sent to **${user.email ?? user.name}**. The link expires in 1 hour.`,
-      }).catch(() => {});
+      // Audit log only (no Manus platform notification)
+      console.log(`[Audit] Password Reset Requested — ${user.name ?? user.email}`);
 
       return { success: true };
     }),

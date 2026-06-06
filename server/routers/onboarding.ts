@@ -40,7 +40,7 @@ import { buildParentInviteEmail } from "../emailTemplates/parentInvite";
 import { buildParentBillingNotificationEmail } from "../emailTemplates/parentBillingNotification";
 import { sendEmail } from "../emailService";
 import { invokeLLM } from "../_core/llm";
-import { notifyOwner } from "../_core/notification";
+// notifyOwner removed — all notifications now go through sendEmail (Resend) only.
 
 // ─── Zod schemas ─────────────────────────────────────────────────────────────
 
@@ -320,10 +320,7 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
       await enrollChild(invite.parentId, ctx.user.id, invite.childName ?? undefined, "parent");
       await acceptStudentInviteToken(input.token, ctx.user.id);
 
-      notifyOwner({
-        title: "Student Invite Accepted",
-        content: `${ctx.user.name ?? ctx.user.email} accepted a student invite from parent ID ${invite.parentId}.`,
-      }).catch(() => {});
+      console.log(`[Audit] Student Invite Accepted: ${ctx.user.name ?? ctx.user.email} from parent ID ${invite.parentId}`);
 
       return { success: true, parentId: invite.parentId };
     }),
@@ -418,11 +415,8 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         emailError = emailResult.error;
       }
 
-      // Also notify owner for audit trail
-      notifyOwner({
-        title: "Student Invited Parent",
-        content: `Student ${ctx.user.name ?? ctx.user.email} invited ${input.parentEmail ?? "a parent"} to join EduChamp.\nInvite URL: ${inviteUrl}\nEmail sent: ${emailSent ? "yes" : `no (${emailError ?? "no email provided"})`}`,
-      }).catch(() => {});
+      // Audit log only
+      console.log(`[Audit] Student Invited Parent: ${ctx.user.name ?? ctx.user.email} invited ${input.parentEmail ?? "a parent"}, email sent: ${emailSent}`);
 
       return {
         token: invite.token,
@@ -532,10 +526,7 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         emailSent = emailResult.success;
       }
 
-      notifyOwner({
-        title: "Student Resent Parent Invite",
-        content: `Student ${ctx.user.name ?? ctx.user.email} resent parent invite to ${oldInvite.parentEmail ?? "unknown"}. New token: ${newInvite.token}. Email sent: ${emailSent}.`,
-      }).catch(() => {});
+      console.log(`[Audit] Student Resent Parent Invite: ${ctx.user.name ?? ctx.user.email} resent to ${oldInvite.parentEmail ?? "unknown"}, email sent: ${emailSent}`);
 
       return {
         token: newInvite.token,
@@ -624,10 +615,7 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         await enrollChild(ctx.user.id, invite.studentId, invite.studentName ?? undefined, "student");
       }
       await acceptParentInviteToken(input.token, ctx.user.id);
-      notifyOwner({
-        title: "Parent Accepted Student Invite",
-        content: `${ctx.user.name ?? ctx.user.email} accepted a parent invite from student ID ${invite.studentId}.`,
-      }).catch(() => {});
+      console.log(`[Audit] Parent Accepted Student Invite: ${ctx.user.name ?? ctx.user.email} for student ID ${invite.studentId}`);
       return { success: true, studentId: invite.studentId };
     }),
 
@@ -643,10 +631,7 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         throw new TRPCError({ code: "BAD_REQUEST", message: `This invite has already been ${invite.status}.` });
       }
       await rejectParentInviteToken(input.token);
-      notifyOwner({
-        title: "Parent Rejected Student Invite",
-        content: `${ctx.user.name ?? ctx.user.email} rejected a parent invite from student ID ${invite.studentId}.`,
-      }).catch(() => {});
+      console.log(`[Audit] Parent Rejected Student Invite: ${ctx.user.name ?? ctx.user.email} for student ID ${invite.studentId}`);
       return { success: true };
     }),
 
@@ -849,11 +834,8 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         }
       }
 
-      // Notify owner for audit
-      notifyOwner({
-        title: "Minor Student Needs Billing",
-        content: `Student ${studentName} (ID: ${ctx.user.id}) triggered billing notification to ${targetEmail}.\nEmail sent: ${emailSent ? "yes" : "no"}`,
-      }).catch(() => {});
+      // Audit log only
+      console.log(`[Audit] Minor Student Needs Billing: ${studentName} (ID: ${ctx.user.id}) notified ${targetEmail}, email sent: ${emailSent}`);
 
       return { sent: true, emailSent, parentEmail: targetEmail };
     }),

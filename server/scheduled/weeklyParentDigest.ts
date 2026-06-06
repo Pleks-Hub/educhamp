@@ -23,7 +23,7 @@ import {
   diagnosticAttempts,
 } from "../../drizzle/schema";
 import { and, eq, gte, inArray, desc } from "drizzle-orm";
-import { notifyOwner } from "../_core/notification";
+// notifyOwner removed — all notifications now go through sendEmail (Resend) only.
 
 // ─── At-home activity suggestions by grade band ──────────────────────────────
 
@@ -297,10 +297,7 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
       parentsProcessed++;
     }
 
-    await notifyOwner({
-      title: "Weekly Parent Digest Sent",
-      content: `Processed ${parentsProcessed} parents, sent ${emailsSent} digest emails, skipped ${parentsSkipped} (no children, no activity, or opted out).`,
-    });
+    console.log(`[Audit] Weekly Parent Digest Sent: processed ${parentsProcessed} parents, sent ${emailsSent}, skipped ${parentsSkipped}`);
 
     return res.json({
       ok: true,

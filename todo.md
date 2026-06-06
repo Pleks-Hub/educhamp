@@ -2829,3 +2829,7 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Add animated celebration when student completes all due reviews for the day (confetti/checkmark)
   - Added reviews_complete event to CelebrationOverlay
   - Triggers confetti + banner in PracticeWeakSkills results when dueNow === 0
+- [x] Remove/disable notifyOwner() calls that trigger emails from noreply@mail.manus.im — replaced with console.log audit entries
+  - Removed from: routers.ts, authEnhancements.ts, parent.ts, coParent.ts, landing.ts, onboarding.ts, referral.ts
+  - Removed from scheduled: weeklyStudentReviewSummary.ts, weeklyParentDigest.ts, pendingCourseRequestDigest.ts
+  - Kept only in _core/systemRouter.ts (admin-only manual trigger, not auto-sent)

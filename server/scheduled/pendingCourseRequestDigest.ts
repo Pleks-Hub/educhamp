@@ -20,7 +20,7 @@ import {
 import { getDb } from "../db";
 import { courseRequests, users, courses, parentChildren } from "../../drizzle/schema";
 import { and, eq, lt, inArray } from "drizzle-orm";
-import { notifyOwner } from "../_core/notification";
+// notifyOwner removed — all notifications now go through sendEmail (Resend) only.
 
 export async function pendingCourseRequestDigestHandler(req: Request, res: Response) {
   try {
@@ -145,10 +145,7 @@ export async function pendingCourseRequestDigestHandler(req: Request, res: Respo
       emailsSent++;
     }
 
-    await notifyOwner({
-      title: "Pending Course Request Digest Sent",
-      content: `Sent ${emailsSent} digest emails to parents with pending requests (${parentsSkipped} skipped — no email). Total pending requests: ${pendingRequests.length}.`,
-    });
+    console.log(`[Audit] Pending Course Request Digest Sent: ${emailsSent} emails, ${parentsSkipped} skipped, ${pendingRequests.length} total pending`);
 
     return res.json({
       ok: true,

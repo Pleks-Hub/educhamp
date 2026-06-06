@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod/v4";
 import { protectedProcedure, router } from "../_core/trpc";
-import { notifyOwner } from "../_core/notification";
+// notifyOwner removed — all notifications now go through sendEmail (Resend) only.
 import {
   getChildrenForParent,
   getChildProgressSummary,
@@ -257,11 +257,8 @@ export const parentRouter = router({
 
       await enrollChild(ctx.user.id, child.id, input.nickname, input.relationship ?? "parent");
 
-      // Notify owner
-      notifyOwner({
-        title: `New Enrolment — ${ctx.user.name}`,
-        content: `${ctx.user.name} enrolled ${child.name ?? child.email} as their child on EduChamp.`,
-      }).catch(() => {});
+      // Audit log only
+      console.log(`[Audit] New Enrolment — ${ctx.user.name} enrolled ${child.name ?? child.email}`);
 
       return { success: true, childName: child.name ?? child.email };
     }),
@@ -302,10 +299,7 @@ export const parentRouter = router({
 
       await enrollChild(ctx.user.id, child.id, input.nickname ?? input.name, input.relationship ?? "parent");
 
-      notifyOwner({
-        title: `New Student Created \u2014 ${ctx.user.name}`,
-        content: `${ctx.user.name} created and enrolled a new student: ${input.name} (${input.email}), Grade ${input.grade}.`,
-      }).catch(() => {});
+      console.log(`[Audit] New Student Created \u2014 ${ctx.user.name}: ${input.name} (${input.email}), Grade ${input.grade}`);
 
       // Send setup email to the newly enrolled student (non-blocking)
       try {

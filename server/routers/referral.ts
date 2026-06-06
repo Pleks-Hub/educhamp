@@ -14,7 +14,7 @@ import {
   getReferralSignups,
   getUserByOpenId,
 } from "../db";
-import { notifyOwner } from "../_core/notification";
+// notifyOwner removed — all notifications now go through sendEmail (Resend) only.
 
 export const referralRouter = router({
   /**
@@ -100,11 +100,8 @@ export const referralRouter = router({
 
       await recordReferralSignup(referral.id, referral.referrerId, ctx.user.id, ctx.user.email ?? undefined);
 
-      // Notify owner
-      notifyOwner({
-        title: "Referral Redeemed",
-        content: `${ctx.user.name ?? ctx.user.email} signed up using referral code ${input.code} (referrer ID: ${referral.referrerId}).`,
-      }).catch(() => {});
+      // Audit log only
+      console.log(`[Audit] Referral Redeemed: ${ctx.user.name ?? ctx.user.email} used code ${input.code} (referrer ID: ${referral.referrerId})`);
 
       return { success: true, referrerId: referral.referrerId };
     }),

@@ -18,7 +18,7 @@ import { getDb, getStreakStats } from "../db";
 import { getReviewStats, getSkillsDueForReview } from "../spacedRepetition";
 import { users, userProfiles, skills, skillReviewSchedule } from "../../drizzle/schema";
 import { eq, and, inArray, lte, asc } from "drizzle-orm";
-import { notifyOwner } from "../_core/notification";
+// notifyOwner removed — all notifications now go through sendEmail (Resend) only.
 
 export async function weeklyStudentReviewSummaryHandler(req: Request, res: Response) {
   try {
@@ -156,10 +156,7 @@ export async function weeklyStudentReviewSummaryHandler(req: Request, res: Respo
       }
     }
 
-    await notifyOwner({
-      title: "Weekly Student Review Summary Sent",
-      content: `Processed ${studentsWithEmail.length} students, sent ${emailsSent} review summary emails, skipped ${studentsSkipped} (no reviews or errors).`,
-    });
+    console.log(`[Audit] Weekly Student Review Summary Sent: processed ${studentsWithEmail.length} students, sent ${emailsSent}, skipped ${studentsSkipped}`);
 
     return res.json({
       ok: true,
