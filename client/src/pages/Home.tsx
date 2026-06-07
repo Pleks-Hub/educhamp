@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GuidedTour } from "@/components/GuidedTour";
 import { SeasonalChallengeBanner } from "@/components/SeasonalChallengeBanner";
+import { WeeklyChallengeBanner } from "@/components/WeeklyChallengeBanner";
 import { StreakTracker } from "@/components/StreakTracker";
 import { StudentTasksWidget } from "@/components/StudentTasksWidget";
 
@@ -832,6 +833,9 @@ export default function Home() {
 
       {/* Seasonal challenge banner — shown when an active challenge exists */}
       <SeasonalChallengeBanner />
+
+      {/* Weekly challenge banner — auto-generated weekly task/focus/XP challenge */}
+      {user?.accountType === "student" && <WeeklyChallengeBanner />}
 
       {/* Streak at-risk banner — shown when student has a streak but hasn't studied today */}
       {user?.accountType === "student" && streakData && !streakData.isActiveToday && (

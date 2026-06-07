@@ -18,6 +18,8 @@ import { studentAuthRouter } from "./routers/studentAuth";
 import { skillPracticeRouter } from "./routers/skillPractice";
 import { parentTasksRouter } from "./routers/parentTasks";
 import { focusModeRouter } from "./routers/focusMode";
+import { weeklyChallengesRouter } from "./routers/weeklyChallenges";
+import { sharedTasksRouter } from "./routers/sharedTasks";
 import { awardXp } from "./gamification/xp";
 import { checkAndAwardBadges } from "./gamification/badges";
 import { recordActivity } from "./gamification/streaks";
@@ -93,6 +95,8 @@ export const appRouter = router({
   skillPractice: skillPracticeRouter,
   parentTasks: parentTasksRouter,
   focusMode: focusModeRouter,
+  weeklyChallenges: weeklyChallengesRouter,
+  sharedTasks: sharedTasksRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

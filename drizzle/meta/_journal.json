@@ -414,6 +414,13 @@
       "when": 1780796475490,
       "tag": "0058_round_shinobi_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "5",
+      "when": 1780800022059,
+      "tag": "0059_burly_puff_adder",
+      "breakpoints": true
     }
   ]
 }

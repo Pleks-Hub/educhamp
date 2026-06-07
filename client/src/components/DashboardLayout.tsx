@@ -80,6 +80,7 @@ const secondaryItems = [
   { icon: Timer, label: "Focus Mode", path: "/focus-mode" },
   { icon: Trophy, label: "Streak Leaderboard", path: "/streak-leaderboard" },
   { icon: Trophy, label: "Task Leaderboard", path: "/task-leaderboard" },
+  { icon: Users, label: "Shared Tasks", path: "/shared-tasks" },
 ];
 
 // Combined for backward compat with activeItem detection
@@ -312,6 +313,7 @@ function DashboardLayoutContent({
               {!isStudentAccount && (() => {
                 const parentPrimaryItems = [
                   { icon: Users, label: "Parent Dashboard", path: "/parent" },
+                  { icon: BarChart3, label: "Insights", path: "/parent-insights" },
                   { icon: CreditCard, label: "Billing", path: "/billing" },
                 ];
                 return parentPrimaryItems.map((item) => {

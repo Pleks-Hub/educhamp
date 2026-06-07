@@ -2,7 +2,8 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
-import { parentTasks, parentTaskCompletions, parentChildren, users, userNotifications, taskCategories } from "../../drizzle/schema";
+import { parentTasks, parentTaskCompletions, parentChildren, users, userNotifications, taskCategories, xpLedger, streaks } from "../../drizzle/schema";
+import { count } from "drizzle-orm";
 import { eq, and, desc, inArray, sql, lte, gte, isNull } from "drizzle-orm";
 import { storagePut } from "../storage";
 
@@ -672,4 +673,148 @@ export const parentTasksRouter = router({
       });
       return { id: result.insertId, ok: true };
     }),
+
+  // ─── Parent Insights ────────────────────────────────────────────────────────
+  getInsights: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+    // Get all children for this parent
+    const children = await db.select({ childId: parentChildren.childId })
+      .from(parentChildren)
+      .where(and(eq(parentChildren.parentId, ctx.user.id), eq(parentChildren.isActive, true)));
+
+    if (children.length === 0) return {
+      totalTasksCompleted: 0, totalXpEarned: 0, longestStreak: 0, completionRate: 0,
+      weeklyTasks: [], weeklyXp: [], dayOfWeek: [], perChild: [],
+    };
+
+    const childIds = children.map(c => c.childId);
+
+    // Total tasks completed (confirmed)
+    const [totalResult] = await db.select({ count: count() })
+      .from(parentTaskCompletions)
+      .where(and(
+        inArray(parentTaskCompletions.studentId, childIds),
+        eq(parentTaskCompletions.parentConfirmed, true),
+      ));
+    const totalTasksCompleted = totalResult?.count ?? 0;
+
+    // Total tasks assigned
+    const [totalAssigned] = await db.select({ count: count() })
+      .from(parentTasks)
+      .where(inArray(parentTasks.studentId, childIds));
+    const completionRate = (totalAssigned?.count ?? 0) > 0
+      ? Math.round((totalTasksCompleted / (totalAssigned?.count ?? 1)) * 100)
+      : 0;
+
+    // Total XP earned (from xpLedger)
+    const [xpResult] = await db.select({ total: sql<number>`COALESCE(SUM(${xpLedger.amount}), 0)` })
+      .from(xpLedger)
+      .where(inArray(xpLedger.userId, childIds));
+    const totalXpEarned = xpResult?.total ?? 0;
+
+    // Longest streak from streaks table
+    const streakRows = await db.select({ longestStreak: streaks.longestStreak })
+      .from(streaks)
+      .where(inArray(streaks.userId, childIds));
+    const longestStreak = Math.max(0, ...streakRows.map(p => p.longestStreak ?? 0));
+
+    // Weekly tasks completed (last 8 weeks)
+    const eightWeeksAgo = new Date();
+    eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+    const weeklyTaskRows = await db.select({
+      week: sql<string>`DATE_FORMAT(${parentTaskCompletions.completedAt}, '%Y-%u')`,
+      count: count(),
+    })
+      .from(parentTaskCompletions)
+      .where(and(
+        inArray(parentTaskCompletions.studentId, childIds),
+        eq(parentTaskCompletions.parentConfirmed, true),
+        gte(parentTaskCompletions.completedAt, eightWeeksAgo),
+      ))
+      .groupBy(sql`DATE_FORMAT(${parentTaskCompletions.completedAt}, '%Y-%u')`)
+      .orderBy(sql`DATE_FORMAT(${parentTaskCompletions.completedAt}, '%Y-%u')`);
+
+    const weeklyTasks = weeklyTaskRows.map(r => ({
+      label: `W${r.week?.split('-')[1] ?? '?'}`,
+      value: r.count,
+    }));
+
+    // Weekly XP earned (last 8 weeks)
+    const weeklyXpRows = await db.select({
+      week: sql<string>`DATE_FORMAT(${xpLedger.createdAt}, '%Y-%u')`,
+      total: sql<number>`COALESCE(SUM(${xpLedger.amount}), 0)`,
+    })
+      .from(xpLedger)
+      .where(and(
+        inArray(xpLedger.userId, childIds),
+        gte(xpLedger.createdAt, eightWeeksAgo),
+      ))
+      .groupBy(sql`DATE_FORMAT(${xpLedger.createdAt}, '%Y-%u')`)
+      .orderBy(sql`DATE_FORMAT(${xpLedger.createdAt}, '%Y-%u')`);
+
+    const weeklyXp = weeklyXpRows.map(r => ({
+      label: `W${r.week?.split('-')[1] ?? '?'}`,
+      value: r.total,
+    }));
+
+    // Day of week distribution (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const dayRows = await db.select({
+      dayNum: sql<number>`DAYOFWEEK(${parentTaskCompletions.completedAt})`,
+      count: count(),
+    })
+      .from(parentTaskCompletions)
+      .where(and(
+        inArray(parentTaskCompletions.studentId, childIds),
+        eq(parentTaskCompletions.parentConfirmed, true),
+        gte(parentTaskCompletions.completedAt, thirtyDaysAgo),
+      ))
+      .groupBy(sql`DAYOFWEEK(${parentTaskCompletions.completedAt})`);
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayOfWeek = dayNames.map((day, i) => ({
+      day,
+      count: dayRows.find(r => r.dayNum === i + 1)?.count ?? 0,
+    }));
+
+    // Per-child breakdown
+    const childUsers = await db.select({ id: users.id, name: users.name })
+      .from(users)
+      .where(inArray(users.id, childIds));
+
+    const perChild = await Promise.all(childUsers.map(async (child) => {
+      const [taskCount] = await db.select({ count: count() })
+        .from(parentTaskCompletions)
+        .where(and(
+          eq(parentTaskCompletions.studentId, child.id),
+          eq(parentTaskCompletions.parentConfirmed, true),
+        ));
+      const [xp] = await db.select({ total: sql<number>`COALESCE(SUM(${xpLedger.amount}), 0)` })
+        .from(xpLedger)
+        .where(eq(xpLedger.userId, child.id));
+      const [profile] = await db.select({ currentStreak: streaks.currentStreak })
+        .from(streaks)
+        .where(eq(streaks.userId, child.id));
+      return {
+        name: child.name ?? 'Student',
+        tasksCompleted: taskCount?.count ?? 0,
+        xpEarned: xp?.total ?? 0,
+        currentStreak: profile?.currentStreak ?? 0,
+      };
+    }));
+
+    return {
+      totalTasksCompleted,
+      totalXpEarned,
+      longestStreak,
+      completionRate,
+      weeklyTasks,
+      weeklyXp,
+      dayOfWeek,
+      perChild,
+    };
+  }),
 });

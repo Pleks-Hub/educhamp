@@ -2932,3 +2932,26 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Server: CRUD endpoints (createTemplate, listTemplates, deleteTemplate)
 - [x] UI: "Save as Template" button on existing task cards (sparkle icon)
 - [x] UI: Custom templates section in Quick Add area (alongside built-in templates) + template manager
+
+## Feature Batch — Jun 7 2026 (Part 2)
+
+### Weekly Challenge System
+- [x] DB: weeklyChallenges table (id, studentId, weekStart, challengeType, target, progress, bonusXp, status, completedAt)
+- [x] Server: auto-generate weekly challenge on Monday (heartbeat job or on-demand when student visits)
+- [x] Server: updateChallengeProgress — auto-increment when tasks are completed
+- [x] Server: claimChallengeReward — award bonus XP when challenge is met
+- [x] Frontend: Weekly Challenge card on student dashboard with progress bar and countdown
+- [x] Challenge types: task count, streak days, focus minutes, XP earned
+
+### Sibling Task Delegation
+- [x] DB: sharedTasks table (id, parentId, title, description, category, rewardXp, maxClaimants, dueDate, status)
+- [x] DB: sharedTaskClaims table (id, sharedTaskId, studentId, claimedAt, completedAt, proofImageUrl, parentConfirmed)
+- [x] Server: createSharedTask, getSharedTasks, claimSharedTask, completeSharedTask, confirmSharedTaskClaim
+- [x] Parent UI: "Shared Tasks" section in parent dashboard to create/manage shared tasks
+- [x] Student UI: "Shared Tasks" tab in My Tasks showing available tasks to claim
+
+### Parent Insights Tab
+- [x] Server: getInsightsData — aggregate tasks/week, XP/week, productive days, completion rate trends
+- [x] Frontend: Insights tab in parent dashboard with line charts (tasks/week, XP growth)
+- [x] Frontend: Bar chart showing most productive days of the week
+- [x] Frontend: Completion rate trend and task difficulty adjustment suggestions

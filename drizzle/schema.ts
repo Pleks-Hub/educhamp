@@ -2158,3 +2158,65 @@ export const parentTaskTemplates = mysqlTable("parentTaskTemplates", {
 }));
 export type ParentTaskTemplate = typeof parentTaskTemplates.$inferSelect;
 export type InsertParentTaskTemplate = typeof parentTaskTemplates.$inferInsert;
+
+
+// ─── Weekly Challenges ──────────────────────────────────────────────────────
+
+export const weeklyChallenges = mysqlTable("weeklyChallenges", {
+  id: int("id").autoincrement().primaryKey(),
+  studentId: int("studentId").notNull(),
+  weekStart: timestamp("weekStart").notNull(),
+  challengeType: mysqlEnum("challengeType", ["task_count", "streak_days", "focus_minutes", "xp_earned"]).notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  description: text("description"),
+  target: int("target").notNull(),
+  progress: int("progress").notNull().default(0),
+  bonusXp: int("bonusXp").notNull().default(50),
+  status: mysqlEnum("status", ["active", "completed", "expired", "claimed"]).notNull().default("active"),
+  completedAt: timestamp("completedAt"),
+  claimedAt: timestamp("claimedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  studentIdx: index("weeklyChallenges_studentId_idx").on(t.studentId),
+  weekIdx: index("weeklyChallenges_weekStart_idx").on(t.weekStart),
+}));
+export type WeeklyChallenge = typeof weeklyChallenges.$inferSelect;
+export type InsertWeeklyChallenge = typeof weeklyChallenges.$inferInsert;
+
+// ─── Shared Tasks (Sibling Delegation) ─────────────────────────────────────
+
+export const sharedTasks = mysqlTable("sharedTasks", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 64 }),
+  rewardXp: int("rewardXp").notNull().default(15),
+  maxClaimants: int("maxClaimants").notNull().default(1),
+  dueDate: timestamp("dueDate"),
+  requiresProof: boolean("requiresProof").default(false),
+  status: mysqlEnum("status", ["open", "in_progress", "completed", "expired"]).notNull().default("open"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  parentIdx: index("sharedTasks_parentId_idx").on(t.parentId),
+  statusIdx: index("sharedTasks_status_idx").on(t.status),
+}));
+export type SharedTask = typeof sharedTasks.$inferSelect;
+export type InsertSharedTask = typeof sharedTasks.$inferInsert;
+
+export const sharedTaskClaims = mysqlTable("sharedTaskClaims", {
+  id: int("id").autoincrement().primaryKey(),
+  sharedTaskId: int("sharedTaskId").notNull(),
+  studentId: int("studentId").notNull(),
+  claimedAt: timestamp("claimedAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+  proofImageUrl: text("proofImageUrl"),
+  parentConfirmed: boolean("parentConfirmed"),
+  confirmedAt: timestamp("confirmedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  sharedTaskIdx: index("sharedTaskClaims_sharedTaskId_idx").on(t.sharedTaskId),
+  studentIdx: index("sharedTaskClaims_studentId_idx").on(t.studentId),
+}));
+export type SharedTaskClaim = typeof sharedTaskClaims.$inferSelect;
+export type InsertSharedTaskClaim = typeof sharedTaskClaims.$inferInsert;

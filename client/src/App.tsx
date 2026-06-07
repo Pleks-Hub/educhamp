@@ -64,6 +64,8 @@ const TaskCalendar = lazy(() => import("./pages/TaskCalendar"));
 const StreakLeaderboard = lazy(() => import("./pages/StreakLeaderboard"));
 const FocusMode = lazy(() => import("./pages/FocusMode"));
 const TaskLeaderboard = lazy(() => import("./pages/TaskLeaderboard"));
+const SharedTasks = lazy(() => import("./pages/SharedTasks"));
+const ParentInsights = lazy(() => import("./pages/ParentInsights"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -145,6 +147,8 @@ function Router() {
                 <Route path="/streak-leaderboard" component={StreakLeaderboard} />
                 <Route path="/focus-mode" component={FocusMode} />
                 <Route path="/task-leaderboard" component={TaskLeaderboard} />
+                <Route path="/shared-tasks" component={SharedTasks} />
+                <Route path="/parent-insights" component={ParentInsights} />
                 <Route path="/certificates" component={Certificates} />
                 <Route path="/404" component={NotFound} />
                 <Route component={NotFound} />
