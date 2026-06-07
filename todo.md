@@ -2908,7 +2908,7 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Add Focus Mode to student sidebar navigation
 
 ### Parent Task Management Polish
-- [ ] Simplified task creation wizard (step-by-step instead of complex form)
-- [ ] Quick-add templates for common tasks (homework, chores, reading, exercise)
-- [ ] Visual task status overview dashboard for parent (pie chart of task states)
-- [ ] Bulk actions: mark multiple tasks as confirmed, archive completed tasks
+- [x] Simplified task creation wizard (step-by-step instead of complex form)
+- [x] Quick-add templates for common tasks (homework, chores, reading, exercise)
+- [x] Visual task status overview dashboard for parent (pie chart of task states)
+- [x] Bulk actions: mark multiple tasks as confirmed, archive completed tasks
