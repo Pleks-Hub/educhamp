@@ -2886,25 +2886,25 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] DB: taskBadges table (id, code, title, description, iconEmoji, xpBonus, criteria JSON, category)
 - [x] Seed default task badges (First Task, 10 Tasks, 50 Tasks, 7-Day Streak, 30-Day Streak, Speed Demon, Early Bird, etc.)
 - [x] Server: checkAndAwardBadges — auto-check badge criteria after task completion
-- [ ] Server: getMyBadges — list earned badges with earned date
-- [ ] UI: Badge showcase on student dashboard (earned + locked badges with progress)
-- [ ] Level-up animation when student earns enough XP to advance
-- [ ] Parent Reward Store: parents define real-world rewards (screen time, treats, outings) with XP cost
-- [ ] Student can "purchase" rewards from parent store using earned XP
-- [ ] Parent confirms reward redemption (approval workflow)
+- [x] Server: getMyBadges — list earned badges with earned date
+- [x] UI: Badge showcase on student dashboard (earned + locked badges with progress)
+- [x] Level-up animation when student earns enough XP to advance
+- [x] Parent Reward Store: parents define real-world rewards (screen time, treats, outings) with XP cost
+- [x] Student can "purchase" rewards from parent store using earned XP
+- [x] Parent confirms reward redemption (approval workflow)
 
 ### Parent Engagement & Messaging
 - [x] Parent can leave encouragement notes on individual tasks (visible to student)
 - [x] Parent approval queue: dedicated view showing all tasks awaiting confirmation with proof photos
-- [ ] Parent reward fulfillment tracking: see which rewards student has redeemed, mark as fulfilled
-- [ ] Parent XP bonus: parent can add bonus XP when confirming a task (extra effort recognition)
+- [x] Parent reward fulfillment tracking: see which rewards student has redeemed, mark as fulfilled
+- [x] Parent XP bonus: parent can add bonus XP when confirming a task (extra effort recognition)
 
 ### Focus Mode Timer
 - [x] Focus Mode page with configurable timer (15/25/45/60 min presets + custom)
 - [x] Visual growing tree/plant animation during focus session (Forest-style)
 - [x] XP bonus awarded on successful completion (scales with duration: 15min=25XP, 25min=50XP, 45min=100XP, 60min=150XP)
 - [x] Session history tracking (date, duration, XP earned)
-- [ ] Streak bonus: consecutive daily focus sessions earn multiplier
+- [x] Streak bonus: consecutive daily focus sessions earn multiplier
 - [x] Add Focus Mode to student sidebar navigation
 
 ### Parent Task Management Polish

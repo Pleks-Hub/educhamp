@@ -33,6 +33,7 @@ const DAILY_CAPS: Record<string, number> = {
   quest_complete: 10,
   badge_earned: 20,
   focus_session: 4,       // max 4 focus sessions per day
+  parent_bonus: 10,       // max 10 parent bonuses per day
 };
 
 // ─── XP amounts per source ────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ export const XP_AMOUNTS: Record<string, number> = {
   quest_complete: 0,      // amount comes from quest definition
   badge_earned: 0,        // amount comes from badge definition
   focus_session: 0,       // amount varies by duration (25-150 XP)
+  parent_bonus: 0,        // amount set by parent (up to 500)
 };
 
 // ─── Core award function ──────────────────────────────────────────────────────

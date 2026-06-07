@@ -21,7 +21,9 @@ export type CelebrationEvent =
   | "quiz_perfect"
   | "badge_earn"
   | "unit_complete"
-  | "reviews_complete";
+  | "reviews_complete"
+  | "level_up"
+  | "task_complete";
 
 interface CelebrationState {
   active: boolean;
@@ -85,6 +87,18 @@ const EVENT_CONFIG: Record<
     defaultLabel: "All Reviews Done!",
     color: "from-emerald-400 to-teal-300",
     duration: 3500,
+  },
+  level_up: {
+    emoji: "⬆️",
+    defaultLabel: "Level Up!",
+    color: "from-indigo-500 to-purple-400",
+    duration: 4000,
+  },
+  task_complete: {
+    emoji: "✅",
+    defaultLabel: "Task Done!",
+    color: "from-green-400 to-emerald-300",
+    duration: 2500,
   },
 };
 

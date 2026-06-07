@@ -202,7 +202,7 @@ export default function GamificationHub() {
 
         {/* Badges Tab */}
         <TabsContent value="badges" className="mt-4">
-          <BadgeGrid badges={badges.earned as any[]} allBadges={[]} />
+          <BadgeGrid badges={badges.all as any[]} allBadges={badges.all as any[]} />
         </TabsContent>
 
         {/* Leaderboard Tab */}
@@ -386,9 +386,15 @@ function QuestSection({ title, quests, icon }: { title: string; quests: any[]; i
 
 function BadgeGrid({ badges }: { badges: any[]; allBadges: any[] }) {
   const [filter, setFilter] = useState<string>("all");
-  const categories = ["all", "achievement", "academic", "consistency", "behavioral", "special"];
+  const categories = ["all", "achievement", "academic", "consistency", "behavioral", "special", "parent_engagement"];
 
   const filtered = filter === "all" ? badges : badges.filter((b: any) => b.category === filter);
+  // Sort: earned first, then locked
+  const sorted = [...filtered].sort((a, b) => {
+    if (a.earned && !b.earned) return -1;
+    if (!a.earned && b.earned) return 1;
+    return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+  });
 
   return (
     <div className="space-y-4">
@@ -398,36 +404,52 @@ function BadgeGrid({ badges }: { badges: any[]; allBadges: any[] }) {
             key={cat}
             onClick={() => setFilter(cat)}
             className={cn(
-              "px-3 py-1 rounded-full text-xs font-medium transition-colors",
+              "px-3 py-1 rounded-full text-xs font-medium transition-colors capitalize",
               filter === cat
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-muted/80",
             )}
           >
-            {cat === "all" ? "All" : cat.charAt(0).toUpperCase() + cat.slice(1)}
+            {cat === "all" ? "All" : cat === "parent_engagement" ? "Family" : cat}
           </button>
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {sorted.length === 0 ? (
         <div className="text-center py-12">
           <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-          <p className="text-muted-foreground text-sm">No badges earned yet in this category.</p>
-          <p className="text-muted-foreground text-xs mt-1">Complete lessons and quizzes to earn badges!</p>
+          <p className="text-muted-foreground text-sm">No badges in this category yet.</p>
+          <p className="text-muted-foreground text-xs mt-1">Complete lessons, quizzes, and tasks to earn badges!</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {filtered.map((badge: any) => (
-            <Card key={badge.id} className={cn("overflow-hidden transition-all", badge.isNew && "ring-2 ring-yellow-400")}>
+          {sorted.map((badge: any) => (
+            <Card
+              key={badge.id}
+              className={cn(
+                "overflow-hidden transition-all",
+                badge.isNew && "ring-2 ring-yellow-400",
+                !badge.earned && "opacity-50 grayscale",
+              )}
+            >
               <CardContent className="p-4 text-center">
                 <div className="text-3xl mb-2">{badge.iconEmoji}</div>
                 <p className="text-xs font-semibold leading-tight">{badge.name}</p>
                 <p className="text-[10px] text-muted-foreground mt-1 leading-tight line-clamp-2">{badge.description}</p>
-                <Badge variant="secondary" className="mt-2 text-[10px]">+{badge.xpReward} XP</Badge>
+                {badge.earned ? (
+                  <Badge variant="secondary" className="mt-2 text-[10px]">+{badge.xpReward} XP</Badge>
+                ) : (
+                  <Badge variant="outline" className="mt-2 text-[10px] opacity-70">Locked</Badge>
+                )}
                 {badge.isNew && (
                   <div className="mt-1">
                     <Badge className="text-[10px] bg-yellow-400 text-yellow-900">NEW!</Badge>
                   </div>
+                )}
+                {badge.earned && badge.earnedAt && (
+                  <p className="text-[9px] text-muted-foreground mt-1">
+                    Earned {new Date(badge.earnedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                  </p>
                 )}
               </CardContent>
             </Card>

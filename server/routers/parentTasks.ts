@@ -205,6 +205,7 @@ export const parentTasksRouter = router({
       completionId: z.number(),
       confirmed: z.boolean(),
       parentNote: z.string().optional(),
+      bonusXp: z.number().min(0).max(500).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -240,6 +241,15 @@ export const parentTasksRouter = router({
             await awardXp(completion.studentId, "task_completion", task.rewardXp, `Completed task: ${task.title}`);
           } catch (e) {
             console.log(`[Tasks] Failed to award XP for task ${task.id}:`, e);
+          }
+        }
+        // Award bonus XP from parent (extra effort recognition)
+        if (input.bonusXp && input.bonusXp > 0) {
+          try {
+            const { awardXp } = await import("../gamification/xp");
+            await awardXp(completion.studentId, "parent_bonus", input.bonusXp, `Parent bonus for: ${task?.title ?? "task"}`);
+          } catch (e) {
+            console.log(`[Tasks] Failed to award bonus XP:`, e);
           }
         }
         // Check task milestone badges

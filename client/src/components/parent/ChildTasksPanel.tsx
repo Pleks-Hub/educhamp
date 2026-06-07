@@ -175,8 +175,8 @@ export function ChildTasksPanel({ childId, childName }: ChildTasksPanelProps) {
               onDelete={() => {
                 if (confirm(`Delete "${task.title}"?`)) deleteTask.mutate({ taskId: task.id });
               }}
-              onConfirm={(completionId, confirmed) =>
-                confirmCompletion.mutate({ completionId, confirmed })
+              onConfirm={(completionId, confirmed, bonusXp) =>
+                confirmCompletion.mutate({ completionId, confirmed, bonusXp })
               }
             />
           ))}
@@ -227,7 +227,7 @@ function TaskCard({ task, onEdit, onDelete, onConfirm }: {
   task: any;
   onEdit: () => void;
   onDelete: () => void;
-  onConfirm: (completionId: number, confirmed: boolean) => void;
+  onConfirm: (completionId: number, confirmed: boolean, bonusXp?: number) => void;
 }) {
   const StatusIcon = STATUS_ICONS[task.status] ?? Clock;
   const pendingCompletions = task.completions?.filter((c: any) => c.parentConfirmed === null) ?? [];
@@ -289,13 +289,26 @@ function TaskCard({ task, onEdit, onDelete, onConfirm }: {
             </p>
             {pendingCompletions.map((c: any) => (
               <div key={c.id} className="bg-amber-50 dark:bg-amber-900/10 rounded-lg px-3 py-2 space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="text-xs">
                     <p className="font-medium">Marked done {new Date(c.completedAt).toLocaleString()}</p>
                     {c.note && <p className="text-muted-foreground mt-0.5">"{c.note}"</p>}
                   </div>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="outline" className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50" onClick={() => onConfirm(c.id, true)}>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={0}
+                      max={500}
+                      placeholder="Bonus XP"
+                      className="w-20 h-7 text-xs border rounded px-1.5 text-center"
+                      id={`bonus-xp-${c.id}`}
+                      defaultValue={0}
+                    />
+                    <Button size="sm" variant="outline" className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50" onClick={() => {
+                      const el = document.getElementById(`bonus-xp-${c.id}`) as HTMLInputElement;
+                      const bonus = Math.min(500, Math.max(0, Number(el?.value) || 0));
+                      onConfirm(c.id, true, bonus > 0 ? bonus : undefined);
+                    }}>
                       <ThumbsUp className="h-3 w-3 mr-1" /> Confirm
                     </Button>
                     <Button size="sm" variant="outline" className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50" onClick={() => onConfirm(c.id, false)}>

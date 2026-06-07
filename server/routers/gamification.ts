@@ -56,6 +56,7 @@ export const gamificationRouter = router({
       streak,
       badges: {
         earned: badges.earned,
+        all: badges.all,
         earnedCount: badges.earned.length,
         totalCount: badges.all.length,
         newCount: badges.earned.filter((b) => b.isNew).length,
@@ -335,4 +336,132 @@ export const gamificationRouter = router({
       daysLeft,
     };
   }),
+
+  // ── Parent: get pending redemptions for their children ─────────────────────
+  getChildRedemptions: protectedProcedure
+    .input(z.object({ childId: z.number().optional() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      // Get all rewards created by this parent
+      const parentRewards = await db
+        .select({ id: rewardsMarketplace.id })
+        .from(rewardsMarketplace)
+        .where(eq(rewardsMarketplace.parentUserId, ctx.user.id));
+
+      if (parentRewards.length === 0) return [];
+
+      const rewardIds = parentRewards.map(r => r.id);
+
+      // Get redemptions for those rewards
+      const redemptions = await db
+        .select({
+          id: rewardRedemptions.id,
+          userId: rewardRedemptions.userId,
+          rewardId: rewardRedemptions.rewardId,
+          redeemedAt: rewardRedemptions.redeemedAt,
+          xpSpent: rewardRedemptions.xpSpent,
+          status: rewardRedemptions.status,
+          rewardTitle: rewardsMarketplace.rewardTitle,
+          category: rewardsMarketplace.category,
+          childName: users.name,
+        })
+        .from(rewardRedemptions)
+        .innerJoin(rewardsMarketplace, eq(rewardRedemptions.rewardId, rewardsMarketplace.id))
+        .innerJoin(users, eq(rewardRedemptions.userId, users.id))
+        .where(
+          input.childId
+            ? and(
+                sql`${rewardRedemptions.rewardId} IN (${sql.raw(rewardIds.join(','))})`  ,
+                eq(rewardRedemptions.userId, input.childId),
+              )
+            : sql`${rewardRedemptions.rewardId} IN (${sql.raw(rewardIds.join(','))})`,
+        )
+        .orderBy(desc(rewardRedemptions.redeemedAt));
+
+      return redemptions;
+    }),
+
+  // ── Parent: approve a redemption ──────────────────────────────────────────
+  approveRedemption: protectedProcedure
+    .input(z.object({ redemptionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("db_unavailable");
+
+      // Verify this redemption belongs to a reward the parent created
+      const [redemption] = await db
+        .select({
+          id: rewardRedemptions.id,
+          status: rewardRedemptions.status,
+          parentUserId: rewardsMarketplace.parentUserId,
+        })
+        .from(rewardRedemptions)
+        .innerJoin(rewardsMarketplace, eq(rewardRedemptions.rewardId, rewardsMarketplace.id))
+        .where(eq(rewardRedemptions.id, input.redemptionId))
+        .limit(1);
+
+      if (!redemption || redemption.parentUserId !== ctx.user.id) {
+        throw new Error("not_found");
+      }
+      if (redemption.status !== "pending") {
+        throw new Error("already_processed");
+      }
+
+      await db
+        .update(rewardRedemptions)
+        .set({ status: "approved" })
+        .where(eq(rewardRedemptions.id, input.redemptionId));
+
+      return { ok: true };
+    }),
+
+  // ── Parent: reject a redemption (refund XP) ───────────────────────────────
+  rejectRedemption: protectedProcedure
+    .input(z.object({ redemptionId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("db_unavailable");
+
+      const [redemption] = await db
+        .select({
+          id: rewardRedemptions.id,
+          userId: rewardRedemptions.userId,
+          xpSpent: rewardRedemptions.xpSpent,
+          status: rewardRedemptions.status,
+          parentUserId: rewardsMarketplace.parentUserId,
+        })
+        .from(rewardRedemptions)
+        .innerJoin(rewardsMarketplace, eq(rewardRedemptions.rewardId, rewardsMarketplace.id))
+        .where(eq(rewardRedemptions.id, input.redemptionId))
+        .limit(1);
+
+      if (!redemption || redemption.parentUserId !== ctx.user.id) {
+        throw new Error("not_found");
+      }
+      if (redemption.status !== "pending") {
+        throw new Error("already_processed");
+      }
+
+      // Refund XP
+      await db.insert(xpLedger).values({
+        userId: redemption.userId,
+        amount: redemption.xpSpent,
+        source: "reward_refund",
+        sourceId: String(input.redemptionId),
+        description: "Reward redemption rejected — XP refunded",
+      });
+      await db
+        .update(studentLevels)
+        .set({ totalXp: sql`totalXp + ${redemption.xpSpent}` })
+        .where(eq(studentLevels.userId, redemption.userId));
+
+      await db
+        .update(rewardRedemptions)
+        .set({ status: "rejected" })
+        .where(eq(rewardRedemptions.id, input.redemptionId));
+
+      return { ok: true, xpRefunded: redemption.xpSpent };
+    }),
 });

@@ -1561,6 +1561,29 @@ function CreateRewardPanel({ childId, childName }: { childId: number; childName:
 
   const { data: existingRewards, isLoading: loadingRewards } = trpc.gamification.getRewards.useQuery();
 
+  const { data: redemptions } = trpc.gamification.getChildRedemptions.useQuery(
+    { childId },
+    { staleTime: 30_000 },
+  );
+
+  const approveMutation = trpc.gamification.approveRedemption.useMutation({
+    onSuccess: () => {
+      toast.success("Reward approved! Your child will be thrilled.");
+      utils.gamification.getChildRedemptions.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const rejectMutation = trpc.gamification.rejectRedemption.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Reward rejected. ${data.xpRefunded} XP refunded.`);
+      utils.gamification.getChildRedemptions.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const pendingRedemptions = (redemptions ?? []).filter((r: any) => r.status === "pending");
+
   const createReward = trpc.gamification.createReward.useMutation({
     onSuccess: () => {
       toast.success(`Reward "${title}" created for ${childName}!`);
@@ -1618,6 +1641,40 @@ function CreateRewardPanel({ childId, childName }: { childId: number; childName:
           </div>
         )}
       </CardContent>
+
+      {/* Pending Redemptions */}
+      {pendingRedemptions.length > 0 && (
+        <CardContent className="pt-0 space-y-2">
+          <p className="text-xs font-semibold text-amber-700 flex items-center gap-1">
+            <span>⏳</span> {pendingRedemptions.length} pending approval{pendingRedemptions.length > 1 ? "s" : ""}
+          </p>
+          {pendingRedemptions.map((r: any) => (
+            <div key={r.id} className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{r.rewardTitle}</p>
+                <p className="text-[11px] text-muted-foreground">{r.xpSpent} XP • {new Date(r.redeemedAt).toLocaleDateString()}</p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                disabled={rejectMutation.isPending}
+                onClick={() => rejectMutation.mutate({ redemptionId: r.id })}
+              >
+                Reject
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 text-xs"
+                disabled={approveMutation.isPending}
+                onClick={() => approveMutation.mutate({ redemptionId: r.id })}
+              >
+                Approve
+              </Button>
+            </div>
+          ))}
+        </CardContent>
+      )}
 
       {/* Create reward dialog */}
       <Dialog open={open} onOpenChange={setOpen}>

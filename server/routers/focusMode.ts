@@ -42,6 +42,48 @@ export const focusModeRouter = router({
         xpAmount = Math.round(getXpForDuration(input.durationMinutes) * 0.5);
       }
 
+      // Focus streak bonus: check consecutive days
+      let streakDays = 0;
+      if (!input.interrupted && xpAmount > 0) {
+        // Count distinct days with completed sessions in the last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const dayRows = await db.select({
+          day: sql<string>`DATE(${focusSessions.completedAt})`,
+        })
+          .from(focusSessions)
+          .where(and(
+            eq(focusSessions.userId, ctx.user.id),
+            eq(focusSessions.interrupted, false),
+            gte(focusSessions.completedAt, thirtyDaysAgo),
+          ))
+          .groupBy(sql`DATE(${focusSessions.completedAt})`)
+          .orderBy(desc(sql`DATE(${focusSessions.completedAt})`));
+
+        // Count consecutive days ending today
+        const today = new Date().toISOString().slice(0, 10);
+        const dayStrings = dayRows.map(r => r.day);
+        // Include today (current session counts)
+        if (!dayStrings.includes(today)) dayStrings.unshift(today);
+        
+        let checkDate = new Date();
+        for (let i = 0; i < dayStrings.length; i++) {
+          const expected = checkDate.toISOString().slice(0, 10);
+          if (dayStrings.includes(expected)) {
+            streakDays++;
+            checkDate.setDate(checkDate.getDate() - 1);
+          } else {
+            break;
+          }
+        }
+
+        // Apply streak multiplier: +10% per consecutive day, max +50%
+        if (streakDays > 1) {
+          const multiplier = 1 + Math.min(streakDays - 1, 5) * 0.1;
+          xpAmount = Math.round(xpAmount * multiplier);
+        }
+      }
+
       // Insert session record
       const [result] = await db.insert(focusSessions).values({
         userId: ctx.user.id,
@@ -66,6 +108,7 @@ export const focusModeRouter = router({
         sessionId: result.id,
         xpAwarded: xpResult?.awarded ? xpAmount : 0,
         dailyCapReached: xpResult?.reason === "daily_cap_reached",
+        streakDays,
       };
     }),
 
