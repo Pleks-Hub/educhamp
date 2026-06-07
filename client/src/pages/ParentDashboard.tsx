@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { StreamdownRenderer } from "@/components/StreamdownRenderer";
+import { ChildTasksPanel } from "@/components/parent/ChildTasksPanel";
 import {
   BarChart,
   Bar,
@@ -2379,6 +2380,7 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
           <TabsTrigger value="report" className="text-xs">Export</TabsTrigger>
           <TabsTrigger value="recommended" className="text-xs">Suggest</TabsTrigger>
           <TabsTrigger value="plan" className="text-xs">📅 Plan</TabsTrigger>
+          <TabsTrigger value="tasks" className="text-xs">✅ Tasks</TabsTrigger>
         </TabsList>
 
         {/* Courses tab — multi-course overview */}
@@ -2648,6 +2650,10 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
 
         <TabsContent value="plan" className="mt-4">
           <ChildLearningPlanPanel childId={child.childId} childName={child.name ?? "Student"} />
+        </TabsContent>
+
+        <TabsContent value="tasks" className="mt-4">
+          <ChildTasksPanel childId={child.childId} childName={child.name ?? "Student"} />
         </TabsContent>
       </Tabs>
 

@@ -16,6 +16,7 @@ import { coppaRouter } from "./routers/coppa";
 import { certificateRouter } from "./routers/certificate";
 import { studentAuthRouter } from "./routers/studentAuth";
 import { skillPracticeRouter } from "./routers/skillPractice";
+import { parentTasksRouter } from "./routers/parentTasks";
 import { awardXp } from "./gamification/xp";
 import { checkAndAwardBadges } from "./gamification/badges";
 import { recordActivity } from "./gamification/streaks";
@@ -89,6 +90,7 @@ export const appRouter = router({
   certificate: certificateRouter,
   studentAuth: studentAuthRouter,
   skillPractice: skillPracticeRouter,
+  parentTasks: parentTasksRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

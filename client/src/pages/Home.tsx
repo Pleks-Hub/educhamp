@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { GuidedTour } from "@/components/GuidedTour";
 import { SeasonalChallengeBanner } from "@/components/SeasonalChallengeBanner";
 import { StreakTracker } from "@/components/StreakTracker";
+import { StudentTasksWidget } from "@/components/StudentTasksWidget";
 
 import {
   AlertCircle,
@@ -1037,6 +1038,9 @@ export default function Home() {
 
           {/* Quick Practice Widget — spaced repetition due skills */}
           <QuickPracticeWidget />
+
+          {/* Parent-assigned Tasks Widget */}
+          <StudentTasksWidget />
 
           {/* Your Next Step — contextual guidance */}
           <Card className="border shadow-sm bg-gradient-to-b from-primary/5 to-transparent">

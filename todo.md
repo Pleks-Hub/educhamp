@@ -2844,3 +2844,19 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
   - Created via manus-heartbeat CLI: task_uid VFsFYeejEJis6FnbkwtcXb
   - Runs every Monday at 09:00 UTC
   - Next execution: 2026-06-08T09:00:00Z
+
+## Parent Task/Chore Management System (Jun 7 2026)
+
+- [x] DB: parentTasks table (id, parentId, studentId, title, description, taskType enum: one_off/recurring/time_bound, priority enum: low/medium/high, status enum: pending/in_progress/completed/overdue/cancelled, dueDate, startDate, endDate, recurrenceRule, recurrenceEndDate, createdAt, updatedAt)
+- [x] DB: parentTaskCompletions table (id, taskId, studentId, completedAt, note, parentConfirmed, parentConfirmedAt)
+- [x] Server: parentTasks.create — parent creates a task for a specific child
+- [x] Server: parentTasks.list — parent lists all tasks for a child (with filters)
+- [x] Server: parentTasks.update — parent edits a task
+- [x] Server: parentTasks.delete — parent removes a task
+- [x] Server: parentTasks.confirmCompletion — parent confirms/rejects student's completion
+- [x] Server: parentTasks.getMyTasks — student sees their assigned tasks
+- [x] Server: parentTasks.markComplete — student marks a task as done (with optional note)
+- [x] UI: Parent Dashboard — ✅ Tasks tab with create/edit/delete/filter/status view (ChildTasksPanel)
+- [x] UI: Student Dashboard — StudentTasksWidget showing pending/upcoming tasks with confirm button + /my-tasks full page
+- [x] Integration: Add "My Tasks" nav item to student sidebar + Tasks tab in parent per-child view
+- [x] Recurring tasks: auto-generate next occurrence after completion (in markComplete mutation)

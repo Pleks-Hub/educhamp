@@ -36,6 +36,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   Library,
+  ListTodo,
   LogOut,
   PanelLeft,
   Settings,
@@ -71,6 +72,7 @@ const secondaryItems = [
   { icon: Sigma, label: "Skill Index", path: "/skills" },
   { icon: Target, label: "Practice Weak Skills", path: "/practice" },
   { icon: FileText, label: "Exam Prep", path: "/exam-prep" },
+  { icon: ListTodo, label: "My Tasks", path: "/my-tasks" },
 ];
 
 // Combined for backward compat with activeItem detection

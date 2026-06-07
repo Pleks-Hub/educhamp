@@ -2033,3 +2033,60 @@ export const skillReviewSchedule = mysqlTable("skillReviewSchedule", {
 }));
 export type SkillReviewSchedule = typeof skillReviewSchedule.$inferSelect;
 export type InsertSkillReviewSchedule = typeof skillReviewSchedule.$inferInsert;
+
+// ─── Parent Tasks / Chores ────────────────────────────────────────────────────
+
+/**
+ * Tasks/chores assigned by a parent to a student.
+ * Supports one-off, recurring, and time-bound task types.
+ */
+export const parentTasks = mysqlTable("parentTasks", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),             // FK → users.id (parent who created)
+  studentId: int("studentId").notNull(),           // FK → users.id (student assigned)
+  title: varchar("title", { length: 256 }).notNull(),
+  description: text("description"),
+  taskType: mysqlEnum("taskType", ["one_off", "recurring", "time_bound"]).notNull().default("one_off"),
+  priority: mysqlEnum("priority", ["low", "medium", "high"]).notNull().default("medium"),
+  status: mysqlEnum("status", ["pending", "in_progress", "completed", "overdue", "cancelled"]).notNull().default("pending"),
+  // Scheduling
+  dueDate: timestamp("dueDate"),                   // for one_off: single deadline; for time_bound: end date
+  startDate: timestamp("startDate"),               // for time_bound: when the task window opens
+  // Recurrence (for recurring tasks)
+  recurrenceRule: varchar("recurrenceRule", { length: 64 }), // e.g. "daily", "weekly", "weekdays", "custom"
+  recurrenceDays: json("recurrenceDays"),           // e.g. ["mon","wed","fri"] for custom
+  recurrenceEndDate: timestamp("recurrenceEndDate"), // when recurring task stops
+  // Metadata
+  category: varchar("category", { length: 64 }),   // e.g. "chore", "homework", "exercise", "reading"
+  rewardXp: int("rewardXp").default(0),            // optional XP reward on completion
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  parentIdx: index("parentTasks_parentId_idx").on(t.parentId),
+  studentIdx: index("parentTasks_studentId_idx").on(t.studentId),
+  statusIdx: index("parentTasks_status_idx").on(t.status),
+  dueDateIdx: index("parentTasks_dueDate_idx").on(t.dueDate),
+}));
+export type ParentTask = typeof parentTasks.$inferSelect;
+export type InsertParentTask = typeof parentTasks.$inferInsert;
+
+/**
+ * Completion records for parent tasks.
+ * Each time a student marks a task done, a record is created.
+ * For recurring tasks, there can be multiple completions.
+ */
+export const parentTaskCompletions = mysqlTable("parentTaskCompletions", {
+  id: int("id").autoincrement().primaryKey(),
+  taskId: int("taskId").notNull(),                 // FK → parentTasks.id
+  studentId: int("studentId").notNull(),           // FK → users.id
+  completedAt: timestamp("completedAt").defaultNow().notNull(),
+  note: text("note"),                              // student's optional note
+  parentConfirmed: boolean("parentConfirmed"),      // null = pending, true = confirmed, false = rejected
+  parentConfirmedAt: timestamp("parentConfirmedAt"),
+  parentNote: text("parentNote"),                   // parent's feedback on completion
+}, (t) => ({
+  taskIdx: index("parentTaskCompletions_taskId_idx").on(t.taskId),
+  studentIdx: index("parentTaskCompletions_studentId_idx").on(t.studentId),
+}));
+export type ParentTaskCompletion = typeof parentTaskCompletions.$inferSelect;
+export type InsertParentTaskCompletion = typeof parentTaskCompletions.$inferInsert;
