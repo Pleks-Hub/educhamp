@@ -409,6 +409,15 @@ export const parentToolsRouter = router({
         nextLessonUrl: `${appUrl}/curriculum`,
         onTrackStatus,
         diagnosticScore: diagScore,
+        tasksCompleted: 0,
+        tasksConfirmed: 0,
+        tasksPending: 0,
+        xpEarnedThisWeek: 0,
+        totalXp: 0,
+        currentLevel: 1,
+        currentLevelName: "Rookie Learner",
+        badgesEarnedThisWeek: [],
+        currentStreak: 0,
       });
     }
 

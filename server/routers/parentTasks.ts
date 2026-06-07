@@ -1,4 +1,4 @@
-import { z } from "zod/v4";
+import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
@@ -597,5 +597,79 @@ export const parentTasksRouter = router({
         category: t.category,
         rewardXp: t.rewardXp,
       }));
+    }),
+
+  // ── Custom Task Templates ──────────────────────────────────────────────────
+  listTemplates: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+    const { parentTaskTemplates } = await import("../../drizzle/schema");
+    return db.select().from(parentTaskTemplates)
+      .where(eq(parentTaskTemplates.parentId, ctx.user.id))
+      .orderBy(desc(parentTaskTemplates.createdAt));
+  }),
+
+  createTemplate: protectedProcedure
+    .input(z.object({
+      title: z.string().min(1).max(256),
+      description: z.string().optional(),
+      category: z.string().max(64).optional(),
+      taskType: z.enum(["one_off", "recurring", "time_bound"]).default("one_off"),
+      priority: z.enum(["low", "medium", "high"]).default("medium"),
+      rewardXp: z.number().min(0).max(500).default(10),
+      requiresProof: z.boolean().default(false),
+      recurrenceRule: z.string().max(64).optional(),
+      recurrenceDays: z.array(z.string()).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const { parentTaskTemplates } = await import("../../drizzle/schema");
+      const [result] = await db.insert(parentTaskTemplates).values({
+        parentId: ctx.user.id,
+        title: input.title,
+        description: input.description ?? null,
+        category: input.category ?? null,
+        taskType: input.taskType,
+        priority: input.priority,
+        rewardXp: input.rewardXp,
+        requiresProof: input.requiresProof,
+        recurrenceRule: input.recurrenceRule ?? null,
+        recurrenceDays: input.recurrenceDays ?? null,
+      });
+      return { id: result.insertId, ok: true };
+    }),
+
+  deleteTemplate: protectedProcedure
+    .input(z.object({ templateId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const { parentTaskTemplates } = await import("../../drizzle/schema");
+      await db.delete(parentTaskTemplates)
+        .where(and(eq(parentTaskTemplates.id, input.templateId), eq(parentTaskTemplates.parentId, ctx.user.id)));
+      return { ok: true };
+    }),
+
+  saveAsTemplate: protectedProcedure
+    .input(z.object({ taskId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const task = await verifyTaskBelongsToParent(input.taskId, ctx.user.id);
+      const { parentTaskTemplates } = await import("../../drizzle/schema");
+      const [result] = await db.insert(parentTaskTemplates).values({
+        parentId: ctx.user.id,
+        title: task.title,
+        description: task.description ?? null,
+        category: task.category ?? null,
+        taskType: task.taskType,
+        priority: task.priority,
+        rewardXp: task.rewardXp ?? 10,
+        requiresProof: task.requiresProof ?? false,
+        recurrenceRule: task.recurrenceRule ?? null,
+        recurrenceDays: task.recurrenceDays as string[] ?? null,
+      });
+      return { id: result.insertId, ok: true };
     }),
 });

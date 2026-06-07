@@ -221,6 +221,34 @@ export function ChildTasksPanel({ childId, childName }: ChildTasksPanelProps) {
     return (tasks ?? []).reduce((acc, t) => acc + (t.completions?.filter((c: any) => c.parentConfirmed === null)?.length ?? 0), 0);
   }, [tasks]);
 
+  // Custom templates
+  const { data: customTemplates } = trpc.parentTasks.listTemplates.useQuery();
+  const [showTemplateManager, setShowTemplateManager] = useState(false);
+
+  const createTemplate = trpc.parentTasks.createTemplate.useMutation({
+    onSuccess: () => {
+      toast.success("Template saved!");
+      utils.parentTasks.listTemplates.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const deleteTemplate = trpc.parentTasks.deleteTemplate.useMutation({
+    onSuccess: () => {
+      toast.success("Template deleted");
+      utils.parentTasks.listTemplates.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const saveAsTemplate = trpc.parentTasks.saveAsTemplate.useMutation({
+    onSuccess: () => {
+      toast.success("Saved as template!");
+      utils.parentTasks.listTemplates.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -250,10 +278,21 @@ export function ChildTasksPanel({ childId, childName }: ChildTasksPanelProps) {
 
       {/* Quick-Add Templates */}
       <Card className="p-4">
-        <h3 className="text-sm font-semibold mb-2 flex items-center gap-1.5">
-          <Zap className="h-3.5 w-3.5 text-amber-500" /> Quick Add
-        </h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold flex items-center gap-1.5">
+            <Zap className="h-3.5 w-3.5 text-amber-500" /> Quick Add
+          </h3>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-muted-foreground"
+            onClick={() => setShowTemplateManager(!showTemplateManager)}
+          >
+            {showTemplateManager ? "Hide" : "Manage"} Templates
+          </Button>
+        </div>
         <div className="flex flex-wrap gap-2">
+          {/* Built-in templates */}
           {QUICK_TEMPLATES.map((t) => (
             <Button
               key={t.label}
@@ -274,7 +313,61 @@ export function ChildTasksPanel({ childId, childName }: ChildTasksPanelProps) {
               <span>{t.icon}</span> {t.label}
             </Button>
           ))}
+          {/* Custom templates */}
+          {(customTemplates ?? []).map((t) => (
+            <Button
+              key={`custom-${t.id}`}
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs gap-1.5 border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/20"
+              disabled={createTask.isPending}
+              onClick={() => createTask.mutate({
+                studentId: childId,
+                title: t.title,
+                description: t.description ?? undefined,
+                category: t.category ?? undefined,
+                taskType: t.taskType,
+                priority: t.priority,
+                rewardXp: t.rewardXp ?? 10,
+                requiresProof: t.requiresProof ?? false,
+                recurrenceRule: t.recurrenceRule as any,
+              })}
+            >
+              <Sparkles className="h-3 w-3 text-purple-500" /> {t.title}
+            </Button>
+          ))}
         </div>
+
+        {/* Template Manager */}
+        {showTemplateManager && (
+          <div className="mt-3 pt-3 border-t space-y-2">
+            <p className="text-xs text-muted-foreground">Your saved templates — click the trash icon to delete.</p>
+            {(customTemplates ?? []).length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No custom templates yet. Create a task and click "Save as Template" to add one.</p>
+            ) : (
+              <div className="space-y-1">
+                {(customTemplates ?? []).map((t) => (
+                  <div key={t.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Sparkles className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                      <span className="text-sm font-medium truncate">{t.title}</span>
+                      <Badge variant="secondary" className="text-[10px] shrink-0">{t.category ?? "other"}</Badge>
+                      <span className="text-xs text-muted-foreground shrink-0">{t.rewardXp} XP</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                      onClick={() => deleteTemplate.mutate({ templateId: t.id })}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Filters + Bulk Actions + Create */}
@@ -360,6 +453,7 @@ export function ChildTasksPanel({ childId, childName }: ChildTasksPanelProps) {
               onConfirm={(completionId, confirmed, bonusXp) =>
                 confirmCompletion.mutate({ completionId, confirmed, bonusXp })
               }
+              onSaveAsTemplate={() => saveAsTemplate.mutate({ taskId: task.id })}
             />
           ))}
         </div>
@@ -407,13 +501,14 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
 
 // ─── Task Card ───────────────────────────────────────────────────────────────
 
-function TaskCard({ task, selected, onToggleSelect, onEdit, onDelete, onConfirm }: {
+function TaskCard({ task, selected, onToggleSelect, onEdit, onDelete, onConfirm, onSaveAsTemplate }: {
   task: any;
   selected: boolean;
   onToggleSelect: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onConfirm: (completionId: number, confirmed: boolean, bonusXp?: number) => void;
+  onSaveAsTemplate?: () => void;
 }) {
   const StatusIcon = STATUS_ICONS[task.status] ?? Clock;
   const pendingCompletions = task.completions?.filter((c: any) => c.parentConfirmed === null) ?? [];
@@ -462,6 +557,11 @@ function TaskCard({ task, selected, onToggleSelect, onEdit, onDelete, onConfirm 
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+            {onSaveAsTemplate && (
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-purple-500" onClick={onSaveAsTemplate} title="Save as template">
+                <Sparkles className="h-3.5 w-3.5" />
+              </Button>
+            )}
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>

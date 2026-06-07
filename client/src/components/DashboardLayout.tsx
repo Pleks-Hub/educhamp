@@ -79,6 +79,7 @@ const secondaryItems = [
   { icon: CalendarIcon, label: "Task Calendar", path: "/task-calendar" },
   { icon: Timer, label: "Focus Mode", path: "/focus-mode" },
   { icon: Trophy, label: "Streak Leaderboard", path: "/streak-leaderboard" },
+  { icon: Trophy, label: "Task Leaderboard", path: "/task-leaderboard" },
 ];
 
 // Combined for backward compat with activeItem detection

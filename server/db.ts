@@ -44,6 +44,11 @@ import {
   streakStats,
   learningPlans,
   parentPlanSuggestions,
+  parentTasks,
+  parentTaskCompletions,
+  studentLevels,
+  userBadges,
+  badges,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
@@ -4156,6 +4161,20 @@ export interface WeeklyDigestChildData {
   topUnitName: string | null;
 }
 
+export interface WeeklyTaskDigestChildData {
+  childId: number;
+  childName: string;
+  tasksCompleted: number;
+  tasksConfirmed: number;
+  tasksPending: number;
+  xpEarnedThisWeek: number;
+  totalXp: number;
+  currentLevel: number;
+  currentLevelName: string;
+  badgesEarnedThisWeek: { name: string; iconEmoji: string }[];
+  currentStreak: number;
+}
+
 /**
  * Fetches weekly digest data for a single parent: all linked children's
  * activity in the past 7 days (lessons completed, quiz attempts, scores).
@@ -4777,4 +4796,161 @@ export async function respondToPlanSuggestion(
     .set({ status, studentResponse: response ?? null, respondedAt: new Date() })
     .where(eq(parentPlanSuggestions.id, suggestionId));
   return { success: true };
+}
+
+
+// ─── Weekly Task Digest for Parents ─────────────────────────────────────────
+/**
+ * Fetches weekly task/XP/badge data for a parent's children.
+ * Used by the weekly parent digest email to include task progress.
+ */
+export async function getWeeklyTaskDigestForParent(parentId: number): Promise<WeeklyTaskDigestChildData[]> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  // Get active children
+  const links = await db
+    .select({ childId: parentChildren.childId })
+    .from(parentChildren)
+    .where(and(eq(parentChildren.parentId, parentId), eq(parentChildren.isActive, true)));
+
+  if (links.length === 0) return [];
+
+  const childIds = links.map((l) => l.childId);
+
+  // Get child user info
+  const childUsers = await db
+    .select({ id: users.id, name: users.name })
+    .from(users)
+    .where(inArray(users.id, childIds));
+
+  const results: WeeklyTaskDigestChildData[] = [];
+
+  for (const child of childUsers) {
+    // Tasks completed this week (submitted by student)
+    const completions = await db
+      .select({ id: parentTaskCompletions.id, parentConfirmed: parentTaskCompletions.parentConfirmed })
+      .from(parentTaskCompletions)
+      .where(
+        and(
+          eq(parentTaskCompletions.studentId, child.id),
+          gte(parentTaskCompletions.completedAt, sevenDaysAgo)
+        )
+      );
+    const tasksCompleted = completions.length;
+    const tasksConfirmed = completions.filter((c) => c.parentConfirmed === true).length;
+
+    // Pending tasks (assigned but not yet completed)
+    const pendingTasks = await db
+      .select({ id: parentTasks.id })
+      .from(parentTasks)
+      .where(
+        and(
+          eq(parentTasks.studentId, child.id),
+          eq(parentTasks.status, "pending")
+        )
+      );
+    const tasksPending = pendingTasks.length;
+
+    // XP and level
+    const levelRow = await db
+      .select()
+      .from(studentLevels)
+      .where(eq(studentLevels.userId, child.id))
+      .limit(1)
+      .then((r) => r[0] ?? null);
+
+    const totalXp = levelRow?.totalXp ?? 0;
+    const currentLevel = levelRow?.currentLevel ?? 1;
+    const currentLevelName = levelRow?.currentLevelName ?? "Rookie Learner";
+
+    // Estimate XP earned this week from task completions (each confirmed = rewardXp from task)
+    // We'll count confirmed completions this week and sum their task rewards
+    const confirmedThisWeek = await db
+      .select({ taskId: parentTaskCompletions.taskId })
+      .from(parentTaskCompletions)
+      .where(
+        and(
+          eq(parentTaskCompletions.studentId, child.id),
+          eq(parentTaskCompletions.parentConfirmed, true),
+          gte(parentTaskCompletions.completedAt, sevenDaysAgo)
+        )
+      );
+    let xpEarnedThisWeek = 0;
+    if (confirmedThisWeek.length > 0) {
+      const taskIds = confirmedThisWeek.map((c) => c.taskId);
+      const taskRows = await db
+        .select({ id: parentTasks.id, rewardXp: parentTasks.rewardXp })
+        .from(parentTasks)
+        .where(inArray(parentTasks.id, taskIds));
+      xpEarnedThisWeek = taskRows.reduce((sum, t) => sum + (t.rewardXp ?? 0), 0);
+    }
+
+    // Badges earned this week
+    const weekBadges = await db
+      .select({ badgeId: userBadges.badgeId })
+      .from(userBadges)
+      .where(
+        and(
+          eq(userBadges.userId, child.id),
+          gte(userBadges.earnedAt, sevenDaysAgo)
+        )
+      );
+    let badgesEarnedThisWeek: { name: string; iconEmoji: string }[] = [];
+    if (weekBadges.length > 0) {
+      const badgeIds = weekBadges.map((b) => b.badgeId);
+      const badgeRows = await db
+        .select({ name: badges.name, iconEmoji: badges.iconEmoji })
+        .from(badges)
+        .where(inArray(badges.id, badgeIds));
+      badgesEarnedThisWeek = badgeRows;
+    }
+
+    // Streak: count consecutive days with completions going back from today
+    let currentStreak = 0;
+    const today = new Date();
+    for (let i = 0; i < 30; i++) {
+      const dayStart = new Date(today);
+      dayStart.setDate(today.getDate() - i);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setHours(23, 59, 59, 999);
+      const dayCompletions = await db
+        .select({ id: parentTaskCompletions.id })
+        .from(parentTaskCompletions)
+        .where(
+          and(
+            eq(parentTaskCompletions.studentId, child.id),
+            gte(parentTaskCompletions.completedAt, dayStart),
+            lte(parentTaskCompletions.completedAt, dayEnd)
+          )
+        )
+        .limit(1);
+      if (dayCompletions.length > 0) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+
+    results.push({
+      childId: child.id,
+      childName: child.name ?? "Student",
+      tasksCompleted,
+      tasksConfirmed,
+      tasksPending,
+      xpEarnedThisWeek,
+      totalXp,
+      currentLevel,
+      currentLevelName,
+      badgesEarnedThisWeek,
+      currentStreak,
+    });
+  }
+
+  return results;
 }

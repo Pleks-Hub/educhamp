@@ -464,4 +464,88 @@ export const gamificationRouter = router({
 
       return { ok: true, xpRefunded: redemption.xpSpent };
     }),
+
+  // ── Task XP Leaderboard (scoped to siblings) ───────────────────────────────
+  getTaskLeaderboard: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(50).default(20) }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { leaderboard: [], myRank: null, myStats: null };
+
+      const { parentChildren, parentTaskCompletions, parentTasks } = await import("../../drizzle/schema");
+      const { gte, inArray } = await import("drizzle-orm");
+
+      // Find siblings: students who share a parent with the current user
+      const myParents = await db
+        .select({ parentId: parentChildren.parentId })
+        .from(parentChildren)
+        .where(eq(parentChildren.childId, ctx.user.id));
+
+      let siblingIds: number[] = [ctx.user.id];
+      if (myParents.length > 0) {
+        const parentIds = myParents.map((p) => p.parentId);
+        const siblings = await db
+          .select({ childId: parentChildren.childId })
+          .from(parentChildren)
+          .where(inArray(parentChildren.parentId, parentIds));
+        const allIds = siblings.map((s) => s.childId);
+        siblingIds = allIds.filter((id, idx) => allIds.indexOf(id) === idx);
+      }
+
+      // Get task XP for each sibling (sum of rewardXp from confirmed completions)
+      const results: { userId: number; name: string; taskXp: number; tasksCompleted: number }[] = [];
+
+      for (const studentId of siblingIds) {
+        const user = await db
+          .select({ id: users.id, name: users.name })
+          .from(users)
+          .where(eq(users.id, studentId))
+          .limit(1)
+          .then((r) => r[0]);
+        if (!user) continue;
+
+        // Count confirmed completions
+        const completions = await db
+          .select({ taskId: parentTaskCompletions.taskId })
+          .from(parentTaskCompletions)
+          .where(
+            and(
+              eq(parentTaskCompletions.studentId, studentId),
+              eq(parentTaskCompletions.parentConfirmed, true)
+            )
+          );
+
+        let taskXp = 0;
+        if (completions.length > 0) {
+          const taskIds = completions.map((c) => c.taskId);
+          const tasks = await db
+            .select({ rewardXp: parentTasks.rewardXp })
+            .from(parentTasks)
+            .where(inArray(parentTasks.id, taskIds));
+          taskXp = tasks.reduce((sum, t) => sum + (t.rewardXp ?? 0), 0);
+        }
+
+        results.push({
+          userId: user.id,
+          name: user.name ?? "Student",
+          taskXp,
+          tasksCompleted: completions.length,
+        });
+      }
+
+      // Sort by taskXp descending
+      results.sort((a, b) => b.taskXp - a.taskXp);
+
+      const leaderboard = results.slice(0, input.limit).map((r, i) => ({
+        ...r,
+        rank: i + 1,
+        isMe: r.userId === ctx.user.id,
+      }));
+
+      const myEntry = leaderboard.find((l) => l.isMe);
+      const myRank = myEntry?.rank ?? null;
+      const myStats = myEntry ? { taskXp: myEntry.taskXp, tasksCompleted: myEntry.tasksCompleted } : null;
+
+      return { leaderboard, myRank, myStats };
+    }),
 });

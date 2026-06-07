@@ -2912,3 +2912,23 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Quick-add templates for common tasks (homework, chores, reading, exercise)
 - [x] Visual task status overview dashboard for parent (pie chart of task states)
 - [x] Bulk actions: mark multiple tasks as confirmed, archive completed tasks
+
+## Feature Batch — Jun 7 2026 (Part 3)
+
+### Weekly Progress Email Digest for Parents
+- [x] Heartbeat job: weekly (Monday morning) email to parents summarizing each child's week
+- [x] Email content: tasks completed count, XP earned, badges unlocked, streak status
+- [x] Use Resend email service with educhamp.co sender
+- [x] Parent can opt-out of digest via settings (digestEnabled flag)
+
+### Student Task XP Leaderboard
+- [x] DB: taskXpLeaderboard query (aggregate task XP per student, scoped to siblings/classmates)
+- [x] Server endpoint: getTaskLeaderboard (opt-in, anonymized for non-siblings)
+- [x] Frontend: /task-leaderboard page with podium, rank list, and student's own position
+- [x] Add leaderboard link to student sidebar navigation
+
+### Custom Parent Task Templates
+- [x] DB: parentTaskTemplates table (id, parentId, title, description, category, taskType, priority, rewardXp, requiresProof, recurrenceRule)
+- [x] Server: CRUD endpoints (createTemplate, listTemplates, deleteTemplate)
+- [x] UI: "Save as Template" button on existing task cards (sparkle icon)
+- [x] UI: Custom templates section in Quick Add area (alongside built-in templates) + template manager

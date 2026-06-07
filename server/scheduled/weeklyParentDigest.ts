@@ -14,7 +14,7 @@ import type { Request, Response } from "express";
 import { sdk } from "../_core/sdk";
 import { sendEmail } from "../emailService";
 import { buildWeeklyParentDigestEmail, type WeeklyDigestChild } from "../emailTemplates/weeklyParentDigest";
-import { getWeeklyDigestEligibleParents, getWeeklyDigestDataForParent, getUserProfile } from "../db";
+import { getWeeklyDigestEligibleParents, getWeeklyDigestDataForParent, getWeeklyTaskDigestForParent, getUserProfile } from "../db";
 import { getDb } from "../db";
 import {
   userMastery,
@@ -192,6 +192,10 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
 
       if (childData.length === 0) { parentsSkipped++; continue; }
 
+      // ── Fetch task/XP/badge data ──────────────────────────────────────────
+      const taskDigestData = await getWeeklyTaskDigestForParent(parent.id);
+      const taskMap = new Map(taskDigestData.map((t) => [t.childId, t]));
+
       // ── Build per-child digest for email template ──────────────────────────
       const digestChildren: WeeklyDigestChild[] = [];
 
@@ -255,6 +259,8 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
           diagScore >= 75 ? "on_track" :
           diagScore >= 60 ? "needs_attention" : "check_in";
 
+        const taskData = taskMap.get(child.childId);
+
         digestChildren.push({
           name: child.childName,
           grade,
@@ -270,6 +276,16 @@ export async function weeklyParentDigestHandler(req: Request, res: Response) {
           nextLessonUrl: `${appUrl}/curriculum`,
           onTrackStatus,
           diagnosticScore: diagScore,
+          // Task progress data
+          tasksCompleted: taskData?.tasksCompleted ?? 0,
+          tasksConfirmed: taskData?.tasksConfirmed ?? 0,
+          tasksPending: taskData?.tasksPending ?? 0,
+          xpEarnedThisWeek: taskData?.xpEarnedThisWeek ?? 0,
+          totalXp: taskData?.totalXp ?? 0,
+          currentLevel: taskData?.currentLevel ?? 1,
+          currentLevelName: taskData?.currentLevelName ?? "Rookie Learner",
+          badgesEarnedThisWeek: taskData?.badgesEarnedThisWeek ?? [],
+          currentStreak: taskData?.currentStreak ?? 0,
         });
       }
 

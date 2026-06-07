@@ -2134,3 +2134,27 @@ export const focusSessions = mysqlTable("focusSessions", {
 }));
 export type FocusSession = typeof focusSessions.$inferSelect;
 export type InsertFocusSession = typeof focusSessions.$inferInsert;
+
+// ─── Parent Task Templates ───────────────────────────────────────────────────
+/**
+ * Custom task templates that parents can save and reuse.
+ * Stored per-parent (family-level), beyond the built-in defaults.
+ */
+export const parentTaskTemplates = mysqlTable("parentTaskTemplates", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),             // FK → users.id (parent who created)
+  title: varchar("title", { length: 256 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 64 }),   // e.g. "chore", "homework", "exercise", "reading"
+  taskType: mysqlEnum("taskType", ["one_off", "recurring", "time_bound"]).notNull().default("one_off"),
+  priority: mysqlEnum("priority", ["low", "medium", "high"]).notNull().default("medium"),
+  rewardXp: int("rewardXp").default(10),
+  requiresProof: boolean("requiresProof").default(false),
+  recurrenceRule: varchar("recurrenceRule", { length: 64 }), // e.g. "daily", "weekly", "weekdays"
+  recurrenceDays: json("recurrenceDays"),           // e.g. ["mon","wed","fri"]
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  parentIdx: index("parentTaskTemplates_parentId_idx").on(t.parentId),
+}));
+export type ParentTaskTemplate = typeof parentTaskTemplates.$inferSelect;
+export type InsertParentTaskTemplate = typeof parentTaskTemplates.$inferInsert;

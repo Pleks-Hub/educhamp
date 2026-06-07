@@ -35,6 +35,24 @@ export interface WeeklyDigestChild {
   onTrackStatus: "on_track" | "needs_attention" | "check_in" | null;
   /** B4: Diagnostic score (0-100), null if no diagnostic taken */
   diagnosticScore: number | null;
+  /** Tasks completed this week */
+  tasksCompleted: number;
+  /** Tasks confirmed by parent this week */
+  tasksConfirmed: number;
+  /** Tasks still pending */
+  tasksPending: number;
+  /** XP earned from tasks this week */
+  xpEarnedThisWeek: number;
+  /** Total lifetime XP */
+  totalXp: number;
+  /** Current level number */
+  currentLevel: number;
+  /** Current level name */
+  currentLevelName: string;
+  /** Badges earned this week */
+  badgesEarnedThisWeek: { name: string; iconEmoji: string }[];
+  /** Current task completion streak (days) */
+  currentStreak: number;
 }
 
 export interface WeeklyDigestEmailData {
@@ -175,6 +193,31 @@ function childCard(child: WeeklyDigestChild, idx: number): string {
         ` : `<table width="100%" cellpadding="0" cellspacing="0">${onTrackBadge}</table>` + noActivityMsg}
       </td>
     </tr>
+    <!-- Task Progress & XP -->
+    ${child.tasksCompleted > 0 || child.xpEarnedThisWeek > 0 ? `
+    <tr>
+      <td style="padding:0 24px 16px;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:10px;border:1px solid #ddd6fe;">
+          <tr>
+            <td style="padding:14px 16px;">
+              <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:0.5px;">⚡ Task & XP Progress</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="font-size:14px;color:#4c1d95;padding:3px 0;">✅ <strong>${child.tasksCompleted}</strong> task${child.tasksCompleted !== 1 ? "s" : ""} completed</td>
+                </tr>
+                ${child.xpEarnedThisWeek > 0 ? `<tr><td style="font-size:14px;color:#4c1d95;padding:3px 0;">💎 <strong>+${child.xpEarnedThisWeek} XP</strong> earned this week (${child.totalXp} total)</td></tr>` : ""}
+                <tr>
+                  <td style="font-size:14px;color:#4c1d95;padding:3px 0;">🏅 Level <strong>${child.currentLevel}</strong> — ${child.currentLevelName}</td>
+                </tr>
+                ${child.currentStreak > 0 ? `<tr><td style="font-size:14px;color:#4c1d95;padding:3px 0;">🔥 <strong>${child.currentStreak}-day streak!</strong></td></tr>` : ""}
+                ${child.badgesEarnedThisWeek.length > 0 ? `<tr><td style="font-size:14px;color:#4c1d95;padding:3px 0;">🎖️ New badges: ${child.badgesEarnedThisWeek.map(b => `${b.iconEmoji} ${b.name}`).join(", ")}</td></tr>` : ""}
+                ${child.tasksPending > 0 ? `<tr><td style="font-size:14px;color:#92400e;padding:3px 0;">📋 ${child.tasksPending} task${child.tasksPending !== 1 ? "s" : ""} still pending</td></tr>` : ""}
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>` : ""}
     <!-- Suggested activity -->
     <tr>
       <td style="padding:0 24px 20px;">
