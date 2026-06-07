@@ -60,6 +60,8 @@ const SignIn = lazy(() => import("./pages/SignIn"));
 const StudentWelcome = lazy(() => import("./pages/StudentWelcome"));
 const PracticeWeakSkills = lazy(() => import("./pages/PracticeWeakSkills"));
 const MyTasks = lazy(() => import("./pages/MyTasks"));
+const TaskCalendar = lazy(() => import("./pages/TaskCalendar"));
+const StreakLeaderboard = lazy(() => import("./pages/StreakLeaderboard"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -137,6 +139,8 @@ function Router() {
                 <Route path="/rewards" component={RewardsMarketplace} />
                 <Route path="/adventure-map" component={AdventureMap} />
                 <Route path="/my-tasks" component={MyTasks} />
+                <Route path="/task-calendar" component={TaskCalendar} />
+                <Route path="/streak-leaderboard" component={StreakLeaderboard} />
                 <Route path="/certificates" component={Certificates} />
                 <Route path="/404" component={NotFound} />
                 <Route component={NotFound} />

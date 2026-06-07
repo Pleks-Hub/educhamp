@@ -28,6 +28,7 @@ import {
   BarChart3,
   BookOpen,
   Brain,
+  Calendar as CalendarIcon,
   CalendarDays,
   ChevronRight,
   ClipboardList,
@@ -45,6 +46,7 @@ import {
   Sigma,
   Sparkles,
   Target,
+  Trophy,
   User,
   Users,
 } from "lucide-react";
@@ -73,6 +75,8 @@ const secondaryItems = [
   { icon: Target, label: "Practice Weak Skills", path: "/practice" },
   { icon: FileText, label: "Exam Prep", path: "/exam-prep" },
   { icon: ListTodo, label: "My Tasks", path: "/my-tasks" },
+  { icon: CalendarIcon, label: "Task Calendar", path: "/task-calendar" },
+  { icon: Trophy, label: "Streak Leaderboard", path: "/streak-leaderboard" },
 ];
 
 // Combined for backward compat with activeItem detection

@@ -2090,3 +2090,24 @@ export const parentTaskCompletions = mysqlTable("parentTaskCompletions", {
 }));
 export type ParentTaskCompletion = typeof parentTaskCompletions.$inferSelect;
 export type InsertParentTaskCompletion = typeof parentTaskCompletions.$inferInsert;
+
+// ─── Task Categories ─────────────────────────────────────────────────────────
+/**
+ * Custom task categories created by parents.
+ * Default categories (chores, homework, reading, exercise, creative) are seeded per-parent on first use.
+ */
+export const taskCategories = mysqlTable("taskCategories", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),             // FK → users.id (parent who created this)
+  name: varchar("name", { length: 64 }).notNull(),
+  color: varchar("color", { length: 7 }).notNull().default("#6366f1"), // hex color
+  icon: varchar("icon", { length: 32 }).notNull().default("folder"),   // lucide icon name
+  isDefault: boolean("isDefault").notNull().default(false),            // system-seeded defaults
+  sortOrder: int("sortOrder").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  parentIdx: index("taskCategories_parentId_idx").on(t.parentId),
+  parentNameUniq: uniqueIndex("taskCategories_parentId_name_idx").on(t.parentId, t.name),
+}));
+export type TaskCategory = typeof taskCategories.$inferSelect;
+export type InsertTaskCategory = typeof taskCategories.$inferInsert;

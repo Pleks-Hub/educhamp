@@ -2860,3 +2860,13 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UI: Student Dashboard — StudentTasksWidget showing pending/upcoming tasks with confirm button + /my-tasks full page
 - [x] Integration: Add "My Tasks" nav item to student sidebar + Tasks tab in parent per-child view
 - [x] Recurring tasks: auto-generate next occurrence after completion (in markComplete mutation)
+
+## Feature Batch — Jun 7 2026 (Part 2)
+
+- [x] In-app notifications when parent assigns a new task to student
+- [x] In-app notifications when parent confirms or rejects a task completion
+- [x] Student task calendar view (weekly/monthly grid showing upcoming due dates) — /task-calendar route
+- [x] Custom task categories management (parents create/edit/delete categories beyond defaults) — taskCategories table + CRUD endpoints
+- [x] Streak leaderboard showing top streaks among classmates — /streak-leaderboard route
+- [x] Review forecast mini-calendar in Quick Practice widget (next 7 days) — getReviewForecast endpoint + ReviewForecastMiniCal component
+- [x] Webhook delivery logs in Alert Webhooks admin tab (success/failure history) — DeliveryLogsPanel with table + clear logs

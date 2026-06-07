@@ -386,6 +386,13 @@
       "when": 1780790046432,
       "tag": "0054_smart_ken_ellis",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "5",
+      "when": 1780791124633,
+      "tag": "0055_thick_naoko",
+      "breakpoints": true
     }
   ]
 }

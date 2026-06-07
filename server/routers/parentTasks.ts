@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
-import { parentTasks, parentTaskCompletions, parentChildren, users } from "../../drizzle/schema";
+import { parentTasks, parentTaskCompletions, parentChildren, users, userNotifications, taskCategories } from "../../drizzle/schema";
 import { eq, and, desc, inArray, sql, lte, gte, isNull } from "drizzle-orm";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -81,6 +81,17 @@ export const parentTasksRouter = router({
         category: input.category ?? null,
         rewardXp: input.rewardXp,
       }).$returningId();
+
+      // Notify student of new task assignment
+      try {
+        await db.insert(userNotifications).values({
+          userId: input.studentId,
+          type: "task_assigned",
+          title: `New task: ${input.title}`,
+          message: `${ctx.user.name ?? "Your parent"} assigned you a new ${input.taskType.replace("_", " ")} task${input.dueDate ? " due " + new Date(input.dueDate).toLocaleDateString() : ""}.`,
+          metadata: JSON.stringify({ taskId: task.id, parentId: ctx.user.id, priority: input.priority }),
+        });
+      } catch (e) { console.log("[Tasks] Failed to send task_assigned notification:", e); }
 
       return { success: true, taskId: task.id };
     }),
@@ -203,10 +214,12 @@ export const parentTasksRouter = router({
         parentNote: input.parentNote ?? null,
       }).where(eq(parentTaskCompletions.id, input.completionId));
 
+      // Get task details for notification
+      const [task] = await db.select().from(parentTasks)
+        .where(eq(parentTasks.id, completion.taskId)).limit(1);
+
       // If confirmed and task is one_off, mark the task as completed
       if (input.confirmed) {
-        const [task] = await db.select().from(parentTasks)
-          .where(eq(parentTasks.id, completion.taskId)).limit(1);
         if (task && task.taskType === "one_off") {
           await db.update(parentTasks).set({ status: "completed" })
             .where(eq(parentTasks.id, task.id));
@@ -221,6 +234,20 @@ export const parentTasksRouter = router({
           }
         }
       }
+
+      // Notify student of confirmation/rejection
+      try {
+        const taskTitle = task?.title ?? "a task";
+        await db.insert(userNotifications).values({
+          userId: completion.studentId,
+          type: input.confirmed ? "task_confirmed" : "task_rejected",
+          title: input.confirmed ? `Task approved: ${taskTitle}` : `Task needs redo: ${taskTitle}`,
+          message: input.confirmed
+            ? `${ctx.user.name ?? "Your parent"} confirmed your completion of "${taskTitle}".${task?.rewardXp ? ` You earned ${task.rewardXp} XP!` : ""}`
+            : `${ctx.user.name ?? "Your parent"} asked you to redo "${taskTitle}".${input.parentNote ? ` Note: ${input.parentNote}` : ""}`,
+          metadata: JSON.stringify({ taskId: completion.taskId, completionId: input.completionId, confirmed: input.confirmed }),
+        });
+      } catch (e) { console.log("[Tasks] Failed to send task confirmation notification:", e); }
 
       return { success: true };
     }),
@@ -331,6 +358,17 @@ export const parentTasksRouter = router({
           .where(eq(parentTasks.id, input.taskId));
       }
 
+      // Notify parent that student submitted completion
+      try {
+        await db.insert(userNotifications).values({
+          userId: task.parentId,
+          type: "task_completion_submitted",
+          title: `Task done: ${task.title}`,
+          message: `${ctx.user.name ?? "Your student"} marked "${task.title}" as done and is waiting for your confirmation.`,
+          metadata: JSON.stringify({ taskId: input.taskId, completionId: completion.id, studentId: ctx.user.id }),
+        });
+      } catch (e) { console.log("[Tasks] Failed to send task_completion_submitted notification:", e); }
+
       return { success: true, completionId: completion.id };
     }),
 
@@ -361,4 +399,141 @@ export const parentTasksRouter = router({
       tasks: tasks.slice(0, 5), // top 5 for widget
     };
   }),
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // ─── Category Management (Parent) ─────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════════
+
+  getCategories: parentTaskProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+    // Seed default categories if none exist for this parent
+    const existing = await db.select().from(taskCategories)
+      .where(eq(taskCategories.parentId, ctx.user.id));
+    if (existing.length === 0) {
+      const defaults = [
+        { name: "Chores", color: "#f59e0b", icon: "home" },
+        { name: "Homework", color: "#3b82f6", icon: "book-open" },
+        { name: "Reading", color: "#8b5cf6", icon: "book" },
+        { name: "Exercise", color: "#10b981", icon: "heart-pulse" },
+        { name: "Creative", color: "#ec4899", icon: "palette" },
+      ];
+      await db.insert(taskCategories).values(
+        defaults.map((d, i) => ({ ...d, parentId: ctx.user.id, isDefault: true, sortOrder: i }))
+      );
+      return (await db.select().from(taskCategories)
+        .where(eq(taskCategories.parentId, ctx.user.id))
+        .orderBy(taskCategories.sortOrder));
+    }
+    return existing.sort((a, b) => a.sortOrder - b.sortOrder);
+  }),
+
+  createCategory: parentTaskProcedure
+    .input(z.object({
+      name: z.string().min(1).max(64),
+      color: z.string().regex(/^#[0-9a-fA-F]{6}$/).default("#6366f1"),
+      icon: z.string().max(32).default("folder"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      // Check for duplicate
+      const [dup] = await db.select().from(taskCategories)
+        .where(and(eq(taskCategories.parentId, ctx.user.id), eq(taskCategories.name, input.name)))
+        .limit(1);
+      if (dup) throw new TRPCError({ code: "CONFLICT", message: "Category with this name already exists" });
+      // Get max sortOrder
+      const all = await db.select({ sortOrder: taskCategories.sortOrder }).from(taskCategories)
+        .where(eq(taskCategories.parentId, ctx.user.id));
+      const maxSort = all.length > 0 ? Math.max(...all.map(a => a.sortOrder)) : 0;
+      const [cat] = await db.insert(taskCategories).values({
+        parentId: ctx.user.id,
+        name: input.name,
+        color: input.color,
+        icon: input.icon,
+        sortOrder: maxSort + 1,
+      }).$returningId();
+      return { success: true, categoryId: cat.id };
+    }),
+
+  updateCategory: parentTaskProcedure
+    .input(z.object({
+      id: z.number(),
+      name: z.string().min(1).max(64).optional(),
+      color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+      icon: z.string().max(32).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [cat] = await db.select().from(taskCategories)
+        .where(and(eq(taskCategories.id, input.id), eq(taskCategories.parentId, ctx.user.id)))
+        .limit(1);
+      if (!cat) throw new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
+      const updates: Record<string, unknown> = {};
+      if (input.name) updates.name = input.name;
+      if (input.color) updates.color = input.color;
+      if (input.icon) updates.icon = input.icon;
+      if (Object.keys(updates).length > 0) {
+        await db.update(taskCategories).set(updates)
+          .where(eq(taskCategories.id, input.id));
+      }
+      return { success: true };
+    }),
+
+  deleteCategory: parentTaskProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const [cat] = await db.select().from(taskCategories)
+        .where(and(eq(taskCategories.id, input.id), eq(taskCategories.parentId, ctx.user.id)))
+        .limit(1);
+      if (!cat) throw new TRPCError({ code: "NOT_FOUND", message: "Category not found" });
+      // Clear category from tasks using this category name
+      await db.update(parentTasks).set({ category: null })
+        .where(and(eq(parentTasks.parentId, ctx.user.id), eq(parentTasks.category, cat.name)));
+      await db.delete(taskCategories).where(eq(taskCategories.id, input.id));
+      return { success: true };
+    }),
+
+  // ─── Student: Get Tasks for Calendar View ──────────────────────────────────
+  getTaskCalendar: studentTaskProcedure
+    .input(z.object({
+      startDate: z.string(), // ISO date
+      endDate: z.string(),   // ISO date
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      const start = new Date(input.startDate);
+      const end = new Date(input.endDate);
+
+      const tasks = await db.select().from(parentTasks)
+        .where(and(
+          eq(parentTasks.studentId, ctx.user.id),
+          inArray(parentTasks.status, ["pending", "in_progress", "overdue", "completed"]),
+        ))
+        .orderBy(parentTasks.dueDate);
+
+      // Filter tasks that fall within the date range
+      return tasks.filter(t => {
+        const dueDate = t.dueDate ? new Date(t.dueDate) : null;
+        if (dueDate && dueDate >= start && dueDate <= end) return true;
+        const startDate = t.startDate ? new Date(t.startDate) : null;
+        if (startDate && startDate >= start && startDate <= end) return true;
+        return false;
+      }).map(t => ({
+        id: t.id,
+        title: t.title,
+        taskType: t.taskType,
+        priority: t.priority,
+        status: t.status,
+        dueDate: t.dueDate?.toISOString() ?? null,
+        startDate: t.startDate?.toISOString() ?? null,
+        category: t.category,
+        rewardXp: t.rewardXp,
+      }));
+    }),
 });

@@ -1732,9 +1732,85 @@ export const appRouter = router({
         remainingXp: totalXp - FREEZE_COST_XP,
       };
     }),
+    /** Get streak leaderboard — top streaks among students in the same course */
+    getLeaderboard: protectedProcedure
+      .input(z.object({ limit: z.number().min(5).max(50).default(10) }).optional())
+      .query(async ({ ctx, input }) => {
+        const { getDb } = await import("./db");
+        const { streakStats, users, userCourseEnrollments } = await import("../drizzle/schema");
+        const { eq, desc, and, inArray } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) return { leaderboard: [], myRank: null };
+        const limit = input?.limit ?? 10;
+
+        // Find courses the current user is enrolled in
+        const myEnrollments = await db.select({ courseId: userCourseEnrollments.courseId })
+          .from(userCourseEnrollments)
+          .where(eq(userCourseEnrollments.userId, ctx.user.id));
+        const myCourseIds = myEnrollments.map(e => e.courseId);
+
+        // Find classmates (students in the same courses)
+        let classmateIds: number[] = [ctx.user.id];
+        if (myCourseIds.length > 0) {
+          const classmates = await db.select({ userId: userCourseEnrollments.userId })
+            .from(userCourseEnrollments)
+            .where(inArray(userCourseEnrollments.courseId, myCourseIds));
+          const seen = new Set<number>();
+          classmateIds = classmates.map(c => c.userId).filter(id => { if (seen.has(id)) return false; seen.add(id); return true; });
+        }
+
+        // Get streak stats for classmates
+        const allStreaks = await db.select({
+          userId: streakStats.userId,
+          currentStreak: streakStats.currentStreak,
+          longestStreak: streakStats.longestStreak,
+          totalActiveDays: streakStats.totalActiveDays,
+        }).from(streakStats)
+          .where(inArray(streakStats.userId, classmateIds))
+          .orderBy(desc(streakStats.currentStreak))
+          .limit(limit);
+
+        // Get user names
+        const userIds = allStreaks.map(s => s.userId);
+        let userMap: Record<number, string> = {};
+        if (userIds.length > 0) {
+          const userRows = await db.select({ id: users.id, name: users.name })
+            .from(users)
+            .where(inArray(users.id, userIds));
+          userMap = Object.fromEntries(userRows.map(u => [u.id, u.name ?? "Student"]));
+        }
+
+        const leaderboard = allStreaks.map((s, i) => ({
+          rank: i + 1,
+          userId: s.userId,
+          name: userMap[s.userId] ?? "Student",
+          currentStreak: s.currentStreak,
+          longestStreak: s.longestStreak,
+          totalActiveDays: s.totalActiveDays,
+          isMe: s.userId === ctx.user.id,
+        }));
+
+        // Find current user's rank if not in top N
+        const myEntry = leaderboard.find(l => l.isMe);
+        let myRank = myEntry?.rank ?? null;
+        if (!myEntry) {
+          // Count how many have higher streak
+          const allClassmateStreaks = await db.select({ currentStreak: streakStats.currentStreak })
+            .from(streakStats)
+            .where(inArray(streakStats.userId, classmateIds));
+          const myStats = allClassmateStreaks.find(() => false); // need to get my streak
+          const [myStat] = await db.select({ currentStreak: streakStats.currentStreak })
+            .from(streakStats).where(eq(streakStats.userId, ctx.user.id)).limit(1);
+          if (myStat) {
+            myRank = allClassmateStreaks.filter(s => s.currentStreak > myStat.currentStreak).length + 1;
+          }
+        }
+
+        return { leaderboard, myRank };
+      }),
   }),
 
-  // ─── Learning Plan Router ──────────────────────────────────────────────────
+  // ─── Learning Plan Router ──────────────────────────────────────────
   learningPlan: router({
     getActive: protectedProcedure.query(async ({ ctx }) => {
       const { getActiveLearningPlan } = await import("./db");

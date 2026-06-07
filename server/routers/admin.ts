@@ -2470,6 +2470,21 @@ export const adminRouter = router({
       const { testWebhook } = await import("../services/webhookAlerts");
       return testWebhook(input);
     }),
+
+  getWebhookDeliveryLogs: adminProcedure.query(async () => {
+    const { getDeliveryLogs } = await import("../services/webhookAlerts");
+    return getDeliveryLogs();
+  }),
+
+  clearWebhookDeliveryLogs: adminProcedure.mutation(async () => {
+    const { getDb } = await import("../db");
+    const { platformSettings } = await import("../../drizzle/schema");
+    const { eq } = await import("drizzle-orm");
+    const db = await getDb();
+    if (!db) return { success: false };
+    await db.update(platformSettings).set({ value: "[]" }).where(eq(platformSettings.key, "alert_webhook_delivery_log"));
+    return { success: true };
+  }),
 });
 
 // ─── In-process metrics ring buffer (max 20 entries) ─────────────────────────

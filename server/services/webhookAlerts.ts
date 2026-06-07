@@ -33,6 +33,61 @@ export interface AlertPayload {
 }
 
 const SETTINGS_KEY = "alert_webhooks";
+const DELIVERY_LOG_KEY = "alert_webhook_delivery_log";
+const MAX_LOG_ENTRIES = 200;
+
+export interface DeliveryLogEntry {
+  id: string;
+  webhookId: string;
+  webhookName: string;
+  event: string;
+  title: string;
+  status: "success" | "failed";
+  statusCode?: number;
+  error?: string;
+  sentAt: string;
+  durationMs: number;
+}
+
+export async function getDeliveryLogs(): Promise<DeliveryLogEntry[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const row = await db
+    .select()
+    .from(platformSettings)
+    .where(eq(platformSettings.key, DELIVERY_LOG_KEY))
+    .limit(1);
+  if (!row[0]) return [];
+  try {
+    return JSON.parse(row[0].value) as DeliveryLogEntry[];
+  } catch {
+    return [];
+  }
+}
+
+async function appendDeliveryLog(entry: DeliveryLogEntry): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  const existing = await getDeliveryLogs();
+  const updated = [entry, ...existing].slice(0, MAX_LOG_ENTRIES);
+  const value = JSON.stringify(updated);
+  const row = await db
+    .select()
+    .from(platformSettings)
+    .where(eq(platformSettings.key, DELIVERY_LOG_KEY))
+    .limit(1);
+  if (row[0]) {
+    await db.update(platformSettings).set({ value }).where(eq(platformSettings.key, DELIVERY_LOG_KEY));
+  } else {
+    await db.insert(platformSettings).values({
+      key: DELIVERY_LOG_KEY,
+      value,
+      label: "Webhook Delivery Logs",
+      description: "Log of webhook alert delivery attempts",
+      category: "notifications",
+    });
+  }
+}
 
 export async function getWebhookConfigs(): Promise<WebhookConfig[]> {
   const db = await getDb();
@@ -90,7 +145,7 @@ export async function sendAlert(payload: AlertPayload): Promise<void> {
   await Promise.allSettled(promises);
 }
 
-async function sendToWebhook(config: WebhookConfig, payload: AlertPayload): Promise<void> {
+async function sendToWebhook(config: WebhookConfig, payload: AlertPayload, logDelivery = true): Promise<void> {
   const severityEmoji = {
     info: "ℹ️",
     warning: "⚠️",
@@ -156,6 +211,7 @@ async function sendToWebhook(config: WebhookConfig, payload: AlertPayload): Prom
     };
   }
 
+  const startTime = Date.now();
   try {
     const resp = await fetch(config.url, {
       method: "POST",
@@ -163,10 +219,39 @@ async function sendToWebhook(config: WebhookConfig, payload: AlertPayload): Prom
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(10_000),
     });
+    const durationMs = Date.now() - startTime;
+    if (logDelivery) {
+      await appendDeliveryLog({
+        id: `dl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        webhookId: config.id,
+        webhookName: config.name,
+        event: payload.event,
+        title: payload.title,
+        status: resp.ok ? "success" : "failed",
+        statusCode: resp.status,
+        error: resp.ok ? undefined : `${resp.status} ${resp.statusText}`,
+        sentAt: new Date().toISOString(),
+        durationMs,
+      });
+    }
     if (!resp.ok) {
       console.error(`[WebhookAlert] Failed to send to ${config.name}: ${resp.status} ${resp.statusText}`);
     }
-  } catch (err) {
+  } catch (err: any) {
+    const durationMs = Date.now() - startTime;
+    if (logDelivery) {
+      await appendDeliveryLog({
+        id: `dl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        webhookId: config.id,
+        webhookName: config.name,
+        event: payload.event,
+        title: payload.title,
+        status: "failed",
+        error: err?.message ?? "Network error",
+        sentAt: new Date().toISOString(),
+        durationMs,
+      });
+    }
     console.error(`[WebhookAlert] Error sending to ${config.name}:`, err);
   }
 }
@@ -182,7 +267,7 @@ export async function testWebhook(config: WebhookConfig): Promise<{ success: boo
       message: "This is a test alert from EduChamp. If you see this, the webhook is configured correctly!",
       severity: "info",
       metadata: { source: "EduChamp Admin Console", timestamp: new Date().toISOString() },
-    });
+    }, true);
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message ?? "Unknown error" };

@@ -515,6 +515,48 @@ function StreakAtRiskBanner({ currentStreak, streakFreezeCount }: { currentStrea
 
 // ─── Quick Practice Widget ───────────────────────────────────────────────────
 
+function ReviewForecastMiniCal() {
+  const { data, isLoading } = trpc.skillPractice.getReviewForecast.useQuery(undefined, { staleTime: 120_000 });
+  if (isLoading || !data?.forecast || data.forecast.length === 0) return null;
+  const maxCount = Math.max(...data.forecast.map(d => d.count), 1);
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  return (
+    <div className="mb-2">
+      <p className="text-[10px] text-muted-foreground mb-1.5 font-medium uppercase tracking-wide">7-Day Review Forecast</p>
+      <div className="flex gap-1">
+        {data.forecast.map((day) => {
+          const d = new Date(day.date + "T12:00:00");
+          const dayName = dayNames[d.getDay()];
+          const isToday = day.date === new Date().toISOString().slice(0, 10);
+          const intensity = day.count === 0 ? 0 : Math.max(0.2, day.count / maxCount);
+          return (
+            <div key={day.date} className="flex-1 flex flex-col items-center gap-0.5">
+              <span className={`text-[9px] ${isToday ? "font-bold text-purple-600" : "text-muted-foreground"}`}>
+                {dayName}
+              </span>
+              <div
+                className={`w-full h-5 rounded-sm flex items-center justify-center transition-colors ${
+                  isToday ? "ring-1 ring-purple-400" : ""
+                }`}
+                style={{
+                  backgroundColor: day.count === 0
+                    ? "var(--muted)"
+                    : `oklch(0.7 0.15 290 / ${intensity})`,
+                }}
+              >
+                {day.count > 0 && (
+                  <span className="text-[9px] font-bold text-white">{day.count}</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function QuickPracticeWidget() {
   const [, setLocation] = useLocation();
   const { data, isLoading } = trpc.skillPractice.getDueReviews.useQuery({ limit: 3 });
@@ -599,6 +641,8 @@ function QuickPracticeWidget() {
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-4 space-y-2">
+        {/* Review Forecast Mini-Calendar */}
+        <ReviewForecastMiniCal />
         {dueSkills.length > 0 ? (
           <>
             <p className="text-xs text-muted-foreground">Skills ready for review:</p>

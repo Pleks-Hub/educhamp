@@ -10,7 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Trash2, Zap, TestTube, Save, Globe } from "lucide-react";
+import { Plus, Trash2, Zap, TestTube, Save, Globe, History, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { nanoid } from "nanoid";
 
 interface WebhookConfig {
@@ -286,4 +288,116 @@ export function AlertWebhooksTab() {
   );
 }
 
-export default AlertWebhooksTab;
+function DeliveryLogsPanel() {
+  const { data: logs, isLoading, refetch } = trpc.admin.getWebhookDeliveryLogs.useQuery(undefined, { staleTime: 30_000 });
+  const clearMutation = trpc.admin.clearWebhookDeliveryLogs.useMutation({
+    onSuccess: () => { toast.success("Delivery logs cleared"); refetch(); },
+    onError: (err) => toast.error(err.message),
+  });
+
+  if (isLoading) {
+    return <div className="space-y-3"><Skeleton className="h-8 w-full" /><Skeleton className="h-48 w-full" /></div>;
+  }
+
+  const entries = (logs ?? []) as Array<{
+    id: string; webhookId: string; webhookName: string; event: string;
+    title: string; status: "success" | "failed"; statusCode?: number;
+    error?: string; sentAt: string; durationMs: number;
+  }>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Showing last {entries.length} delivery attempts (max 200 stored)
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
+          </Button>
+          {entries.length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => clearMutation.mutate()} disabled={clearMutation.isPending}>
+              <Trash2 className="h-3.5 w-3.5 mr-1" /> Clear Logs
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {entries.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <History className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <h3 className="text-base font-medium mb-1">No delivery logs yet</h3>
+            <p className="text-sm text-muted-foreground">
+              Delivery logs will appear here once alerts are triggered.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[140px]">Time</TableHead>
+                <TableHead>Webhook</TableHead>
+                <TableHead>Event</TableHead>
+                <TableHead>Title</TableHead>
+                <TableHead className="w-[80px]">Status</TableHead>
+                <TableHead className="w-[70px]">Duration</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry) => (
+                <TableRow key={entry.id}>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {new Date(entry.sentAt).toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-sm font-medium">{entry.webhookName}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="text-xs">{entry.event}</Badge>
+                  </TableCell>
+                  <TableCell className="text-sm max-w-[200px] truncate">{entry.title}</TableCell>
+                  <TableCell>
+                    {entry.status === "success" ? (
+                      <span className="flex items-center gap-1 text-green-600 text-xs">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> {entry.statusCode}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-red-600 text-xs" title={entry.error}>
+                        <XCircle className="h-3.5 w-3.5" /> {entry.statusCode ?? "Err"}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{entry.durationMs}ms</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function AlertWebhooksTabWrapper() {
+  return (
+    <Tabs defaultValue="config" className="w-full">
+      <TabsList>
+        <TabsTrigger value="config">
+          <Zap className="h-3.5 w-3.5 mr-1" /> Configuration
+        </TabsTrigger>
+        <TabsTrigger value="logs">
+          <History className="h-3.5 w-3.5 mr-1" /> Delivery Logs
+        </TabsTrigger>
+      </TabsList>
+      <TabsContent value="config" className="mt-4">
+        <AlertWebhooksTab />
+      </TabsContent>
+      <TabsContent value="logs" className="mt-4">
+        <DeliveryLogsPanel />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+export default AlertWebhooksTabWrapper;

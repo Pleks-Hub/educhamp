@@ -231,4 +231,54 @@ export const skillPracticeRouter = router({
     const activeCourseId = await getActiveCourseIdForUser(userId);
     return getReviewStats(userId, activeCourseId);
   }),
+
+  /**
+   * Get review forecast for the next 7 days.
+   * Returns an array of { date, count } for each day.
+   */
+  getReviewForecast: studentProcedure.query(async ({ ctx }) => {
+    const userId = ctx.user.id;
+    const activeCourseId = await getActiveCourseIdForUser(userId);
+    const db = await getDb();
+    if (!db) return { forecast: [] };
+
+    const { skillReviewSchedule } = await import("../../drizzle/schema");
+    const { and: _and, eq: _eq, gte, lte } = await import("drizzle-orm");
+
+    const now = new Date();
+    const endDate = new Date(now);
+    endDate.setDate(endDate.getDate() + 7);
+
+    const conditions = [
+      _eq(skillReviewSchedule.userId, userId),
+      gte(skillReviewSchedule.nextReviewAt, now),
+      lte(skillReviewSchedule.nextReviewAt, endDate),
+    ];
+    if (activeCourseId) {
+      conditions.push(_eq(skillReviewSchedule.courseId, activeCourseId));
+    }
+
+    const upcoming = await db.select({
+      nextReviewAt: skillReviewSchedule.nextReviewAt,
+      skillId: skillReviewSchedule.skillId,
+    }).from(skillReviewSchedule)
+      .where(_and(...conditions));
+
+    // Group by date
+    const dateMap: Record<string, number> = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now);
+      d.setDate(d.getDate() + i);
+      dateMap[d.toISOString().slice(0, 10)] = 0;
+    }
+    for (const item of upcoming) {
+      if (item.nextReviewAt) {
+        const key = new Date(item.nextReviewAt).toISOString().slice(0, 10);
+        if (key in dateMap) dateMap[key]++;
+      }
+    }
+
+    const forecast = Object.entries(dateMap).map(([date, count]) => ({ date, count }));
+    return { forecast };
+  }),
 });
