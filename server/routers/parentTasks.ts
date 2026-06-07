@@ -4,6 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { parentTasks, parentTaskCompletions, parentChildren, users, userNotifications, taskCategories } from "../../drizzle/schema";
 import { eq, and, desc, inArray, sql, lte, gte, isNull } from "drizzle-orm";
+import { storagePut } from "../storage";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -59,6 +60,8 @@ export const parentTasksRouter = router({
       recurrenceEndDate: z.string().optional(),
       category: z.string().max(64).optional(),
       rewardXp: z.number().min(0).max(500).default(0),
+      requiresProof: z.boolean().default(false),
+      encouragementNote: z.string().max(500).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       await verifyParentOwnsStudent(ctx.user.id, input.studentId);
@@ -80,6 +83,8 @@ export const parentTasksRouter = router({
         recurrenceEndDate: input.recurrenceEndDate ? new Date(input.recurrenceEndDate) : null,
         category: input.category ?? null,
         rewardXp: input.rewardXp,
+        requiresProof: input.requiresProof,
+        encouragementNote: input.encouragementNote ?? null,
       }).$returningId();
 
       // Notify student of new task assignment
@@ -150,6 +155,8 @@ export const parentTasksRouter = router({
       recurrenceEndDate: z.string().nullable().optional(),
       category: z.string().max(64).nullable().optional(),
       rewardXp: z.number().min(0).max(500).optional(),
+      requiresProof: z.boolean().optional(),
+      encouragementNote: z.string().max(500).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       await verifyTaskBelongsToParent(input.taskId, ctx.user.id);
@@ -169,6 +176,8 @@ export const parentTasksRouter = router({
       if (input.recurrenceEndDate !== undefined) updates.recurrenceEndDate = input.recurrenceEndDate ? new Date(input.recurrenceEndDate) : null;
       if (input.category !== undefined) updates.category = input.category;
       if (input.rewardXp !== undefined) updates.rewardXp = input.rewardXp;
+      if (input.requiresProof !== undefined) updates.requiresProof = input.requiresProof;
+      if (input.encouragementNote !== undefined) updates.encouragementNote = input.encouragementNote;
 
       if (Object.keys(updates).length > 0) {
         await db.update(parentTasks).set(updates).where(eq(parentTasks.id, input.taskId));
@@ -232,6 +241,20 @@ export const parentTasksRouter = router({
           } catch (e) {
             console.log(`[Tasks] Failed to award XP for task ${task.id}:`, e);
           }
+        }
+        // Check task milestone badges
+        try {
+          const confirmedCount = await db.select({ count: sql<number>`COUNT(*)` })
+            .from(parentTaskCompletions)
+            .where(and(
+              eq(parentTaskCompletions.studentId, completion.studentId),
+              eq(parentTaskCompletions.parentConfirmed, true),
+            ));
+          const totalConfirmed = confirmedCount[0]?.count ?? 0;
+          const { checkAndAwardBadges } = await import("../gamification/badges");
+          await checkAndAwardBadges(completion.studentId, { type: "task_complete", completedTaskCount: totalConfirmed });
+        } catch (e) {
+          console.log(`[Tasks] Failed to check task badges for student ${completion.studentId}:`, e);
         }
       }
 
@@ -316,11 +339,39 @@ export const parentTasksRouter = router({
       }));
     }),
 
+  // ─── Student: Upload Proof Image ──────────────────────────────────────────────
+  uploadProof: studentTaskProcedure
+    .input(z.object({
+      taskId: z.number(),
+      imageBase64: z.string(), // base64 encoded image
+      mimeType: z.enum(["image/jpeg", "image/png", "image/webp"]).default("image/jpeg"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      // Verify the task belongs to this student
+      const [task] = await db.select().from(parentTasks)
+        .where(and(eq(parentTasks.id, input.taskId), eq(parentTasks.studentId, ctx.user.id)))
+        .limit(1);
+      if (!task) throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+
+      // Upload to S3
+      const ext = input.mimeType === "image/png" ? "png" : input.mimeType === "image/webp" ? "webp" : "jpg";
+      const fileKey = `task-proofs/${ctx.user.id}/${input.taskId}-${Date.now()}.${ext}`;
+      const buffer = Buffer.from(input.imageBase64, "base64");
+      if (buffer.length > 5 * 1024 * 1024) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Image must be under 5MB" });
+      }
+      const { url } = await storagePut(fileKey, buffer, input.mimeType);
+      return { success: true, proofUrl: url };
+    }),
+
   // ─── Student: Mark Task Complete ──────────────────────────────────────────────
   markComplete: studentTaskProcedure
     .input(z.object({
       taskId: z.number(),
       note: z.string().max(500).optional(),
+      proofImageUrl: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
@@ -350,6 +401,7 @@ export const parentTasksRouter = router({
         taskId: input.taskId,
         studentId: ctx.user.id,
         note: input.note ?? null,
+        proofImageUrl: input.proofImageUrl ?? null,
       }).$returningId();
 
       // Update task status to in_progress (awaiting parent confirmation)

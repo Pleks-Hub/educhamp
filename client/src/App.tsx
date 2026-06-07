@@ -62,6 +62,7 @@ const PracticeWeakSkills = lazy(() => import("./pages/PracticeWeakSkills"));
 const MyTasks = lazy(() => import("./pages/MyTasks"));
 const TaskCalendar = lazy(() => import("./pages/TaskCalendar"));
 const StreakLeaderboard = lazy(() => import("./pages/StreakLeaderboard"));
+const FocusMode = lazy(() => import("./pages/FocusMode"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -141,6 +142,7 @@ function Router() {
                 <Route path="/my-tasks" component={MyTasks} />
                 <Route path="/task-calendar" component={TaskCalendar} />
                 <Route path="/streak-leaderboard" component={StreakLeaderboard} />
+                <Route path="/focus-mode" component={FocusMode} />
                 <Route path="/certificates" component={Certificates} />
                 <Route path="/404" component={NotFound} />
                 <Route component={NotFound} />

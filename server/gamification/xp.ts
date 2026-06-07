@@ -32,6 +32,7 @@ const DAILY_CAPS: Record<string, number> = {
   streak_bonus: 1,
   quest_complete: 10,
   badge_earned: 20,
+  focus_session: 4,       // max 4 focus sessions per day
 };
 
 // ─── XP amounts per source ────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ export const XP_AMOUNTS: Record<string, number> = {
   streak_bonus: 10,       // multiplied by Math.min(streak, 10) up to 100 XP
   quest_complete: 0,      // amount comes from quest definition
   badge_earned: 0,        // amount comes from badge definition
+  focus_session: 0,       // amount varies by duration (25-150 XP)
 };
 
 // ─── Core award function ──────────────────────────────────────────────────────

@@ -67,6 +67,13 @@ export const DEFAULT_BADGES = [
   { key: "sat_sprint",          name: "SAT Sprint",            description: "Complete the SAT Sprint Challenge",                    category: "special",      iconEmoji: "📝", xpReward: 400, sortOrder: 62 },
   { key: "stem_month",          name: "STEM Month",            description: "Complete the STEM Month Challenge",                    category: "special",      iconEmoji: "🔭", xpReward: 300, sortOrder: 63 },
 
+  // ── Task Milestones ────────────────────────────────────────────────────────
+  { key: "task_starter",        name: "Task Starter",          description: "Complete your first task",                            category: "achievement",  iconEmoji: "✋", xpReward: 25,  sortOrder: 65 },
+  { key: "task_5",              name: "Getting Things Done",   description: "Complete 5 tasks",                                    category: "achievement",  iconEmoji: "📋", xpReward: 75,  sortOrder: 66 },
+  { key: "task_10",             name: "Task Champion",         description: "Complete 10 tasks",                                   category: "achievement",  iconEmoji: "🏅", xpReward: 150, sortOrder: 67 },
+  { key: "task_25",             name: "Chore Master",          description: "Complete 25 tasks",                                   category: "achievement",  iconEmoji: "🧹", xpReward: 300, sortOrder: 68 },
+  { key: "task_50",             name: "Responsibility Hero",   description: "Complete 50 tasks — you're unstoppable!",             category: "achievement",  iconEmoji: "🦸", xpReward: 500, sortOrder: 69 },
+
   // ── Parent Engagement ─────────────────────────────────────────────────────
   { key: "parent_enrolled",     name: "Family Learner",        description: "Parent enrolled you in EduChamp",                     category: "parent_engagement", iconEmoji: "👨‍👩‍👧", xpReward: 25, sortOrder: 70 },
   { key: "goal_set",            name: "Goal Setter",           description: "Parent set a learning goal for you",                  category: "parent_engagement", iconEmoji: "🎯", xpReward: 25, sortOrder: 71 },
@@ -130,7 +137,8 @@ export type GamificationEvent =
   | { type: "streak_update"; currentStreak: number }
   | { type: "level_up"; newLevel: number }
   | { type: "diagnostic_complete"; score: number }
-  | { type: "session_lessons"; count: number };
+  | { type: "session_lessons"; count: number }
+  | { type: "task_complete"; completedTaskCount: number };
 
 export async function checkAndAwardBadges(
   userId: number,
@@ -195,6 +203,14 @@ export async function checkAndAwardBadges(
 
     case "session_lessons":
       if (event.count >= 3) await tryAward("focus_warrior");
+      break;
+
+    case "task_complete":
+      if (event.completedTaskCount >= 1) await tryAward("task_starter");
+      if (event.completedTaskCount >= 5) await tryAward("task_5");
+      if (event.completedTaskCount >= 10) await tryAward("task_10");
+      if (event.completedTaskCount >= 25) await tryAward("task_25");
+      if (event.completedTaskCount >= 50) await tryAward("task_50");
       break;
   }
 

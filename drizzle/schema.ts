@@ -2059,6 +2059,8 @@ export const parentTasks = mysqlTable("parentTasks", {
   // Metadata
   category: varchar("category", { length: 64 }),   // e.g. "chore", "homework", "exercise", "reading"
   rewardXp: int("rewardXp").default(0),            // optional XP reward on completion
+  requiresProof: boolean("requiresProof").default(false), // parent can require photo proof
+  encouragementNote: text("encouragementNote"),     // parent's motivational note shown to student
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, (t) => ({
@@ -2081,6 +2083,7 @@ export const parentTaskCompletions = mysqlTable("parentTaskCompletions", {
   studentId: int("studentId").notNull(),           // FK → users.id
   completedAt: timestamp("completedAt").defaultNow().notNull(),
   note: text("note"),                              // student's optional note
+  proofImageUrl: text("proofImageUrl"),             // URL to proof photo/image uploaded by student
   parentConfirmed: boolean("parentConfirmed"),      // null = pending, true = confirmed, false = rejected
   parentConfirmedAt: timestamp("parentConfirmedAt"),
   parentNote: text("parentNote"),                   // parent's feedback on completion
@@ -2111,3 +2114,23 @@ export const taskCategories = mysqlTable("taskCategories", {
 }));
 export type TaskCategory = typeof taskCategories.$inferSelect;
 export type InsertTaskCategory = typeof taskCategories.$inferInsert;
+
+// ─── Focus Sessions ──────────────────────────────────────────────────────────
+/**
+ * Tracks student focus mode sessions.
+ * XP is awarded on successful completion (varies by duration).
+ */
+export const focusSessions = mysqlTable("focusSessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),                 // FK → users.id
+  durationMinutes: int("durationMinutes").notNull(), // planned duration
+  completedAt: timestamp("completedAt").defaultNow().notNull(),
+  xpAwarded: int("xpAwarded").notNull().default(0),
+  interrupted: boolean("interrupted").notNull().default(false), // true if user quit early
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  userIdx: index("focusSessions_userId_idx").on(t.userId),
+  completedAtIdx: index("focusSessions_completedAt_idx").on(t.completedAt),
+}));
+export type FocusSession = typeof focusSessions.$inferSelect;
+export type InsertFocusSession = typeof focusSessions.$inferInsert;

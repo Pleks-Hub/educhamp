@@ -17,6 +17,7 @@ import { certificateRouter } from "./routers/certificate";
 import { studentAuthRouter } from "./routers/studentAuth";
 import { skillPracticeRouter } from "./routers/skillPractice";
 import { parentTasksRouter } from "./routers/parentTasks";
+import { focusModeRouter } from "./routers/focusMode";
 import { awardXp } from "./gamification/xp";
 import { checkAndAwardBadges } from "./gamification/badges";
 import { recordActivity } from "./gamification/streaks";
@@ -91,6 +92,7 @@ export const appRouter = router({
   studentAuth: studentAuthRouter,
   skillPractice: skillPracticeRouter,
   parentTasks: parentTasksRouter,
+  focusMode: focusModeRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

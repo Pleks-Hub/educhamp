@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 import {
   Plus, CheckCircle2, Clock, AlertTriangle, Trash2, Pencil,
-  Calendar, Repeat, Timer, ThumbsUp, ThumbsDown, ListTodo
+  Calendar, Repeat, Timer, ThumbsUp, ThumbsDown, ListTodo,
+  Camera, Image as ImageIcon, MessageSquare
 } from "lucide-react";
 
 interface ChildTasksPanelProps {
@@ -286,19 +288,36 @@ function TaskCard({ task, onEdit, onDelete, onConfirm }: {
               <AlertTriangle className="h-3 w-3" /> Awaiting your review
             </p>
             {pendingCompletions.map((c: any) => (
-              <div key={c.id} className="flex items-center justify-between bg-amber-50 dark:bg-amber-900/10 rounded-lg px-3 py-2">
-                <div className="text-xs">
-                  <p className="font-medium">Marked done {new Date(c.completedAt).toLocaleString()}</p>
-                  {c.note && <p className="text-muted-foreground mt-0.5">"{c.note}"</p>}
+              <div key={c.id} className="bg-amber-50 dark:bg-amber-900/10 rounded-lg px-3 py-2 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs">
+                    <p className="font-medium">Marked done {new Date(c.completedAt).toLocaleString()}</p>
+                    {c.note && <p className="text-muted-foreground mt-0.5">"{c.note}"</p>}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="outline" className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50" onClick={() => onConfirm(c.id, true)}>
+                      <ThumbsUp className="h-3 w-3 mr-1" /> Confirm
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50" onClick={() => onConfirm(c.id, false)}>
+                      <ThumbsDown className="h-3 w-3 mr-1" /> Reject
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button size="sm" variant="outline" className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50" onClick={() => onConfirm(c.id, true)}>
-                    <ThumbsUp className="h-3 w-3 mr-1" /> Confirm
-                  </Button>
-                  <Button size="sm" variant="outline" className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50" onClick={() => onConfirm(c.id, false)}>
-                    <ThumbsDown className="h-3 w-3 mr-1" /> Reject
-                  </Button>
-                </div>
+                {/* Proof image preview */}
+                {c.proofImageUrl && (
+                  <div className="mt-1">
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1 mb-1">
+                      <ImageIcon className="h-2.5 w-2.5" /> Photo proof:
+                    </p>
+                    <a href={c.proofImageUrl} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={c.proofImageUrl}
+                        alt="Task proof"
+                        className="w-full max-w-[200px] h-24 object-cover rounded-md border hover:opacity-80 transition-opacity cursor-pointer"
+                      />
+                    </a>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -328,6 +347,8 @@ function TaskFormDialog({ open, onClose, onSubmit, title, initialData, isLoading
     recurrenceEndDate: initialData?.recurrenceEndDate ? new Date(initialData.recurrenceEndDate).toISOString().slice(0, 16) : "",
     category: initialData?.category ?? "",
     rewardXp: initialData?.rewardXp ?? 0,
+    requiresProof: initialData?.requiresProof ?? false,
+    encouragementNote: initialData?.encouragementNote ?? "",
   }));
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -343,6 +364,8 @@ function TaskFormDialog({ open, onClose, onSubmit, title, initialData, isLoading
       priority: formData.priority,
       category: formData.category || undefined,
       rewardXp: formData.rewardXp,
+      requiresProof: formData.requiresProof,
+      encouragementNote: formData.encouragementNote.trim() || undefined,
     };
     if (formData.dueDate) payload.dueDate = new Date(formData.dueDate).toISOString();
     if (formData.startDate) payload.startDate = new Date(formData.startDate).toISOString();
@@ -414,6 +437,35 @@ function TaskFormDialog({ open, onClose, onSubmit, title, initialData, isLoading
             <div>
               <Label>XP Reward</Label>
               <Input type="number" min={0} max={500} value={formData.rewardXp} onChange={(e) => setFormData(p => ({ ...p, rewardXp: parseInt(e.target.value) || 0 }))} />
+            </div>
+          </div>
+
+          {/* Proof & Encouragement */}
+          <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-xs font-medium flex items-center gap-1.5">
+                  <Camera className="h-3.5 w-3.5" /> Require Photo Proof
+                </Label>
+                <p className="text-[11px] text-muted-foreground">Student must upload a photo before marking done</p>
+              </div>
+              <Switch
+                checked={formData.requiresProof}
+                onCheckedChange={(v) => setFormData(p => ({ ...p, requiresProof: v }))}
+              />
+            </div>
+            <div>
+              <Label className="text-xs flex items-center gap-1.5">
+                <MessageSquare className="h-3.5 w-3.5" /> Encouragement Note
+              </Label>
+              <Textarea
+                placeholder="Great job! You can do it! (shown to student on this task)"
+                value={formData.encouragementNote}
+                onChange={(e) => setFormData(p => ({ ...p, encouragementNote: e.target.value }))}
+                rows={2}
+                className="mt-1 text-sm resize-none"
+                maxLength={500}
+              />
             </div>
           </div>
 

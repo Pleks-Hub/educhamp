@@ -46,6 +46,7 @@ import {
   Sigma,
   Sparkles,
   Target,
+  Timer,
   Trophy,
   User,
   Users,
@@ -76,6 +77,7 @@ const secondaryItems = [
   { icon: FileText, label: "Exam Prep", path: "/exam-prep" },
   { icon: ListTodo, label: "My Tasks", path: "/my-tasks" },
   { icon: CalendarIcon, label: "Task Calendar", path: "/task-calendar" },
+  { icon: Timer, label: "Focus Mode", path: "/focus-mode" },
   { icon: Trophy, label: "Streak Leaderboard", path: "/streak-leaderboard" },
 ];
 
