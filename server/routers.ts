@@ -20,6 +20,7 @@ import { parentTasksRouter } from "./routers/parentTasks";
 import { focusModeRouter } from "./routers/focusMode";
 import { weeklyChallengesRouter } from "./routers/weeklyChallenges";
 import { sharedTasksRouter } from "./routers/sharedTasks";
+import { familyFeedRouter } from "./routers/familyFeed";
 import { awardXp } from "./gamification/xp";
 import { checkAndAwardBadges } from "./gamification/badges";
 import { recordActivity } from "./gamification/streaks";
@@ -97,6 +98,7 @@ export const appRouter = router({
   focusMode: focusModeRouter,
   weeklyChallenges: weeklyChallengesRouter,
   sharedTasks: sharedTasksRouter,
+  familyFeed: familyFeedRouter,
 
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),

@@ -192,6 +192,17 @@ async function startServer() {
     }
   });
 
+  // ── Weekly Report PDF download ─────────────────────────────────────────────
+  app.get("/api/reports/weekly/:childId/pdf", async (req, res) => {
+    try {
+      const { handleWeeklyReportPDF } = await import("../routers/weeklyReport");
+      await handleWeeklyReportPDF(req, res);
+    } catch (err) {
+      console.error("[Weekly Report PDF]", err);
+      if (!res.headersSent) res.status(500).json({ error: "Failed to generate report" });
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

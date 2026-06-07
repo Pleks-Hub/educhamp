@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   TrendingUp, BarChart3, Calendar, Zap, CheckCircle2,
-  Flame, Trophy, Clock, Target,
+  Flame, Trophy, Clock, Target, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -67,6 +67,62 @@ function DayHeatmap({ data }: { data: { day: string; count: number }[] }) {
         );
       })}
     </div>
+  );
+}
+
+// ─── Difficulty Suggestions ─────────────────────────────────────────────────
+
+function DifficultySuggestions() {
+  const { data } = trpc.parentTasks.getDifficultySuggestions.useQuery(undefined, {
+    staleTime: 10 * 60_000,
+  });
+
+  if (!data?.suggestions?.length) return null;
+
+  const typeConfig: Record<string, { icon: typeof TrendingUp; color: string; bg: string }> = {
+    increase_difficulty: { icon: TrendingUp, color: "text-blue-600", bg: "bg-blue-50" },
+    decrease_difficulty: { icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
+    increase_xp: { icon: Zap, color: "text-yellow-600", bg: "bg-yellow-50" },
+    add_variety: { icon: Target, color: "text-purple-600", bg: "bg-purple-50" },
+    reduce_load: { icon: Calendar, color: "text-red-600", bg: "bg-red-50" },
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-indigo-500" />
+          Smart Suggestions
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">Auto-generated recommendations based on your children's performance</p>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {data.suggestions.map((s, i) => {
+            const config = typeConfig[s.type] ?? typeConfig.increase_difficulty;
+            const Icon = config.icon;
+            return (
+              <div key={i} className={cn("p-3 rounded-lg border", config.bg)}>
+                <div className="flex items-start gap-3">
+                  <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shrink-0", config.bg)}>
+                    <Icon className={cn("h-4 w-4", config.color)} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-foreground">{s.title}</p>
+                      <Badge variant="outline" className="text-[10px] shrink-0">
+                        {s.priority}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{s.description}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -212,6 +268,9 @@ export default function ParentInsights() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Difficulty Suggestions */}
+      <DifficultySuggestions />
 
       {/* Per-child breakdown */}
       {insights.perChild && insights.perChild.length > 0 && (

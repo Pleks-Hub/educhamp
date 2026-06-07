@@ -2220,3 +2220,23 @@ export const sharedTaskClaims = mysqlTable("sharedTaskClaims", {
 }));
 export type SharedTaskClaim = typeof sharedTaskClaims.$inferSelect;
 export type InsertSharedTaskClaim = typeof sharedTaskClaims.$inferInsert;
+
+// ─── Family Activity Feed ────────────────────────────────────────────────────
+export const familyActivityFeed = mysqlTable("familyActivityFeed", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),
+  studentId: int("studentId").notNull(),
+  studentName: varchar("studentName", { length: 255 }),
+  eventType: varchar("eventType", { length: 50 }).notNull(), // task_completed, badge_earned, challenge_won, level_up, focus_completed
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  xpEarned: int("xpEarned").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  parentIdx: index("familyActivityFeed_parentId_idx").on(t.parentId),
+  studentIdx: index("familyActivityFeed_studentId_idx").on(t.studentId),
+  createdAtIdx: index("familyActivityFeed_createdAt_idx").on(t.createdAt),
+}));
+export type FamilyActivityFeedEntry = typeof familyActivityFeed.$inferSelect;
+export type InsertFamilyActivityFeedEntry = typeof familyActivityFeed.$inferInsert;

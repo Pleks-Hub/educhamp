@@ -52,7 +52,7 @@ import {
   Users,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState, useCallback } from "react";
-import { X, AlertTriangle, Lock, Eye } from "lucide-react";
+import { X, AlertTriangle, Lock, Eye, Activity } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { useLocation, Redirect } from "wouter";
@@ -314,6 +314,7 @@ function DashboardLayoutContent({
                 const parentPrimaryItems = [
                   { icon: Users, label: "Parent Dashboard", path: "/parent" },
                   { icon: BarChart3, label: "Insights", path: "/parent-insights" },
+                  { icon: Activity, label: "Family Feed", path: "/family-feed" },
                   { icon: CreditCard, label: "Billing", path: "/billing" },
                 ];
                 return parentPrimaryItems.map((item) => {

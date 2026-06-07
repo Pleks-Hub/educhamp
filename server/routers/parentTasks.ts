@@ -283,6 +283,23 @@ export const parentTasksRouter = router({
         });
       } catch (e) { console.log("[Tasks] Failed to send task confirmation notification:", e); }
 
+      // Record family feed event
+      if (input.confirmed && task) {
+        try {
+          const { recordFamilyFeedEvent } = await import("./familyFeed");
+          const student = await db.select({ name: users.name }).from(users).where(eq(users.id, completion.studentId));
+          await recordFamilyFeedEvent({
+            studentId: completion.studentId,
+            studentName: student[0]?.name ?? "Student",
+            eventType: "task_completed",
+            title: `Completed: ${task.title}`,
+            description: `${student[0]?.name ?? "Student"} finished "${task.title}" and earned ${task.rewardXp ?? 0} XP`,
+            xpEarned: (task.rewardXp ?? 0) + (input.bonusXp ?? 0),
+            metadata: { taskId: task.id, category: task.category },
+          });
+        } catch (e) { console.log("[Tasks] Failed to record feed event:", e); }
+      }
+
       return { success: true };
     }),
 
@@ -816,5 +833,144 @@ export const parentTasksRouter = router({
       dayOfWeek,
       perChild,
     };
+  }),
+
+  // ─── Task Difficulty Auto-Adjustment Suggestions ────────────────────────────
+  getDifficultySuggestions: protectedProcedure.query(async ({ ctx }) => {
+    const db = (await getDb())!;
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+    const children = await db.select({ childId: parentChildren.childId })
+      .from(parentChildren)
+      .where(and(eq(parentChildren.parentId, ctx.user.id), eq(parentChildren.isActive, true)));
+
+    if (children.length === 0) return { suggestions: [] };
+    const childIds = children.map(c => c.childId);
+
+    // Get child names
+    const childUsers = await db.select({ id: users.id, name: users.name })
+      .from(users)
+      .where(inArray(users.id, childIds));
+    const nameMap = new Map(childUsers.map(c => [c.id, c.name ?? 'Student']));
+
+    const suggestions: Array<{
+      childName: string;
+      type: 'increase_difficulty' | 'decrease_difficulty' | 'increase_xp' | 'add_variety' | 'reduce_load';
+      title: string;
+      description: string;
+      priority: 'high' | 'medium' | 'low';
+    }> = [];
+
+    // Analyze each child
+    for (const childId of childIds) {
+      const childName = nameMap.get(childId) ?? 'Student';
+
+      // Get recent confirmed completions (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const recentCompletions = await db.select({
+        completedAt: parentTaskCompletions.completedAt,
+        taskId: parentTaskCompletions.taskId,
+      })
+        .from(parentTaskCompletions)
+        .where(and(
+          eq(parentTaskCompletions.studentId, childId),
+          eq(parentTaskCompletions.parentConfirmed, true),
+          gte(parentTaskCompletions.completedAt, thirtyDaysAgo),
+        ));
+
+      // Get tasks assigned to this child
+      const assignedTasks = await db.select({
+        id: parentTasks.id,
+        dueDate: parentTasks.dueDate,
+        startDate: parentTasks.startDate,
+        rewardXp: parentTasks.rewardXp,
+        priority: parentTasks.priority,
+        category: parentTasks.category,
+        status: parentTasks.status,
+      })
+        .from(parentTasks)
+        .where(and(
+          eq(parentTasks.studentId, childId),
+          eq(parentTasks.parentId, ctx.user.id),
+        ));
+
+      const totalAssigned = assignedTasks.length;
+      const totalCompleted = recentCompletions.length;
+      const completionRate = totalAssigned > 0 ? (totalCompleted / totalAssigned) * 100 : 0;
+
+      // 1. High completion rate → suggest increasing difficulty
+      if (totalCompleted >= 10 && completionRate > 90) {
+        suggestions.push({
+          childName,
+          type: 'increase_difficulty',
+          title: `${childName} is crushing it!`,
+          description: `${childName} has completed ${totalCompleted} tasks with a ${Math.round(completionRate)}% rate. Consider adding more challenging tasks or increasing XP rewards to keep them engaged.`,
+          priority: 'high',
+        });
+      }
+
+      // 2. Low completion rate → suggest reducing load
+      if (totalAssigned >= 5 && completionRate < 40) {
+        suggestions.push({
+          childName,
+          type: 'reduce_load',
+          title: `${childName} may be overwhelmed`,
+          description: `Only ${Math.round(completionRate)}% of assigned tasks are being completed. Consider reducing the number of tasks or breaking them into smaller steps.`,
+          priority: 'high',
+        });
+      }
+
+      // 3. Check if tasks are completed well before due date (early finishers)
+      const earlyCompletions = recentCompletions.filter(c => {
+        const task = assignedTasks.find(t => t.id === c.taskId);
+        if (!task?.dueDate || !c.completedAt) return false;
+        const dueDate = new Date(task.dueDate);
+        const completedDate = new Date(c.completedAt);
+        const daysEarly = (dueDate.getTime() - completedDate.getTime()) / (1000 * 60 * 60 * 24);
+        return daysEarly > 2; // Completed more than 2 days early
+      });
+
+      if (earlyCompletions.length >= 5) {
+        suggestions.push({
+          childName,
+          type: 'increase_difficulty',
+          title: `${childName} finishes tasks early`,
+          description: `${earlyCompletions.length} tasks were completed 2+ days before their due date. These tasks may be too easy — consider tighter deadlines or more complex tasks.`,
+          priority: 'medium',
+        });
+      }
+
+      // 4. Low XP per task → suggest increasing rewards
+      const avgXp = assignedTasks.reduce((sum, t) => sum + (t.rewardXp ?? 0), 0) / Math.max(assignedTasks.length, 1);
+      if (totalCompleted >= 5 && avgXp < 15) {
+        suggestions.push({
+          childName,
+          type: 'increase_xp',
+          title: `Boost XP rewards for ${childName}`,
+          description: `Average task reward is only ${Math.round(avgXp)} XP. Higher rewards (20-50 XP) can increase motivation and make the reward store more exciting.`,
+          priority: 'medium',
+        });
+      }
+
+      // 5. Category variety check
+      const categories = new Set(assignedTasks.map(t => t.category).filter(Boolean));
+      if (totalAssigned >= 8 && categories.size <= 2) {
+        suggestions.push({
+          childName,
+          type: 'add_variety',
+          title: `Add variety for ${childName}`,
+          description: `Most tasks are in ${categories.size} categor${categories.size === 1 ? 'y' : 'ies'}. Adding tasks from different categories (reading, exercise, creative) helps maintain interest.`,
+          priority: 'low',
+        });
+      }
+    }
+
+    // Sort by priority
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    suggestions.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+    return { suggestions: suggestions.slice(0, 8) }; // Max 8 suggestions
   }),
 });

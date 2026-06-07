@@ -2955,3 +2955,24 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Frontend: Insights tab in parent dashboard with line charts (tasks/week, XP growth)
 - [x] Frontend: Bar chart showing most productive days of the week
 - [x] Frontend: Completion rate trend and task difficulty adjustment suggestions
+
+## Feature Batch — Jun 7 2026 (Part 3)
+
+### Family Activity Feed
+- [x] DB: familyActivityFeed table (id, familyId/parentId, studentId, eventType, title, description, metadata JSON, createdAt)
+- [x] Server: recordFeedEvent — called on task completion, badge earned, challenge won, level-up
+- [x] Server: getFamilyFeed — paginated feed for parent showing all children's activities
+- [x] Frontend: /family-feed page with timeline UI showing celebrations across all siblings
+- [x] Add Family Feed link to parent sidebar navigation
+
+### Task Difficulty Auto-Adjustment
+- [x] Server: analyzeTaskDifficulty — detect patterns (early completions, consistent high performance)
+- [x] Server: getDifficultySuggestions — return actionable suggestions (increase XP, add harder tasks)
+- [x] Frontend: Suggestions card in Parent Insights showing auto-generated recommendations
+- [x] Auto-trigger analysis after every 10 confirmed task completions per child
+
+### Exportable Weekly PDF Reports
+- [x] Server: generateWeeklyPdfReport — build PDF with tasks, XP, badges, streaks for a child
+- [x] Server: downloadReport endpoint — returns PDF binary for download
+- [x] Server: emailReport endpoint — sends PDF as email attachment to parent (via download + forward)
+- [x] Frontend: "Download Report" and "Email Report" buttons in Parent Dashboard per child

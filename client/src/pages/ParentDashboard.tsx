@@ -1777,6 +1777,18 @@ function ReportExportPanel({ childId, childName }: { childId: number; childName:
           <FileText className="h-4 w-4" />
           Print / Save PDF
         </Button>
+        <Button
+          variant="default"
+          className="gap-2"
+          onClick={() => {
+            const url = `/api/reports/weekly/${childId}/pdf`;
+            window.open(url, "_blank");
+            toast.success("Generating weekly report PDF...");
+          }}
+        >
+          <Download className="h-4 w-4" />
+          Weekly Progress PDF
+        </Button>
       </div>
 
       {/* Report preview */}
