@@ -51,14 +51,14 @@ export default function FamilyFeed() {
   const totalXp = stats.reduce((sum, s) => sum + Number(s.totalXp), 0);
 
   return (
-    <div className="container max-w-3xl py-8 space-y-6">
+    <div className="container max-w-3xl py-4 sm:py-8 px-3 sm:px-4 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
           <Activity className="h-6 w-6 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Family Activity Feed</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Family Activity Feed</h1>
           <p className="text-muted-foreground text-sm">Celebrate your family's achievements together</p>
         </div>
       </div>

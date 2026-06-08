@@ -371,9 +371,9 @@ export function ChildTasksPanel({ childId, childName }: ChildTasksPanelProps) {
       </Card>
 
       {/* Filters + Bulk Actions + Create */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-          <SelectTrigger className="w-[130px] h-8 text-xs">
+          <SelectTrigger className="w-full sm:w-[130px] h-8 text-xs">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -387,7 +387,7 @@ export function ChildTasksPanel({ childId, childName }: ChildTasksPanelProps) {
         </Select>
 
         <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as "all" | TaskType)}>
-          <SelectTrigger className="w-[130px] h-8 text-xs">
+          <SelectTrigger className="w-full sm:w-[130px] h-8 text-xs">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
@@ -411,7 +411,7 @@ export function ChildTasksPanel({ childId, childName }: ChildTasksPanelProps) {
           </div>
         )}
 
-        <Button size="sm" className="ml-auto" onClick={() => setCreateOpen(true)}>
+        <Button size="sm" className="w-full sm:w-auto sm:ml-auto" onClick={() => setCreateOpen(true)}>
           <Plus className="h-3.5 w-3.5 mr-1" /> New Task
         </Button>
       </div>

@@ -158,10 +158,10 @@ export default function FocusMode() {
   const GrowthIcon = growth.icon;
 
   return (
-    <div className="container max-w-2xl py-6 space-y-6">
+    <div className="container max-w-2xl py-4 sm:py-6 px-3 sm:px-4 space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
           <Timer className="h-6 w-6 text-primary" />
           Focus Mode
         </h1>

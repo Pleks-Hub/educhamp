@@ -2976,3 +2976,26 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Server: downloadReport endpoint — returns PDF binary for download
 - [x] Server: emailReport endpoint — sends PDF as email attachment to parent (via download + forward)
 - [x] Frontend: "Download Report" and "Email Report" buttons in Parent Dashboard per child
+
+## Feature Batch — Jun 8 2026
+
+### Admin Force Password Reset
+- [x] Server: forcePasswordReset endpoint — admin triggers password reset email for any user (parent/student)
+- [x] Server: generate secure reset token, store in DB with 24h expiry
+- [x] Server: send reset email via Resend with reset link
+- [x] Admin UI: "Force Password Reset" button in user dropdown + bulk "Reset Passwords" button
+- [x] Reset flow: user clicks link → existing /reset-password page → password updated via OAuth
+
+### Mobile Responsiveness Optimization
+- [x] Parent Portal: optimize ParentDashboard for mobile (tabs, cards, charts)
+- [x] Parent Portal: optimize ChildTasksPanel for mobile (task cards, wizard, bulk actions)
+- [x] Parent Portal: optimize ParentInsights for mobile (charts, suggestions)
+- [x] Parent Portal: optimize FamilyFeed for mobile (timeline, stats)
+- [x] Student Dashboard: optimize MyTasks for mobile (task groups, done buttons, proof upload)
+- [x] Student Dashboard: optimize FocusMode for mobile (timer, history)
+- [x] Student Dashboard: optimize SharedTasks for mobile (claim cards)
+- [x] Student Dashboard: optimize TaskLeaderboard for mobile (podium, rank list)
+- [x] Student Dashboard: optimize GamificationHub for mobile (badges, XP card)
+- [x] Student Dashboard: optimize Home page for mobile (course cards, widgets)
+- [x] Admin Panel: optimize user management tables for mobile
+- [x] DashboardLayout: sidebar already has mobile sheet overlay with hamburger trigger (verified working)

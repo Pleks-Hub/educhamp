@@ -230,7 +230,7 @@ export function AdminUsersTab() {
 
   // Bulk selection state
   const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
-  const [bulkAction, setBulkAction] = useState<"status" | "assign-course" | "remove-course" | "suspend-course" | null>(null);
+  const [bulkAction, setBulkAction] = useState<"status" | "assign-course" | "remove-course" | "suspend-course" | "password-reset" | null>(null);
   const [bulkStatusTarget, setBulkStatusTarget] = useState<"active" | "suspended" | "deactivated" | "deleted">("suspended");
   const [bulkCourseId, setBulkCourseId] = useState<number | null>(null);
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
@@ -249,6 +249,14 @@ export function AdminUsersTab() {
   });
   const bulkSuspendCourse = trpc.admin.bulkSuspendCourses.useMutation({
     onSuccess: (r) => { toast.success(`Bulk suspend: ${r.suspended} suspended, ${r.skipped} skipped.`); setSelectedUserIds(new Set()); setBulkAction(null); refetch(); },
+    onError: (e) => toast.error(e.message),
+  });
+  const forcePasswordReset = trpc.admin.forcePasswordReset.useMutation({
+    onSuccess: (r) => { toast.success(`Password reset email sent to ${r.email}`); },
+    onError: (e) => toast.error(e.message),
+  });
+  const bulkForcePasswordReset = trpc.admin.bulkForcePasswordReset.useMutation({
+    onSuccess: (r) => { toast.success(`Reset emails sent: ${r.sent}, skipped: ${r.skipped}`); setSelectedUserIds(new Set()); setBulkAction(null); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -276,6 +284,8 @@ export function AdminUsersTab() {
       bulkRemoveCourse.mutate({ userIds: ids, courseId: bulkCourseId });
     } else if (bulkAction === "suspend-course" && bulkCourseId) {
       bulkSuspendCourse.mutate({ userIds: ids, courseIds: [bulkCourseId] });
+    } else if (bulkAction === "password-reset") {
+      bulkForcePasswordReset.mutate({ userIds: ids, origin: window.location.origin });
     }
     setShowBulkConfirm(false);
   }
@@ -403,6 +413,10 @@ export function AdminUsersTab() {
                 Suspend
               </Button>
             </div>
+            <Button size="sm" className="h-7 text-xs" variant="outline"
+              onClick={() => { setBulkAction("password-reset"); setShowBulkConfirm(true); }}>
+              Reset Passwords
+            </Button>
             <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground"
               onClick={() => setSelectedUserIds(new Set())}>
               Clear
@@ -572,6 +586,16 @@ export function AdminUsersTab() {
                           className="text-amber-600 focus:text-amber-600"
                         >
                           <Eye className="h-3.5 w-3.5 mr-2" /> Log in as User
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => {
+                            if (confirm(`Send password reset email to ${user.name ?? user.email}?`)) {
+                              forcePasswordReset.mutate({ userId: user.id, origin: window.location.origin });
+                            }
+                          }}
+                        >
+                          <History className="h-3.5 w-3.5 mr-2 text-blue-600" /> Force Password Reset
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem

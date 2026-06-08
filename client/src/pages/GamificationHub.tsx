@@ -97,10 +97,10 @@ export default function GamificationHub() {
   };
 
   return (
-    <div className="container max-w-4xl py-6 space-y-6">
+    <div className="container max-w-4xl py-4 sm:py-6 px-3 sm:px-4 space-y-4 sm:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground flex items-center gap-2">
           <Trophy className="w-6 h-6 text-yellow-500" />
           Achievements
         </h1>
@@ -109,8 +109,8 @@ export default function GamificationHub() {
 
       {/* Level + XP Hero Card */}
       <Card className="overflow-hidden border-0 bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 text-white shadow-xl">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-5">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-center gap-3 sm:gap-5">
             <div className="relative">
               <LevelBadge level={level.level} size="lg" />
               {level.level >= 10 && (

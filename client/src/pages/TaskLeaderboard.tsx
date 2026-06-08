@@ -38,14 +38,14 @@ export default function TaskLeaderboard() {
   };
 
   return (
-    <div className="container max-w-2xl py-8 space-y-6">
+    <div className="container max-w-2xl py-4 sm:py-8 px-3 sm:px-4 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
           <Trophy className="h-6 w-6 text-purple-600" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Task XP Leaderboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Task XP Leaderboard</h1>
           <p className="text-sm text-muted-foreground">
             See how your task XP compares to your siblings
           </p>
@@ -56,17 +56,17 @@ export default function TaskLeaderboard() {
       {myStats && (
         <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20">
           <CardContent className="py-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/50">
-                  <Zap className="h-6 w-6 text-purple-600" />
+                  <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Your Task XP</p>
-                  <p className="text-2xl font-bold">{myStats.taskXp.toLocaleString()} XP</p>
+                  <p className="text-xl sm:text-2xl font-bold">{myStats.taskXp.toLocaleString()} XP</p>
                 </div>
               </div>
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4 sm:gap-6">
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground">Tasks Done</p>
                   <p className="text-xl font-bold text-green-600">{myStats.tasksCompleted}</p>

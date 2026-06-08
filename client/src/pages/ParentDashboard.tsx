@@ -2340,14 +2340,14 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-base sm:text-lg shrink-0">
             {(child.name ?? "S")[0].toUpperCase()}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold">{child.name}</h2>
+              <h2 className="text-lg sm:text-xl font-bold">{child.name}</h2>
               <button onClick={() => setEditOpen(true)} className="text-muted-foreground hover:text-foreground transition-colors">
                 <Pencil className="h-3.5 w-3.5" />
               </button>
@@ -2436,7 +2436,7 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
 
       {/* Tabbed detail sections */}
       <Tabs defaultValue="courses">
-        <TabsList className="w-full grid grid-cols-5 sm:grid-cols-10">
+        <TabsList className="w-full flex overflow-x-auto no-scrollbar gap-0.5 justify-start">
           <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
           <TabsTrigger value="requests" className="text-xs">Requests</TabsTrigger>
           <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
@@ -3014,9 +3014,9 @@ export default function ParentDashboard() {
 
   const selectedChild = children?.find((c) => c?.childId === selectedChildId) ?? null;
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-8">
       {/* Page header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -3223,7 +3223,7 @@ export default function ParentDashboard() {
 
       {/* Children grid + detail panel */}
       {children && children.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Left: child cards */}
           <div className="space-y-3">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
@@ -3312,7 +3312,7 @@ export default function ParentDashboard() {
           {/* Right: detail panel */}
           <div className="lg:col-span-2">
             {selectedChild ? (
-              <Card className="p-6">
+              <Card className="p-3 sm:p-6">
                 <ChildDetailPanel
                   child={selectedChild}
                   onRemove={() => setSelectedChildId(null)}

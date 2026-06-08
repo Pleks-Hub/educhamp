@@ -67,11 +67,15 @@ import {
   // Phase 3C: District Transfer
   transferStudent,
   getMasteryRecordsForContext,
+  createPasswordResetToken,
+  getUserById,
 } from "../db";
 import { isYoungLearnerGrade } from "../educhamp-helpers";
 import { sendEmail } from "../emailService";
 import { buildInactivityEmail } from "../emailTemplates/inactivityNotification";
 import { BRAND, wrapEmailHtml } from "../emailTemplates/emailBase";
+import { buildPasswordResetEmail } from "../emailTemplates/passwordReset";
+import { nanoid } from "nanoid";
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
 
@@ -2485,6 +2489,82 @@ export const adminRouter = router({
     await db.update(platformSettings).set({ value: "[]" }).where(eq(platformSettings.key, "alert_webhook_delivery_log"));
     return { success: true };
   }),
+
+  // ─── Force Password Reset ─────────────────────────────────────────────────────
+  forcePasswordReset: adminProcedure
+    .input(z.object({
+      userId: z.number(),
+      origin: z.string().url().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await getUserById(input.userId);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      if (!user.email) throw new TRPCError({ code: "BAD_REQUEST", message: "User has no email address" });
+
+      const token = nanoid(48);
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours for admin-initiated
+      await createPasswordResetToken(user.id, token, expiresAt);
+
+      const origin = input.origin ?? "https://educhamp.co";
+      const resetUrl = `${origin}/reset-password?token=${token}`;
+
+      const { html, text, subject } = buildPasswordResetEmail({
+        userName: user.name ?? user.email,
+        resetUrl,
+      });
+      await sendEmail({ to: user.email, subject: `[Admin] ${subject}`, html, text, templateName: "passwordReset" });
+
+      await logAdminAction(ctx.user.id, "admin.force_password_reset", "user", input.userId, {
+        email: user.email,
+        name: user.name,
+      });
+
+      return { success: true, email: user.email };
+    }),
+
+  // ─── Bulk Force Password Reset ────────────────────────────────────────────────
+  bulkForcePasswordReset: adminProcedure
+    .input(z.object({
+      userIds: z.array(z.number()).min(1).max(100),
+      origin: z.string().url().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const origin = input.origin ?? "https://educhamp.co";
+      let sent = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      for (const userId of input.userIds) {
+        const user = await getUserById(userId);
+        if (!user || !user.email) { skipped++; continue; }
+
+        try {
+          const token = nanoid(48);
+          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+          await createPasswordResetToken(user.id, token, expiresAt);
+
+          const resetUrl = `${origin}/reset-password?token=${token}`;
+          const { html, text, subject } = buildPasswordResetEmail({
+            userName: user.name ?? user.email,
+            resetUrl,
+          });
+          await sendEmail({ to: user.email, subject: `[Admin] ${subject}`, html, text, templateName: "passwordReset" });
+          sent++;
+        } catch (e) {
+          errors.push(`${user.email}: ${(e as Error).message}`);
+          skipped++;
+        }
+      }
+
+      await logAdminAction(ctx.user.id, "admin.bulk_force_password_reset", "bulk", null, {
+        userIds: input.userIds,
+        sent,
+        skipped,
+        errors: errors.slice(0, 5),
+      });
+
+      return { success: true, sent, skipped, errors };
+    }),
 });
 
 // ─── In-process metrics ring buffer (max 20 entries) ─────────────────────────
@@ -2583,4 +2663,6 @@ export const ADMIN_AUDIT_EVENTS = {
   ADMIN_INVITE_ACCEPT: "admin.invite.accept",
   // System
   SYSTEM_HEALTH_CHECK: "system.health_check",
+  // Password Reset
+  ADMIN_FORCE_PASSWORD_RESET: "admin.force_password_reset",
 } as const;

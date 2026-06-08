@@ -71,7 +71,7 @@ export default function SharedTasks() {
   const full = tasks?.filter(t => !t.myClaim && t.isFull) ?? [];
 
   return (
-    <div className="space-y-6 p-6 max-w-3xl mx-auto">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-6 max-w-3xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-xl bg-violet-100 flex items-center justify-center">

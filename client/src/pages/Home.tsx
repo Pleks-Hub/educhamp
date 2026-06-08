@@ -760,7 +760,7 @@ export default function Home() {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-6 page-enter max-w-6xl">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 page-enter max-w-6xl">
         {/* Header skeleton */}
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div className="space-y-2">
@@ -819,7 +819,7 @@ export default function Home() {
   }
 
   return (
-    <div className="p-6 space-y-6 page-enter max-w-6xl">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 page-enter max-w-6xl">
       {/* Guided tour — shown once on first login */}
       <GuidedTour accountType={user?.accountType ?? "student"} />
 
