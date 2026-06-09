@@ -2999,3 +2999,13 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Student Dashboard: optimize Home page for mobile (course cards, widgets)
 - [x] Admin Panel: optimize user management tables for mobile
 - [x] DashboardLayout: sidebar already has mobile sheet overlay with hamburger trigger (verified working)
+
+### Sprint 31 — Parent Redirect Fix, Resend Invite, Dark Mode Audit
+- [x] Fix: Parent accounts hitting student-only endpoints on Home page (redirect parents to /parent dashboard)
+- [x] Fix: StudentTasksWidget, StreakTracker, QuickPracticeWidget, ReviewForecastMiniCal guarded for students only
+- [x] Resend Invite: admin can resend setup/invite email to any user from user management dropdown
+- [x] Resend Invite: admin can resend/reset student invite tokens (revokes old, creates new)
+- [x] Resend Invite: admin bulk force password reset for selected users
+- [x] Dark mode audit: app is light-only (switchable=false), no user-facing dark mode toggle exists
+- [x] Dark mode audit: CSS variables for .dark class are properly defined as fallback
+- [x] Dark mode audit: hardcoded light colors (bg-blue-50, bg-amber-50, etc.) are appropriate for light-only theme

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Flame, Trophy, Snowflake, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -129,7 +130,11 @@ function WeeklyHeatmap({ activity }: { activity: { date: string; count: number }
 }
 
 export function StreakTracker() {
-  const { data: streakData, isLoading } = trpc.streak.getStats.useQuery();
+  const { user } = useAuth();
+  const isStudent = user?.accountType === "student";
+  const { data: streakData, isLoading } = trpc.streak.getStats.useQuery(undefined, {
+    enabled: !!isStudent,
+  });
   const [showFanfare, setShowFanfare] = useState<typeof MILESTONES[0] | null>(null);
   const hasShownFanfare = useRef(false);
 
@@ -143,6 +148,8 @@ export function StreakTracker() {
       }
     }
   }, [streakData]);
+
+  if (!isStudent) return null;
 
   if (isLoading || !streakData) {
     return (

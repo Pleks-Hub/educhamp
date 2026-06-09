@@ -2565,6 +2565,101 @@ export const adminRouter = router({
 
       return { success: true, sent, skipped, errors };
     }),
+
+  // ─── Resend Setup/Invite Email (Admin) ──────────────────────────────────────
+  /**
+   * Admin: resend setup email to any user (student or parent).
+   * Creates a new password-reset token and sends the setup email.
+   */
+  resendSetupEmail: adminProcedure
+    .input(z.object({
+      userId: z.number(),
+      origin: z.string().url().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await getUserById(input.userId);
+      if (!user) throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      if (!user.email) throw new TRPCError({ code: "BAD_REQUEST", message: "User has no email address" });
+      const token = nanoid(48);
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      await createPasswordResetToken(user.id, token, expiresAt);
+      const origin = input.origin ?? "https://educhamp.co";
+      const setupUrl = `${origin}/student-setup?token=${token}`;
+      const { buildStudentSetupEmail } = await import("../emailTemplates/studentSetup");
+      const emailContent = buildStudentSetupEmail({
+        studentName: user.name ?? "Student",
+        parentName: "EduChamp Admin",
+        setupUrl,
+      });
+      await sendEmail({
+        to: user.email,
+        subject: `[Admin] ${emailContent.subject}`,
+        html: emailContent.html,
+        text: emailContent.text,
+        templateName: "studentSetup",
+      });
+      await logAdminAction(ctx.user.id, "admin.resend_setup_email", "user", input.userId, {
+        email: user.email,
+        name: user.name,
+      });
+      return { success: true, email: user.email };
+    }),
+
+  /**
+   * Admin: resend/reset a student invite token.
+   * Revokes the old token, creates a new one, and optionally sends an email.
+   */
+  resendStudentInvite: adminProcedure
+    .input(z.object({
+      inviteId: z.number(),
+      origin: z.string().url().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await (await import("../db")).getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { studentInviteTokens } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const rows = await db.select().from(studentInviteTokens).where(eq(studentInviteTokens.id, input.inviteId)).limit(1);
+      const oldInvite = rows[0];
+      if (!oldInvite) throw new TRPCError({ code: "NOT_FOUND", message: "Invite not found" });
+      // Revoke old
+      await db.update(studentInviteTokens).set({ status: "revoked" }).where(eq(studentInviteTokens.id, input.inviteId));
+      // Create new token
+      const { createStudentInviteToken } = await import("../db");
+      const newInvite = await createStudentInviteToken(
+        oldInvite.parentId,
+        oldInvite.childName ?? undefined,
+        oldInvite.childEmail ?? undefined,
+        oldInvite.childGrade ?? undefined
+      );
+      if (!newInvite) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create new invite" });
+      // Send email if child email exists
+      let emailSent = false;
+      if (oldInvite.childEmail) {
+        const origin = input.origin ?? "https://educhamp.co";
+        const inviteUrl = `${origin}/join?invite=${newInvite.token}`;
+        const { buildStudentSetupEmail } = await import("../emailTemplates/studentSetup");
+        const emailContent = buildStudentSetupEmail({
+          studentName: oldInvite.childName ?? "Student",
+          parentName: "EduChamp",
+          setupUrl: inviteUrl,
+        });
+        await sendEmail({
+          to: oldInvite.childEmail,
+          subject: `[Resent] ${emailContent.subject}`,
+          html: emailContent.html,
+          text: emailContent.text,
+          templateName: "studentInviteResend",
+        });
+        emailSent = true;
+      }
+      await logAdminAction(ctx.user.id, "admin.resend_student_invite", "invite", input.inviteId, {
+        parentId: oldInvite.parentId,
+        childEmail: oldInvite.childEmail,
+        newToken: newInvite.token,
+      });
+      return { success: true, token: newInvite.token, emailSent };
+    }),
 });
 
 // ─── In-process metrics ring buffer (max 20 entries) ─────────────────────────

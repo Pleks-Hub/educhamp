@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,8 +13,11 @@ import {
 } from "lucide-react";
 
 export function StudentTasksWidget() {
+  const { user } = useAuth();
+  const isStudent = user?.accountType === "student";
   const { data: summary, isLoading } = trpc.parentTasks.getMyTaskSummary.useQuery(undefined, {
     refetchInterval: 60_000,
+    enabled: !!isStudent,
   });
   const [completionDialog, setCompletionDialog] = useState<{ task: any } | null>(null);
   const [note, setNote] = useState("");

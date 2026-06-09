@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { UserDetailDialog } from "@/components/UserDetailPanel";
 import {
   Users, BookOpen, Shield, ShieldOff, Search, Plus, Trash2, Eye, History,
-  MoreHorizontal, UserPlus, UserMinus, AlertTriangle, CheckCircle2, Baby,
+  MoreHorizontal, UserPlus, UserMinus, AlertTriangle, CheckCircle2, Baby, Mail,
 } from "lucide-react";
 import { STATUS_COLORS, STATUS_LABELS, SuppressionBadge } from "./adminHelpers";
 
@@ -253,6 +253,10 @@ export function AdminUsersTab() {
   });
   const forcePasswordReset = trpc.admin.forcePasswordReset.useMutation({
     onSuccess: (r) => { toast.success(`Password reset email sent to ${r.email}`); },
+    onError: (e) => toast.error(e.message),
+  });
+  const resendSetupEmail = trpc.admin.resendSetupEmail.useMutation({
+    onSuccess: (r) => { toast.success(`Setup/invite email resent to ${r.email}`); },
     onError: (e) => toast.error(e.message),
   });
   const bulkForcePasswordReset = trpc.admin.bulkForcePasswordReset.useMutation({
@@ -596,6 +600,15 @@ export function AdminUsersTab() {
                           }}
                         >
                           <History className="h-3.5 w-3.5 mr-2 text-blue-600" /> Force Password Reset
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            if (confirm(`Resend setup/invite email to ${user.name ?? user.email}? This will create a new setup link valid for 7 days.`)) {
+                              resendSetupEmail.mutate({ userId: user.id, origin: window.location.origin });
+                            }
+                          }}
+                        >
+                          <Mail className="h-3.5 w-3.5 mr-2 text-indigo-600" /> Resend Setup/Invite Email
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem

@@ -517,7 +517,10 @@ function StreakAtRiskBanner({ currentStreak, streakFreezeCount }: { currentStrea
 // ─── Quick Practice Widget ───────────────────────────────────────────────────
 
 function ReviewForecastMiniCal() {
-  const { data, isLoading } = trpc.skillPractice.getReviewForecast.useQuery(undefined, { staleTime: 120_000 });
+  const { user } = useAuth();
+  const isStudent = user?.accountType === "student";
+  const { data, isLoading } = trpc.skillPractice.getReviewForecast.useQuery(undefined, { staleTime: 120_000, enabled: !!isStudent });
+  if (!isStudent) return null;
   if (isLoading || !data?.forecast || data.forecast.length === 0) return null;
   const maxCount = Math.max(...data.forecast.map(d => d.count), 1);
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -559,9 +562,11 @@ function ReviewForecastMiniCal() {
 }
 
 function QuickPracticeWidget() {
+  const { user } = useAuth();
+  const isStudent = user?.accountType === "student";
   const [, setLocation] = useLocation();
-  const { data, isLoading } = trpc.skillPractice.getDueReviews.useQuery({ limit: 3 });
-  const streakQuery = trpc.streak.getStats.useQuery(undefined, { staleTime: 60_000 });
+  const { data, isLoading } = trpc.skillPractice.getDueReviews.useQuery({ limit: 3 }, { enabled: !!isStudent });
+  const streakQuery = trpc.streak.getStats.useQuery(undefined, { staleTime: 60_000, enabled: !!isStudent });
   const currentStreak = streakQuery.data?.currentStreak ?? 0;
   const todayActive = streakQuery.data?.todayActive ?? false;
   const streakFreezes = streakQuery.data?.streakFreezes ?? 0;
@@ -574,6 +579,8 @@ function QuickPracticeWidget() {
       toast.error(err.message);
     },
   });
+
+  if (!isStudent) return null;
 
   if (isLoading) {
     return (
@@ -694,23 +701,30 @@ function QuickPracticeWidget() {
 export default function Home() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const isStudent = user?.accountType === "student";
 
+  // Redirect parent accounts to the parent dashboard
+  useEffect(() => {
+    if (user && !isStudent) {
+      setLocation("/parent");
+    }
+  }, [user, isStudent, setLocation]);
 
   const { data: dashboard, isLoading } = trpc.progress.getDashboard.useQuery(undefined, {
-    enabled: !!user,
+    enabled: !!user && isStudent,
   });
   const { data: allCourseProgress, isLoading: isLoadingCourses } = trpc.progress.getAllCourseProgress.useQuery(undefined, {
-    enabled: !!user,
+    enabled: !!user && isStudent,
   });
   // Streak data for the at-risk banner — only fetch for students
   const { data: streakData } = trpc.gamification.getStreak.useQuery(undefined, {
-    enabled: !!user && user.accountType === "student",
+    enabled: !!user && isStudent,
     staleTime: 5 * 60 * 1000,
   });
   const activeCourseId = dashboard?.activeCourseId;
   const { data: diagnostic } = trpc.diagnostic.getLatestAttempt.useQuery(
     activeCourseId ? { courseId: activeCourseId } : undefined,
-    { enabled: !!user && activeCourseId !== undefined }
+    { enabled: !!user && isStudent && activeCourseId !== undefined }
   );
   // Use server-computed flag for whether this course has a diagnostic
   const hasDiagnosticForActiveCourse = dashboard?.hasDiagnosticForActiveCourse ?? false;
