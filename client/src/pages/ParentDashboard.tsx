@@ -1122,7 +1122,7 @@ function ChildCoursesPanel({ childId, childName, childGrade }: { childId: number
             <Button
               size="sm"
               variant={bulkRemoveMode ? "destructive" : "outline"}
-              className="gap-1.5"
+              className="gap-1.5 min-h-[40px] sm:min-h-0"
               onClick={() => {
                 if (bulkRemoveMode && selectedRemoveIds.size > 0) {
                   setBulkRemoveDialogOpen(true);
@@ -1139,7 +1139,7 @@ function ChildCoursesPanel({ childId, childName, childGrade }: { childId: number
               )}
             </Button>
           )}
-          <Button size="sm" className="gap-1.5" onClick={() => setAddDialogOpen(true)}>
+          <Button size="sm" className="gap-1.5 min-h-[40px] sm:min-h-0" onClick={() => setAddDialogOpen(true)}>
             <Plus className="h-3.5 w-3.5" />
             Add Course
           </Button>
@@ -2436,20 +2436,20 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
 
       {/* Tabbed detail sections */}
       <Tabs defaultValue="courses">
-        <TabsList className="w-full flex overflow-x-auto no-scrollbar gap-0.5 justify-start">
-          <TabsTrigger value="courses" className="text-xs">Courses</TabsTrigger>
-          <TabsTrigger value="requests" className="text-xs">Requests</TabsTrigger>
-          <TabsTrigger value="progress" className="text-xs">Progress</TabsTrigger>
-          <TabsTrigger value="activity" className="text-xs">Activity</TabsTrigger>
-          <TabsTrigger value="goals" className="text-xs">Goals</TabsTrigger>
-          <TabsTrigger value="gaps" className="text-xs">Skill Gaps</TabsTrigger>
-          <TabsTrigger value="insights" className="text-xs">Insights</TabsTrigger>
-          <TabsTrigger value="achievements" className="text-xs">🏆 Rewards</TabsTrigger>
-          <TabsTrigger value="certificates" className="text-xs">🎓 Certs</TabsTrigger>
-          <TabsTrigger value="report" className="text-xs">Export</TabsTrigger>
-          <TabsTrigger value="recommended" className="text-xs">Suggest</TabsTrigger>
-          <TabsTrigger value="plan" className="text-xs">📅 Plan</TabsTrigger>
-          <TabsTrigger value="tasks" className="text-xs">✅ Tasks</TabsTrigger>
+        <TabsList className="w-full flex overflow-x-auto no-scrollbar gap-0.5 justify-start h-auto p-1">
+          <TabsTrigger value="courses" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">Courses</TabsTrigger>
+          <TabsTrigger value="requests" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">Requests</TabsTrigger>
+          <TabsTrigger value="progress" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">Progress</TabsTrigger>
+          <TabsTrigger value="activity" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">Activity</TabsTrigger>
+          <TabsTrigger value="goals" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">Goals</TabsTrigger>
+          <TabsTrigger value="gaps" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">Skill Gaps</TabsTrigger>
+          <TabsTrigger value="insights" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">Insights</TabsTrigger>
+          <TabsTrigger value="achievements" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">🏆 Rewards</TabsTrigger>
+          <TabsTrigger value="certificates" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">🎓 Certs</TabsTrigger>
+          <TabsTrigger value="report" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">Export</TabsTrigger>
+          <TabsTrigger value="recommended" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">Suggest</TabsTrigger>
+          <TabsTrigger value="plan" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">📅 Plan</TabsTrigger>
+          <TabsTrigger value="tasks" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">✅ Tasks</TabsTrigger>
         </TabsList>
 
         {/* Courses tab — multi-course overview */}
@@ -2993,6 +2993,17 @@ export default function ParentDashboard() {
       utils.auth.me.invalidate();
     },
   });
+  // Sent student invites (parent → student direction)
+  const { data: sentInvites } = trpc.onboarding.listStudentInvites.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const resendStudentInvite = trpc.onboarding.resendStudentInvite.useMutation({
+    onSuccess: (data) => {
+      toast.success(data.emailSent ? "Invite resent! A new email has been sent." : "Invite regenerated! Share the new link with your child.");
+      utils.onboarding.listStudentInvites.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
     // Auto-select the first (and only) child so parent doesn't have to click
   useEffect(() => {
@@ -3030,7 +3041,7 @@ export default function ParentDashboard() {
         </div>
         <div className="flex items-center gap-3">
           <ParentNotificationBell />
-          <Button onClick={() => setEnrolOpen(true)} className="gap-2">
+          <Button onClick={() => setEnrolOpen(true)} className="gap-2 min-h-[44px] sm:min-h-0">
             <UserPlus className="h-4 w-4" />
             Enrol a Student
           </Button>
@@ -3212,6 +3223,71 @@ export default function ParentDashboard() {
               <UserPlus className="h-5 w-5" />
               Add Your First Student
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Sent Student Invites (parent → student) ── */}
+      {sentInvites && sentInvites.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Send className="h-4 w-4 text-primary" />
+              Sent Invites
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Invitations you've sent to students. Resend if they haven't accepted yet.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {sentInvites.map((inv) => {
+              const isExpired = new Date(inv.expiresAt) < new Date() && inv.status === "pending";
+              const status = inv.status === "accepted" ? "accepted" : isExpired ? "expired" : inv.status;
+              return (
+                <div key={inv.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border bg-muted/30">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {inv.childName || inv.childEmail || "Unnamed Student"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {inv.childEmail && <span>{inv.childEmail} · </span>}
+                      Sent {new Date(inv.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      {inv.childGrade && <span> · Grade {inv.childGrade}</span>}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {status === "accepted" && (
+                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">Accepted</Badge>
+                    )}
+                    {status === "expired" && (
+                      <Badge className="bg-red-100 text-red-700 border-red-200 text-xs">Expired</Badge>
+                    )}
+                    {status === "pending" && (
+                      <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs">Pending</Badge>
+                    )}
+                    {status === "revoked" && (
+                      <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs">Revoked</Badge>
+                    )}
+                    {(status === "pending" || status === "expired") && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs gap-1.5 min-h-[44px] sm:min-h-0"
+                        disabled={resendStudentInvite.isPending}
+                        onClick={() => resendStudentInvite.mutate({ inviteId: inv.id, origin: window.location.origin })}
+                      >
+                        {resendStudentInvite.isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Mail className="h-3 w-3" />
+                        )}
+                        Resend
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}

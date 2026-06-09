@@ -2660,6 +2660,19 @@ export const adminRouter = router({
       });
       return { success: true, token: newInvite.token, emailSent };
     }),
+
+  /**
+   * Admin: list all student invite tokens with status for the admin panel.
+   */
+  listAllInvites: adminProcedure.query(async () => {
+    const db = await (await import("../db")).getDb();
+    if (!db) return [];
+    const { studentInviteTokens } = await import("../../drizzle/schema");
+    const { desc } = await import("drizzle-orm");
+    return db.select().from(studentInviteTokens)
+      .orderBy(desc(studentInviteTokens.createdAt))
+      .limit(200);
+  }),
 });
 
 // ─── In-process metrics ring buffer (max 20 entries) ─────────────────────────

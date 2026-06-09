@@ -329,8 +329,15 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
    * Parent: list pending student invites they have sent.
    */
   listStudentInvites: protectedProcedure.query(async ({ ctx }) => {
-    const { getPendingStudentInvitesForParent } = await import("../db");
-    return getPendingStudentInvitesForParent(ctx.user.id);
+    // Return ALL invites (pending, accepted, expired) so parent can see status
+    const db = await (await import("../db")).getDb();
+    if (!db) return [];
+    const { studentInviteTokens } = await import("../../drizzle/schema");
+    const { eq, desc } = await import("drizzle-orm");
+    return db.select().from(studentInviteTokens)
+      .where(eq(studentInviteTokens.parentId, ctx.user.id))
+      .orderBy(desc(studentInviteTokens.createdAt))
+      .limit(50);
   }),
 
   // ─── Parent Invite Tokens (student → parent direction) ────────────────────
@@ -838,5 +845,59 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
       console.log(`[Audit] Minor Student Needs Billing: ${studentName} (ID: ${ctx.user.id}) notified ${targetEmail}, email sent: ${emailSent}`);
 
       return { sent: true, emailSent, parentEmail: targetEmail };
+    }),
+
+  // ─── Parent: Resend Student Invite ─────────────────────────────────────────
+  /**
+   * Parent can resend an invite they previously sent to a student.
+   * Revokes the old token and creates a fresh one with a new 7-day expiry.
+   */
+  resendStudentInvite: protectedProcedure
+    .input(z.object({
+      inviteId: z.number(),
+      origin: z.string().url(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await (await import("../db")).getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const { studentInviteTokens } = await import("../../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      // Ensure the invite belongs to this parent
+      const rows = await db.select().from(studentInviteTokens)
+        .where(and(eq(studentInviteTokens.id, input.inviteId), eq(studentInviteTokens.parentId, ctx.user.id)))
+        .limit(1);
+      const oldInvite = rows[0];
+      if (!oldInvite) throw new TRPCError({ code: "NOT_FOUND", message: "Invite not found or does not belong to you." });
+      if (oldInvite.status === "accepted") throw new TRPCError({ code: "BAD_REQUEST", message: "This invite has already been accepted." });
+      // Revoke old
+      await db.update(studentInviteTokens).set({ status: "revoked" }).where(eq(studentInviteTokens.id, input.inviteId));
+      // Create new token
+      const newInvite = await createStudentInviteToken(
+        ctx.user.id,
+        oldInvite.childName ?? undefined,
+        oldInvite.childEmail ?? undefined,
+        oldInvite.childGrade ?? undefined
+      );
+      if (!newInvite) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create new invite" });
+      // Send email if child email exists
+      let emailSent = false;
+      if (oldInvite.childEmail) {
+        const inviteUrl = `${input.origin}/join?invite=${newInvite.token}`;
+        const { buildStudentSetupEmail } = await import("../emailTemplates/studentSetup");
+        const emailContent = buildStudentSetupEmail({
+          studentName: oldInvite.childName ?? "Student",
+          parentName: ctx.user.name ?? "Your Parent",
+          setupUrl: inviteUrl,
+        });
+        await sendEmail({
+          to: oldInvite.childEmail,
+          subject: `[Reminder] ${emailContent.subject}`,
+          html: emailContent.html,
+          text: emailContent.text,
+          templateName: "studentInviteResend",
+        });
+        emailSent = true;
+      }
+      return { success: true, token: newInvite.token, emailSent };
     }),
 });

@@ -503,9 +503,18 @@ export function AdminUsersTab() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge className={`text-xs ${STATUS_COLORS[user.status ?? "active"] ?? "bg-gray-100 text-gray-600"}`}>
-                      {STATUS_LABELS[user.status ?? "active"] ?? user.status}
-                    </Badge>
+                    <div className="flex flex-wrap items-center gap-1">
+                      <Badge className={`text-xs ${STATUS_COLORS[user.status ?? "active"] ?? "bg-gray-100 text-gray-600"}`}>
+                        {STATUS_LABELS[user.status ?? "active"] ?? user.status}
+                      </Badge>
+                      {/* Invite status indicator */}
+                      {user.invitedByAdminId && !user.lastLoginAt && (
+                        <Badge className="text-[10px] bg-amber-100 text-amber-700 border-amber-200">Invite Pending</Badge>
+                      )}
+                      {user.invitedByAdminId && user.lastLoginAt && (
+                        <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border-emerald-200">Invite Accepted</Badge>
+                      )}
+                    </div>
                   </TableCell>
                   {/* DOB / Age column */}
                   <TableCell className="text-xs whitespace-nowrap">

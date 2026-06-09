@@ -373,7 +373,7 @@ export function ChildTasksPanel({ childId, childName }: ChildTasksPanelProps) {
       {/* Filters + Bulk Actions + Create */}
       <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2">
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-          <SelectTrigger className="w-full sm:w-[130px] h-8 text-xs">
+          <SelectTrigger className="w-full sm:w-[130px] h-10 sm:h-8 text-xs">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -387,7 +387,7 @@ export function ChildTasksPanel({ childId, childName }: ChildTasksPanelProps) {
         </Select>
 
         <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as "all" | TaskType)}>
-          <SelectTrigger className="w-full sm:w-[130px] h-8 text-xs">
+          <SelectTrigger className="w-full sm:w-[130px] h-10 sm:h-8 text-xs">
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>

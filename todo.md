@@ -3009,3 +3009,10 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Dark mode audit: app is light-only (switchable=false), no user-facing dark mode toggle exists
 - [x] Dark mode audit: CSS variables for .dark class are properly defined as fallback
 - [x] Dark mode audit: hardcoded light colors (bg-blue-50, bg-amber-50, etc.) are appropriate for light-only theme
+
+### Sprint 32 — Parent Resend Invite, Admin Invite Status Badges, Mobile Touch Targets
+- [x] Parent-side resend invite: add "Resend" button in parent's Sent Invites card with status badges
+- [x] Parent-side resend invite: create tRPC endpoint (onboarding.resendStudentInvite) for parent to resend
+- [x] Admin invite status badges: show "Expired", "Accepted", "Pending" badges in user list + new Invites tab
+- [x] Mobile touch targets: optimize parent dashboard tabs (min-h-[40px] on mobile, h-auto TabsList)
+- [x] Mobile touch targets: optimize task filters (h-10 on mobile, h-8 on desktop) + action buttons

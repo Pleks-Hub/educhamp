@@ -56,6 +56,7 @@ const ADMIN_NAV_GROUPS = [
     label: "Users & Access",
     items: [
       { id: "users", label: "Users", icon: Users },
+      { id: "invites", label: "Invites", icon: Mail },
       { id: "grades", label: "Grade Management", icon: GraduationCap },
       { id: "rbac", label: "Roles & Permissions", icon: Lock },
       { id: "inactivity", label: "Inactivity Monitor", icon: Activity },
@@ -324,6 +325,7 @@ function AdminSidebar({ active, onSelect, onClose, badgeCounts }: {
 // ─── Lazy-loaded tab chunks ────────────────────────────────────────────────────
 const AdminOverviewTab = lazy(() => import("@/components/admin/AdminOverviewTab").then(m => ({ default: m.AdminOverviewTab })));
 const AdminUsersTab = lazy(() => import("@/components/admin/AdminUsersTab").then(m => ({ default: m.AdminUsersTab })));
+const AdminInvitesTab = lazy(() => import("@/components/admin/AdminInvitesTab").then(m => ({ default: m.AdminInvitesTab })));
 const AdminCoursesTab = lazy(() => import("@/components/admin/AdminCoursesTab").then(m => ({ default: m.AdminCoursesTab })));
 const AdminSettingsTab = lazy(() => import("@/components/admin/AdminSettingsTab").then(m => ({ default: m.AdminSettingsTab })));
 const AdminAuditLogTab = lazy(() => import("@/components/admin/AdminAuditLogTab").then(m => ({ default: m.AdminAuditLogTab })));
@@ -1824,6 +1826,7 @@ export default function AdminDashboard() {
     switch (activeSection) {
       case "overview": return <Suspense fallback={<SectionSkeleton />}><AdminOverviewTab /></Suspense>;
       case "users": return <Suspense fallback={<SectionSkeleton rows={6} />}><AdminUsersTab /></Suspense>;
+      case "invites": return <Suspense fallback={<SectionSkeleton rows={5} />}><AdminInvitesTab /></Suspense>;
       case "courses": return <Suspense fallback={<SectionSkeleton />}><AdminCoursesTab /></Suspense>;
       case "cms": return <CmsTab />;
       case "rbac": return <RbacTab />;
