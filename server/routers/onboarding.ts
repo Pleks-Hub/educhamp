@@ -879,6 +879,10 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
         oldInvite.childGrade ?? undefined
       );
       if (!newInvite) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create new invite" });
+      // Mark the new invite with lastResentAt for timeline tracking
+      await db.update(studentInviteTokens)
+        .set({ lastResentAt: new Date() })
+        .where(eq(studentInviteTokens.id, newInvite.id));
       // Send email if child email exists
       let emailSent = false;
       if (oldInvite.childEmail) {

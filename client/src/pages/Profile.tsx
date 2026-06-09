@@ -417,8 +417,8 @@ export default function Profile() {
       {/* Notification Preferences (parents only) */}
       {user.accountType === "parent" && <NotificationPreferencesCard />}
 
-      {/* Email Preferences link (students only) */}
-      {user.accountType === "student" && (
+      {/* Email Preferences link (students and parents) */}
+      {(user.accountType === "student" || user.accountType === "parent") && (
         <Card className="transition-all duration-200 hover:shadow-md cursor-pointer" onClick={() => { window.location.href = "/settings/notifications"; }}>
           <CardContent className="flex items-center justify-between p-5">
             <div className="flex items-center gap-3">

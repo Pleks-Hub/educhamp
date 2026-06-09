@@ -471,6 +471,8 @@ export const userProfiles = mysqlTable("userProfiles", {
   emailDigestEnabled: boolean("emailDigestEnabled").notNull().default(true), // students: opt-in/out of progress digest emails
   emailAchievementsEnabled: boolean("emailAchievementsEnabled").notNull().default(true), // students: opt-in/out of achievement/badge emails
   emailRemindersEnabled: boolean("emailRemindersEnabled").notNull().default(true), // students: opt-in/out of inactivity/reminder emails
+  // Parent invite notification preferences
+  inviteRemindersEnabled: boolean("inviteRemindersEnabled").notNull().default(true), // opt-in/out of invite expiry reminder emails
   // Billing escalation
   billingEscalatedAt: timestamp("billingEscalatedAt"), // set when billing reminders exceed 7 days without parent action
   // Onboarding state
@@ -538,6 +540,8 @@ export const studentInviteTokens = mysqlTable("studentInviteTokens", {
   status: mysqlEnum("status", ["pending", "accepted", "expired", "revoked"]).notNull().default("pending"),
   expiresAt: timestamp("expiresAt").notNull(),
   acceptedAt: timestamp("acceptedAt"),
+  lastResentAt: timestamp("lastResentAt"),            // when the invite was last resent
+  reminderSentAt: timestamp("reminderSentAt"),        // when the expiry reminder email was sent
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

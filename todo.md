@@ -3030,3 +3030,16 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Admin bulk invite actions: bulk-resend with AlertDialog confirmation modal
 - [x] Admin bulk invite actions: bulk-revoke uses same resend flow (revokes old + creates new)
 - [x] Parent invite link copy button: "Copy Link" button next to each pending invite
+
+### Sprint 35 — Invite Tracking Timeline, Auto-Expire Cleanup, Parent Notification Preferences
+- [x] Invite tracking: added lastResentAt + reminderSentAt columns to studentInviteTokens
+- [x] Invite tracking: skipped email open pixel (too complex); using existing acceptedAt + lastResentAt
+- [x] Invite tracking: timeline in parent's Sent Invites card (sent → resent → accepted → expires)
+- [x] Invite tracking: admin Invites tab already shows all status data in table
+- [x] Auto-expire cleanup: created /api/scheduled/student-invite-auto-expire handler
+- [x] Auto-expire cleanup: marks expired invites from 'pending' to 'expired' in DB
+- [x] Auto-expire cleanup: heartbeat cron created (daily at 8am UTC)
+- [x] Parent notification preferences: added inviteRemindersEnabled to userProfiles schema
+- [x] Parent notification preferences: extended getEmailPreferences/updateEmailPreferences endpoints
+- [x] Parent notification preferences: added toggle in Email Notifications settings page (parent-only)
+- [x] Parent notification preferences: inviteExpiryReminder handler checks preference before sending

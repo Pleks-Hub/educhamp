@@ -11,8 +11,8 @@
  */
 import type { Request, Response } from "express";
 import { getDb } from "../db";
-import { studentInviteTokens, users, userNotifications } from "../../drizzle/schema";
-import { eq, and, gt, lt, sql } from "drizzle-orm";
+import { studentInviteTokens, users, userNotifications, userProfiles } from "../../drizzle/schema";
+import { eq, and, gt, lt, isNull, sql } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
 import { sendEmail } from "../emailService";
 
@@ -100,8 +100,7 @@ export async function inviteExpiryReminderHandler(req: Request, res: Response) {
     const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
-    // ── 1. Find pending invites expiring in 24-48 hours ────────────────────────
-    // We use 24-48h window so daily runs don't double-notify
+    // ── 1. Find pending invites expiring in 24-48 hours that haven't been reminded yet ──
     const expiringInvites = await db
       .select({
         id: studentInviteTokens.id,
@@ -115,7 +114,8 @@ export async function inviteExpiryReminderHandler(req: Request, res: Response) {
         and(
           eq(studentInviteTokens.status, "pending"),
           gt(studentInviteTokens.expiresAt, in24h),
-          lt(studentInviteTokens.expiresAt, in48h)
+          lt(studentInviteTokens.expiresAt, in48h),
+          isNull(studentInviteTokens.reminderSentAt) // don't double-send
         )
       );
 
@@ -124,7 +124,7 @@ export async function inviteExpiryReminderHandler(req: Request, res: Response) {
       return res.json({ ok: true, reminded: 0 });
     }
 
-    // ── 2. Group by parent and send emails ─────────────────────────────────────
+    // ── 2. Group by parent and check notification preferences ─────────────────
     const parentIds = Array.from(new Set(expiringInvites.map((i) => i.parentId)));
     const parentRows = await db
       .select({ id: users.id, name: users.name, email: users.email })
@@ -133,6 +133,13 @@ export async function inviteExpiryReminderHandler(req: Request, res: Response) {
 
     const parentMap = new Map(parentRows.map((p) => [p.id, p]));
 
+    // Check notification preferences — skip parents who opted out
+    const parentPrefs = await db
+      .select({ userId: userProfiles.userId, inviteRemindersEnabled: userProfiles.inviteRemindersEnabled })
+      .from(userProfiles)
+      .where(sql`${userProfiles.userId} IN (${sql.join(parentIds.map(id => sql`${id}`), sql`, `)})`);
+    const prefsMap = new Map(parentPrefs.map((p) => [p.userId, p.inviteRemindersEnabled]));
+
     // Determine the base URL from the request origin or use the production domain
     const baseUrl = "https://educhamp.co";
 
@@ -140,6 +147,13 @@ export async function inviteExpiryReminderHandler(req: Request, res: Response) {
     for (const invite of expiringInvites) {
       const parent = parentMap.get(invite.parentId);
       if (!parent || !parent.email) continue;
+      // Respect parent's notification preference
+      const remindersEnabled = prefsMap.get(invite.parentId) ?? true;
+      if (!remindersEnabled) {
+        // Mark as reminded so we don't re-check next run
+        await db.update(studentInviteTokens).set({ reminderSentAt: now }).where(eq(studentInviteTokens.id, invite.id));
+        continue;
+      }
 
       const { html, text } = buildExpiryReminderEmail({
         parentName: parent.name || "Parent",
@@ -173,6 +187,8 @@ export async function inviteExpiryReminderHandler(req: Request, res: Response) {
           }),
         });
 
+        // Mark reminder as sent
+        await db.update(studentInviteTokens).set({ reminderSentAt: now }).where(eq(studentInviteTokens.id, invite.id));
         reminded++;
       } catch (emailErr) {
         console.error(

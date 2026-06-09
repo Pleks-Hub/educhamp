@@ -7,8 +7,9 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Bell, Mail, Trophy, Clock, ArrowLeft } from "lucide-react";
+import { Bell, Mail, Trophy, Clock, ArrowLeft, Send } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function StudentNotifications() {
   const [, navigate] = useLocation();
@@ -22,9 +23,12 @@ export default function StudentNotifications() {
     },
   });
 
+  const { user } = useAuth();
+  const isParent = user?.accountType === "parent";
   const [digestEnabled, setDigestEnabled] = useState(true);
   const [achievementsEnabled, setAchievementsEnabled] = useState(true);
   const [remindersEnabled, setRemindersEnabled] = useState(true);
+  const [inviteRemindersEnabled, setInviteRemindersEnabled] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
@@ -32,6 +36,7 @@ export default function StudentNotifications() {
       setDigestEnabled(prefs.emailDigestEnabled);
       setAchievementsEnabled(prefs.emailAchievementsEnabled);
       setRemindersEnabled(prefs.emailRemindersEnabled);
+      setInviteRemindersEnabled(prefs.inviteRemindersEnabled);
     }
   }, [prefs]);
 
@@ -40,16 +45,18 @@ export default function StudentNotifications() {
       const changed =
         digestEnabled !== prefs.emailDigestEnabled ||
         achievementsEnabled !== prefs.emailAchievementsEnabled ||
-        remindersEnabled !== prefs.emailRemindersEnabled;
+        remindersEnabled !== prefs.emailRemindersEnabled ||
+        inviteRemindersEnabled !== prefs.inviteRemindersEnabled;
       setHasChanges(changed);
     }
-  }, [digestEnabled, achievementsEnabled, remindersEnabled, prefs]);
+  }, [digestEnabled, achievementsEnabled, remindersEnabled, inviteRemindersEnabled, prefs]);
 
   function handleSave() {
     updateMutation.mutate({
       emailDigestEnabled: digestEnabled,
       emailAchievementsEnabled: achievementsEnabled,
       emailRemindersEnabled: remindersEnabled,
+      inviteRemindersEnabled: inviteRemindersEnabled,
     });
     setHasChanges(false);
   }
@@ -182,6 +189,40 @@ export default function StudentNotifications() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Invite Reminders (parents only) */}
+      {isParent && (
+        <Card className="transition-all duration-200 hover:shadow-md">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                  <Send className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Invite Expiry Reminders</CardTitle>
+                  <CardDescription className="text-sm">
+                    Alerts when student invites are about to expire
+                  </CardDescription>
+                </div>
+              </div>
+              <Badge variant="secondary" className="text-xs">24h before</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="invite-reminders-toggle" className="text-sm text-muted-foreground">
+                Receive an email reminder 24 hours before a student invite expires, so you can resend if needed
+              </Label>
+              <Switch
+                id="invite-reminders-toggle"
+                checked={inviteRemindersEnabled}
+                onCheckedChange={setInviteRemindersEnabled}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Save Button */}
       <div className="flex items-center justify-between pt-2">

@@ -428,6 +428,13 @@
       "when": 1780801140442,
       "tag": "0060_lucky_wolfsbane",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "5",
+      "when": 1780976920711,
+      "tag": "0061_dashing_masque",
+      "breakpoints": true
     }
   ]
 }

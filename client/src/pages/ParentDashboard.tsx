@@ -3252,9 +3252,29 @@ export default function ParentDashboard() {
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {inv.childEmail && <span>{inv.childEmail} · </span>}
-                      Sent {new Date(inv.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                      {inv.childGrade && <span> · Grade {inv.childGrade}</span>}
+                      {inv.childGrade && <span>Grade {inv.childGrade}</span>}
                     </p>
+                    {/* Timeline tracking */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                      <span className="text-[11px] text-muted-foreground">
+                        📤 Sent {new Date(inv.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                      </span>
+                      {inv.lastResentAt && (
+                        <span className="text-[11px] text-blue-600">
+                          🔄 Resent {new Date(inv.lastResentAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                        </span>
+                      )}
+                      {inv.acceptedAt && (
+                        <span className="text-[11px] text-emerald-600">
+                          ✅ Accepted {new Date(inv.acceptedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                        </span>
+                      )}
+                      {status === "pending" && (
+                        <span className="text-[11px] text-amber-600">
+                          ⏳ Expires {new Date(inv.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {status === "accepted" && (
