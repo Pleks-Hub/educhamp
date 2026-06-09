@@ -3043,3 +3043,15 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Parent notification preferences: extended getEmailPreferences/updateEmailPreferences endpoints
 - [x] Parent notification preferences: added toggle in Email Notifications settings page (parent-only)
 - [x] Parent notification preferences: inviteExpiryReminder handler checks preference before sending
+
+### Sprint 36 — Weekly Progress Digest & Invite Acceptance Email
+
+- [x] Invite acceptance email: send email to parent when student accepts their invite token
+- [x] Invite acceptance email: include child name, acceptance date, and link to parent dashboard
+- [x] Weekly progress digest: weeklyDigestEnabled already in userProfiles schema (reused existing field)
+- [x] Weekly progress digest: add toggle in Email Notifications settings page (parent-only)
+- [x] Weekly progress digest: existing /api/scheduled/weekly-parent-digest handler already includes tasks, XP, badges, mastery
+- [x] Weekly progress digest: gather tasks completed, XP earned, badges unlocked, mastery changes per child (already implemented)
+- [x] Weekly progress digest: heartbeat cron already running (Mondays at 8am UTC, task_uid VFmmq38gEHsTkdTr75taLa)
+- [x] Weekly progress digest: getWeeklyDigestEligibleParents checks weeklyDigestEnabled preference before sending
+- [x] Tests: write vitest tests for invite acceptance email and weekly digest logic (5 passing)

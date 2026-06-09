@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Bell, Mail, Trophy, Clock, ArrowLeft, Send } from "lucide-react";
+import { Bell, Mail, Trophy, Clock, ArrowLeft, Send, BarChart3 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 
@@ -29,6 +29,7 @@ export default function StudentNotifications() {
   const [achievementsEnabled, setAchievementsEnabled] = useState(true);
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [inviteRemindersEnabled, setInviteRemindersEnabled] = useState(true);
+  const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function StudentNotifications() {
       setAchievementsEnabled(prefs.emailAchievementsEnabled);
       setRemindersEnabled(prefs.emailRemindersEnabled);
       setInviteRemindersEnabled(prefs.inviteRemindersEnabled);
+      setWeeklyDigestEnabled(prefs.weeklyDigestEnabled);
     }
   }, [prefs]);
 
@@ -46,10 +48,11 @@ export default function StudentNotifications() {
         digestEnabled !== prefs.emailDigestEnabled ||
         achievementsEnabled !== prefs.emailAchievementsEnabled ||
         remindersEnabled !== prefs.emailRemindersEnabled ||
-        inviteRemindersEnabled !== prefs.inviteRemindersEnabled;
+        inviteRemindersEnabled !== prefs.inviteRemindersEnabled ||
+        weeklyDigestEnabled !== prefs.weeklyDigestEnabled;
       setHasChanges(changed);
     }
-  }, [digestEnabled, achievementsEnabled, remindersEnabled, inviteRemindersEnabled, prefs]);
+  }, [digestEnabled, achievementsEnabled, remindersEnabled, inviteRemindersEnabled, weeklyDigestEnabled, prefs]);
 
   function handleSave() {
     updateMutation.mutate({
@@ -57,6 +60,7 @@ export default function StudentNotifications() {
       emailAchievementsEnabled: achievementsEnabled,
       emailRemindersEnabled: remindersEnabled,
       inviteRemindersEnabled: inviteRemindersEnabled,
+      weeklyDigestEnabled: weeklyDigestEnabled,
     });
     setHasChanges(false);
   }
@@ -189,6 +193,40 @@ export default function StudentNotifications() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Weekly Progress Digest (parents only) */}
+      {isParent && (
+        <Card className="transition-all duration-200 hover:shadow-md">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+                  <BarChart3 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Weekly Progress Summary</CardTitle>
+                  <CardDescription className="text-sm">
+                    Monday digest with each child's weekly activity
+                  </CardDescription>
+                </div>
+              </div>
+              <Badge variant="secondary" className="text-xs">Mondays</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="weekly-digest-toggle" className="text-sm text-muted-foreground">
+                Receive a weekly email summarising tasks completed, XP earned, badges unlocked, and mastery changes for each child
+              </Label>
+              <Switch
+                id="weekly-digest-toggle"
+                checked={weeklyDigestEnabled}
+                onCheckedChange={setWeeklyDigestEnabled}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Invite Reminders (parents only) */}
       {isParent && (

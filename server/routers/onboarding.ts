@@ -38,6 +38,7 @@ import { isYoungLearnerGrade } from "../educhamp-helpers";
 import { validateGuardianAge, validateStudentAge } from "../../shared/ageValidation";
 import { buildParentInviteEmail } from "../emailTemplates/parentInvite";
 import { buildParentBillingNotificationEmail } from "../emailTemplates/parentBillingNotification";
+import { buildInviteAcceptedEmail } from "../emailTemplates/inviteAccepted";
 import { sendEmail } from "../emailService";
 import { invokeLLM } from "../_core/llm";
 // notifyOwner removed — all notifications now go through sendEmail (Resend) only.
@@ -321,6 +322,33 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
       await acceptStudentInviteToken(input.token, ctx.user.id);
 
       console.log(`[Audit] Student Invite Accepted: ${ctx.user.name ?? ctx.user.email} from parent ID ${invite.parentId}`);
+
+      // ── Send acceptance notification email to the parent ──────────────────
+      try {
+        const parent = await getUserById(invite.parentId);
+        if (parent?.email) {
+          const studentName = ctx.user.name || invite.childName || "Your child";
+          const studentEmail = ctx.user.email || invite.childEmail || "";
+          const { html, text, subject } = buildInviteAcceptedEmail({
+            parentName: parent.name || "Parent",
+            studentName,
+            studentEmail,
+            acceptedAt: new Date(),
+            dashboardUrl: "https://educhamp.co/parent",
+          });
+          await sendEmail({
+            to: parent.email,
+            subject,
+            html,
+            text,
+            templateName: "invite-accepted",
+            referenceId: input.token,
+          });
+        }
+      } catch (emailErr) {
+        // Non-blocking: log but don't fail the invite acceptance
+        console.error("[InviteAccepted] Failed to send notification email:", emailErr);
+      }
 
       return { success: true, parentId: invite.parentId };
     }),
