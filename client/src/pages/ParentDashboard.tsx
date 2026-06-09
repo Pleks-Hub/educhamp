@@ -3269,6 +3269,21 @@ export default function ParentDashboard() {
                     {status === "revoked" && (
                       <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs">Revoked</Badge>
                     )}
+                    {status === "pending" && inv.token && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 text-xs gap-1.5 min-h-[44px] sm:min-h-0"
+                        onClick={() => {
+                          const url = `${window.location.origin}/join?invite=${inv.token}`;
+                          navigator.clipboard.writeText(url);
+                          toast.success("Invite link copied to clipboard!");
+                        }}
+                      >
+                        <Copy className="h-3 w-3" />
+                        Copy Link
+                      </Button>
+                    )}
                     {(status === "pending" || status === "expired") && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

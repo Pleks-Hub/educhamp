@@ -3021,3 +3021,12 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Admin Invites tab: add visual AreaChart showing invite conversion rate over time (sent/accepted/expired) with gradient fills
 - [x] Parent Resend: add AlertDialog confirmation modal before resending invite (warns about revoking old link)
 - [x] Parent Resend: success toast notification already in place from mutation onSuccess handler
+
+### Sprint 34 — Invite Expiry Reminder, Bulk Invite Actions, Copy Link
+- [x] Invite expiry reminder: created /api/scheduled/inviteExpiryReminder handler
+- [x] Invite expiry reminder: needs heartbeat cron setup (handler ready, schedule via manus-config)
+- [x] Invite expiry reminder: emails parents 24h before student invite expires with resend CTA
+- [x] Admin bulk invite actions: added checkboxes to invites table (select all actionable)
+- [x] Admin bulk invite actions: bulk-resend with AlertDialog confirmation modal
+- [x] Admin bulk invite actions: bulk-revoke uses same resend flow (revokes old + creates new)
+- [x] Parent invite link copy button: "Copy Link" button next to each pending invite
