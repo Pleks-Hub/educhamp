@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import {
   Award, Users, UserPlus, BookOpen, Trophy, TrendingUp, AlertTriangle,
@@ -3269,20 +3270,41 @@ export default function ParentDashboard() {
                       <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs">Revoked</Badge>
                     )}
                     {(status === "pending" || status === "expired") && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs gap-1.5 min-h-[44px] sm:min-h-0"
-                        disabled={resendStudentInvite.isPending}
-                        onClick={() => resendStudentInvite.mutate({ inviteId: inv.id, origin: window.location.origin })}
-                      >
-                        {resendStudentInvite.isPending ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Mail className="h-3 w-3" />
-                        )}
-                        Resend
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs gap-1.5 min-h-[44px] sm:min-h-0"
+                            disabled={resendStudentInvite.isPending}
+                          >
+                            {resendStudentInvite.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Mail className="h-3 w-3" />
+                            )}
+                            Resend
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Resend Invite?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will revoke the current invite link and send a new one to{" "}
+                              <span className="font-medium text-foreground">{inv.childName || inv.childEmail || "the student"}</span>.
+                              The previous link will no longer work.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => resendStudentInvite.mutate({ inviteId: inv.id, origin: window.location.origin })}
+                            >
+                              Yes, Resend Invite
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     )}
                   </div>
                 </div>

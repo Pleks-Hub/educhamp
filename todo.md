@@ -3016,3 +3016,8 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Admin invite status badges: show "Expired", "Accepted", "Pending" badges in user list + new Invites tab
 - [x] Mobile touch targets: optimize parent dashboard tabs (min-h-[40px] on mobile, h-auto TabsList)
 - [x] Mobile touch targets: optimize task filters (h-10 on mobile, h-8 on desktop) + action buttons
+
+### Sprint 33 — Admin Invite Chart & Parent Resend Confirmation
+- [x] Admin Invites tab: add visual AreaChart showing invite conversion rate over time (sent/accepted/expired) with gradient fills
+- [x] Parent Resend: add AlertDialog confirmation modal before resending invite (warns about revoking old link)
+- [x] Parent Resend: success toast notification already in place from mutation onSuccess handler

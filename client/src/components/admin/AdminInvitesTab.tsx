@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,7 +6,59 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Mail, RefreshCw, Loader2, Send, Clock, CheckCircle2, XCircle, Ban } from "lucide-react";
+import { Mail, RefreshCw, Loader2, Send, Clock, CheckCircle2, XCircle, Ban, BarChart3 } from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+
+/** Group invites by week and compute cumulative sent/accepted/expired counts */
+function buildChartData(invites: Array<{ createdAt: string; expiresAt: string; status: string; acceptedAt?: string | null }>) {
+  if (!invites || invites.length === 0) return [];
+
+  // Sort by createdAt ascending
+  const sorted = [...invites].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  // Group by week
+  const weekMap = new Map<string, { sent: number; accepted: number; expired: number }>();
+
+  for (const inv of sorted) {
+    const d = new Date(inv.createdAt);
+    // Get the Monday of the week
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d);
+    monday.setDate(diff);
+    const weekKey = monday.toISOString().slice(0, 10);
+
+    if (!weekMap.has(weekKey)) {
+      weekMap.set(weekKey, { sent: 0, accepted: 0, expired: 0 });
+    }
+    const entry = weekMap.get(weekKey)!;
+    entry.sent++;
+
+    if (inv.status === "accepted") {
+      entry.accepted++;
+    } else if (inv.status === "pending" && new Date(inv.expiresAt) < new Date()) {
+      entry.expired++;
+    } else if (inv.status === "revoked" || inv.status === "expired") {
+      entry.expired++;
+    }
+  }
+
+  return Array.from(weekMap.entries()).map(([week, data]) => ({
+    week: new Date(week).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    Sent: data.sent,
+    Accepted: data.accepted,
+    Expired: data.expired,
+  }));
+}
 
 export function AdminInvitesTab() {
   const [statusFilter, setStatusFilter] = useState("all");
@@ -34,6 +86,17 @@ export function AdminInvitesTab() {
     revoked: invites?.filter((i) => i.status === "revoked").length ?? 0,
   };
 
+  const conversionRate = counts.total > 0 ? Math.round((counts.accepted / counts.total) * 100) : 0;
+
+  const chartData = useMemo(() => buildChartData(
+    (invites ?? []).map(inv => ({
+      createdAt: String(inv.createdAt),
+      expiresAt: String(inv.expiresAt),
+      status: inv.status,
+      acceptedAt: inv.acceptedAt ? String(inv.acceptedAt) : null,
+    }))
+  ), [invites]);
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -47,6 +110,84 @@ export function AdminInvitesTab() {
           <RefreshCw className="h-3.5 w-3.5" /> Refresh
         </Button>
       </div>
+
+      {/* Conversion Chart */}
+      {chartData.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-indigo-500" />
+                  Invite Conversion Over Time
+                </CardTitle>
+                <CardDescription className="text-xs mt-1">
+                  Weekly breakdown of sent, accepted, and expired invitations
+                </CardDescription>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-indigo-600">{conversionRate}%</p>
+                <p className="text-xs text-muted-foreground">Conversion rate</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[220px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="sentGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="acceptedGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="expiredGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="week" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: "12px",
+                    }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
+                  <Area
+                    type="monotone"
+                    dataKey="Sent"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    fill="url(#sentGradient)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="Accepted"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    fill="url(#acceptedGradient)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="Expired"
+                    stroke="#ef4444"
+                    strokeWidth={2}
+                    fill="url(#expiredGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
