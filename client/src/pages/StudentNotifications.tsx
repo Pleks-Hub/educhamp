@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Bell, Mail, Trophy, Clock, ArrowLeft, Send, BarChart3 } from "lucide-react";
+import { Bell, Mail, Trophy, Clock, ArrowLeft, Send, BarChart3, EyeOff } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 
@@ -30,6 +30,7 @@ export default function StudentNotifications() {
   const [remindersEnabled, setRemindersEnabled] = useState(true);
   const [inviteRemindersEnabled, setInviteRemindersEnabled] = useState(true);
   const [weeklyDigestEnabled, setWeeklyDigestEnabled] = useState(true);
+  const [leaderboardOptOut, setLeaderboardOptOut] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export default function StudentNotifications() {
       setRemindersEnabled(prefs.emailRemindersEnabled);
       setInviteRemindersEnabled(prefs.inviteRemindersEnabled);
       setWeeklyDigestEnabled(prefs.weeklyDigestEnabled);
+      setLeaderboardOptOut(prefs.leaderboardOptOut);
     }
   }, [prefs]);
 
@@ -49,10 +51,11 @@ export default function StudentNotifications() {
         achievementsEnabled !== prefs.emailAchievementsEnabled ||
         remindersEnabled !== prefs.emailRemindersEnabled ||
         inviteRemindersEnabled !== prefs.inviteRemindersEnabled ||
-        weeklyDigestEnabled !== prefs.weeklyDigestEnabled;
+        weeklyDigestEnabled !== prefs.weeklyDigestEnabled ||
+        leaderboardOptOut !== prefs.leaderboardOptOut;
       setHasChanges(changed);
     }
-  }, [digestEnabled, achievementsEnabled, remindersEnabled, inviteRemindersEnabled, weeklyDigestEnabled, prefs]);
+  }, [digestEnabled, achievementsEnabled, remindersEnabled, inviteRemindersEnabled, weeklyDigestEnabled, leaderboardOptOut, prefs]);
 
   function handleSave() {
     updateMutation.mutate({
@@ -61,6 +64,7 @@ export default function StudentNotifications() {
       emailRemindersEnabled: remindersEnabled,
       inviteRemindersEnabled: inviteRemindersEnabled,
       weeklyDigestEnabled: weeklyDigestEnabled,
+      leaderboardOptOut: leaderboardOptOut,
     });
     setHasChanges(false);
   }
@@ -256,6 +260,39 @@ export default function StudentNotifications() {
                 id="invite-reminders-toggle"
                 checked={inviteRemindersEnabled}
                 onCheckedChange={setInviteRemindersEnabled}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Leaderboard Visibility (students only) */}
+      {!isParent && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
+                  <EyeOff className="h-4 w-4 text-slate-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Leaderboard Visibility</CardTitle>
+                  <CardDescription className="text-sm">
+                    Control whether you appear on the family leaderboard
+                  </CardDescription>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="leaderboard-optout-toggle" className="text-sm text-muted-foreground">
+                Hide me from the family leaderboard (your XP is still tracked, just not shown to others)
+              </Label>
+              <Switch
+                id="leaderboard-optout-toggle"
+                checked={leaderboardOptOut}
+                onCheckedChange={setLeaderboardOptOut}
               />
             </div>
           </CardContent>

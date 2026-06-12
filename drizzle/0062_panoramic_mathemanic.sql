@@ -1,0 +1,1 @@
+ALTER TABLE `userProfiles` ADD `leaderboardOptOut` boolean DEFAULT false NOT NULL;

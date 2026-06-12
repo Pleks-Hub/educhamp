@@ -1458,6 +1458,7 @@ export const appRouter = router({
         emailRemindersEnabled: profile?.emailRemindersEnabled ?? true,
         inviteRemindersEnabled: profile?.inviteRemindersEnabled ?? true,
         weeklyDigestEnabled: profile?.weeklyDigestEnabled ?? true,
+        leaderboardOptOut: profile?.leaderboardOptOut ?? false,
       };
     }),
     updateEmailPreferences: protectedProcedure
@@ -1467,6 +1468,7 @@ export const appRouter = router({
         emailRemindersEnabled: z.boolean().optional(),
         inviteRemindersEnabled: z.boolean().optional(),
         weeklyDigestEnabled: z.boolean().optional(),
+        leaderboardOptOut: z.boolean().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const { upsertUserProfile: _upsert } = await import("./db");
@@ -1476,6 +1478,7 @@ export const appRouter = router({
         if (input.emailRemindersEnabled !== undefined) data.emailRemindersEnabled = input.emailRemindersEnabled;
         if (input.inviteRemindersEnabled !== undefined) data.inviteRemindersEnabled = input.inviteRemindersEnabled;
         if (input.weeklyDigestEnabled !== undefined) data.weeklyDigestEnabled = input.weeklyDigestEnabled;
+        if (input.leaderboardOptOut !== undefined) data.leaderboardOptOut = input.leaderboardOptOut;
         await _upsert(ctx.user.id, data);
         return { success: true };
       }),

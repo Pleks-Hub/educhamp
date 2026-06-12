@@ -177,7 +177,7 @@ export default function GamificationHub() {
 
       {/* Tabs */}
       <Tabs defaultValue="quests" onValueChange={handleTabChange}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="quests">
             Quests
           </TabsTrigger>
@@ -189,6 +189,7 @@ export default function GamificationHub() {
               </span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="breakdown">XP Sources</TabsTrigger>
           <TabsTrigger value="leaderboard">Top 10</TabsTrigger>
           <TabsTrigger value="house">House</TabsTrigger>
         </TabsList>
@@ -203,6 +204,11 @@ export default function GamificationHub() {
         {/* Badges Tab */}
         <TabsContent value="badges" className="mt-4">
           <BadgeGrid badges={badges.all as any[]} allBadges={badges.all as any[]} />
+        </TabsContent>
+
+        {/* XP Breakdown Tab */}
+        <TabsContent value="breakdown" className="mt-4">
+          <XpBreakdownChart />
         </TabsContent>
 
         {/* Leaderboard Tab */}
@@ -457,5 +463,120 @@ function BadgeGrid({ badges }: { badges: any[]; allBadges: any[] }) {
         </div>
       )}
     </div>
+  );
+}
+
+
+// ─── XP Breakdown Donut Chart ────────────────────────────────────────────────
+function XpBreakdownChart() {
+  const { data: breakdown, isLoading } = trpc.gamification.getXpBreakdownBySource.useQuery(undefined, {
+    staleTime: 30_000,
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center h-64">
+            <div className="w-48 h-48 rounded-full border-8 border-muted animate-pulse" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!breakdown || breakdown.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center py-12">
+          <Zap className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-40" />
+          <p className="text-muted-foreground">No XP earned yet. Complete lessons, quizzes, and tasks to see your breakdown!</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const total = breakdown.reduce((sum, b) => sum + b.total, 0);
+
+  // Build SVG donut chart
+  const radius = 80;
+  const circumference = 2 * Math.PI * radius;
+  let cumulativePercent = 0;
+
+  const segments = breakdown.map((item) => {
+    const percent = item.total / total;
+    const offset = circumference * (1 - cumulativePercent);
+    const length = circumference * percent;
+    cumulativePercent += percent;
+    return { ...item, percent, offset, length };
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Zap className="w-4 h-4 text-violet-500" />
+          XP Breakdown by Source
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">Where your {total.toLocaleString()} XP comes from</p>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col md:flex-row items-center gap-6">
+          {/* Donut Chart */}
+          <div className="relative shrink-0">
+            <svg width="200" height="200" viewBox="0 0 200 200" className="transform -rotate-90">
+              {segments.map((seg, i) => (
+                <circle
+                  key={seg.source}
+                  cx="100"
+                  cy="100"
+                  r={radius}
+                  fill="none"
+                  stroke={seg.color}
+                  strokeWidth="24"
+                  strokeDasharray={`${seg.length} ${circumference - seg.length}`}
+                  strokeDashoffset={-((circumference * (cumulativePercent - seg.percent - segments.slice(i + 1).reduce((s, x) => s + x.percent, 0))) - circumference * segments.slice(0, i).reduce((s, x) => s + x.percent, 0))}
+                  style={{
+                    strokeDashoffset: -(circumference * segments.slice(0, i).reduce((s, x) => s + x.percent, 0)),
+                    transition: "stroke-dashoffset 0.5s ease-out",
+                  }}
+                  className="opacity-90 hover:opacity-100"
+                />
+              ))}
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-2xl font-black">{total.toLocaleString()}</span>
+              <span className="text-xs text-muted-foreground">Total XP</span>
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div className="flex-1 space-y-2 w-full">
+            {segments.map((seg) => (
+              <div key={seg.source} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: seg.color }} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium truncate">{seg.label}</span>
+                    <span className="text-sm font-semibold ml-2">{seg.total.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${seg.percent * 100}%`, backgroundColor: seg.color }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground w-8 text-right">
+                      {(seg.percent * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

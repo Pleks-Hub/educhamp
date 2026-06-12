@@ -473,6 +473,8 @@ export const userProfiles = mysqlTable("userProfiles", {
   emailRemindersEnabled: boolean("emailRemindersEnabled").notNull().default(true), // students: opt-in/out of inactivity/reminder emails
   // Parent invite notification preferences
   inviteRemindersEnabled: boolean("inviteRemindersEnabled").notNull().default(true), // opt-in/out of invite expiry reminder emails
+  // Leaderboard visibility
+  leaderboardOptOut: boolean("leaderboardOptOut").notNull().default(false), // students: opt-out of appearing on family leaderboard
   // Billing escalation
   billingEscalatedAt: timestamp("billingEscalatedAt"), // set when billing reminders exceed 7 days without parent action
   // Onboarding state

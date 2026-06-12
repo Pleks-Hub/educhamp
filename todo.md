@@ -3078,3 +3078,14 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Ensure the XP shown in sidebar, Home stats, GamificationHub, and leaderboards all read from the same source (studentLevels.totalXp)
 - [x] Verify task_completion, parent_bonus, lesson_complete, quiz_pass, streak_bonus, quest_complete, badge_earned, exam_prep_session, focus_mode all flow through awardXp → xpLedger + studentLevels
 - [x] Tests: verify XP consistency across all display points (6 passing)
+
+### Sprint 39 — XP Breakdown Chart, Parent XP Insights, Leaderboard Opt-out
+
+- [x] Backend: add getXpBreakdownBySource endpoint (aggregate xpLedger by source for current user)
+- [x] Backend: add getChildWeeklyXpTrend endpoint for parent (child's XP earned per week for last 8 weeks)
+- [x] Backend: add leaderboardOptOut field to userProfiles schema + migration applied
+- [x] Backend: filter opted-out users from getLeaderboard and getTaskLeaderboard (leftJoin + where)
+- [x] Frontend: add donut chart to GamificationHub "XP Sources" tab showing XP by source
+- [x] Frontend: add weekly XP bar chart with trend indicator to parent ChildAchievementsPanel
+- [x] Frontend: add leaderboard opt-out toggle to StudentNotifications settings page (student-only)
+- [x] Tests: write vitest tests for new endpoints (12 passing, 1237 total)

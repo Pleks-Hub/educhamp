@@ -1475,6 +1475,9 @@ function ChildAchievementsPanel({ childId, childName }: { childId: number; child
         </CardContent>
       </Card>
 
+      {/* Weekly XP Trend */}
+      <ChildXpTrendChart childId={childId} childName={childName} />
+
       {/* Streak card */}
       <Card>
         <CardContent className="pt-4 flex items-center gap-4">
@@ -1548,6 +1551,90 @@ function ChildAchievementsPanel({ childId, childName }: { childId: number; child
         </Card>
       )}
     </div>
+  );
+}
+
+// ─── Child XP Weekly Trend Chart ─────────────────────────────────────────────
+function ChildXpTrendChart({ childId, childName }: { childId: number; childName: string }) {
+  const { data: trend, isLoading } = trpc.gamification.getChildWeeklyXpTrend.useQuery(
+    { childId, weeks: 8 },
+    { staleTime: 60_000 }
+  );
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-4">
+          <div className="h-32 bg-muted animate-pulse rounded-lg" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!trend || trend.length === 0) return null;
+
+  const maxXp = Math.max(...trend.map((t) => t.xpEarned), 1);
+  const totalPeriod = trend.reduce((s, t) => s + t.xpEarned, 0);
+  const avgPerWeek = Math.round(totalPeriod / trend.length);
+
+  // Determine trend direction
+  const recentHalf = trend.slice(Math.floor(trend.length / 2));
+  const olderHalf = trend.slice(0, Math.floor(trend.length / 2));
+  const recentAvg = recentHalf.reduce((s, t) => s + t.xpEarned, 0) / (recentHalf.length || 1);
+  const olderAvg = olderHalf.reduce((s, t) => s + t.xpEarned, 0) / (olderHalf.length || 1);
+  const trendDir = recentAvg > olderAvg * 1.1 ? "up" : recentAvg < olderAvg * 0.9 ? "down" : "stable";
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-blue-500" />
+          Weekly XP Trend — {childName}
+        </CardTitle>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span>{avgPerWeek.toLocaleString()} avg/week</span>
+          <span className={`font-medium ${
+            trendDir === "up" ? "text-green-600" : trendDir === "down" ? "text-red-500" : "text-muted-foreground"
+          }`}>
+            {trendDir === "up" ? "↑ Improving" : trendDir === "down" ? "↓ Declining" : "→ Steady"}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* Bar chart */}
+        <div className="flex items-end gap-1 h-24">
+          {trend.map((week) => {
+            const height = maxXp > 0 ? (week.xpEarned / maxXp) * 100 : 0;
+            return (
+              <div key={week.weekStart} className="flex-1 flex flex-col items-center gap-1" title={`${week.weekLabel}: ${week.xpEarned} XP`}>
+                <div className="w-full relative" style={{ height: "100%" }}>
+                  <div
+                    className={`w-full rounded-t transition-all duration-300 ${
+                      trendDir === "up" ? "bg-green-400" : trendDir === "down" ? "bg-amber-400" : "bg-blue-400"
+                    }`}
+                    style={{ height: `${Math.max(height, 4)}%`, minHeight: "3px" }}
+                  />
+                </div>
+                <span className="text-[9px] text-muted-foreground truncate w-full text-center">
+                  {week.weekLabel.split(" ")[0]}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {/* Engagement note */}
+        {trendDir === "down" && (
+          <p className="text-xs text-amber-600 mt-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-2">
+            💡 {childName}'s engagement has dipped recently. Consider setting a fun task or reward to re-motivate!
+          </p>
+        )}
+        {trendDir === "up" && (
+          <p className="text-xs text-green-600 mt-3 bg-green-50 dark:bg-green-950/20 rounded-lg p-2">
+            🎉 {childName} is on a roll! Their weekly XP is trending upward.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

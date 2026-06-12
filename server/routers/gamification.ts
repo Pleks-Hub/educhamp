@@ -21,8 +21,9 @@ import {
   users,
   seasonalChallenges,
   userSeasonalProgress,
+  userProfiles,
 } from "../../drizzle/schema";
-import { and, eq, desc, sql, count } from "drizzle-orm";
+import { and, eq, desc, sql, count, ne, or, isNull } from "drizzle-orm";
 
 export const gamificationRouter = router({
   // ── Bootstrap (idempotent seed) ──────────────────────────────────────────
@@ -83,6 +84,8 @@ export const gamificationRouter = router({
         })
         .from(studentLevels)
         .innerJoin(users, eq(studentLevels.userId, users.id))
+        .leftJoin(userProfiles, eq(studentLevels.userId, userProfiles.userId))
+        .where(or(isNull(userProfiles.leaderboardOptOut), eq(userProfiles.leaderboardOptOut, false)))
         .orderBy(desc(studentLevels.totalXp))
         .limit(input.limit);
 
@@ -520,6 +523,14 @@ export const gamificationRouter = router({
       const results: { userId: number; name: string; taskXp: number; totalXp: number; tasksCompleted: number; currentLevel: number; currentLevelName: string }[] = [];
 
       for (const studentId of siblingIds) {
+        // Check if student opted out of leaderboard
+        const [profile] = await db
+          .select({ leaderboardOptOut: userProfiles.leaderboardOptOut })
+          .from(userProfiles)
+          .where(eq(userProfiles.userId, studentId))
+          .limit(1);
+        if (profile?.leaderboardOptOut && studentId !== ctx.user.id) continue; // always show self
+
         const user = await db
           .select({ id: users.id, name: users.name })
           .from(users)
@@ -623,5 +634,99 @@ export const gamificationRouter = router({
         .where(eq(rewardsMarketplace.id, input.rewardId));
 
       return { ok: true, isActive: !reward.isActive };
+    }),
+
+  // ── Student: XP breakdown by source (for donut chart) ──────────────────────
+  getXpBreakdownBySource: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+
+    const rows = await db
+      .select({
+        source: xpLedger.source,
+        total: sql<number>`SUM(${xpLedger.amount})`,
+      })
+      .from(xpLedger)
+      .where(and(eq(xpLedger.userId, ctx.user.id), sql`${xpLedger.amount} > 0`))
+      .groupBy(xpLedger.source);
+
+    // Map source codes to human-readable labels and colors
+    const sourceLabels: Record<string, { label: string; color: string }> = {
+      lesson_complete: { label: "Lessons", color: "#3b82f6" },
+      quiz_pass: { label: "Quizzes", color: "#10b981" },
+      task_completion: { label: "Tasks", color: "#8b5cf6" },
+      parent_bonus: { label: "Parent Bonus", color: "#f59e0b" },
+      streak_bonus: { label: "Streaks", color: "#ef4444" },
+      quest_complete: { label: "Quests", color: "#06b6d4" },
+      badge_earned: { label: "Badges", color: "#ec4899" },
+      exam_prep_session: { label: "Exam Prep", color: "#14b8a6" },
+      focus_mode: { label: "Focus Mode", color: "#6366f1" },
+      mastery_achieved: { label: "Mastery", color: "#f97316" },
+      grand_master: { label: "Grand Master", color: "#eab308" },
+      quiz_perfect: { label: "Perfect Quizzes", color: "#22c55e" },
+      diagnostic: { label: "Diagnostic", color: "#a855f7" },
+    };
+
+    return rows.map((r) => ({
+      source: r.source,
+      label: sourceLabels[r.source]?.label ?? r.source.replace(/_/g, " "),
+      total: Number(r.total),
+      color: sourceLabels[r.source]?.color ?? "#94a3b8",
+    })).sort((a, b) => b.total - a.total);
+  }),
+
+  // ── Parent: child weekly XP trend (last 8 weeks) ───────────────────────────
+  getChildWeeklyXpTrend: protectedProcedure
+    .input(z.object({ childId: z.number(), weeks: z.number().min(4).max(16).default(8) }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      // Verify parent-child link
+      const { parentChildren } = await import("../../drizzle/schema");
+      const [link] = await db
+        .select()
+        .from(parentChildren)
+        .where(and(eq(parentChildren.parentId, ctx.user.id), eq(parentChildren.childId, input.childId)))
+        .limit(1);
+      if (!link) return [];
+
+      // Get XP earned per week for the last N weeks
+      const weeksAgo = new Date();
+      weeksAgo.setDate(weeksAgo.getDate() - input.weeks * 7);
+
+      const rows = await db
+        .select({
+          weekStart: sql<string>`DATE_FORMAT(DATE_SUB(${xpLedger.createdAt}, INTERVAL WEEKDAY(${xpLedger.createdAt}) DAY), '%Y-%m-%d')`,
+          total: sql<number>`SUM(CASE WHEN ${xpLedger.amount} > 0 THEN ${xpLedger.amount} ELSE 0 END)`,
+        })
+        .from(xpLedger)
+        .where(and(
+          eq(xpLedger.userId, input.childId),
+          sql`${xpLedger.createdAt} >= ${weeksAgo}`,
+        ))
+        .groupBy(sql`DATE_FORMAT(DATE_SUB(${xpLedger.createdAt}, INTERVAL WEEKDAY(${xpLedger.createdAt}) DAY), '%Y-%m-%d')`)
+        .orderBy(sql`weekStart ASC`);
+
+      // Fill in missing weeks with 0
+      const result: { weekStart: string; weekLabel: string; xpEarned: number }[] = [];
+      const now = new Date();
+      for (let i = input.weeks - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i * 7);
+        // Get Monday of that week
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(d.setDate(diff));
+        const weekKey = monday.toISOString().split("T")[0];
+        const found = rows.find((r) => r.weekStart === weekKey);
+        const monthDay = `${monday.toLocaleString("en", { month: "short" })} ${monday.getDate()}`;
+        result.push({
+          weekStart: weekKey,
+          weekLabel: monthDay,
+          xpEarned: found ? Number(found.total) : 0,
+        });
+      }
+      return result;
     }),
 });
