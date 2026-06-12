@@ -3069,3 +3069,12 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Parent: Show pending redemption count badge on parent sidebar nav
 - [x] Parent: Add reward suggestions/tips section to help parents set appropriate XP costs
 - [x] Tests: write vitest tests for Sprint 37 endpoints (11 passing, 1219 total)
+
+### Sprint 38 — XP Leaderboard & Display Consistency
+
+- [x] Fix Task Leaderboard to show total XP (from all sources) alongside task XP — now sorted by totalXp
+- [x] Ensure XP leaderboard (gamification.getLeaderboard) uses studentLevels.totalXp which includes ALL sources
+- [x] Add "Total XP" column to Task Leaderboard so students see their full XP earned from all academic work
+- [x] Ensure the XP shown in sidebar, Home stats, GamificationHub, and leaderboards all read from the same source (studentLevels.totalXp)
+- [x] Verify task_completion, parent_bonus, lesson_complete, quiz_pass, streak_bonus, quest_complete, badge_earned, exam_prep_session, focus_mode all flow through awardXp → xpLedger + studentLevels
+- [x] Tests: verify XP consistency across all display points (6 passing)

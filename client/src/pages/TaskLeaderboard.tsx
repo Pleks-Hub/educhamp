@@ -2,7 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Zap, Trophy, Medal, Crown, Target, Star } from "lucide-react";
+import { Zap, Trophy, Medal, Crown, Target, Star, BookOpen, CheckCircle2 } from "lucide-react";
 
 export default function TaskLeaderboard() {
   const { data, isLoading } = trpc.gamification.getTaskLeaderboard.useQuery({ limit: 20 });
@@ -45,9 +45,9 @@ export default function TaskLeaderboard() {
           <Trophy className="h-6 w-6 text-purple-600" />
         </div>
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold">Task XP Leaderboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Family XP Leaderboard</h1>
           <p className="text-sm text-muted-foreground">
-            See how your task XP compares to your siblings
+            Total XP earned from all academic work — lessons, quizzes, tasks, streaks, and more
           </p>
         </div>
       </div>
@@ -62,17 +62,21 @@ export default function TaskLeaderboard() {
                   <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Your Task XP</p>
-                  <p className="text-xl sm:text-2xl font-bold">{myStats.taskXp.toLocaleString()} XP</p>
+                  <p className="text-sm text-muted-foreground">Your Total XP</p>
+                  <p className="text-xl sm:text-2xl font-bold">{(myStats.totalXp ?? 0).toLocaleString()} XP</p>
                 </div>
               </div>
               <div className="flex items-center gap-4 sm:gap-6">
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Tasks Done</p>
-                  <p className="text-xl font-bold text-green-600">{myStats.tasksCompleted}</p>
+                  <p className="text-xs text-muted-foreground">Task XP</p>
+                  <p className="text-lg font-bold text-green-600">{myStats.taskXp.toLocaleString()}</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Your Rank</p>
+                  <p className="text-xs text-muted-foreground">Tasks Done</p>
+                  <p className="text-lg font-bold text-blue-600">{myStats.tasksCompleted}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Rank</p>
                   <p className="text-2xl font-bold text-purple-600">
                     #{myRank ?? "—"}
                   </p>
@@ -88,22 +92,25 @@ export default function TaskLeaderboard() {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <Target className="h-5 w-5" />
-            Family Task Rankings
+            Family Rankings
           </CardTitle>
+          <p className="text-xs text-muted-foreground mt-1">
+            Ranked by total XP earned from all sources (lessons, quizzes, tasks, streaks, badges, and more)
+          </p>
         </CardHeader>
         <CardContent className="space-y-2">
           {leaderboard.length === 0 ? (
             <div className="text-center py-12 space-y-3">
               <Star className="h-12 w-12 mx-auto text-muted-foreground/40" />
               <p className="text-muted-foreground">
-                No task data yet. Complete tasks to appear on the leaderboard!
+                No XP data yet. Start learning to appear on the leaderboard!
               </p>
               <p className="text-sm text-muted-foreground">
-                Ask your parent to assign you some tasks to get started.
+                Complete lessons, quizzes, and tasks to earn XP.
               </p>
             </div>
           ) : (
-            leaderboard.map((entry) => (
+            leaderboard.map((entry: any) => (
               <div
                 key={entry.userId}
                 className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${getRankBg(entry.rank, entry.isMe)}`}
@@ -119,15 +126,27 @@ export default function TaskLeaderboard() {
                     {entry.isMe && (
                       <Badge variant="secondary" className="text-xs">You</Badge>
                     )}
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                      Lv.{entry.currentLevel}
+                    </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {entry.tasksCompleted} task{entry.tasksCompleted !== 1 ? "s" : ""} completed
-                  </p>
+                  <div className="flex items-center gap-3 mt-0.5">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {entry.tasksCompleted} task{entry.tasksCompleted !== 1 ? "s" : ""}
+                    </span>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <BookOpen className="h-3 w-3" />
+                      {entry.taskXp.toLocaleString()} task XP
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Zap className="h-4 w-4 text-purple-500" />
-                  <span className="font-bold text-lg">{entry.taskXp.toLocaleString()}</span>
-                  <span className="text-xs text-muted-foreground">XP</span>
+                <div className="flex flex-col items-end shrink-0">
+                  <div className="flex items-center gap-1">
+                    <Zap className="h-4 w-4 text-purple-500" />
+                    <span className="font-bold text-lg">{entry.totalXp.toLocaleString()}</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">Total XP</span>
                 </div>
               </div>
             ))
@@ -135,11 +154,20 @@ export default function TaskLeaderboard() {
         </CardContent>
       </Card>
 
-      {/* Motivational footer */}
-      <div className="text-center text-sm text-muted-foreground bg-muted/50 rounded-lg p-4">
-        <p className="font-medium">💡 Pro tip: Complete tasks daily to earn more XP and climb the rankings!</p>
-        <p className="mt-1">Tasks with higher difficulty give more XP. Ask your parent for bonus challenges!</p>
-      </div>
+      {/* XP Sources Explanation */}
+      <Card className="bg-muted/30 border-dashed">
+        <CardContent className="py-4">
+          <p className="text-sm font-medium text-foreground mb-2">How XP is earned:</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5"><BookOpen className="h-3 w-3 text-blue-500" /> Lessons completed</span>
+            <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3 w-3 text-green-500" /> Quizzes passed</span>
+            <span className="flex items-center gap-1.5"><Target className="h-3 w-3 text-purple-500" /> Tasks finished</span>
+            <span className="flex items-center gap-1.5"><Star className="h-3 w-3 text-yellow-500" /> Badges earned</span>
+            <span className="flex items-center gap-1.5"><Zap className="h-3 w-3 text-orange-500" /> Daily streaks</span>
+            <span className="flex items-center gap-1.5"><Trophy className="h-3 w-3 text-amber-500" /> Quests completed</span>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

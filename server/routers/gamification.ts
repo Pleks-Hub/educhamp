@@ -516,8 +516,8 @@ export const gamificationRouter = router({
         siblingIds = allIds.filter((id, idx) => allIds.indexOf(id) === idx);
       }
 
-      // Get task XP for each sibling (sum of rewardXp from confirmed completions)
-      const results: { userId: number; name: string; taskXp: number; tasksCompleted: number }[] = [];
+      // Get task XP and total XP for each sibling
+      const results: { userId: number; name: string; taskXp: number; totalXp: number; tasksCompleted: number; currentLevel: number; currentLevelName: string }[] = [];
 
       for (const studentId of siblingIds) {
         const user = await db
@@ -549,16 +549,26 @@ export const gamificationRouter = router({
           taskXp = tasks.reduce((sum, t) => sum + (t.rewardXp ?? 0), 0);
         }
 
+        // Get total XP from studentLevels (includes ALL sources: tasks, quizzes, lessons, streaks, badges, quests, focus mode, etc.)
+        const [levelRow] = await db
+          .select({ totalXp: studentLevels.totalXp, currentLevel: studentLevels.currentLevel, currentLevelName: studentLevels.currentLevelName })
+          .from(studentLevels)
+          .where(eq(studentLevels.userId, studentId))
+          .limit(1);
+
         results.push({
           userId: user.id,
           name: user.name ?? "Student",
           taskXp,
+          totalXp: levelRow?.totalXp ?? 0,
           tasksCompleted: completions.length,
+          currentLevel: levelRow?.currentLevel ?? 1,
+          currentLevelName: levelRow?.currentLevelName ?? "Rookie Learner",
         });
       }
 
-      // Sort by taskXp descending
-      results.sort((a, b) => b.taskXp - a.taskXp);
+      // Sort by totalXp descending (overall ranking across all academic work)
+      results.sort((a, b) => b.totalXp - a.totalXp);
 
       const leaderboard = results.slice(0, input.limit).map((r, i) => ({
         ...r,
@@ -568,7 +578,7 @@ export const gamificationRouter = router({
 
       const myEntry = leaderboard.find((l) => l.isMe);
       const myRank = myEntry?.rank ?? null;
-            const myStats = myEntry ? { taskXp: myEntry.taskXp, tasksCompleted: myEntry.tasksCompleted } : null;
+      const myStats = myEntry ? { taskXp: myEntry.taskXp, totalXp: myEntry.totalXp, tasksCompleted: myEntry.tasksCompleted, currentLevel: myEntry.currentLevel } : null;
       return { leaderboard, myRank, myStats };
     }),
 
