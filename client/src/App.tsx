@@ -67,6 +67,7 @@ const TaskLeaderboard = lazy(() => import("./pages/TaskLeaderboard"));
 const SharedTasks = lazy(() => import("./pages/SharedTasks"));
 const ParentInsights = lazy(() => import("./pages/ParentInsights"));
 const FamilyFeed = lazy(() => import("./pages/FamilyFeed"));
+const ParentRewards = lazy(() => import("./pages/ParentRewards"));
 
 // ── Page-level loading fallback ───────────────────────────────────────────────
 function PageSkeleton() {
@@ -149,6 +150,7 @@ function Router() {
                 <Route path="/focus-mode" component={FocusMode} />
                 <Route path="/task-leaderboard" component={TaskLeaderboard} />
                 <Route path="/shared-tasks" component={SharedTasks} />
+                <Route path="/parent-rewards" component={ParentRewards} />
                 <Route path="/parent-insights" component={ParentInsights} />
                 <Route path="/family-feed" component={FamilyFeed} />
                 <Route path="/certificates" component={Certificates} />

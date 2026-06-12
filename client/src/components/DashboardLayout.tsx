@@ -34,6 +34,7 @@ import {
   ClipboardList,
   CreditCard,
   FileText,
+  Gift,
   GraduationCap,
   LayoutDashboard,
   Library,
@@ -50,6 +51,7 @@ import {
   Trophy,
   User,
   Users,
+  Zap,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState, useCallback } from "react";
 import { X, AlertTriangle, Lock, Eye, Activity } from "lucide-react";
@@ -59,6 +61,7 @@ import { useLocation, Redirect } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 import CourseSwitcher from "./CourseSwitcher";
+import { XpProgressBar } from "./XpProgressBar";
 // Primary learning items — always visible to students
 const primaryItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -78,6 +81,8 @@ const secondaryItems = [
   { icon: ListTodo, label: "My Tasks", path: "/my-tasks" },
   { icon: CalendarIcon, label: "Task Calendar", path: "/task-calendar" },
   { icon: Timer, label: "Focus Mode", path: "/focus-mode" },
+  { icon: Trophy, label: "Achievements", path: "/gamification" },
+  { icon: Gift, label: "XP & Rewards", path: "/rewards" },
   { icon: Trophy, label: "Streak Leaderboard", path: "/streak-leaderboard" },
   { icon: Trophy, label: "Task Leaderboard", path: "/task-leaderboard" },
   { icon: Users, label: "Shared Tasks", path: "/shared-tasks" },
@@ -313,6 +318,7 @@ function DashboardLayoutContent({
               {!isStudentAccount && (() => {
                 const parentPrimaryItems = [
                   { icon: Users, label: "Parent Dashboard", path: "/parent" },
+                  { icon: Gift, label: "Rewards", path: "/parent-rewards" },
                   { icon: BarChart3, label: "Insights", path: "/parent-insights" },
                   { icon: Activity, label: "Family Feed", path: "/family-feed" },
                   { icon: CreditCard, label: "Billing", path: "/billing" },
@@ -454,6 +460,13 @@ function DashboardLayoutContent({
               )}
             </SidebarMenu>
           </SidebarContent>
+
+          {/* XP Progress Widget — students only */}
+          {isStudentAccount && (
+            <div className="border-t border-sidebar-border">
+              <XpProgressBar compact={isCollapsed} />
+            </div>
+          )}
 
           {/* Footer */}
           <SidebarFooter className="p-3 border-t border-sidebar-border">

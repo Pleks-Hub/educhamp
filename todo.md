@@ -3055,3 +3055,17 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Weekly progress digest: heartbeat cron already running (Mondays at 8am UTC, task_uid VFmmq38gEHsTkdTr75taLa)
 - [x] Weekly progress digest: getWeeklyDigestEligibleParents checks weeklyDigestEnabled preference before sending
 - [x] Tests: write vitest tests for invite acceptance email and weekly digest logic (5 passing)
+
+### Sprint 37 — XP & Rewards Visibility, Redemption Flow, and Parent Guidance
+
+- [x] Add "XP & Rewards" nav item to student sidebar (links to /rewards)
+- [x] Add "Achievements" nav item to student sidebar (links to /gamification)
+- [x] Show XP balance widget in sidebar footer for students (compact XpProgressBar)
+- [x] Student: Add "My Redemptions" tab to RewardsMarketplace showing pending/approved/rejected history
+- [x] Student: Add redemption request confirmation dialog before spending XP
+- [x] Student: Show XP balance prominently on the student Home page stats row (XpBalanceCard)
+- [x] Parent: Add "Rewards" nav item to parent sidebar (links to dedicated /parent-rewards page)
+- [x] Parent: Create dedicated /parent-rewards page with reward creation, approval queue, and guidance
+- [x] Parent: Show pending redemption count badge on parent sidebar nav
+- [x] Parent: Add reward suggestions/tips section to help parents set appropriate XP costs
+- [x] Tests: write vitest tests for Sprint 37 endpoints (11 passing, 1219 total)

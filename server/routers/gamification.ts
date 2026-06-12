@@ -222,6 +222,30 @@ export const gamificationRouter = router({
       return { ok: true, xpSpent: reward.xpCost };
     }),
 
+  // ── Student: get my redemption history ─────────────────────────────────────
+  getMyRedemptions: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(100).default(50) }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      return db
+        .select({
+          id: rewardRedemptions.id,
+          rewardId: rewardRedemptions.rewardId,
+          redeemedAt: rewardRedemptions.redeemedAt,
+          xpSpent: rewardRedemptions.xpSpent,
+          status: rewardRedemptions.status,
+          rewardTitle: rewardsMarketplace.rewardTitle,
+          category: rewardsMarketplace.category,
+        })
+        .from(rewardRedemptions)
+        .innerJoin(rewardsMarketplace, eq(rewardRedemptions.rewardId, rewardsMarketplace.id))
+        .where(eq(rewardRedemptions.userId, ctx.user.id))
+        .orderBy(desc(rewardRedemptions.redeemedAt))
+        .limit(input.limit);
+    }),
+
   // ── Avatar ────────────────────────────────────────────────────────────────
   getAvatar: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
@@ -544,8 +568,50 @@ export const gamificationRouter = router({
 
       const myEntry = leaderboard.find((l) => l.isMe);
       const myRank = myEntry?.rank ?? null;
-      const myStats = myEntry ? { taskXp: myEntry.taskXp, tasksCompleted: myEntry.tasksCompleted } : null;
-
+            const myStats = myEntry ? { taskXp: myEntry.taskXp, tasksCompleted: myEntry.tasksCompleted } : null;
       return { leaderboard, myRank, myStats };
+    }),
+
+  // ── Parent: list all rewards created by this parent ────────────────────────
+  getParentRewards: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+
+    return db
+      .select({
+        id: rewardsMarketplace.id,
+        childUserId: rewardsMarketplace.childUserId,
+        rewardTitle: rewardsMarketplace.rewardTitle,
+        xpCost: rewardsMarketplace.xpCost,
+        category: rewardsMarketplace.category,
+        isActive: rewardsMarketplace.isActive,
+        createdAt: rewardsMarketplace.createdAt,
+      })
+      .from(rewardsMarketplace)
+      .where(eq(rewardsMarketplace.parentUserId, ctx.user.id))
+      .orderBy(desc(rewardsMarketplace.createdAt));
+  }),
+
+  // ── Parent: deactivate a reward ────────────────────────────────────────────
+  deactivateReward: protectedProcedure
+    .input(z.object({ rewardId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("db_unavailable");
+
+      const [reward] = await db
+        .select()
+        .from(rewardsMarketplace)
+        .where(and(eq(rewardsMarketplace.id, input.rewardId), eq(rewardsMarketplace.parentUserId, ctx.user.id)))
+        .limit(1);
+
+      if (!reward) throw new Error("not_found");
+
+      await db
+        .update(rewardsMarketplace)
+        .set({ isActive: !reward.isActive })
+        .where(eq(rewardsMarketplace.id, input.rewardId));
+
+      return { ok: true, isActive: !reward.isActive };
     }),
 });

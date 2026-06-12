@@ -40,6 +40,7 @@ import {
   XCircle,
   Flame,
   Shield,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -82,6 +83,37 @@ const SUBJECT_COLORS: Record<string, { bg: string; text: string; border: string 
 
 function subjectColor(subject?: string | null) {
   return SUBJECT_COLORS[subject ?? ""] ?? { bg: "bg-muted/40", text: "text-muted-foreground", border: "border-muted" };
+}
+
+// ─── XP Balance Card (inline in stats row) ──────────────────────────────────
+
+function XpBalanceCard() {
+  const { user } = useAuth();
+  const { data: profile } = trpc.gamification.getProfile.useQuery(undefined, {
+    enabled: !!user,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
+  const totalXp = profile?.xp?.totalXp ?? 0;
+
+  return (
+    <Card className="border-0 shadow-sm bg-gradient-to-br from-violet-50 to-violet-100/50 cursor-pointer hover:shadow-md transition-shadow"
+      onClick={() => window.location.href = "/rewards"}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-violet-100 flex items-center justify-center">
+            <Zap className="h-5 w-5 text-violet-600" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-foreground">{totalXp.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">XP Available</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 // ─── Course Progress Card ─────────────────────────────────────────────────────
@@ -902,7 +934,7 @@ export default function Home() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="border-0 shadow-sm bg-gradient-to-br from-primary/5 to-primary/10">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -958,6 +990,8 @@ export default function Home() {
             </div>
           </CardContent>
         </Card>
+
+        <XpBalanceCard />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
