@@ -3089,3 +3089,14 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Frontend: add weekly XP bar chart with trend indicator to parent ChildAchievementsPanel
 - [x] Frontend: add leaderboard opt-out toggle to StudentNotifications settings page (student-only)
 - [x] Tests: write vitest tests for new endpoints (12 passing, 1237 total)
+
+### Sprint 40 — Diagnostic Follow-up Scheduled Job
+
+- [x] Create email template: diagnosticFollowUp.ts (personalized based on diagnostic results)
+- [x] Create scheduled handler: server/scheduled/diagnosticFollowUp.ts (POST /api/scheduled/diagnostic-follow-up)
+- [x] Handler logic: find students who completed diagnostic 24h ago but haven't started recommended units
+- [x] Handler logic: send follow-up email with personalized unit recommendations based on diagnostic results
+- [x] Handler logic: de-duplicate via emailLogs.referenceId = "diag-followup-{attemptId}"
+- [x] Mount handler in server/_core/index.ts
+- [x] Register heartbeat cron: daily at 09:00 UTC (task_uid 7Xn4JsLrfsWxKZNqcKXZ9u)
+- [x] Tests: write vitest tests for diagnostic follow-up handler logic (11 passing, 1248 total)
