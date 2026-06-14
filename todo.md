@@ -3100,3 +3100,15 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Mount handler in server/_core/index.ts
 - [x] Register heartbeat cron: daily at 09:00 UTC (task_uid 7Xn4JsLrfsWxKZNqcKXZ9u)
 - [x] Tests: write vitest tests for diagnostic follow-up handler logic (11 passing, 1248 total)
+
+### Sprint 41 — Engagement Decay Scheduled Job
+
+- [x] Create scheduled handler: server/scheduled/engagementDecay.ts (POST /api/scheduled/engagement-decay)
+- [x] Decay logic: reduce userMastery.score for skills not practiced in 7+ days (graduated: 7-13d=-2, 14-29d=-3, 30+d=-5)
+- [x] Decay logic: reset streaks.currentStreak to 0 if lastActivityDate > 1 day ago and no freeze; consume freeze otherwise
+- [x] Decay logic: log all decay events to xpLedger with source "mastery_decay" (negative XP)
+- [x] Decay logic: never decay below floor (score 10 for mastery, 0 for streaks)
+- [x] Decay logic: skip students who are inactive/suspended/archived (only decay active students)
+- [x] Mount handler in server/_core/index.ts
+- [x] Register heartbeat cron: daily at 07:00 UTC (task_uid L4DwFH6Hr3jazLVJBqABoY)
+- [x] Tests: write vitest tests for engagement decay logic (16 passing, 1264 total)

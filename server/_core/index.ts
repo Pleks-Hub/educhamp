@@ -21,6 +21,7 @@ import { weeklyStudentReviewSummaryHandler } from "../scheduled/weeklyStudentRev
 import { inviteExpiryReminderHandler } from "../scheduled/inviteExpiryReminder";
 import { studentInviteAutoExpireHandler } from "../scheduled/studentInviteAutoExpire";
 import { diagnosticFollowUpHandler } from "../scheduled/diagnosticFollowUp";
+import { engagementDecayHandler } from "../scheduled/engagementDecay";
 import { seedDefaultRoles } from "../db";
 import { seedDefaultBadges } from "../gamification/badges";
 import { seedDefaultQuests } from "../gamification/quests";
@@ -133,6 +134,7 @@ async function startServer() {
   app.post("/api/scheduled/invite-expiry-reminder", inviteExpiryReminderHandler);
   app.post("/api/scheduled/student-invite-auto-expire", studentInviteAutoExpireHandler);
   app.post("/api/scheduled/diagnostic-follow-up", diagnosticFollowUpHandler);
+  app.post("/api/scheduled/engagement-decay", engagementDecayHandler);
 
   // ── Course request email approve/reject token handler ─────────────────────
   app.get("/api/course-request/token", async (req, res) => {
