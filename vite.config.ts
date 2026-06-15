@@ -262,6 +262,8 @@ export default defineConfig({
       ".manus-asia.computer",
       ".manuscomputer.ai",
       ".manusvm.computer",
+      // Tailscale tailnet (MagicDNS) — e.g. adelekes-mac-studio.tail9eeca2.ts.net
+      ".tail9eeca2.ts.net",
       "localhost",
       "127.0.0.1",
     ],
