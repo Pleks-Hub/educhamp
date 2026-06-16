@@ -1,5 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
-import { answersMatch } from "@shared/answerUtils";
+import { answersMatch, partialCreditCheck } from "@shared/answerUtils";
 import { parentRouter, courseRequestTokenRouter } from "./routers/parent";
 import { coParentRouter } from "./routers/coParent";
 import { authEnhancementsRouter } from "./routers/authEnhancements";
@@ -757,9 +757,10 @@ export const appRouter = router({
 
         const gradedAnswers = input.answers.map((a) => {
           const q = questionMap.get(a.questionId);
-          if (!q) return { questionId: a.questionId, answer: a.answer, correct: false };
+          if (!q) return { questionId: a.questionId, answer: a.answer, correct: false, isPartial: false, partialHint: "" };
           const correct = answersMatch(a.answer, q.correctAnswer);
-          return { questionId: a.questionId, answer: a.answer, correct };
+          const partial = !correct ? partialCreditCheck(a.answer, q.correctAnswer) : { isPartial: false, score: 0, hint: "" };
+          return { questionId: a.questionId, answer: a.answer, correct, isPartial: partial.isPartial, partialHint: partial.hint };
         });
 
         // Score prerequisite questions (DIAG-001 to DIAG-006)
@@ -1617,14 +1618,19 @@ export const appRouter = router({
         const qMap = new Map(questions.map((q) => [q.id, q]));
 
         let correct = 0;
+        let partialCount = 0;
         const results = input.answers.map((a) => {
           const q = qMap.get(a.questionId);
-          if (!q) return { questionId: a.questionId, isCorrect: false, correctAnswer: "", explanation: "", difficulty: "medium" as const, skillTag: "" };
+          if (!q) return { questionId: a.questionId, isCorrect: false, isPartial: false, partialHint: "", correctAnswer: "", explanation: "", difficulty: "medium" as const, skillTag: "" };
           const isCorrect = answersMatch(a.answer, q.correctAnswer);
+          const partial = !isCorrect ? partialCreditCheck(a.answer, q.correctAnswer) : { isPartial: false, score: 0, hint: "" };
           if (isCorrect) correct++;
+          if (partial.isPartial) partialCount++;
           return {
             questionId: a.questionId,
             isCorrect,
+            isPartial: partial.isPartial,
+            partialHint: partial.hint,
             correctAnswer: q.correctAnswer,
             explanation: q.explanation,
             difficulty: q.difficulty as "easy" | "medium" | "hard" | "challenge",
@@ -1633,16 +1639,18 @@ export const appRouter = router({
         });
 
         const total = results.length;
-        const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+        const effectiveScore = correct + (partialCount * 0.5);
+        const percentage = total > 0 ? Math.round((effectiveScore / total) * 100) : 0;
 
-        // Award XP: 5 XP per correct answer
-        if (correct > 0) {
+        // Award XP: 5 XP per correct answer, 2 XP per partial
+        const xpAmount = (correct * 5) + (partialCount * 2);
+        if (xpAmount > 0) {
           try {
-            await awardXp(ctx.user.id, "exam_prep_session", correct * 5);
+            await awardXp(ctx.user.id, "exam_prep_session", xpAmount);
           } catch { /* non-fatal */ }
         }
 
-                return { results, score: correct, total, percentage };
+                return { results, score: correct, partialCount, effectiveScore, total, percentage };
       }),
 
     /**

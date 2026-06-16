@@ -83,3 +83,80 @@ export function answersMatch(student: string, correct: string): boolean {
 
   return false;
 }
+
+/**
+ * Partial credit result when an answer is close but not exact.
+ */
+export interface PartialCreditResult {
+  isPartial: boolean;
+  score: number; // 0 or 0.5
+  hint: string; // e.g., "Exact answer: 1/3"
+}
+
+/**
+ * Evaluate a numeric expression (simple number or fraction) to a float.
+ * Returns null if the string is not a valid numeric expression.
+ */
+function evalNumeric(expr: string): number | null {
+  const normalised = normaliseAnswer(expr);
+
+  // Try simple fraction: a/b
+  const fracMatch = normalised.match(/^(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)$/);
+  if (fracMatch) {
+    const denom = parseFloat(fracMatch[2]);
+    if (denom === 0) return null;
+    return parseFloat(fracMatch[1]) / denom;
+  }
+
+  // Try plain number
+  const num = parseFloat(normalised);
+  if (!isNaN(num) && /^-?\d+(\.\d+)?$/.test(normalised)) {
+    return num;
+  }
+
+  return null;
+}
+
+/**
+ * Check if a student's answer qualifies for partial credit.
+ * Awards 50% credit when the student's numeric answer is within rounding distance
+ * of the correct answer (tolerance: 0.01) but is NOT an exact match.
+ *
+ * Example: student types "0.33" when correct answer is "1/3" → partial credit
+ * Example: student types "3.14" when correct answer is "π" → no partial credit (π is not numeric)
+ *
+ * @param student - The student's raw answer
+ * @param correct - The correct answer
+ * @returns PartialCreditResult with isPartial, score, and hint
+ */
+export function partialCreditCheck(
+  student: string,
+  correct: string
+): PartialCreditResult {
+  const NO_PARTIAL: PartialCreditResult = { isPartial: false, score: 0, hint: "" };
+
+  // If it's already a full match, no partial credit needed
+  if (answersMatch(student, correct)) {
+    return NO_PARTIAL;
+  }
+
+  const studentVal = evalNumeric(student);
+  const correctVal = evalNumeric(correct);
+
+  // Both must be numeric for rounding-distance check
+  if (studentVal === null || correctVal === null) {
+    return NO_PARTIAL;
+  }
+
+  // Check if within rounding tolerance (0.01)
+  const diff = Math.abs(studentVal - correctVal);
+  if (diff <= 0.01 && diff > 0) {
+    return {
+      isPartial: true,
+      score: 0.5,
+      hint: `Exact answer: ${correct}`,
+    };
+  }
+
+  return NO_PARTIAL;
+}

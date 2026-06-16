@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MathAnswerInput } from "@/components/MathAnswerInput";
 import { AlertTriangle, ArrowLeft, CheckCircle2, XCircle, Target, Zap, Trophy, RotateCcw } from "lucide-react";
 import { useCelebration } from "@/components/CelebrationOverlay";
 import { toast } from "sonner";
@@ -353,14 +354,12 @@ export default function PracticeWeakSkills() {
                 ))}
               </RadioGroup>
             ) : (
-              <div className="space-y-1">
-                <Input
-                  placeholder="Type your answer..."
-                  value={answers[q.id] ?? ""}
-                  onChange={(e) => handleAnswer(q.id, e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">Tip: Use <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">/</kbd> for division (e.g., 12/4 = 3)</p>
-              </div>
+              <MathAnswerInput
+                id={`practice-answer-${q.id}`}
+                value={answers[q.id] ?? ""}
+                onChange={(val) => handleAnswer(q.id, val)}
+                label="Your answer:"
+              />
             )}
           </CardContent>
         </Card>

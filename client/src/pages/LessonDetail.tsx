@@ -1,6 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { answersMatch } from "@shared/answerUtils";
+import { answersMatch, partialCreditCheck } from "@shared/answerUtils";
 import { useLocation, useParams } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MathAnswerInput } from "@/components/MathAnswerInput";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   BookOpen,
@@ -102,7 +104,7 @@ export default function LessonDetail() {
   // Independent practice: student typed answer + revealed state per index
   const [studentAnswers, setStudentAnswers] = useState<Record<number, string>>({});
   const [revealedSolutions, setRevealedSolutions] = useState<Set<number>>(new Set());
-  const [checkedAnswers, setCheckedAnswers] = useState<Record<number, "correct" | "wrong" | null>>({});
+  const [checkedAnswers, setCheckedAnswers] = useState<Record<number, "correct" | "wrong" | "partial" | null>>({});
 
   const { celebrate } = useCelebration();
 
@@ -183,11 +185,19 @@ export default function LessonDetail() {
     const student = studentAnswers[idx] ?? "";
     if (!student.trim()) { toast.error("Please type your answer first."); return; }
     const isCorrect = answersMatch(student, solution);
-    setCheckedAnswers((prev) => ({ ...prev, [idx]: isCorrect ? "correct" : "wrong" }));
     if (isCorrect) {
+      setCheckedAnswers((prev) => ({ ...prev, [idx]: "correct" }));
       toast.success("Correct! Well done.");
     } else {
-      toast.error("Not quite — review the solution to see the working.");
+      // Check for partial credit
+      const partial = partialCreditCheck(student, solution);
+      if (partial.isPartial) {
+        setCheckedAnswers((prev) => ({ ...prev, [idx]: "partial" }));
+        toast.info(`Close! Half credit. ${partial.hint}`);
+      } else {
+        setCheckedAnswers((prev) => ({ ...prev, [idx]: "wrong" }));
+        toast.error("Not quite \u2014 review the solution to see the working.");
+      }
     }
   };
 
@@ -535,6 +545,8 @@ export default function LessonDetail() {
                   className={`border transition-all ${
                     checked === "correct"
                       ? "border-green-200 bg-green-50/30"
+                      : checked === "partial"
+                      ? "border-amber-200 bg-amber-50/20"
                       : checked === "wrong"
                       ? "border-red-200 bg-red-50/20"
                       : "border-border"
@@ -546,11 +558,13 @@ export default function LessonDetail() {
                       <span className={`h-6 w-6 rounded-full text-xs flex items-center justify-center font-bold shrink-0 mt-0.5 ${
                         checked === "correct"
                           ? "bg-green-100 text-green-700"
+                          : checked === "partial"
+                          ? "bg-amber-100 text-amber-700"
                           : checked === "wrong"
                           ? "bg-red-100 text-red-700"
                           : "bg-muted text-muted-foreground"
                       }`}>
-                        {checked === "correct" ? "✓" : checked === "wrong" ? "✗" : idx + 1}
+                        {checked === "correct" ? "✓" : checked === "partial" ? "½" : checked === "wrong" ? "✗" : idx + 1}
                       </span>
                       <p className="text-sm font-medium text-foreground leading-relaxed">{prob.problem}</p>
                     </div>
@@ -558,27 +572,26 @@ export default function LessonDetail() {
                     {/* Answer input */}
                     <div className="space-y-2">
                       <Label className="text-xs text-muted-foreground">Your answer:</Label>
-                      <div className="flex gap-2">
-                        <Input
+                      <div className="flex gap-2 items-end">
+                        <MathAnswerInput
+                          id={`lesson-answer-${idx}`}
                           value={studentAnswers[idx] ?? ""}
-                          onChange={(e) => {
-                            setStudentAnswers((prev) => ({ ...prev, [idx]: e.target.value }));
-                            // Clear check state when editing
+                          onChange={(val) => {
+                            setStudentAnswers((prev) => ({ ...prev, [idx]: val }));
                             if (checkedAnswers[idx]) {
                               setCheckedAnswers((prev) => ({ ...prev, [idx]: null }));
                             }
                           }}
-                          placeholder="Type your answer here..."
-                          className={`text-sm flex-1 ${
+                          onEnter={() => checkAnswer(idx, prob.solution)}
+                          className={`flex-1 ${
                             checked === "correct"
-                              ? "border-green-400 focus-visible:ring-green-400"
+                              ? "[&_input]:border-green-400 [&_input]:focus-visible:ring-green-400"
+                              : checked === "partial"
+                              ? "[&_input]:border-amber-400 [&_input]:focus-visible:ring-amber-400"
                               : checked === "wrong"
-                              ? "border-red-400 focus-visible:ring-red-400"
+                              ? "[&_input]:border-red-400 [&_input]:focus-visible:ring-red-400"
                               : ""
                           }`}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") checkAnswer(idx, prob.solution);
-                          }}
                         />
                         <Button
                           size="sm"
@@ -590,7 +603,6 @@ export default function LessonDetail() {
                           Check
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">Tip: Use <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">/</kbd> for division (e.g., 12/4 = 3)</p>
                     </div>
 
                     {/* Feedback */}
@@ -598,6 +610,12 @@ export default function LessonDetail() {
                       <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
                         <CheckCircle2 className="h-4 w-4" />
                         Correct! Great work.
+                      </div>
+                    )}
+                    {checked === "partial" && (
+                      <div className="flex items-center gap-2 text-amber-700 text-sm font-medium">
+                        <AlertTriangle className="h-4 w-4 shrink-0" />
+                        Close! Half credit awarded. Exact answer: {prob.solution}
                       </div>
                     )}
                     {checked === "wrong" && (

@@ -41,6 +41,7 @@ import { getLoginUrl } from "@/const";
 import { NavTooltip } from "@/components/NavTooltip";
 import { DIAGNOSTIC_TOOLTIPS } from "@/lib/tooltipContent";
 import { FlagQuestionButton } from "@/components/FlagQuestionButton";
+import { MathAnswerInput } from "@/components/MathAnswerInput";
 
 type ChoiceItem = { label: string; text: string };
 
@@ -1107,31 +1108,24 @@ export default function Diagnostic() {
                 <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
                   This question's answer choices are unavailable. Please type your answer below.
                 </div>
-                <Label className="text-sm text-muted-foreground">Your answer:</Label>
-                <Input
+                <MathAnswerInput
+                  id={`fallback-${currentQ.questionId}`}
                   value={currentAnswer}
-                  onChange={(e) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: e.target.value }))}
-                  placeholder="Type your answer..."
-                  className="text-sm"
-                  onKeyDown={(e) => e.key === "Enter" && handleNext()}
+                  onChange={(val) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: val }))}
+                  onEnter={handleNext}
+                  label="Your answer:"
                 />
-                <p className="text-xs text-muted-foreground mt-1">Tip: Use <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">/</kbd> for division (e.g., 12/4 = 3)</p>
               </div>
             )}
 
             {currentQ.questionType === "short_answer" && (
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Your answer:</Label>
-                <Input
-                  value={currentAnswer}
-                  onChange={(e) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: e.target.value }))}
-                  placeholder="Type your answer here..."
-                  className="text-sm"
-                  onKeyDown={(e) => e.key === "Enter" && handleNext()}
-                  autoFocus
-                />
-                <p className="text-xs text-muted-foreground mt-1">Tip: Use <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">/</kbd> for division (e.g., 12/4 = 3)</p>
-              </div>
+              <MathAnswerInput
+                id={`short-answer-${currentQ.questionId}`}
+                value={currentAnswer}
+                onChange={(val) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: val }))}
+                onEnter={handleNext}
+                label="Your answer:"
+              />
             )}
           </CardContent>
         </Card>

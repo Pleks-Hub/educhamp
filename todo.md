@@ -3122,3 +3122,19 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Update client/src/pages/LessonDetail.tsx to use shared answersMatch
 - [x] Add UI hint below answer inputs: "Use / for division (e.g., 12/4 = 3)" in Quiz, Diagnostic, ExamPrep, PracticeWeakSkills, LessonDetail
 - [x] Tests: verify "/" is accepted as ÷ in answer matching (24 passing, 1288 total)
+
+### Sprint 43 — Math Symbol Toolbar, Answer Preview & Partial Credit
+
+- [x] Create MathKeyboard component with buttons: ×, ², √, π, ≤, ≥, ≰, ≱
+- [x] MathKeyboard: floating toolbar above input, inserts symbol at cursor position
+- [x] MathKeyboard: mobile-friendly tap targets, responsive layout
+- [x] Create AnswerPreview component that renders typed expression as formatted math
+- [x] AnswerPreview: display fractions (a/b → ᵃ⁄ᵦ), exponents (x^2 → x²), sqrt (√x)
+- [x] AnswerPreview: live update as student types
+- [x] Partial credit: update shared/answerUtils.ts with partialCreditCheck function
+- [x] Partial credit: award 50% when answer is within rounding distance (e.g., 0.33 vs 1/3)
+- [x] Partial credit: show hint with exact form when partial credit is awarded
+- [x] Integrate MathKeyboard into Quiz, Diagnostic, ExamPrep, PracticeWeakSkills, LessonDetail
+- [x] Integrate AnswerPreview into all short-answer input areas
+- [x] Update server-side grading to return partial credit scores
+- [x] Tests: write vitest tests for partial credit logic and answer preview rendering

@@ -12,6 +12,7 @@ import { useExamTimer } from "@/hooks/useExamTimer";
 import { ExamTimerBar } from "@/components/ExamTimerBar";
 import { CourseContextBanner } from "@/components/CourseContextBanner";
 import { ReadAloudButton } from "@/components/ReadAloudButton";
+import { MathAnswerInput } from "@/components/MathAnswerInput";
 import {
   AlertCircle,
   ArrowLeft,
@@ -156,17 +157,12 @@ function QuestionCard({
           ))}
         </RadioGroup>
       ) : (
-        <div className="space-y-1">
-          <Input
-            value={answer}
-            onChange={(e) => onAnswer(e.target.value)}
-            placeholder="Type your answer here…"
-            disabled={disabled}
-            className="text-sm"
-            aria-label="Your answer"
-          />
-          <p className="text-xs text-muted-foreground">Tip: Use <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">/</kbd> for division (e.g., 12/4 = 3)</p>
-        </div>
+        <MathAnswerInput
+          id={`exam-answer-${item.id}`}
+          value={answer}
+          onChange={onAnswer}
+          label="Your answer:"
+        />
       )}
     </div>
   );

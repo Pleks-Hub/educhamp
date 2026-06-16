@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router } from "../_core/trpc";
 import { studentProcedure } from "../_core/trpc";
-import { answersMatch } from "@shared/answerUtils";
+import { answersMatch, partialCreditCheck } from "@shared/answerUtils";
 import { getActiveCourseIdForUser, getSkillsForCourse, getUserMastery, getDb } from "../db";
 import { quizQuestions } from "../../drizzle/schema";
 import { eq, and, inArray } from "drizzle-orm";
@@ -132,11 +132,14 @@ export const skillPracticeRouter = router({
 
       const results = input.answers.map((a) => {
         const q = questionMap.get(a.questionId);
-        if (!q) return { questionId: a.questionId, correct: false, correctAnswer: "", explanation: "" };
+        if (!q) return { questionId: a.questionId, correct: false, isPartial: false, partialHint: "", correctAnswer: "", explanation: "" };
         const correct = answersMatch(a.answer, q.correctAnswer);
+        const partial = !correct ? partialCreditCheck(a.answer, q.correctAnswer) : { isPartial: false, score: 0, hint: "" };
         return {
           questionId: a.questionId,
           correct,
+          isPartial: partial.isPartial,
+          partialHint: partial.hint,
           correctAnswer: q.correctAnswer,
           explanation: q.explanation,
           skillTag: q.skillTag,
@@ -144,6 +147,7 @@ export const skillPracticeRouter = router({
       });
 
       const correctCount = results.filter((r) => r.correct).length;
+      const partialCount = results.filter((r) => r.isPartial).length;
 
       // Update spaced repetition schedules per skill
       const skillScores = new Map<string, { correct: number; total: number }>();
@@ -168,11 +172,16 @@ export const skillPracticeRouter = router({
         }
       }
 
+      // Effective score: full credit + half credit for partial
+      const effectiveScore = correctCount + (partialCount * 0.5);
+
       return {
         results,
         score: correctCount,
+        partialCount,
+        effectiveScore,
         total: results.length,
-        percentage: Math.round((correctCount / results.length) * 100),
+        percentage: Math.round((effectiveScore / results.length) * 100),
         reviewUpdates,
       };
     }),
