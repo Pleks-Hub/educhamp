@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { answersMatch } from "@shared/answerUtils";
 import { useLocation, useParams } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -176,26 +177,7 @@ export default function LessonDetail() {
    * - strip trailing .0 from decimals ("3.0" → "3")
    * - accept comma-separated values in any order ("2,3" == "3,2")
    */
-  function normaliseAnswer(raw: string): string {
-    return raw.trim().toLowerCase().replace(/\s+/g, "");
-  }
-
-  function answersMatch(student: string, correct: string): boolean {
-    const s = normaliseAnswer(student);
-    const c = normaliseAnswer(correct);
-    if (s === c) return true;
-    // Strip trailing .0 from both sides
-    const stripDot0 = (v: string) => v.replace(/\.0+$/, "");
-    if (stripDot0(s) === stripDot0(c)) return true;
-    // Accept comma-separated values in any order (e.g. "2,3" vs "3,2")
-    const sParts = s.split(",").map((p) => p.trim()).sort();
-    const cParts = c.split(",").map((p) => p.trim()).sort();
-    if (sParts.join(",") === cParts.join(",")) return true;
-    // Accept "x=3" matching "3" when the correct answer is just a number
-    const numericMatch = s.replace(/^[a-z]=/i, "");
-    if (numericMatch === c || stripDot0(numericMatch) === stripDot0(c)) return true;
-    return false;
-  }
+  // Use shared answersMatch utility (handles / as ÷, fraction evaluation, etc.)
 
   const checkAnswer = (idx: number, solution: string) => {
     const student = studentAnswers[idx] ?? "";
@@ -608,6 +590,7 @@ export default function LessonDetail() {
                           Check
                         </Button>
                       </div>
+                      <p className="text-xs text-muted-foreground mt-1">Tip: Use <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">/</kbd> for division (e.g., 12/4 = 3)</p>
                     </div>
 
                     {/* Feedback */}

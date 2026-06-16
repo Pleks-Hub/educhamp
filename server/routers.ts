@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { answersMatch } from "@shared/answerUtils";
 import { parentRouter, courseRequestTokenRouter } from "./routers/parent";
 import { coParentRouter } from "./routers/coParent";
 import { authEnhancementsRouter } from "./routers/authEnhancements";
@@ -757,7 +758,7 @@ export const appRouter = router({
         const gradedAnswers = input.answers.map((a) => {
           const q = questionMap.get(a.questionId);
           if (!q) return { questionId: a.questionId, answer: a.answer, correct: false };
-          const correct = a.answer.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase();
+          const correct = answersMatch(a.answer, q.correctAnswer);
           return { questionId: a.questionId, answer: a.answer, correct };
         });
 
@@ -1619,7 +1620,7 @@ export const appRouter = router({
         const results = input.answers.map((a) => {
           const q = qMap.get(a.questionId);
           if (!q) return { questionId: a.questionId, isCorrect: false, correctAnswer: "", explanation: "", difficulty: "medium" as const, skillTag: "" };
-          const isCorrect = a.answer.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase();
+          const isCorrect = answersMatch(a.answer, q.correctAnswer);
           if (isCorrect) correct++;
           return {
             questionId: a.questionId,

@@ -3112,3 +3112,13 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Mount handler in server/_core/index.ts
 - [x] Register heartbeat cron: daily at 07:00 UTC (task_uid L4DwFH6Hr3jazLVJBqABoY)
 - [x] Tests: write vitest tests for engagement decay logic (16 passing, 1264 total)
+
+### Sprint 42 — Accept "/" as Division Sign
+
+- [x] Create shared utility: shared/answerUtils.ts with normaliseAnswer() and answersMatch() that treats "/" as ÷
+- [x] Update server/routers.ts submitDiagnostic to use shared answersMatch
+- [x] Update server/routers.ts exam prep submission to use shared answersMatch
+- [x] Update server/routers/skillPractice.ts to use shared answersMatch
+- [x] Update client/src/pages/LessonDetail.tsx to use shared answersMatch
+- [x] Add UI hint below answer inputs: "Use / for division (e.g., 12/4 = 3)" in Quiz, Diagnostic, ExamPrep, PracticeWeakSkills, LessonDetail
+- [x] Tests: verify "/" is accepted as ÷ in answer matching (24 passing, 1288 total)

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router } from "../_core/trpc";
 import { studentProcedure } from "../_core/trpc";
+import { answersMatch } from "@shared/answerUtils";
 import { getActiveCourseIdForUser, getSkillsForCourse, getUserMastery, getDb } from "../db";
 import { quizQuestions } from "../../drizzle/schema";
 import { eq, and, inArray } from "drizzle-orm";
@@ -127,20 +128,7 @@ export const skillPracticeRouter = router({
 
       const questionMap = new Map(questions.map((q) => [q.id, q]));
 
-      function normalise(raw: string): string {
-        return raw.trim().toLowerCase().replace(/\s+/g, "");
-      }
-      function answersMatch(student: string, correct: string): boolean {
-        const s = normalise(student);
-        const c = normalise(correct);
-        if (s === c) return true;
-        const stripDot0 = (v: string) => v.replace(/\.0+$/, "");
-        if (stripDot0(s) === stripDot0(c)) return true;
-        const sParts = s.split(",").map((p) => p.trim()).sort();
-        const cParts = c.split(",").map((p) => p.trim()).sort();
-        if (sParts.join(",") === cParts.join(",")) return true;
-        return false;
-      }
+      // Use shared answersMatch utility (handles / as ÷, fraction evaluation, etc.)
 
       const results = input.answers.map((a) => {
         const q = questionMap.get(a.questionId);

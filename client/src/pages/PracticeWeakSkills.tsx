@@ -353,11 +353,14 @@ export default function PracticeWeakSkills() {
                 ))}
               </RadioGroup>
             ) : (
-              <Input
-                placeholder="Type your answer..."
-                value={answers[q.id] ?? ""}
-                onChange={(e) => handleAnswer(q.id, e.target.value)}
-              />
+              <div className="space-y-1">
+                <Input
+                  placeholder="Type your answer..."
+                  value={answers[q.id] ?? ""}
+                  onChange={(e) => handleAnswer(q.id, e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">Tip: Use <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">/</kbd> for division (e.g., 12/4 = 3)</p>
+              </div>
             )}
           </CardContent>
         </Card>

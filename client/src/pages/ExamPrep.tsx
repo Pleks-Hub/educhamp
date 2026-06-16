@@ -156,14 +156,17 @@ function QuestionCard({
           ))}
         </RadioGroup>
       ) : (
-        <Input
-          value={answer}
-          onChange={(e) => onAnswer(e.target.value)}
-          placeholder="Type your answer here…"
-          disabled={disabled}
-          className="text-sm"
-          aria-label="Your answer"
-        />
+        <div className="space-y-1">
+          <Input
+            value={answer}
+            onChange={(e) => onAnswer(e.target.value)}
+            placeholder="Type your answer here…"
+            disabled={disabled}
+            className="text-sm"
+            aria-label="Your answer"
+          />
+          <p className="text-xs text-muted-foreground">Tip: Use <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">/</kbd> for division (e.g., 12/4 = 3)</p>
+        </div>
       )}
     </div>
   );
