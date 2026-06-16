@@ -3162,3 +3162,18 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Symbol display: add CSS class .math-symbol with fallback fonts (Cambria Math, STIX, etc.)
 - [x] Symbol display: removed ≰ and ≱ (poorly supported) — replaced with ∞ and ° (universally rendered)
 - [x] Tests: write vitest tests for clear-all and pin favorites logic (14 new tests)
+
+### Sprint 46 — Onboarding Tooltip, Drag-and-Drop Pinned Symbols, Fraction Builder
+
+- [x] Onboarding: show first-use tooltip explaining how to pin favorite symbols (localStorage flag)
+- [x] Onboarding: tooltip dismisses on click or after 6 seconds, never shown again
+- [x] Onboarding: tooltip appears when full keyboard is opened for the first time
+- [x] Drag-and-drop: allow reordering pinned symbols by dragging (desktop)
+- [x] Drag-and-drop: persist new order to localStorage via savePinnedOrder
+- [x] Drag-and-drop: visual feedback during drag (opacity, ring highlight, scale)
+- [x] Drag-and-drop: touch-based reorder on mobile (long-press swaps with previous)
+- [x] Fraction builder: add fraction mode toggle button to keyboard toolbar
+- [x] Fraction builder: show numerator/denominator input fields with visual fraction bar
+- [x] Fraction builder: insert formatted fraction (a/b) into answer on confirm
+- [x] Fraction builder: Enter key in denominator field triggers insert
+- [x] Tests: write vitest tests for Sprint 46 features (12 new tests, 1351 total)
