@@ -212,13 +212,7 @@ const normalizeToolChoice = (
 const resolveApiUrl = () =>
   ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
     ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
-
-const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
-  }
-};
+    : "http://adelekes-mac-studio.tail9eeca2.ts.net:11434/v1/chat/completions";
 
 const normalizeResponseFormat = ({
   responseFormat,
@@ -266,8 +260,6 @@ const normalizeResponseFormat = ({
 };
 
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
-  assertApiKey();
-
   const {
     messages,
     tools,
@@ -280,7 +272,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   } = params;
 
   const payload: Record<string, unknown> = {
-    model: "gemini-2.5-flash",
+    model: ENV.forgeModel,
     messages: messages.map(normalizeMessage),
   };
 
@@ -312,12 +304,17 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.response_format = normalizedResponseFormat;
   }
 
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+  // Local Ollama needs no auth; only send a bearer token when one is configured.
+  if (ENV.forgeApiKey) {
+    headers.authorization = `Bearer ${ENV.forgeApiKey}`;
+  }
+
   const response = await fetch(resolveApiUrl(), {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
-    },
+    headers,
     body: JSON.stringify(payload),
   });
 

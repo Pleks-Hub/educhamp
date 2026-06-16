@@ -39,7 +39,7 @@ type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "exam_prep" | "
 const VALID_MODES = new Set<string>(["teach", "practice", "quiz", "exam_review", "exam_prep", "remediation", "parent_summary", "misconception_drill"]);
 
 function resolveApiUrl(): string {
-  const base = ENV.forgeApiUrl || "https://api.manus.im";
+  const base = ENV.forgeApiUrl || "http://adelekes-mac-studio.tail9eeca2.ts.net:11434";
   return `${base}/v1/chat/completions`;
 }
 
@@ -427,18 +427,23 @@ export function registerTutorStreamRoute(app: Express) {
 
       // ── Stream from LLM ───────────────────────────────────────────────────
       const payload = {
-        model: "gemini-2.5-flash",
+        model: ENV.forgeModel,
         messages,
         stream: true,
         max_tokens: 4096,
       };
 
+      const streamHeaders: Record<string, string> = {
+        "content-type": "application/json",
+      };
+      // Local Ollama needs no auth; only send a bearer token when one is configured.
+      if (ENV.forgeApiKey) {
+        streamHeaders.authorization = `Bearer ${ENV.forgeApiKey}`;
+      }
+
       const llmRes = await fetch(resolveApiUrl(), {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${ENV.forgeApiKey}`,
-        },
+        headers: streamHeaders,
         body: JSON.stringify(payload),
       });
 
