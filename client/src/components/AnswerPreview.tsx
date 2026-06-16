@@ -100,7 +100,7 @@ export function AnswerPreview({ value, className = "" }: AnswerPreviewProps) {
       <span className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground/70">
         Preview:
       </span>
-      <span className="font-mono text-foreground/80 text-base">{preview}</span>
+      <span className="math-symbol text-foreground/80 text-base">{preview}</span>
     </div>
   );
 }

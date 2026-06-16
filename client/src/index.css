@@ -381,6 +381,19 @@
   letter-spacing: 0.02em;
 }
 
+/* Math symbol rendering — uses a font stack that reliably renders
+   mathematical operators, comparison symbols, and special characters
+   across all platforms (Windows, macOS, iOS, Android, Linux). */
+.math-symbol {
+  font-family: 'Cambria Math', 'STIX Two Math', 'Latin Modern Math', 'DejaVu Math TeX Gyre',
+               'Noto Sans Math', 'Segoe UI Symbol', 'Apple Symbols', 'Symbol',
+               'Inter', system-ui, sans-serif;
+  font-style: normal;
+  font-variant-ligatures: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 /* Lesson content prose */
 .lesson-prose {
   @apply text-base leading-relaxed text-foreground;

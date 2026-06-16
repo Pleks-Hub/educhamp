@@ -3151,3 +3151,14 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Scratchpad: integrate into Quiz, Diagnostic, ExamPrep, PracticeWeakSkills, LessonDetail
 - [x] Scratchpad: persist work per question (state managed by parent page)
 - [x] Tests: write vitest tests for Sprint 44 features
+
+### Sprint 45 — MathKeyboard Clear All, Pin Favorites, Symbol Display Fix
+
+- [x] MathKeyboard: add "Clear All" button to recently-used row to reset history
+- [x] MathKeyboard: add pin/unpin functionality for favorite symbols (localStorage)
+- [x] MathKeyboard: pinned symbols shown in dedicated row above recent symbols
+- [x] MathKeyboard: visual pin indicator (filled/unfilled star) on each symbol in full keyboard
+- [x] Symbol display: replace font-mono with proper math-symbol font stack for reliable glyph rendering
+- [x] Symbol display: add CSS class .math-symbol with fallback fonts (Cambria Math, STIX, etc.)
+- [x] Symbol display: removed ≰ and ≱ (poorly supported) — replaced with ∞ and ° (universally rendered)
+- [x] Tests: write vitest tests for clear-all and pin favorites logic (14 new tests)
