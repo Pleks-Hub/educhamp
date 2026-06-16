@@ -105,6 +105,7 @@ export default function LessonDetail() {
   const [studentAnswers, setStudentAnswers] = useState<Record<number, string>>({});
   const [revealedSolutions, setRevealedSolutions] = useState<Set<number>>(new Set());
   const [checkedAnswers, setCheckedAnswers] = useState<Record<number, "correct" | "wrong" | "partial" | null>>({});
+  const [scratchpadNotes, setScratchpadNotes] = useState<Record<number, string>>({});
 
   const { celebrate } = useCelebration();
 
@@ -592,6 +593,10 @@ export default function LessonDetail() {
                               ? "[&_input]:border-red-400 [&_input]:focus-visible:ring-red-400"
                               : ""
                           }`}
+                          scratchpad={{
+                            value: scratchpadNotes[idx] ?? "",
+                            onChange: (v) => setScratchpadNotes((prev) => ({ ...prev, [idx]: v })),
+                          }}
                         />
                         <Button
                           size="sm"

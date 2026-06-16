@@ -4,6 +4,7 @@
  * - MathKeyboard toolbar for inserting symbols
  * - AnswerPreview for live formatted display
  * - Division tip hint
+ * - Optional "Show Your Work" scratchpad
  *
  * Used across Quiz, Diagnostic, ExamPrep, PracticeWeakSkills, and LessonDetail pages.
  */
@@ -11,6 +12,7 @@ import { useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { MathKeyboard } from "@/components/MathKeyboard";
 import { AnswerPreview } from "@/components/AnswerPreview";
+import { ShowYourWork } from "@/components/ShowYourWork";
 
 interface MathAnswerInputProps {
   id: string;
@@ -20,6 +22,11 @@ interface MathAnswerInputProps {
   placeholder?: string;
   className?: string;
   label?: string;
+  /** Enable scratchpad. Pass scratchpad value + onChange to manage state externally. */
+  scratchpad?: {
+    value: string;
+    onChange: (value: string) => void;
+  };
 }
 
 export function MathAnswerInput({
@@ -30,6 +37,7 @@ export function MathAnswerInput({
   placeholder = "Type your answer...",
   className = "",
   label,
+  scratchpad,
 }: MathAnswerInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -84,6 +92,14 @@ export function MathAnswerInput({
         </kbd>{" "}
         for division (e.g., 12/4 = 3)
       </p>
+      {scratchpad && (
+        <ShowYourWork
+          questionId={id}
+          value={scratchpad.value}
+          onChange={scratchpad.onChange}
+          className="mt-1"
+        />
+      )}
     </div>
   );
 }

@@ -51,6 +51,8 @@ type ExamItem = {
 type SubmitResult = {
   questionId: number;
   isCorrect: boolean;
+  isPartial?: boolean;
+  partialHint?: string;
   correctAnswer: string;
   explanation: string;
   difficulty: "easy" | "medium" | "hard" | "challenge";
@@ -94,6 +96,7 @@ function QuestionCard({
   answer,
   onAnswer,
   disabled,
+  scratchpad,
 }: {
   item: ExamItem;
   index: number;
@@ -101,6 +104,7 @@ function QuestionCard({
   answer: string;
   onAnswer: (val: string) => void;
   disabled: boolean;
+  scratchpad?: { value: string; onChange: (v: string) => void };
 }) {
   const choices = parseChoices(item.choices);
   const isMultipleChoice = item.questionType === "multiple_choice" && choices.length > 0;
@@ -162,6 +166,7 @@ function QuestionCard({
           value={answer}
           onChange={onAnswer}
           label="Your answer:"
+          scratchpad={scratchpad}
         />
       )}
     </div>
@@ -192,12 +197,14 @@ function ReviewCard({
     : null;
 
   return (
-    <Card className={`border-l-4 ${result.isCorrect ? "border-l-emerald-500" : "border-l-red-500"}`}>
+    <Card className={`border-l-4 ${result.isCorrect ? "border-l-emerald-500" : result.isPartial ? "border-l-amber-500" : "border-l-red-500"}`}>
       <CardContent className="pt-4 pb-4 space-y-3">
         {/* Header */}
         <div className="flex items-start gap-2">
           {result.isCorrect ? (
             <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+          ) : result.isPartial ? (
+            <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
           ) : (
             <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
           )}
@@ -213,20 +220,41 @@ function ReviewCard({
 
         {/* Answer comparison */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-          <div className={`rounded-md p-2 ${result.isCorrect ? "bg-emerald-50 dark:bg-emerald-950/30" : "bg-red-50 dark:bg-red-950/30"}`}>
+          <div className={`rounded-md p-2 ${
+            result.isCorrect
+              ? "bg-emerald-50 dark:bg-emerald-950/30"
+              : result.isPartial
+              ? "bg-amber-50 dark:bg-amber-950/30"
+              : "bg-red-50 dark:bg-red-950/30"
+          }`}>
             <p className="text-xs font-semibold mb-0.5 text-muted-foreground">Your answer</p>
-            <p className={`font-medium ${result.isCorrect ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
+            <p className={`font-medium ${
+              result.isCorrect
+                ? "text-emerald-700 dark:text-emerald-400"
+                : result.isPartial
+                ? "text-amber-700 dark:text-amber-400"
+                : "text-red-700 dark:text-red-400"
+            }`}>
               {answer || <span className="italic text-muted-foreground">No answer</span>}
               {yourChoiceText && <span className="font-normal ml-1 text-muted-foreground">— {yourChoiceText}</span>}
+              {result.isPartial && (
+                <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-200/60 text-amber-800">½ Credit</span>
+              )}
             </p>
           </div>
-          {!result.isCorrect && (
+          {!result.isCorrect && !result.isPartial && (
             <div className="rounded-md p-2 bg-emerald-50 dark:bg-emerald-950/30">
               <p className="text-xs font-semibold mb-0.5 text-muted-foreground">Correct answer</p>
               <p className="font-medium text-emerald-700 dark:text-emerald-400">
                 {result.correctAnswer}
                 {correctChoiceText && <span className="font-normal ml-1 text-muted-foreground">— {correctChoiceText}</span>}
               </p>
+            </div>
+          )}
+          {result.isPartial && result.partialHint && (
+            <div className="rounded-md p-2 bg-amber-50 dark:bg-amber-950/30">
+              <p className="text-xs font-semibold mb-0.5 text-muted-foreground">Hint</p>
+              <p className="font-medium text-amber-700 dark:text-amber-400">{result.partialHint}</p>
             </div>
           )}
         </div>
@@ -267,6 +295,7 @@ export default function ExamPrep() {
   const [percentage, setPercentage] = useState(0);
   const [timeTakenSeconds, setTimeTakenSeconds] = useState(0);
   const startTimeRef = useRef<number | null>(null);
+  const [scratchpadNotes, setScratchpadNotes] = useState<Record<number, string>>({});
 
   // ── Exam data ──────────────────────────────────────────────────────────────
   const { data: examData, isLoading: examLoading, error: examError, refetch } = trpc.examPrep.start.useQuery(
@@ -583,6 +612,10 @@ export default function ExamPrep() {
                     answer={answers[currentItem.id] ?? ""}
                     onAnswer={handleAnswer}
                     disabled={submitMutation.isPending}
+                    scratchpad={{
+                      value: scratchpadNotes[currentItem.id] ?? "",
+                      onChange: (v) => setScratchpadNotes((prev) => ({ ...prev, [currentItem.id]: v })),
+                    }}
                   />
                 )}
               </CardContent>

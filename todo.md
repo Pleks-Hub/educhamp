@@ -3138,3 +3138,16 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Integrate AnswerPreview into all short-answer input areas
 - [x] Update server-side grading to return partial credit scores
 - [x] Tests: write vitest tests for partial credit logic and answer preview rendering
+
+### Sprint 44 — Partial Credit UI, Recent Symbols, Scratchpad
+
+- [x] Diagnostic review: add amber badge + hint text for partially correct answers in QuestionReviewCard
+- [x] Diagnostic review: update GradedAnswer type to include isPartial and partialHint fields
+- [x] ExamPrep review: add amber badge + hint text for partially correct answers in ReviewCard
+- [x] ExamPrep review: update SubmitResult type to include isPartial and partialHint fields
+- [x] MathKeyboard: add "Recently Used" row showing last 4 symbols from localStorage
+- [x] MathKeyboard: persist symbol usage counts in localStorage, update on each insert
+- [x] Scratchpad: create ShowYourWork component with expandable textarea
+- [x] Scratchpad: integrate into Quiz, Diagnostic, ExamPrep, PracticeWeakSkills, LessonDetail
+- [x] Scratchpad: persist work per question (state managed by parent page)
+- [x] Tests: write vitest tests for Sprint 44 features

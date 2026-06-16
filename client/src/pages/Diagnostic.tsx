@@ -18,12 +18,14 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertCircle,
   ArrowLeft,
   ArrowRight,
   BookOpen,
   CheckCircle2,
   ClipboardList,
   Clock,
+  Lightbulb,
   Loader2,
   RotateCcw,
   SkipForward,
@@ -68,6 +70,8 @@ type GradedAnswer = {
   questionId: string;
   answer: string;
   correct: boolean;
+  isPartial?: boolean;
+  partialHint?: string;
   questionText: string;
   questionType: string;
   choices: ChoiceItem[] | null;
@@ -132,6 +136,8 @@ function QuestionReviewCard({ answer, index, prereqLabel }: { answer: GradedAnsw
       className={`border transition-all ${
         answer.correct
           ? "border-green-200 bg-green-50/40"
+          : answer.isPartial
+          ? "border-amber-200 bg-amber-50/40"
           : "border-red-200 bg-red-50/40"
       }`}
     >
@@ -141,11 +147,13 @@ function QuestionReviewCard({ answer, index, prereqLabel }: { answer: GradedAnsw
           className="w-full flex items-start gap-3 p-4 text-left"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
-          aria-label={`${answer.correct ? "Correct" : "Incorrect"}: ${answer.questionText}`}
+          aria-label={`${answer.correct ? "Correct" : answer.isPartial ? "Partial credit" : "Incorrect"}: ${answer.questionText}`}
         >
           <div className="shrink-0 mt-0.5">
             {answer.correct ? (
               <CheckCircle2 className="h-5 w-5 text-green-600" />
+            ) : answer.isPartial ? (
+              <AlertCircle className="h-5 w-5 text-amber-600" />
             ) : (
               <XCircle className="h-5 w-5 text-red-600" />
             )}
@@ -207,17 +215,32 @@ function QuestionReviewCard({ answer, index, prereqLabel }: { answer: GradedAnsw
             {choices.length === 0 && (
               <div className="space-y-2">
                 <div className={`px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${
-                  answer.correct ? "bg-green-100 border border-green-300 text-green-900" : "bg-red-100 border border-red-300 text-red-900"
+                  answer.correct
+                    ? "bg-green-100 border border-green-300 text-green-900"
+                    : answer.isPartial
+                    ? "bg-amber-100 border border-amber-300 text-amber-900"
+                    : "bg-red-100 border border-red-300 text-red-900"
                 }`}>
                   {answer.correct ? (
                     <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  ) : answer.isPartial ? (
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                   ) : (
                     <XCircle className="h-3.5 w-3.5 shrink-0" />
                   )}
                   <span className="font-medium">Your answer:</span>
                   <span>{answer.answer || <em className="opacity-60">No answer given</em>}</span>
+                  {answer.isPartial && (
+                    <Badge variant="outline" className="ml-auto text-[10px] border-amber-300 text-amber-700 bg-amber-50">½ Credit</Badge>
+                  )}
                 </div>
-                {!answer.correct && (
+                {answer.isPartial && answer.partialHint && (
+                  <div className="px-3 py-2 rounded-lg text-sm flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800">
+                    <Lightbulb className="h-3.5 w-3.5 shrink-0" />
+                    <span className="text-xs">{answer.partialHint}</span>
+                  </div>
+                )}
+                {!answer.correct && !answer.isPartial && (
                   <div className="px-3 py-2 rounded-lg text-sm flex items-center gap-2 bg-green-100 border border-green-300 text-green-900">
                     <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
                     <span className="font-medium">Correct answer:</span>
@@ -278,6 +301,7 @@ export default function Diagnostic() {
 
   // Retest: generate a unique seed per session so each attempt gets different questions
   const [sessionSeed] = useState(() => Date.now().toString() + Math.random().toString(36).slice(2));
+  const [scratchpadNotes, setScratchpadNotes] = useState<Record<string, string>>({});
 
   // Get the active course so the diagnostic uses course-specific questions
   const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!user });
@@ -1114,6 +1138,10 @@ export default function Diagnostic() {
                   onChange={(val) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: val }))}
                   onEnter={handleNext}
                   label="Your answer:"
+                  scratchpad={{
+                    value: scratchpadNotes[currentQ.questionId] ?? "",
+                    onChange: (v) => setScratchpadNotes((prev) => ({ ...prev, [currentQ.questionId]: v })),
+                  }}
                 />
               </div>
             )}
@@ -1125,6 +1153,10 @@ export default function Diagnostic() {
                 onChange={(val) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: val }))}
                 onEnter={handleNext}
                 label="Your answer:"
+                scratchpad={{
+                  value: scratchpadNotes[currentQ.questionId] ?? "",
+                  onChange: (v) => setScratchpadNotes((prev) => ({ ...prev, [currentQ.questionId]: v })),
+                }}
               />
             )}
           </CardContent>

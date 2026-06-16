@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Keyboard } from "lucide-react";
+import { Keyboard, Clock } from "lucide-react";
 
 const MATH_SYMBOLS = [
   { symbol: "×", label: "Multiply", key: "×" },
@@ -17,6 +17,32 @@ const MATH_SYMBOLS = [
   { symbol: "±", label: "Plus or minus", key: "±" },
 ] as const;
 
+const STORAGE_KEY = "educhamp_math_recent_symbols";
+const MAX_RECENT = 4;
+
+/** Get recently used symbols from localStorage */
+export function getRecentSymbols(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.slice(0, MAX_RECENT);
+  } catch {
+    return [];
+  }
+}
+
+/** Record a symbol usage in localStorage */
+export function recordSymbolUsage(symbol: string): string[] {
+  const recent = getRecentSymbols().filter((s) => s !== symbol);
+  const updated = [symbol, ...recent].slice(0, MAX_RECENT);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  } catch { /* quota exceeded — ignore */ }
+  return updated;
+}
+
 interface MathKeyboardProps {
   onInsert: (symbol: string) => void;
   className?: string;
@@ -24,21 +50,57 @@ interface MathKeyboardProps {
 
 export function MathKeyboard({ onInsert, className = "" }: MathKeyboardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [recentSymbols, setRecentSymbols] = useState<string[]>([]);
+
+  useEffect(() => {
+    setRecentSymbols(getRecentSymbols());
+  }, []);
+
+  const handleInsert = useCallback((symbol: string) => {
+    const updated = recordSymbolUsage(symbol);
+    setRecentSymbols(updated);
+    onInsert(symbol);
+  }, [onInsert]);
 
   return (
     <div className={`relative ${className}`}>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setIsOpen(!isOpen)}
-        className="gap-1.5 text-xs h-7 px-2 border-dashed"
-        aria-label="Toggle math symbols keyboard"
-      >
-        <Keyboard className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">Math Symbols</span>
-        <span className="sm:hidden">∑</span>
-      </Button>
+      <div className="flex items-center gap-1">
+        {/* Recently used symbols (always visible when available) */}
+        {recentSymbols.length > 0 && (
+          <div className="flex items-center gap-0.5 mr-0.5">
+            <Clock className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+            {recentSymbols.map((sym) => (
+              <Button
+                key={`recent-${sym}`}
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-base font-mono text-muted-foreground hover:text-foreground hover:bg-accent transition-all duration-100 active:scale-95"
+                onClick={() => handleInsert(sym)}
+                title={`Insert ${MATH_SYMBOLS.find((s) => s.key === sym)?.label ?? sym}`}
+                aria-label={`Insert recently used ${sym}`}
+              >
+                {sym}
+              </Button>
+            ))}
+            <div className="w-px h-4 bg-border mx-0.5" />
+          </div>
+        )}
+
+        {/* Toggle button for full keyboard */}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setIsOpen(!isOpen)}
+          className="gap-1.5 text-xs h-7 px-2 border-dashed"
+          aria-label="Toggle math symbols keyboard"
+        >
+          <Keyboard className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Math Symbols</span>
+          <span className="sm:hidden">∑</span>
+        </Button>
+      </div>
 
       {isOpen && (
         <div
@@ -53,7 +115,7 @@ export function MathKeyboard({ onInsert, className = "" }: MathKeyboardProps) {
                 variant="ghost"
                 size="sm"
                 className="h-9 w-9 p-0 text-lg font-mono hover:bg-accent hover:text-accent-foreground transition-all duration-100 active:scale-95"
-                onClick={() => onInsert(key)}
+                onClick={() => handleInsert(key)}
                 title={label}
                 aria-label={`Insert ${label}`}
               >

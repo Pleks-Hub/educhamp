@@ -119,6 +119,7 @@ export default function Quiz() {
   // Per-question timing
   const [questionTimings, setQuestionTimings] = useState<{ questionId: number; seconds: number }[]>([]);
   const questionStartRef = useRef<number>(Date.now());
+  const [scratchpadNotes, setScratchpadNotes] = useState<Record<string, string>>({});
 
   // Fetch dashboard for timed exam settings, active course, and next unit after quiz completion
   const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!user });
@@ -641,6 +642,10 @@ export default function Quiz() {
                 onChange={(val) => setAnswers((prev) => ({ ...prev, [String(currentQ.id)]: val }))}
                 onEnter={handleNext}
                 label="Your answer:"
+                scratchpad={{
+                  value: scratchpadNotes[String(currentQ.id)] ?? "",
+                  onChange: (v) => setScratchpadNotes((prev) => ({ ...prev, [String(currentQ.id)]: v })),
+                }}
               />
             </div>
           )}
@@ -652,6 +657,10 @@ export default function Quiz() {
               onChange={(val) => setAnswers((prev) => ({ ...prev, [String(currentQ.id)]: val }))}
               onEnter={handleNext}
               label="Your answer:"
+              scratchpad={{
+                value: scratchpadNotes[String(currentQ.id)] ?? "",
+                onChange: (v) => setScratchpadNotes((prev) => ({ ...prev, [String(currentQ.id)]: v })),
+              }}
             />
           )}
 

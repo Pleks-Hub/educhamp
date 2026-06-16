@@ -24,6 +24,7 @@ export default function PracticeWeakSkills() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [showExplanation, setShowExplanation] = useState<number | null>(null);
+  const [scratchpadNotes, setScratchpadNotes] = useState<Record<number, string>>({});
 
   const { data: weakSkillsData, isLoading } = trpc.skillPractice.getWeakSkills.useQuery({
     threshold: 75,
@@ -359,6 +360,10 @@ export default function PracticeWeakSkills() {
                 value={answers[q.id] ?? ""}
                 onChange={(val) => handleAnswer(q.id, val)}
                 label="Your answer:"
+                scratchpad={{
+                  value: scratchpadNotes[q.id] ?? "",
+                  onChange: (v) => setScratchpadNotes((prev) => ({ ...prev, [q.id]: v })),
+                }}
               />
             )}
           </CardContent>
