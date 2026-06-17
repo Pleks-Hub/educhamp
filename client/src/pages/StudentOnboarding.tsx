@@ -171,8 +171,15 @@ export default function StudentOnboarding() {
   const [coppaConsentSent, setCoppaConsentSent] = useState(false);
   const [coppaEmailError, setCoppaEmailError] = useState("");
 
+  // Check server-side COPPA consent status (handles parent-created students who are auto-approved)
+  const coppaStatusQuery = trpc.coppa.consentStatus.useQuery(undefined, {
+    staleTime: 60_000,
+  });
+  const coppaAlreadyApproved = coppaStatusQuery.data?.status === "approved" || coppaStatusQuery.data?.status === "not_required";
+
   // Whether this student's grade requires COPPA consent
-  const requiresCoppaConsent = gradeLevel ? COPPA_GRADES.has(gradeLevel) : false;
+  // Skip the gate entirely if the server says consent is already approved (e.g., parent-created students)
+  const requiresCoppaConsent = gradeLevel ? (COPPA_GRADES.has(gradeLevel) && !coppaAlreadyApproved) : false;
 
   const saveProfile = trpc.onboarding.saveStudentProfile.useMutation();
   const acceptInvite = trpc.onboarding.acceptStudentInvite.useMutation();

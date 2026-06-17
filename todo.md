@@ -3177,3 +3177,11 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Fraction builder: insert formatted fraction (a/b) into answer on confirm
 - [x] Fraction builder: Enter key in denominator field triggers insert
 - [x] Tests: write vitest tests for Sprint 46 features (12 new tests, 1351 total)
+
+### Sprint 47 — Auto-approve parent-created students (skip COPPA gate)
+
+- [x] StudentOnboarding: check coppa.consentStatus before showing COPPA gate
+- [x] StudentOnboarding: skip COPPA gate when server returns "approved" or "not_required"
+- [x] StudentOnboarding: skip COPPA gate for students with existing parent link (parent-created)
+- [x] Verify hasParentalConsent returns true for parent-enrolled students (parentChildren link)
+- [x] Tests: write vitest tests for auto-approval logic (14 new tests, 1365 total)
