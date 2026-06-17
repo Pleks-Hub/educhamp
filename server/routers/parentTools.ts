@@ -311,21 +311,30 @@ export const parentToolsRouter = router({
     return {
       weeklyDigestEnabled: profile?.weeklyDigestEnabled ?? true,
       activityPreference: (profile?.activityPreference as string) ?? "general",
+      notifySetupComplete: profile?.notifySetupComplete ?? true,
+      notifyQuizComplete: profile?.notifyQuizComplete ?? true,
+      notifyMasteryAchieved: profile?.notifyMasteryAchieved ?? true,
+      notifyDiagnosticComplete: profile?.notifyDiagnosticComplete ?? true,
     };
   }),
 
   updateNotificationPreferences: protectedProcedure
     .input(z.object({
-      weeklyDigestEnabled: z.boolean(),
+      weeklyDigestEnabled: z.boolean().optional(),
       activityPreference: z.enum(["general", "reading", "math_games", "hands_on", "outdoor", "creative"]).optional(),
+      notifySetupComplete: z.boolean().optional(),
+      notifyQuizComplete: z.boolean().optional(),
+      notifyMasteryAchieved: z.boolean().optional(),
+      notifyDiagnosticComplete: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const data: Record<string, any> = {
-        weeklyDigestEnabled: input.weeklyDigestEnabled,
-      };
-      if (input.activityPreference !== undefined) {
-        data.activityPreference = input.activityPreference;
-      }
+      const data: Record<string, any> = {};
+      if (input.weeklyDigestEnabled !== undefined) data.weeklyDigestEnabled = input.weeklyDigestEnabled;
+      if (input.activityPreference !== undefined) data.activityPreference = input.activityPreference;
+      if (input.notifySetupComplete !== undefined) data.notifySetupComplete = input.notifySetupComplete;
+      if (input.notifyQuizComplete !== undefined) data.notifyQuizComplete = input.notifyQuizComplete;
+      if (input.notifyMasteryAchieved !== undefined) data.notifyMasteryAchieved = input.notifyMasteryAchieved;
+      if (input.notifyDiagnosticComplete !== undefined) data.notifyDiagnosticComplete = input.notifyDiagnosticComplete;
       await upsertUserProfile(ctx.user.id, data);
       return { success: true };
     }),

@@ -471,6 +471,11 @@ export const userProfiles = mysqlTable("userProfiles", {
   emailDigestEnabled: boolean("emailDigestEnabled").notNull().default(true), // students: opt-in/out of progress digest emails
   emailAchievementsEnabled: boolean("emailAchievementsEnabled").notNull().default(true), // students: opt-in/out of achievement/badge emails
   emailRemindersEnabled: boolean("emailRemindersEnabled").notNull().default(true), // students: opt-in/out of inactivity/reminder emails
+  // Parent milestone notification preferences
+  notifySetupComplete: boolean("notifySetupComplete").notNull().default(true), // notify when child completes account setup
+  notifyQuizComplete: boolean("notifyQuizComplete").notNull().default(true), // notify when child completes a quiz
+  notifyMasteryAchieved: boolean("notifyMasteryAchieved").notNull().default(true), // notify when child achieves mastery on a unit
+  notifyDiagnosticComplete: boolean("notifyDiagnosticComplete").notNull().default(true), // notify when child completes diagnostic test
   // Parent invite notification preferences
   inviteRemindersEnabled: boolean("inviteRemindersEnabled").notNull().default(true), // opt-in/out of invite expiry reminder emails
   // Leaderboard visibility

@@ -3237,3 +3237,17 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] In-app notifications: added student_setup_complete notification on onboarding completion
 - [x] Server: create notification when student completes setup + diagnostic test + unit mastery
 - [x] Tests: write vitest tests for Sprint 51 features (11 new tests, 1423 total)
+
+### Sprint 52 — Notification preferences, weekly digest, browser tab badge
+
+- [x] DB: add notification preference columns to userProfiles table (notifySetupComplete, notifyQuizComplete, notifyMasteryAchieved, notifyDiagnosticComplete)
+- [x] Preferences: toggles for setup_complete, quiz_complete, mastery_achieved, diagnostic_complete
+- [x] Preferences: toggle for weekly_progress_summary email digest
+- [x] Server: getNotificationPreferences returns all 6 fields, updateNotificationPreferences accepts partial updates
+- [x] Server: check preferences before creating in-app notifications for parents
+- [x] UI: Milestone Notifications section in Profile page with 4 Switch toggles + optimistic updates
+- [x] Weekly Digest: heartbeat job runs Monday 08:00 UTC sending parent digest emails (already registered)
+- [x] Weekly Digest: summarize tasks completed, XP earned, badges unlocked, mastery changes per child
+- [x] Browser tab: show unread count badge in document title when tab is inactive (useTabNotification hook)
+- [ ] Browser tab: play subtle notification sound when new notification arrives (deferred — requires user gesture permission)
+- [x] Tests: write vitest tests for Sprint 52 features (15 new tests, 1438 total passing)

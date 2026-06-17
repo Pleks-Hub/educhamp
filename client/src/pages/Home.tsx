@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTabNotification } from "@/hooks/useTabNotification";
 import { useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -360,6 +361,7 @@ function NotificationBell() {
     onSuccess: () => utils.notifications.getMyNotifications.invalidate(),
   });
   const unread = data?.unreadCount ?? 0;
+  useTabNotification(unread);
   if (!data || data.notifications.length === 0) return null;
   return (
     <div className="relative group">

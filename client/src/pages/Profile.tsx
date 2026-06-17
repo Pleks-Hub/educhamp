@@ -883,8 +883,12 @@ function NotificationPreferencesCard() {
       await utils.parentTools.getNotificationPreferences.cancel();
       const prev = utils.parentTools.getNotificationPreferences.getData();
       utils.parentTools.getNotificationPreferences.setData(undefined, (old) => ({
-        weeklyDigestEnabled: newPrefs.weeklyDigestEnabled,
+        weeklyDigestEnabled: newPrefs.weeklyDigestEnabled ?? old?.weeklyDigestEnabled ?? true,
         activityPreference: newPrefs.activityPreference ?? old?.activityPreference ?? "general",
+        notifySetupComplete: newPrefs.notifySetupComplete ?? old?.notifySetupComplete ?? true,
+        notifyQuizComplete: newPrefs.notifyQuizComplete ?? old?.notifyQuizComplete ?? true,
+        notifyMasteryAchieved: newPrefs.notifyMasteryAchieved ?? old?.notifyMasteryAchieved ?? true,
+        notifyDiagnosticComplete: newPrefs.notifyDiagnosticComplete ?? old?.notifyDiagnosticComplete ?? true,
       }));
       return { prev };
     },
@@ -937,7 +941,7 @@ function NotificationPreferencesCard() {
               checked={weeklyDigestEnabled}
               disabled={isLoading || updateMutation.isPending}
               onCheckedChange={(checked) => {
-                updateMutation.mutate({ weeklyDigestEnabled: checked, activityPreference: activityPreference as "general" | "reading" | "math_games" | "hands_on" | "outdoor" | "creative" });
+                updateMutation.mutate({ weeklyDigestEnabled: checked });
               }}
             />
           </div>
@@ -952,7 +956,7 @@ function NotificationPreferencesCard() {
               <Select
                 value={activityPreference}
                 onValueChange={(val) => {
-                  updateMutation.mutate({ weeklyDigestEnabled, activityPreference: val as any });
+                  updateMutation.mutate({ activityPreference: val as any });
                 }}
                 disabled={isLoading || updateMutation.isPending}
               >
@@ -995,6 +999,70 @@ function NotificationPreferencesCard() {
               </p>
             </div>
           )}
+
+          <Separator />
+
+          {/* Milestone Notifications */}
+          <div className="space-y-1">
+            <Label className="text-sm font-medium">Milestone Notifications</Label>
+            <p className="text-xs text-muted-foreground">
+              Choose which student milestones trigger an in-app and email notification.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="notify-setup" className="text-sm">Account Setup Complete</Label>
+                <p className="text-xs text-muted-foreground">When a student finishes setting up their account.</p>
+              </div>
+              <Switch
+                id="notify-setup"
+                checked={prefs?.notifySetupComplete ?? true}
+                disabled={isLoading || updateMutation.isPending}
+                onCheckedChange={(checked) => updateMutation.mutate({ notifySetupComplete: checked })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="notify-quiz" className="text-sm">Quiz Completed</Label>
+                <p className="text-xs text-muted-foreground">When a student completes a quiz or exam prep session.</p>
+              </div>
+              <Switch
+                id="notify-quiz"
+                checked={prefs?.notifyQuizComplete ?? true}
+                disabled={isLoading || updateMutation.isPending}
+                onCheckedChange={(checked) => updateMutation.mutate({ notifyQuizComplete: checked })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="notify-mastery" className="text-sm">Mastery Achieved</Label>
+                <p className="text-xs text-muted-foreground">When a student achieves mastery in a unit or skill.</p>
+              </div>
+              <Switch
+                id="notify-mastery"
+                checked={prefs?.notifyMasteryAchieved ?? true}
+                disabled={isLoading || updateMutation.isPending}
+                onCheckedChange={(checked) => updateMutation.mutate({ notifyMasteryAchieved: checked })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="notify-diagnostic" className="text-sm">Diagnostic Test Complete</Label>
+                <p className="text-xs text-muted-foreground">When a student finishes a diagnostic assessment.</p>
+              </div>
+              <Switch
+                id="notify-diagnostic"
+                checked={prefs?.notifyDiagnosticComplete ?? true}
+                disabled={isLoading || updateMutation.isPending}
+                onCheckedChange={(checked) => updateMutation.mutate({ notifyDiagnosticComplete: checked })}
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
 
