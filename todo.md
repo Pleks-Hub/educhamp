@@ -3211,3 +3211,15 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Parent Dashboard: add colored dot indicator in table view next to child name
 - [x] Server: return accountStatus, hasPassword, onboardingCompleted, lastActiveAt in listChildren
 - [x] Tests: write vitest tests for Sprint 49 features (14 new tests, 1396 total)
+
+### Sprint 50 — Last active timestamp, setup-complete notification, bulk resend
+
+- [x] Parent Dashboard: show "Last active: X ago" timestamp below the account status badge
+- [x] Parent Dashboard: show "Never" when lastActiveAt is null
+- [x] Parent Dashboard: use relative time format (Just now / Xm ago / Xh ago / Xd ago)
+- [x] Server: send email notification to all linked parents when student completes onboarding
+- [x] Server: uses sendEmail with setup-complete notification content
+- [x] Parent Dashboard: add "Resend All Setup Emails" button when 2+ students are pending
+- [x] Server: add bulkResendSetupEmails procedure in parentRouter
+- [x] Server: respect rate-limiting per student (10 min cooldown, skips already-setup students)
+- [x] Tests: write vitest tests for Sprint 50 features (16 new tests, 1412 total)

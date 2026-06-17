@@ -245,6 +245,42 @@ Keep it to 3-4 sentences. Write directly to the parent (use "your child" or thei
       }
     }
 
+    // Notify parent(s) that this student has completed setup
+    try {
+      const { getDb } = await import("../db");
+      const db = await getDb();
+      if (db) {
+        const { parentChildren, users } = await import("../../drizzle/schema");
+        const { eq, and } = await import("drizzle-orm");
+        const links = await db.select({ parentId: parentChildren.parentId })
+          .from(parentChildren)
+          .where(and(eq(parentChildren.childId, ctx.user.id), eq(parentChildren.isActive, true)));
+        if (links.length > 0) {
+          const { sendEmail } = await import("../emailService");
+          const studentName = ctx.user.name ?? "Your student";
+          for (const link of links) {
+            const [parent] = await db.select({ email: users.email, name: users.name })
+              .from(users).where(eq(users.id, link.parentId));
+            if (parent?.email) {
+              sendEmail({
+                to: parent.email,
+                subject: `${studentName} has completed their EduChamp setup!`,
+                html: `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+                  <h2 style="color:#0d9488">\u2705 Setup Complete</h2>
+                  <p>Hi ${parent.name ?? "Parent"},</p>
+                  <p><strong>${studentName}</strong> has finished setting up their EduChamp account and is ready to start learning!</p>
+                  <p>You can view their progress anytime from your <a href="https://educhamp.app">Parent Dashboard</a>.</p>
+                  <p style="color:#6b7280;font-size:12px">EduChamp \u2014 Adaptive Algebra I</p>
+                </div>`,
+                text: `${studentName} has completed their EduChamp setup and is ready to start learning!`,
+                templateName: "student-setup-complete",
+              }).catch(() => {}); // fire-and-forget
+            }
+          }
+        }
+      }
+    } catch (_) { /* non-critical */ }
+
     return { success: true, autoEnrolledCourse };
   }),
 

@@ -703,6 +703,89 @@ export const parentRouter = router({
       return { success: true, gradeLevel: input.gradeLevel };
     }),
 
+  /**
+   * Bulk resend setup emails to all pending students for this parent.
+   * Respects 10-minute rate limit per student.
+   */
+  bulkResendSetupEmails: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const { parentChildren, users } = await import("../../drizzle/schema");
+      const { eq, and, gt } = await import("drizzle-orm");
+      const { nanoid } = await import("nanoid");
+
+      // Get all children for this parent
+      const links = await db.select({ childId: parentChildren.childId })
+        .from(parentChildren)
+        .where(and(eq(parentChildren.parentId, ctx.user.id), eq(parentChildren.isActive, true)));
+
+      if (links.length === 0) {
+        return { sent: 0, skipped: 0, errors: [] as string[] };
+      }
+
+      let sent = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+
+      for (const link of links) {
+        const [child] = await db.select().from(users).where(eq(users.id, link.childId)).limit(1);
+        if (!child || !child.email) continue;
+
+        // Only send to students who haven't set up a password yet (pending setup)
+        if (child.passwordHash) {
+          skipped++;
+          continue;
+        }
+
+        // Rate limit check
+        const [recentToken] = await db
+          .select({ id: passwordResetTokens.id })
+          .from(passwordResetTokens)
+          .where(
+            and(
+              eq(passwordResetTokens.userId, child.id),
+              gt(passwordResetTokens.createdAt, tenMinutesAgo)
+            )
+          )
+          .limit(1);
+
+        if (recentToken) {
+          skipped++;
+          continue;
+        }
+
+        // Create token and send email
+        try {
+          const token = nanoid(48);
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          await db.insert(passwordResetTokens).values({ userId: child.id, token, expiresAt });
+
+          const origin = ctx.req.headers.origin || "https://educhamp.co";
+          const setupUrl = `${origin}/student-setup?token=${token}`;
+          const emailContent = buildStudentSetupEmail({
+            studentName: child.name ?? "Student",
+            parentName: ctx.user.name ?? "Your parent",
+            setupUrl,
+          });
+
+          await sendEmail({
+            to: child.email,
+            subject: emailContent.subject,
+            html: emailContent.html,
+            text: emailContent.text,
+            templateName: "studentSetup",
+          });
+          sent++;
+        } catch (err: any) {
+          errors.push(`Failed for ${child.name ?? child.email}: ${err.message}`);
+        }
+      }
+
+      return { sent, skipped, errors };
+    }),
 });
 
 // ─── Public token-based approve/reject endpoint ───────────────────────────────
@@ -734,4 +817,5 @@ export const courseRequestTokenRouter = router({
       }
       return { success: true, action: input.action };
     }),
+
 });

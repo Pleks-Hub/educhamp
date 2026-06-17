@@ -217,6 +217,26 @@ function adaptivePathBadge(path: string | null) {
   );
 }
 
+function formatRelativeTime(isoString: string): string {
+  const now = Date.now();
+  const then = new Date(isoString).getTime();
+  const diffMs = now - then;
+  if (diffMs < 0) return "Just now";
+  const seconds = Math.floor(diffMs / 1000);
+  if (seconds < 60) return "Just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${weeks}w ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(months / 12)}y ago`;
+}
+
 // ─── Enrol Child Modal ────────────────────────────────────────────────────────
 
 function EnrolChildModal({ open, onClose, onSuccess }: { open: boolean; onClose: () => void; onSuccess: (childId?: number) => void }) {
@@ -2225,6 +2245,41 @@ function ResendSetupEmailButton({ childId, childName }: { childId: number; child
   );
 }
 
+function BulkResendButton({ pendingCount }: { pendingCount: number }) {
+  const bulkResend = trpc.parent.bulkResendSetupEmails.useMutation({
+    onSuccess: (data) => {
+      if (data.sent > 0) {
+        toast.success(`Setup emails sent to ${data.sent} student${data.sent > 1 ? "s" : ""}!`);
+      }
+      if (data.skipped > 0) {
+        toast.info(`${data.skipped} student${data.skipped > 1 ? "s" : ""} skipped (rate-limited or already set up).`);
+      }
+      if (data.errors.length > 0) {
+        toast.error(`Some emails failed: ${data.errors[0]}`);
+      }
+    },
+    onError: (err) => toast.error(err.message || "Failed to send setup emails"),
+  });
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-lg border border-orange-200 bg-orange-50">
+      <Mail className="h-5 w-5 text-orange-600 shrink-0" />
+      <p className="text-sm text-orange-800 flex-1">
+        <strong>{pendingCount}</strong> student{pendingCount > 1 ? "s" : ""} still need{pendingCount === 1 ? "s" : ""} to complete setup.
+      </p>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => bulkResend.mutate()}
+        disabled={bulkResend.isPending}
+        className="gap-1.5 border-orange-300 text-orange-700 hover:bg-orange-100"
+      >
+        {bulkResend.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+        {bulkResend.isPending ? "Sending..." : "Resend All Setup Emails"}
+      </Button>
+    </div>
+  );
+}
+
 function ChildRecommendationsPanel({ childId, childName }: { childId: number; childName: string }) {
   // getRecommendations is a protectedProcedure with no input (uses ctx.user.id)
   // For parent viewing child recommendations, we'll use the catalog data filtered by child's grade
@@ -2525,6 +2580,12 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
                 </Badge>
               )}
             </div>
+            {/* Last active timestamp */}
+            <p className="text-xs text-muted-foreground mt-1">
+              Last active: {(child as any).lastActiveAt
+                ? formatRelativeTime((child as any).lastActiveAt)
+                : "Never"}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -3478,6 +3539,11 @@ export default function ParentDashboard() {
       {/* Cross-course summary table */}
       {children && children.filter(Boolean).length > 1 && (
         <CrossCourseSummaryTable children={children.filter((c): c is NonNullable<typeof c> => c !== null)} />
+      )}
+
+      {/* Bulk Resend Setup Emails */}
+      {children && children.filter((c) => (c as any)?.accountStatus === "pending_setup").length > 1 && (
+        <BulkResendButton pendingCount={children.filter((c) => (c as any)?.accountStatus === "pending_setup").length} />
       )}
 
       {/* Children grid + detail panel */}
