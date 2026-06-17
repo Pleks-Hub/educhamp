@@ -228,6 +228,7 @@ function EnrolChildModal({ open, onClose, onSuccess }: { open: boolean; onClose:
   const [newEmail, setNewEmail] = useState("");
   const [newGrade, setNewGrade] = useState("9");
   const [newSchool, setNewSchool] = useState("");
+  const [newDob, setNewDob] = useState("");
   // Invite tab state
   const [inviteChildName, setInviteChildName] = useState("");
   const [inviteChildEmail, setInviteChildEmail] = useState("");
@@ -265,7 +266,7 @@ function EnrolChildModal({ open, onClose, onSuccess }: { open: boolean; onClose:
       toast.success(`${data.childName} has been created and added. Now let's assign their courses!`);
       onSuccess(data.childId);
       onClose();
-      setNewName(""); setNewEmail(""); setNewGrade("9"); setNewSchool("");
+      setNewName(""); setNewEmail(""); setNewGrade("9"); setNewSchool(""); setNewDob("");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -428,13 +429,24 @@ function EnrolChildModal({ open, onClose, onSuccess }: { open: boolean; onClose:
                   onChange={(e) => setNewSchool(e.target.value)}
                 />
               </div>
+              <div className="col-span-2 space-y-2">
+                <Label htmlFor="new-dob">Date of Birth (optional)</Label>
+                <Input
+                  id="new-dob"
+                  type="date"
+                  value={newDob}
+                  onChange={(e) => setNewDob(e.target.value)}
+                  max={new Date().toISOString().split("T")[0]}
+                />
+                <p className="text-xs text-muted-foreground">If provided, your child can skip this step during onboarding.</p>
+              </div>
             </div>
             <p className="text-xs text-muted-foreground">
               A student account will be created. The student can sign in later using the email you provide.
             </p>
             <Button
               className="w-full"
-              onClick={() => createAndEnroll.mutate({ name: newName, email: newEmail, grade: newGrade, school: newSchool || undefined })}
+              onClick={() => createAndEnroll.mutate({ name: newName, email: newEmail, grade: newGrade, school: newSchool || undefined, dateOfBirth: newDob || undefined })}
               disabled={!newName || !newEmail || createAndEnroll.isPending}
             >
               {createAndEnroll.isPending ? "Creating…" : "Create & Enrol Student"}
@@ -697,7 +709,18 @@ function ChildCourseRow({ child }: { child: ChildSummary }) {
             {(child.name ?? "S")[0].toUpperCase()}
           </div>
           <div>
-            <div className="font-medium text-sm">{child.name}</div>
+            <div className="font-medium text-sm flex items-center gap-1.5">
+              {child.name}
+              {(child as any).accountStatus === "pending_setup" && (
+                <span className="inline-block h-2 w-2 rounded-full bg-orange-400" title="Pending Setup" />
+              )}
+              {(child as any).accountStatus === "setup_incomplete" && (
+                <span className="inline-block h-2 w-2 rounded-full bg-yellow-400" title="Setup Incomplete" />
+              )}
+              {(child as any).accountStatus === "active" && (
+                <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" title="Active" />
+              )}
+            </div>
             <div className="text-xs text-muted-foreground">Grade {child.grade ?? "—"}</div>
           </div>
         </div>
@@ -2483,6 +2506,22 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
                     : "bg-purple-50 text-purple-700 border-purple-200"
                 }`}>
                   {child.languageLevel === "simplified" ? "📖 Simplified" : "📖 Advanced"}
+                </Badge>
+              )}
+              {/* Account Status badge */}
+              {(child as any).accountStatus === "pending_setup" && (
+                <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
+                  ⏳ Pending Setup
+                </Badge>
+              )}
+              {(child as any).accountStatus === "setup_incomplete" && (
+                <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                  🔧 Setup Incomplete
+                </Badge>
+              )}
+              {(child as any).accountStatus === "active" && (
+                <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                  ✓ Active
                 </Badge>
               )}
             </div>

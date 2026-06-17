@@ -129,6 +129,8 @@ export default function StudentOnboarding() {
 
   // Pre-fill grade/school from parent-created account and track if we should auto-skip Step 1
   const [parentPreFilled, setParentPreFilled] = useState(false);
+  // Load existing profile (may have dateOfBirth set by parent)
+  const profileQuery = trpc.onboarding.getProfile.useQuery();
   useEffect(() => {
     if (user && user.grade && user.grade !== "9" && !gradeLevel) {
       // Parent pre-filled grade during account creation
@@ -138,6 +140,14 @@ export default function StudentOnboarding() {
     }
   }, [user]);
   const [dateOfBirth, setDateOfBirth] = useState("");
+  // Pre-fill dateOfBirth from profile if parent set it
+  useEffect(() => {
+    const profileDob = profileQuery.data?.profile?.dateOfBirth;
+    if (profileDob && !dateOfBirth) {
+      setDateOfBirth(profileDob);
+      setParentPreFilled(true);
+    }
+  }, [profileQuery.data]);
   const [gender, setGender] = useState("");
   const [studentGoal, setStudentGoal] = useState("");
   const [goalDetail, setGoalDetail] = useState("");
@@ -437,7 +447,7 @@ export default function StudentOnboarding() {
                   <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
                   <div className="text-sm text-blue-800">
                     <span className="font-medium">Your parent pre-filled some info: </span>
-                    Grade {gradeLevel}{schoolName ? `, ${schoolName}` : ""}. You can edit these below if needed.
+                    {gradeLevel && `Grade ${gradeLevel}`}{schoolName ? `, ${schoolName}` : ""}{dateOfBirth ? `, DOB: ${new Date(dateOfBirth + "T00:00:00").toLocaleDateString()}` : ""}. You can edit these below if needed.
                   </div>
                 </div>
               )}

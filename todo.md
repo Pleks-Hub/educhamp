@@ -3199,3 +3199,15 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Server: sendSetupEmail procedure in studentAuth router (generates new token, sends email)
 - [x] Server: rate-limit resend to once per 10 minutes per student (checks passwordResetTokens)
 - [x] Tests: write vitest tests for Sprint 48 features (17 new tests, 1382 total)
+
+### Sprint 49 — DOB in parent creation, Account Status indicator
+
+- [x] Server: add optional dateOfBirth field to createAndEnroll input schema (YYYY-MM-DD)
+- [x] Server: store dateOfBirth in userProfiles table when parent provides it via upsertUserProfile
+- [x] Parent Portal: add date of birth input (type=date) to the "Add Student" form with max=today
+- [x] StudentOnboarding: pre-fill dateOfBirth from onboarding.getProfile query if already set by parent
+- [x] StudentOnboarding: show pre-filled DOB in the blue info banner alongside grade/school
+- [x] Parent Dashboard: add Account Status badge to each child card (Pending Setup / Setup Incomplete / Active)
+- [x] Parent Dashboard: add colored dot indicator in table view next to child name
+- [x] Server: return accountStatus, hasPassword, onboardingCompleted, lastActiveAt in listChildren
+- [x] Tests: write vitest tests for Sprint 49 features (14 new tests, 1396 total)

@@ -131,6 +131,15 @@ export const parentRouter = router({
           // Personalization fields for Parent Dashboard display
           parentLedMode: (childProfile as any)?.parentLedMode ?? false,
           languageLevel: ((childProfile as any)?.languageLevel ?? "standard") as "simplified" | "standard" | "advanced",
+          // Account status fields
+          hasPassword: !!child.passwordHash,
+          onboardingCompleted: childProfile?.onboardingCompleted ?? false,
+          lastActiveAt: child.lastActiveAt?.toISOString() ?? null,
+          accountStatus: (
+            !child.passwordHash ? "pending_setup" :
+            !(childProfile?.onboardingCompleted) ? "setup_incomplete" :
+            "active"
+          ) as "pending_setup" | "setup_incomplete" | "active",
         };
       })
     );
@@ -275,6 +284,7 @@ export const parentRouter = router({
         school: z.string().optional(),
         nickname: z.string().optional(),
         relationship: z.string().optional(),
+        dateOfBirth: z.string().optional(), // YYYY-MM-DD format
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -298,6 +308,12 @@ export const parentRouter = router({
       }
 
       await enrollChild(ctx.user.id, child.id, input.nickname ?? input.name, input.relationship ?? "parent");
+
+      // Store dateOfBirth in userProfile if provided
+      if (input.dateOfBirth) {
+        const { upsertUserProfile } = await import("../db");
+        await upsertUserProfile(child.id, { dateOfBirth: input.dateOfBirth });
+      }
 
       console.log(`[Audit] New Student Created \u2014 ${ctx.user.name}: ${input.name} (${input.email}), Grade ${input.grade}`);
 
