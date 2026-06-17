@@ -2227,21 +2227,104 @@ function GradeOverrideInline({ child }: { child: ChildSummary }) {
 }
 
 function ResendSetupEmailButton({ childId, childName }: { childId: number; childName: string }) {
+  const [showNote, setShowNote] = useState(false);
+  const [personalNote, setPersonalNote] = useState("");
   const sendSetup = trpc.studentAuth.sendSetupEmail.useMutation({
-    onSuccess: () => toast.success(`Setup email sent to ${childName}!`),
+    onSuccess: () => {
+      toast.success(`Setup email sent to ${childName}!`);
+      setShowNote(false);
+      setPersonalNote("");
+    },
     onError: (err) => toast.error(err.message || "Failed to send setup email"),
   });
+
+  if (showNote) {
+    return (
+      <div className="flex flex-col gap-2 p-3 rounded-lg border border-border bg-muted/30 max-w-sm">
+        <label className="text-xs font-medium text-muted-foreground">Add a personal note (optional):</label>
+        <textarea
+          className="w-full text-sm p-2 rounded-md border border-input bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+          rows={3}
+          maxLength={500}
+          placeholder={`e.g., "Hi ${childName.split(' ')[0]}, I set this up for you! Click the button to get started."`}
+          value={personalNote}
+          onChange={(e) => setPersonalNote(e.target.value)}
+        />
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => sendSetup.mutate({ childId, personalNote: personalNote.trim() || undefined })}
+            disabled={sendSetup.isPending}
+            className="gap-1.5"
+          >
+            {sendSetup.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+            {sendSetup.isPending ? "Sending..." : "Send"}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => { setShowNote(false); setPersonalNote(""); }}>
+            Cancel
+          </Button>
+          <span className="text-xs text-muted-foreground ml-auto">{personalNote.length}/500</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Button
       variant="outline"
       size="sm"
-      onClick={() => sendSetup.mutate({ childId })}
+      onClick={() => setShowNote(true)}
       disabled={sendSetup.isPending}
       className="gap-1.5"
     >
-      {sendSetup.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-      {sendSetup.isPending ? "Sending..." : "Resend Setup Email"}
+      <Mail className="h-3.5 w-3.5" />
+      Resend Setup Email
     </Button>
+  );
+}
+
+function SetupProgressBar({ accountCreated, passwordSet, onboardingComplete }: {
+  accountCreated: boolean;
+  passwordSet: boolean;
+  onboardingComplete: boolean;
+}) {
+  const steps = [
+    { label: "Account Created", done: accountCreated },
+    { label: "Password Set", done: passwordSet },
+    { label: "Onboarding Complete", done: onboardingComplete },
+  ];
+  const completed = steps.filter((s) => s.done).length;
+  const percent = Math.round((completed / steps.length) * 100);
+
+  return (
+    <div className="mt-3 p-3 rounded-lg border border-border bg-muted/30">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium text-muted-foreground">Setup Progress</span>
+        <span className="text-xs font-semibold text-primary">{completed}/{steps.length}</span>
+      </div>
+      <div className="w-full h-2 bg-muted rounded-full overflow-hidden mb-2">
+        <div
+          className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        {steps.map((step, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${
+              step.done
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-muted text-muted-foreground"
+            }`}>
+              {step.done ? "✓" : i + 1}
+            </div>
+            <span className={`text-xs ${step.done ? "text-foreground line-through opacity-60" : "text-foreground"}`}>
+              {step.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -2588,6 +2671,16 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
             </p>
           </div>
         </div>
+
+        {/* Setup Progress Bar for pending/incomplete students */}
+        {((child as any).accountStatus === "pending_setup" || (child as any).accountStatus === "setup_incomplete") && (
+          <SetupProgressBar
+            accountCreated={true}
+            passwordSet={!!(child as any).hasPassword}
+            onboardingComplete={!!(child as any).onboardingCompleted}
+          />
+        )}
+
         <div className="flex items-center gap-2">
           <ResendSetupEmailButton childId={child.childId} childName={child.name ?? "Student"} />
           <Button

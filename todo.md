@@ -3223,3 +3223,17 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Server: add bulkResendSetupEmails procedure in parentRouter
 - [x] Server: respect rate-limiting per student (10 min cooldown, skips already-setup students)
 - [x] Tests: write vitest tests for Sprint 50 features (16 new tests, 1412 total)
+
+### Sprint 51 — Setup Progress bar, personal note in emails, in-app notifications
+
+- [x] Parent Dashboard: add Setup Progress bar on pending/incomplete child cards
+- [x] Progress bar: show steps (Account Created, Password Set, Onboarding Complete) with checkmarks
+- [x] Progress bar: visual progress indicator with colored segments and remaining step labels
+- [x] Resend Setup Email: add optional personal note textarea in popover before sending
+- [x] Server: accept personalNote parameter in sendSetupEmail procedure
+- [x] Email template: include parent's personal note in the setup email body (sanitized)
+- [x] In-app notifications: use existing userNotifications table (already has bell icon + dropdown)
+- [x] In-app notifications: ParentNotificationBell already shows unread count and dropdown
+- [x] In-app notifications: added student_setup_complete notification on onboarding completion
+- [x] Server: create notification when student completes setup + diagnostic test + unit mastery
+- [x] Tests: write vitest tests for Sprint 51 features (11 new tests, 1423 total)

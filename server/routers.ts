@@ -882,6 +882,27 @@ export const appRouter = router({
           }
         }
 
+        // Notify parent(s) about diagnostic completion
+        try {
+          const { getParentsByChildId, getDb: getDbHelper } = await import("./db");
+          const parents = await getParentsByChildId(ctx.user.id);
+          const diagDb = await getDbHelper();
+          if (parents.length > 0 && diagDb) {
+            const { userNotifications } = await import("../drizzle/schema");
+            const childName = ctx.user.name ?? "Your child";
+            for (const parent of parents) {
+              await diagDb.insert(userNotifications).values({
+                userId: parent.parentId,
+                type: "milestone_diagnostic_complete",
+                title: `${childName} completed the diagnostic test!`,
+                message: `${childName} scored ${overallScore}% on the placement diagnostic. ${overallScore >= 80 ? "Excellent performance!" : overallScore >= 60 ? "Good effort \u2014 check their dashboard for details." : "They may need some extra support \u2014 review their results together."}`,
+                isRead: false,
+                metadata: JSON.stringify({ studentId: ctx.user.id, overallScore, placementRecommendation }),
+              });
+            }
+          }
+        } catch (_) { /* non-critical */ }
+
         return {
           overallScore,
           prerequisiteScore,

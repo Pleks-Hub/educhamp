@@ -270,7 +270,7 @@ export const studentAuthRouter = router({
    * Send/resend setup email to a child (called by parent)
    */
   sendSetupEmail: protectedProcedure
-    .input(z.object({ childId: z.number() }))
+    .input(z.object({ childId: z.number(), personalNote: z.string().max(500).optional() }))
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
@@ -327,6 +327,7 @@ export const studentAuthRouter = router({
         studentName: child.name ?? "Student",
         parentName: ctx.user.name ?? "Your parent",
         setupUrl,
+        personalNote: input.personalNote,
       });
 
       await sendEmail({

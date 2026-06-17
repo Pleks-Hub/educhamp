@@ -8,6 +8,7 @@ export interface StudentSetupEmailData {
   studentName: string;
   parentName: string;
   setupUrl: string;
+  personalNote?: string;
 }
 
 const BRAND_COLOR = "#4f46e5";
@@ -23,7 +24,7 @@ export function buildStudentSetupEmail(data: StudentSetupEmailData): {
   text: string;
   subject: string;
 } {
-  const { studentName, parentName, setupUrl } = data;
+  const { studentName, parentName, setupUrl, personalNote } = data;
   const firstName = studentName.split(" ")[0] || studentName;
   const subject = `Welcome to EduChamp! Set up your account, ${firstName}`;
 
@@ -64,7 +65,11 @@ export function buildStudentSetupEmail(data: StudentSetupEmailData): {
         <p class="text">
           Great news! <strong>${parentName}</strong> has enrolled you in EduChamp — an AI-powered learning platform
           designed to help you master your subjects at your own pace.
-        </p>
+        </p>${personalNote ? `
+        <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px 18px;margin:16px 0;font-size:14px;color:#92400e;">
+          <strong>💬 A note from ${parentName}:</strong><br/>
+          <em style="display:block;margin-top:6px;">${personalNote}</em>
+        </div>` : ""}
         <p class="text">
           To get started, you need to create a password for your account. Click the button below to set up your login:
         </p>
@@ -95,7 +100,7 @@ export function buildStudentSetupEmail(data: StudentSetupEmailData): {
   const text = `Hi ${firstName}!
 
 Great news! ${parentName} has enrolled you in EduChamp — an AI-powered learning platform.
-
+${personalNote ? `\nA note from ${parentName}: "${personalNote}"\n` : ""}
 To get started, create your password here (link valid for 7 days):
 ${setupUrl}
 
