@@ -126,6 +126,17 @@ export default function StudentOnboarding() {
   const [gradeLevel, setGradeLevel] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
+
+  // Pre-fill grade/school from parent-created account and track if we should auto-skip Step 1
+  const [parentPreFilled, setParentPreFilled] = useState(false);
+  useEffect(() => {
+    if (user && user.grade && user.grade !== "9" && !gradeLevel) {
+      // Parent pre-filled grade during account creation
+      setGradeLevel(user.grade);
+      if (user.school) setSchoolName(user.school);
+      setParentPreFilled(true);
+    }
+  }, [user]);
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState("");
   const [studentGoal, setStudentGoal] = useState("");
@@ -420,6 +431,16 @@ export default function StudentOnboarding() {
               <CardDescription>Help us personalise your learning experience across all your courses.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Parent pre-filled info banner */}
+              {parentPreFilled && (
+                <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 flex items-start gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                  <div className="text-sm text-blue-800">
+                    <span className="font-medium">Your parent pre-filled some info: </span>
+                    Grade {gradeLevel}{schoolName ? `, ${schoolName}` : ""}. You can edit these below if needed.
+                  </div>
+                </div>
+              )}
               {/* Date of Birth — mandatory */}
               <div>
                 <Label>
@@ -672,6 +693,21 @@ export default function StudentOnboarding() {
               </Button>
             </CardContent>
           </Card>
+        )}
+
+        {/* Parent-approved banner — shown when COPPA gate was skipped due to existing parent link */}
+        {step === 2 && coppaAlreadyApproved && gradeLevel && COPPA_GRADES.has(gradeLevel) && (
+          <div className="mb-4 rounded-lg bg-emerald-50 border border-emerald-200 p-4 flex items-start gap-3">
+            <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-emerald-900">Your parent has already approved your account</p>
+              <p className="text-xs text-emerald-700 mt-0.5">
+                Because your parent created your account, you don't need separate consent approval. You're all set to start learning!
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Step 2: Invite Parent */}

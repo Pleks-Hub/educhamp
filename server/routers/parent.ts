@@ -686,6 +686,7 @@ export const parentRouter = router({
       await upsertUserProfile(input.childId, { gradeLevel: input.gradeLevel });
       return { success: true, gradeLevel: input.gradeLevel };
     }),
+
 });
 
 // ─── Public token-based approve/reject endpoint ───────────────────────────────

@@ -294,9 +294,33 @@ export const studentAuthRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Student not found or has no email." });
       }
 
+      // Rate limit: check if a token was created in the last 10 minutes for this child
+      const { desc, and, gt } = await import("drizzle-orm");
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+      const [recentToken] = await db
+        .select({ id: passwordResetTokens.id, createdAt: passwordResetTokens.createdAt })
+        .from(passwordResetTokens)
+        .where(
+          and(
+            eq(passwordResetTokens.userId, input.childId),
+            gt(passwordResetTokens.createdAt, tenMinutesAgo)
+          )
+        )
+        .orderBy(desc(passwordResetTokens.createdAt))
+        .limit(1);
+
+      if (recentToken) {
+        const waitMinutes = Math.ceil((recentToken.createdAt!.getTime() + 10 * 60 * 1000 - Date.now()) / 60000);
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Please wait ${waitMinutes} minute${waitMinutes > 1 ? "s" : ""} before resending.`,
+        });
+      }
+
       // Create setup token
       const token = await createSetupToken(child.id);
-      const setupUrl = `https://educhamp.co/student-setup?token=${token}`;
+      const origin = ctx.req.headers.origin || "https://educhamp.co";
+      const setupUrl = `${origin}/student-setup?token=${token}`;
 
       // Send email
       const emailContent = buildStudentSetupEmail({
@@ -313,7 +337,7 @@ export const studentAuthRouter = router({
         templateName: "studentSetup",
       });
 
-      return { success: true };
+      return { success: true, sentTo: child.email };
     }),
 
   /**

@@ -3185,3 +3185,17 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] StudentOnboarding: skip COPPA gate for students with existing parent link (parent-created)
 - [x] Verify hasParentalConsent returns true for parent-enrolled students (parentChildren link)
 - [x] Tests: write vitest tests for auto-approval logic (14 new tests, 1365 total)
+
+### Sprint 48 — Parent-approved indicator, pre-fill grade/school, resend setup email
+
+- [x] StudentOnboarding: show green banner "Your parent has already approved your account" when coppaAlreadyApproved
+- [x] StudentOnboarding: banner shown in Step 2 when COPPA grade + already approved
+- [x] Parent Portal: school field already exists in createAndEnroll form (optional)
+- [x] Parent Portal: grade is passed to student users table during createChildAccount
+- [x] Server: grade/school stored in users table during createChildAccount (already implemented)
+- [x] StudentOnboarding: pre-fill grade/school from user data when parent set non-default grade
+- [x] StudentOnboarding: show blue info banner "Your parent pre-filled some info" with edit option
+- [x] Parent Portal: "Resend Setup Email" button already exists (ResendSetupEmailButton component)
+- [x] Server: sendSetupEmail procedure in studentAuth router (generates new token, sends email)
+- [x] Server: rate-limit resend to once per 10 minutes per student (checks passwordResetTokens)
+- [x] Tests: write vitest tests for Sprint 48 features (17 new tests, 1382 total)
