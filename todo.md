@@ -3251,3 +3251,13 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Browser tab: show unread count badge in document title when tab is inactive (useTabNotification hook)
 - [ ] Browser tab: play subtle notification sound when new notification arrives (deferred — requires user gesture permission)
 - [x] Tests: write vitest tests for Sprint 52 features (15 new tests, 1438 total passing)
+
+### Sprint 53 — Fix platform scrolling UX
+- [x] Diagnose root cause: overflow-x:hidden on html/body creates BFC that traps scroll context
+- [x] Fix: change body overflow-x from hidden to clip (prevents horizontal overflow without creating scroll trap)
+- [x] Fix: remove overscroll-behavior:none from html/body (was blocking scroll chaining)
+- [x] Fix: change SidebarProvider wrapper from min-h-svh to min-h-screen with overflow-y:auto
+- [x] Fix: remove min-h-dvh from DashboardLayout main element
+- [x] Fix: add scrollbar-gutter:stable to html for consistent scrollbar presence
+- [x] Verified: dev preview scrolls correctly (scrollBy delta=500 works, scrollHeight=10243)
+- [x] Tests: all 1438 tests still passing
