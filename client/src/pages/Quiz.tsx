@@ -34,6 +34,7 @@ import { FlagQuestionButton } from "@/components/FlagQuestionButton";
 import { useExamTimer } from "@/hooks/useExamTimer";
 import { ExamTimerBar } from "@/components/ExamTimerBar";
 import { MathAnswerInput } from "@/components/MathAnswerInput";
+import { needsMathKeyboard } from "@/lib/courseUtils";
 
 type ChoiceItem = { label: string; text: string };
 
@@ -136,6 +137,7 @@ export default function Quiz() {
 
   const isTimedExam = dashboard?.isTimedExam ?? false;
   const timeLimitMinutes = dashboard?.timeLimitMinutes ?? null;
+  const showMathKeyboard = needsMathKeyboard(dashboard?.courseSubject);
 
   // ── Auto-submit handler (called when timer expires) ──────────────────────
   const questionsRef = useRef(questions);
@@ -642,6 +644,7 @@ export default function Quiz() {
                 onChange={(val) => setAnswers((prev) => ({ ...prev, [String(currentQ.id)]: val }))}
                 onEnter={handleNext}
                 label="Your answer:"
+                showMathKeyboard={showMathKeyboard}
                 scratchpad={{
                   value: scratchpadNotes[String(currentQ.id)] ?? "",
                   onChange: (v) => setScratchpadNotes((prev) => ({ ...prev, [String(currentQ.id)]: v })),
@@ -657,6 +660,7 @@ export default function Quiz() {
               onChange={(val) => setAnswers((prev) => ({ ...prev, [String(currentQ.id)]: val }))}
               onEnter={handleNext}
               label="Your answer:"
+              showMathKeyboard={showMathKeyboard}
               scratchpad={{
                 value: scratchpadNotes[String(currentQ.id)] ?? "",
                 onChange: (v) => setScratchpadNotes((prev) => ({ ...prev, [String(currentQ.id)]: v })),

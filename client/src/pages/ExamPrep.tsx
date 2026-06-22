@@ -13,6 +13,7 @@ import { ExamTimerBar } from "@/components/ExamTimerBar";
 import { CourseContextBanner } from "@/components/CourseContextBanner";
 import { ReadAloudButton } from "@/components/ReadAloudButton";
 import { MathAnswerInput } from "@/components/MathAnswerInput";
+import { needsMathKeyboard } from "@/lib/courseUtils";
 import {
   AlertCircle,
   ArrowLeft,
@@ -97,6 +98,7 @@ function QuestionCard({
   onAnswer,
   disabled,
   scratchpad,
+  showMathKeyboard = true,
 }: {
   item: ExamItem;
   index: number;
@@ -105,6 +107,7 @@ function QuestionCard({
   onAnswer: (val: string) => void;
   disabled: boolean;
   scratchpad?: { value: string; onChange: (v: string) => void };
+  showMathKeyboard?: boolean;
 }) {
   const choices = parseChoices(item.choices);
   const isMultipleChoice = item.questionType === "multiple_choice" && choices.length > 0;
@@ -166,6 +169,7 @@ function QuestionCard({
           value={answer}
           onChange={onAnswer}
           label="Your answer:"
+          showMathKeyboard={showMathKeyboard}
           scratchpad={scratchpad}
         />
       )}
@@ -284,6 +288,7 @@ export default function ExamPrep() {
   );
   const courseId = dashboard?.activeCourseId ?? 1;
   const courseTitle = dashboard?.courseTitle ?? "Your Course";
+  const showMathKeyboard = needsMathKeyboard(dashboard?.courseSubject);
 
   // ── Phase state ────────────────────────────────────────────────────────────
   const [phase, setPhase] = useState<Phase>("start");
@@ -612,6 +617,7 @@ export default function ExamPrep() {
                     answer={answers[currentItem.id] ?? ""}
                     onAnswer={handleAnswer}
                     disabled={submitMutation.isPending}
+                    showMathKeyboard={showMathKeyboard}
                     scratchpad={{
                       value: scratchpadNotes[currentItem.id] ?? "",
                       onChange: (v) => setScratchpadNotes((prev) => ({ ...prev, [currentItem.id]: v })),

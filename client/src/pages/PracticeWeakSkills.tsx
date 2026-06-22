@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MathAnswerInput } from "@/components/MathAnswerInput";
+import { needsMathKeyboard } from "@/lib/courseUtils";
 import { AlertTriangle, ArrowLeft, CheckCircle2, XCircle, Target, Zap, Trophy, RotateCcw } from "lucide-react";
 import { useCelebration } from "@/components/CelebrationOverlay";
 import { toast } from "sonner";
@@ -25,6 +26,10 @@ export default function PracticeWeakSkills() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [showExplanation, setShowExplanation] = useState<number | null>(null);
   const [scratchpadNotes, setScratchpadNotes] = useState<Record<number, string>>({});
+
+  // Fetch dashboard to determine course subject for math keyboard visibility
+  const { data: dashboard } = trpc.progress.getDashboard.useQuery();
+  const showMathKeyboard = needsMathKeyboard(dashboard?.courseSubject);
 
   const { data: weakSkillsData, isLoading } = trpc.skillPractice.getWeakSkills.useQuery({
     threshold: 75,
@@ -360,6 +365,7 @@ export default function PracticeWeakSkills() {
                 value={answers[q.id] ?? ""}
                 onChange={(val) => handleAnswer(q.id, val)}
                 label="Your answer:"
+                showMathKeyboard={showMathKeyboard}
                 scratchpad={{
                   value: scratchpadNotes[q.id] ?? "",
                   onChange: (v) => setScratchpadNotes((prev) => ({ ...prev, [q.id]: v })),

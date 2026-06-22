@@ -44,6 +44,7 @@ import { NavTooltip } from "@/components/NavTooltip";
 import { DIAGNOSTIC_TOOLTIPS } from "@/lib/tooltipContent";
 import { FlagQuestionButton } from "@/components/FlagQuestionButton";
 import { MathAnswerInput } from "@/components/MathAnswerInput";
+import { needsMathKeyboard } from "@/lib/courseUtils";
 
 type ChoiceItem = { label: string; text: string };
 
@@ -313,6 +314,7 @@ export default function Diagnostic() {
   );
   const courseTitle = dashboard?.courseTitle ?? "Course";
   const courseSubject = dashboard?.courseSubject ?? "other";
+  const showMathKeyboard = needsMathKeyboard(courseSubject);
   const unitCount = dashboard?.units?.length ?? 8;
   // Derive a subject-appropriate label for prerequisite/foundational questions
   const prereqLabel = (() => {
@@ -1138,6 +1140,7 @@ export default function Diagnostic() {
                   onChange={(val) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: val }))}
                   onEnter={handleNext}
                   label="Your answer:"
+                  showMathKeyboard={showMathKeyboard}
                   scratchpad={{
                     value: scratchpadNotes[currentQ.questionId] ?? "",
                     onChange: (v) => setScratchpadNotes((prev) => ({ ...prev, [currentQ.questionId]: v })),
@@ -1153,6 +1156,7 @@ export default function Diagnostic() {
                 onChange={(val) => setAnswers((prev) => ({ ...prev, [currentQ.questionId]: val }))}
                 onEnter={handleNext}
                 label="Your answer:"
+                showMathKeyboard={showMathKeyboard}
                 scratchpad={{
                   value: scratchpadNotes[currentQ.questionId] ?? "",
                   onChange: (v) => setScratchpadNotes((prev) => ({ ...prev, [currentQ.questionId]: v })),

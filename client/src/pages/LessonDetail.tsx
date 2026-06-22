@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MathAnswerInput } from "@/components/MathAnswerInput";
+import { needsMathKeyboard } from "@/lib/courseUtils";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -113,6 +114,10 @@ export default function LessonDetail() {
   const { data: personalization } = trpc.onboarding.getPersonalization.useQuery(undefined, { enabled: !!user });
   const isYoungLearner = ["Pre-K", "Kindergarten", "Grade 1", "Grade 2"].includes(user?.grade ?? "");
   const showReadAloud = isYoungLearner || !!(personalization as any)?.parentLedMode;
+
+  // Determine if math keyboard should be shown based on course subject
+  const { data: dashboard } = trpc.progress.getDashboard.useQuery(undefined, { enabled: !!user });
+  const showMathKeyboard = needsMathKeyboard(dashboard?.courseSubject);
 
   const { data: lesson, isLoading } = trpc.curriculum.getLesson.useQuery(
     { lessonId },
@@ -584,6 +589,7 @@ export default function LessonDetail() {
                             }
                           }}
                           onEnter={() => checkAnswer(idx, prob.solution)}
+                          showMathKeyboard={showMathKeyboard}
                           className={`flex-1 ${
                             checked === "correct"
                               ? "[&_input]:border-green-400 [&_input]:focus-visible:ring-green-400"

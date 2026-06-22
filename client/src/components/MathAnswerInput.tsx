@@ -22,6 +22,8 @@ interface MathAnswerInputProps {
   placeholder?: string;
   className?: string;
   label?: string;
+  /** Show the math keyboard toolbar and answer preview. Defaults to true. Set false for non-math courses. */
+  showMathKeyboard?: boolean;
   /** Enable scratchpad. Pass scratchpad value + onChange to manage state externally. */
   scratchpad?: {
     value: string;
@@ -37,6 +39,7 @@ export function MathAnswerInput({
   placeholder = "Type your answer...",
   className = "",
   label,
+  showMathKeyboard = true,
   scratchpad,
 }: MathAnswerInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -82,16 +85,18 @@ export function MathAnswerInput({
           className="text-sm flex-1"
           onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
         />
-        <MathKeyboard onInsert={handleInsertSymbol} />
+        {showMathKeyboard && <MathKeyboard onInsert={handleInsertSymbol} />}
       </div>
-      <AnswerPreview value={value} />
-      <p className="text-xs text-muted-foreground">
-        Tip: Use{" "}
-        <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">
-          /
-        </kbd>{" "}
-        for division (e.g., 12/4 = 3)
-      </p>
+      {showMathKeyboard && <AnswerPreview value={value} />}
+      {showMathKeyboard && (
+        <p className="text-xs text-muted-foreground">
+          Tip: Use{" "}
+          <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px]">
+            /
+          </kbd>{" "}
+          for division (e.g., 12/4 = 3)
+        </p>
+      )}
       {scratchpad && (
         <ShowYourWork
           questionId={id}

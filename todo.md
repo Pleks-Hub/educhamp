@@ -3261,3 +3261,13 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Fix: add scrollbar-gutter:stable to html for consistent scrollbar presence
 - [x] Verified: dev preview scrolls correctly (scrollBy delta=500 works, scrollHeight=10243)
 - [x] Tests: all 1438 tests still passing
+
+### Sprint 54 — Remove math symbols from non-math courses
+- [x] MathAnswerInput: add optional `showMathKeyboard` prop (default true for backward compat)
+- [x] Quiz.tsx: conditionally hide MathKeyboard based on courseSubject (only show for math/science)
+- [x] Diagnostic.tsx: conditionally hide MathKeyboard based on courseSubject
+- [x] ExamPrep.tsx: conditionally hide MathKeyboard based on courseSubject
+- [x] LessonDetail.tsx: conditionally hide MathKeyboard based on course subject
+- [x] PracticeWeakSkills.tsx: conditionally hide MathKeyboard based on course subject
+- [x] Also hide AnswerPreview (math rendering) and division tip for non-math courses
+- [x] Tests: verify math keyboard is hidden for non-math subjects (15 tests, 1453 total passing)
