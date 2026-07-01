@@ -14,6 +14,7 @@ export const ttsRouter = router({
       ttsSpeed: (profile?.ttsSpeed as "slow" | "normal" | "fast") ?? "normal",
       ttsSubjectOverrides: (profile?.ttsSubjectOverrides as Record<string, boolean> | null) ?? {},
       ttsFirstTimeTooltipShown: profile?.ttsFirstTimeTooltipShown ?? false,
+      ttsVoiceUri: profile?.ttsVoiceUri ?? null,
     };
   }),
 
@@ -26,6 +27,7 @@ export const ttsRouter = router({
       ttsSpeed: z.enum(["slow", "normal", "fast"]).optional(),
       ttsSubjectOverrides: z.record(z.string(), z.boolean()).optional(),
       ttsFirstTimeTooltipShown: z.boolean().optional(),
+      ttsVoiceUri: z.string().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const data: Record<string, any> = {};
@@ -33,6 +35,7 @@ export const ttsRouter = router({
       if (input.ttsSpeed !== undefined) data.ttsSpeed = input.ttsSpeed;
       if (input.ttsSubjectOverrides !== undefined) data.ttsSubjectOverrides = input.ttsSubjectOverrides;
       if (input.ttsFirstTimeTooltipShown !== undefined) data.ttsFirstTimeTooltipShown = input.ttsFirstTimeTooltipShown;
+      if (input.ttsVoiceUri !== undefined) data.ttsVoiceUri = input.ttsVoiceUri;
       await upsertUserProfile(ctx.user.id, data);
       return { success: true };
     }),

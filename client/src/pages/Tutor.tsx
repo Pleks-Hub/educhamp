@@ -51,8 +51,11 @@ import { useTTS } from "@/hooks/useTTS";
 import type { TtsSpeed } from "@/hooks/useTTS";
 import { ListenModeToggle } from "@/components/ListenModeToggle";
 import { AudioControlBar } from "@/components/AudioControlBar";
-import { isListenModeEligible } from "@/lib/courseUtils";
+import { isListenModeEligible, getTtsLanguage } from "@/lib/courseUtils";
 import { trackEvent } from "@/lib/analytics";
+import { VoicePicker } from "@/components/VoicePicker";
+import { ReadThisButton } from "@/components/ReadThisButton";
+import { HighlightedMessage } from "@/components/HighlightedMessage";
 
 // parent_summary is a parent-only mode; students see only the 7 learning modes
 type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "exam_prep" | "remediation" | "parent_summary" | "misconception_drill";
@@ -530,8 +533,8 @@ export default function Tutor() {
   const tts = useTTS({
     subject: courseSubject,
     speed: (ttsPrefs?.ttsSpeed as TtsSpeed) ?? "normal",
+    voiceUri: ttsPrefs?.ttsVoiceUri ?? null,
     onComplete: () => {
-      const lastMsg = messages[messages.length - 1];
       trackEvent("tts_playback_completed", {
         content_type: safeMode,
         subject_id: courseSubject,
@@ -549,7 +552,7 @@ export default function Tutor() {
     if (prevIsStreamingRef.current && !isStreaming && listenMode && ttsEligible) {
       const lastMsg = messages[messages.length - 1];
       if (lastMsg?.role === "assistant" && lastMsg.content && !lastMsg.isError) {
-        tts.speak(lastMsg.content, `${currentModeConfig?.label ?? "Tutor"} Response`);
+        tts.speak(lastMsg.content, `${currentModeConfig?.label ?? "Tutor"} Response`, `msg-${messages.length - 1}`);
       }
     }
     prevMessagesLenRef.current = messages.length;
@@ -589,6 +592,17 @@ export default function Tutor() {
   const handleDismissTtsTooltip = () => {
     setShowTtsTooltip(false);
     ttsUpdateMutation.mutate({ ttsFirstTimeTooltipShown: true });
+  };
+
+  const handleVoiceChange = (voiceUri: string | null) => {
+    tts.setVoice(voiceUri);
+    ttsUpdateMutation.mutate({ ttsVoiceUri: voiceUri });
+    trackEvent("tts_voice_changed", { voice_uri: voiceUri, student_id: user?.id });
+  };
+
+  const handleReadThis = (content: string, messageId: string) => {
+    tts.speak(content, "Message", messageId);
+    trackEvent("tts_read_this_triggered", { message_index: messageId, student_id: user?.id });
   };
 
   // Visible modes: students see 5 learning modes; parents/teachers see all 6
@@ -972,15 +986,24 @@ export default function Tutor() {
               </div>
             </>
           )}
-          {/* Listen Mode Toggle — only for eligible subjects */}
+          {/* Listen Mode Toggle + Voice Picker — only for eligible subjects */}
           {ttsEligible && (
-            <ListenModeToggle
-              enabled={listenMode}
-              onToggle={handleListenModeToggle}
-              showFirstTimeTooltip={showTtsTooltip}
-              onDismissTooltip={handleDismissTtsTooltip}
-              className="ml-auto"
-            />
+            <div className="flex items-center gap-2 ml-auto">
+              <ListenModeToggle
+                enabled={listenMode}
+                onToggle={handleListenModeToggle}
+                showFirstTimeTooltip={showTtsTooltip}
+                onDismissTooltip={handleDismissTtsTooltip}
+              />
+              {listenMode && tts.voices.length > 0 && (
+                <VoicePicker
+                  voices={tts.voices}
+                  selectedVoiceUri={tts.selectedVoiceUri}
+                  onVoiceChange={handleVoiceChange}
+                  language={getTtsLanguage(courseSubject)}
+                />
+              )}
+            </div>
           )}
           {/* Tab toggle */}
           <div className={`${ttsEligible ? '' : 'ml-auto'} flex items-center gap-1 bg-muted rounded-lg p-0.5 shrink-0`}>
@@ -1084,7 +1107,7 @@ export default function Tutor() {
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
-                  className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  className={`flex gap-3 group ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   {msg.role === "assistant" && (
                     <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5 ring-1 ring-primary/20">
@@ -1123,9 +1146,32 @@ export default function Tutor() {
                           </button>
                         </div>
                       ) : msg.content ? (
-                        <StreamdownRenderer className="prose prose-sm max-w-none dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:leading-relaxed [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-3 [&_strong]:font-semibold [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs">
-                          {msg.content}
-                        </StreamdownRenderer>
+                        <>
+                          {tts.activeMessageId === `msg-${idx}` && tts.currentSentenceIndex >= 0 ? (
+                            <HighlightedMessage
+                              content={msg.content}
+                              messageId={`msg-${idx}`}
+                              activeMessageId={tts.activeMessageId}
+                              currentSentenceIndex={tts.currentSentenceIndex}
+                              className="prose prose-sm max-w-none dark:prose-invert"
+                            />
+                          ) : (
+                            <StreamdownRenderer className="prose prose-sm max-w-none dark:prose-invert [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:leading-relaxed [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-0.5 [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:mt-3 [&_strong]:font-semibold [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs">
+                              {msg.content}
+                            </StreamdownRenderer>
+                          )}
+                          {/* Read This button — only for eligible subjects with completed messages */}
+                          {ttsEligible && !isStreaming && (
+                            <ReadThisButton
+                              messageId={`msg-${idx}`}
+                              messageContent={msg.content}
+                              activeMessageId={tts.activeMessageId}
+                              ttsStatus={tts.status}
+                              onRead={handleReadThis}
+                              onStop={tts.stop}
+                            />
+                          )}
+                        </>
                       ) : (
                         /* Typing indicator while streaming starts */
                         <div className="flex items-center gap-1.5 py-1">

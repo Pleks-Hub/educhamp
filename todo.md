@@ -3289,3 +3289,20 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UX: fallback toast if Web Speech API unavailable
 - [x] Analytics: track tts_mode_enabled/disabled, playback_completed, speed_changed, replay
 - [x] Tests: 35 new tests (1,488 total passing)
+
+### Sprint 56 — TTS Enhancements (Read This, Voice Selection, Highlight-as-you-read)
+
+- [x] DB: add ttsVoiceUri column to userProfiles for persisting selected voice
+- [x] Server: update tts.updatePreferences to accept voiceUri field
+- [x] useTTS hook: add voice selection (list available voices, set preferred voice)
+- [x] useTTS hook: add sentence-level boundary callbacks for highlight sync
+- [x] useTTS hook: expose currentSentenceIndex and activeMessageId for highlight-as-you-read
+- [x] Component: ReadThisButton on each assistant message bubble
+- [x] Component: VoicePicker dropdown (list system voices, persist choice)
+- [x] Component: HighlightedMessage — renders message with active sentence highlighted
+- [x] Integration: wire ReadThisButton to tts.speak(message.content, label, messageId)
+- [x] Integration: wire VoicePicker into Tutor header alongside ListenModeToggle
+- [x] Integration: highlight-as-you-read syncs with useTTS boundary events
+- [x] UX: only show ReadThisButton on eligible subjects and completed assistant messages
+- [x] UX: visual pulse animation on the currently-read sentence
+- [x] Tests: 30 new tests (1,518 total passing)
