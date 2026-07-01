@@ -1051,6 +1051,10 @@ export async function upsertUserProfile(
     languageLevel: string;
     weeklyDigestEnabled: boolean;
     activityPreference: string;
+    ttsEnabledDefault: boolean;
+    ttsSpeed: "slow" | "normal" | "fast";
+    ttsSubjectOverrides: any;
+    ttsFirstTimeTooltipShown: boolean;
   }>
 ) {
   const db = await getDb();

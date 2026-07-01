@@ -47,6 +47,12 @@ import { getLoginUrl } from "@/const";
 import { CourseContextBanner } from "@/components/CourseContextBanner";
 import { NavTooltip } from "@/components/NavTooltip";
 import { TUTOR_TOOLTIPS } from "@/lib/tooltipContent";
+import { useTTS } from "@/hooks/useTTS";
+import type { TtsSpeed } from "@/hooks/useTTS";
+import { ListenModeToggle } from "@/components/ListenModeToggle";
+import { AudioControlBar } from "@/components/AudioControlBar";
+import { isListenModeEligible } from "@/lib/courseUtils";
+import { trackEvent } from "@/lib/analytics";
 
 // parent_summary is a parent-only mode; students see only the 7 learning modes
 type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "exam_prep" | "remediation" | "parent_summary" | "misconception_drill";
@@ -495,6 +501,96 @@ export default function Tutor() {
   const courseGradeLevel = dashboard?.courseGradeLevel ?? "";
   const isEarlyChildhoodCourse = ["Pre-K", "Kindergarten", "K"].includes(courseGradeLevel.trim());
   const isStudent = !user || user.accountType === "student" || !user.accountType;
+  const courseSubject = dashboard?.courseSubject ?? "";
+  const ttsEligible = isListenModeEligible(courseSubject);
+
+  // ── TTS Listen Mode state ─────────────────────────────────────────────────
+  const { data: ttsPrefs } = trpc.tts.getPreferences.useQuery(undefined, { enabled: !!user && ttsEligible });
+  const ttsUpdateMutation = trpc.tts.updatePreferences.useMutation();
+  const ttsToggleSubjectMutation = trpc.tts.toggleSubject.useMutation();
+
+  // Derive per-subject enabled state
+  const ttsSubjectOverrides = (ttsPrefs?.ttsSubjectOverrides ?? {}) as Record<string, boolean>;
+  const ttsEnabledForSubject = ttsEligible && (
+    courseSubject in ttsSubjectOverrides
+      ? ttsSubjectOverrides[courseSubject]
+      : (ttsPrefs?.ttsEnabledDefault ?? false)
+  );
+  const [listenMode, setListenMode] = useState(false);
+  const [showTtsTooltip, setShowTtsTooltip] = useState(false);
+
+  // Sync listen mode from server prefs once loaded
+  useEffect(() => {
+    if (ttsPrefs !== undefined) {
+      setListenMode(ttsEnabledForSubject);
+      setShowTtsTooltip(ttsEligible && !(ttsPrefs?.ttsFirstTimeTooltipShown ?? false));
+    }
+  }, [ttsPrefs, ttsEnabledForSubject, ttsEligible]);
+
+  const tts = useTTS({
+    subject: courseSubject,
+    speed: (ttsPrefs?.ttsSpeed as TtsSpeed) ?? "normal",
+    onComplete: () => {
+      const lastMsg = messages[messages.length - 1];
+      trackEvent("tts_playback_completed", {
+        content_type: safeMode,
+        subject_id: courseSubject,
+        duration_seconds: 0, // Web Speech API doesn't expose duration
+      });
+    },
+    onError: (err) => toast.error(err),
+  });
+
+  // Auto-read new assistant messages when listen mode is on and streaming completes
+  const prevMessagesLenRef = useRef(messages.length);
+  const prevIsStreamingRef = useRef(isStreaming);
+  useEffect(() => {
+    // Detect transition from streaming to not-streaming with a new message
+    if (prevIsStreamingRef.current && !isStreaming && listenMode && ttsEligible) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg?.role === "assistant" && lastMsg.content && !lastMsg.isError) {
+        tts.speak(lastMsg.content, `${currentModeConfig?.label ?? "Tutor"} Response`);
+      }
+    }
+    prevMessagesLenRef.current = messages.length;
+    prevIsStreamingRef.current = isStreaming;
+  }, [isStreaming, messages, listenMode, ttsEligible]);
+
+  // Stop TTS on mode change or session clear
+  useEffect(() => {
+    tts.stop();
+  }, [mode, sessionId]);
+
+  const handleListenModeToggle = (enabled: boolean) => {
+    setListenMode(enabled);
+    if (!enabled) tts.stop();
+    // Persist per-subject
+    ttsToggleSubjectMutation.mutate({ subjectName: courseSubject, enabled });
+    trackEvent(enabled ? "tts_mode_enabled" : "tts_mode_disabled", {
+      student_id: user?.id,
+      subject_id: courseSubject,
+      session_id: sessionId,
+    });
+  };
+
+  const handleTtsSpeedChange = (newSpeed: TtsSpeed) => {
+    const oldSpeed = tts.currentSpeed;
+    tts.setSpeed(newSpeed);
+    ttsUpdateMutation.mutate({ ttsSpeed: newSpeed });
+    trackEvent("tts_speed_changed", { old_speed: oldSpeed, new_speed: newSpeed, student_id: user?.id });
+  };
+
+  const handleTtsReplay = () => {
+    tts.replay();
+    const lastMsg = messages[messages.length - 1];
+    trackEvent("tts_replay_triggered", { content_type: safeMode, student_id: user?.id });
+  };
+
+  const handleDismissTtsTooltip = () => {
+    setShowTtsTooltip(false);
+    ttsUpdateMutation.mutate({ ttsFirstTimeTooltipShown: true });
+  };
+
   // Visible modes: students see 5 learning modes; parents/teachers see all 6
   const MODES = getModes(courseLabel);
   const visibleModes = MODES.filter((m) => isStudent ? STUDENT_MODES.includes(m.id) : true);
@@ -876,8 +972,18 @@ export default function Tutor() {
               </div>
             </>
           )}
+          {/* Listen Mode Toggle — only for eligible subjects */}
+          {ttsEligible && (
+            <ListenModeToggle
+              enabled={listenMode}
+              onToggle={handleListenModeToggle}
+              showFirstTimeTooltip={showTtsTooltip}
+              onDismissTooltip={handleDismissTtsTooltip}
+              className="ml-auto"
+            />
+          )}
           {/* Tab toggle */}
-          <div className="ml-auto flex items-center gap-1 bg-muted rounded-lg p-0.5 shrink-0">
+          <div className={`${ttsEligible ? '' : 'ml-auto'} flex items-center gap-1 bg-muted rounded-lg p-0.5 shrink-0`}>
             <button
               onClick={() => setActiveTab("chat")}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
@@ -1247,6 +1353,20 @@ export default function Tutor() {
         </div>
       </div>
     </div>
+
+    {/* TTS Audio Control Bar — floating at bottom when playing/paused */}
+    {listenMode && tts.status !== "idle" && (
+      <AudioControlBar
+        status={tts.status}
+        currentLabel={tts.currentLabel}
+        currentSpeed={tts.currentSpeed}
+        onPlay={tts.resume}
+        onPause={tts.pause}
+        onStop={tts.stop}
+        onReplay={handleTtsReplay}
+        onSpeedChange={handleTtsSpeedChange}
+      />
+    )}
 
     {/* TUX-1: Stop-streaming confirmation dialog */}
     <AlertDialog open={showStopConfirm} onOpenChange={setShowStopConfirm}>

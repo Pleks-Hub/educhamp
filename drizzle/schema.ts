@@ -480,6 +480,11 @@ export const userProfiles = mysqlTable("userProfiles", {
   inviteRemindersEnabled: boolean("inviteRemindersEnabled").notNull().default(true), // opt-in/out of invite expiry reminder emails
   // Leaderboard visibility
   leaderboardOptOut: boolean("leaderboardOptOut").notNull().default(false), // students: opt-out of appearing on family leaderboard
+  // TTS Listen Mode preferences
+  ttsEnabledDefault: boolean("ttsEnabledDefault").notNull().default(false), // global default for Listen Mode
+  ttsSpeed: mysqlEnum("ttsSpeed", ["slow", "normal", "fast"]).notNull().default("normal"), // playback speed
+  ttsSubjectOverrides: json("ttsSubjectOverrides"), // { "subjectName": true/false, ... } per-subject override
+  ttsFirstTimeTooltipShown: boolean("ttsFirstTimeTooltipShown").notNull().default(false), // one-time tooltip dismissed
   // Billing escalation
   billingEscalatedAt: timestamp("billingEscalatedAt"), // set when billing reminders exceed 7 days without parent action
   // Onboarding state

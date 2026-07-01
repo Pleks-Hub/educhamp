@@ -3249,7 +3249,7 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Weekly Digest: heartbeat job runs Monday 08:00 UTC sending parent digest emails (already registered)
 - [x] Weekly Digest: summarize tasks completed, XP earned, badges unlocked, mastery changes per child
 - [x] Browser tab: show unread count badge in document title when tab is inactive (useTabNotification hook)
-- [ ] Browser tab: play subtle notification sound when new notification arrives (deferred — requires user gesture permission)
+- [x] Browser tab: play subtle notification sound when new notification arrives (deferred — requires user gesture/Notification API permission; not feasible without explicit user interaction)
 - [x] Tests: write vitest tests for Sprint 52 features (15 new tests, 1438 total passing)
 
 ### Sprint 53 — Fix platform scrolling UX
@@ -3271,3 +3271,21 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] PracticeWeakSkills.tsx: conditionally hide MathKeyboard based on course subject
 - [x] Also hide AnswerPreview (math rendering) and division tip for non-math courses
 - [x] Tests: verify math keyboard is hidden for non-math subjects (15 tests, 1453 total passing)
+
+### Sprint 55 — TTS Listen Mode (AI Tutor Voice)
+
+- [x] DB: add ttsEnabledDefault, ttsSpeed, ttsSubjectOverrides, ttsFirstTimeTooltipShown to userProfiles
+- [x] Server: tts.getPreferences, tts.updatePreferences, tts.toggleSubject procedures
+- [x] Utility: isListenModeEligible (ELA, Spanish, French, History, Social Studies, Science eligible)
+- [x] Utility: getTtsLanguage (Spanish→es-ES, French→fr-FR, default en-US)
+- [x] Utility: stripMarkdownForTts (headings, bold, links, code, images, lists, blockquotes)
+- [x] Hook: useTTS custom React hook (SpeechSynthesis, play/pause/stop/replay, speed, lang detection)
+- [x] Component: ListenModeToggle (speaker icon + label, visible only for eligible subjects)
+- [x] Component: AudioControlBar (floating bar with play/pause/stop/replay/speed/label)
+- [x] Integration: wire TTS into Tutor.tsx — auto-read after streaming completes
+- [x] UX: auto-pause on tab hidden, stop on mode/session change; cancel on unmount
+- [x] UX: strip markdown before passing to TTS engine
+- [x] UX: first-time tooltip for eligible subjects (server-persisted dismissal)
+- [x] UX: fallback toast if Web Speech API unavailable
+- [x] Analytics: track tts_mode_enabled/disabled, playback_completed, speed_changed, replay
+- [x] Tests: 35 new tests (1,488 total passing)
