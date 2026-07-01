@@ -3333,3 +3333,16 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Voice prompt: show dismissible banner suggesting system voice download
 - [x] Voice prompt: provide platform-specific instructions (macOS, Windows, ChromeOS)
 - [x] Tests: auto-scroll logic, TTS session logging, parent analytics aggregation
+
+### Sprint 59 — TTS Analytics Date Range Picker & Voice Quality Rating
+
+- [x] Parent Dashboard: add 7d / 30d / 90d toggle buttons to TtsAnalyticsPanel
+- [x] Parent Dashboard: pass selected daysBack to tts.getUsageStats query
+- [x] Parent Dashboard: highlight active date range button, animate transition
+- [x] DB: add ttsVoiceRatings table (userId, voiceUri, rating enum thumbs_up/thumbs_down, sessionId, createdAt)
+- [x] Server: tts.rateVoice procedure to record thumbs-up/down
+- [x] Server: tts.getVoiceRatings procedure for admin/analytics (aggregate by voiceUri)
+- [x] Tutor: show thumbs-up/down prompt after TTS session ends (>3 sentences)
+- [x] Tutor: auto-dismiss rating prompt after 8 seconds if no interaction
+- [x] Tutor: persist rating and show brief "Thanks!" confirmation
+- [x] Tests: date range toggle logic, voice rating input validation, aggregation

@@ -2277,3 +2277,19 @@ export const ttsUsageLogs = mysqlTable("ttsUsageLogs", {
 }));
 export type TtsUsageLog = typeof ttsUsageLogs.$inferSelect;
 export type InsertTtsUsageLog = typeof ttsUsageLogs.$inferInsert;
+
+// ─── TTS Voice Quality Ratings ───────────────────────────────────────────────
+export const ttsVoiceRatings = mysqlTable("ttsVoiceRatings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  voiceUri: varchar("voiceUri", { length: 256 }).notNull(),
+  rating: varchar("rating", { length: 16 }).notNull(), // "thumbs_up" | "thumbs_down"
+  sessionId: int("sessionId"), // optional FK to ttsUsageLogs.id
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  userIdx: index("ttsVoiceRatings_userId_idx").on(t.userId),
+  voiceIdx: index("ttsVoiceRatings_voiceUri_idx").on(t.voiceUri),
+  ratingIdx: index("ttsVoiceRatings_rating_idx").on(t.rating),
+}));
+export type TtsVoiceRating = typeof ttsVoiceRatings.$inferSelect;
+export type InsertTtsVoiceRating = typeof ttsVoiceRatings.$inferInsert;

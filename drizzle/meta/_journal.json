@@ -470,6 +470,13 @@
       "when": 1782914566635,
       "tag": "0066_fair_quasimodo",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "5",
+      "when": 1782930042468,
+      "tag": "0067_bright_chamber",
+      "breakpoints": true
     }
   ]
 }

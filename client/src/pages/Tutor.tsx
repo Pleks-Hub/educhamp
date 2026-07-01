@@ -57,6 +57,7 @@ import { VoicePicker } from "@/components/VoicePicker";
 import { ReadThisButton } from "@/components/ReadThisButton";
 import { HighlightedMessage } from "@/components/HighlightedMessage";
 import { VoiceDownloadPrompt } from "@/components/VoiceDownloadPrompt";
+import { VoiceRatingPrompt } from "@/components/VoiceRatingPrompt";
 
 // parent_summary is a parent-only mode; students see only the 7 learning modes
 type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "exam_prep" | "remediation" | "parent_summary" | "misconception_drill";
@@ -535,6 +536,8 @@ export default function Tutor() {
   // Track TTS session start time for analytics logging
   const ttsSessionStartRef = useRef<number>(0);
   const ttsSentenceCountRef = useRef<number>(0);
+  const [showVoiceRating, setShowVoiceRating] = useState(false);
+  const ttsRateVoiceMutation = trpc.tts.rateVoice.useMutation();
 
   const tts = useTTS({
     subject: courseSubject,
@@ -555,6 +558,10 @@ export default function Tutor() {
         });
       }
       ttsSessionStartRef.current = 0;
+      // Show voice rating prompt if >3 sentences were read
+      if (ttsSentenceCountRef.current >= 3) {
+        setShowVoiceRating(true);
+      }
       ttsSentenceCountRef.current = 0;
       trackEvent("tts_playback_completed", {
         content_type: safeMode,
@@ -1457,6 +1464,23 @@ export default function Tutor() {
         onSkipForward={tts.skipForward}
         onSkipBack={tts.skipBack}
       />
+    )}
+
+    {/* Voice quality rating prompt — shown after TTS session with >3 sentences */}
+    {listenMode && showVoiceRating && (
+      <div className="px-4 pb-2">
+        <VoiceRatingPrompt
+          visible={showVoiceRating}
+          voiceUri={ttsPrefs?.ttsVoiceUri ?? tts.selectedVoiceUri}
+          onRate={(rating) => {
+            ttsRateVoiceMutation.mutate({
+              voiceUri: ttsPrefs?.ttsVoiceUri ?? tts.selectedVoiceUri ?? "default",
+              rating,
+            });
+          }}
+          onDismiss={() => setShowVoiceRating(false)}
+        />
+      </div>
     )}
 
     {/* TUX-1: Stop-streaming confirmation dialog */}

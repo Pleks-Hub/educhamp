@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getUserProfile, upsertUserProfile, getDb } from "../db";
-import { ttsUsageLogs } from "../../drizzle/schema";
-import { eq, and, gte, desc } from "drizzle-orm";
+import { ttsUsageLogs, ttsVoiceRatings } from "../../drizzle/schema";
+import { eq, and, gte, desc, sql } from "drizzle-orm";
 
 export const ttsRouter = router({
   /**
@@ -81,6 +81,72 @@ export const ttsRouter = router({
         voiceUri: input.voiceUri ?? null,
       });
       return { success: true };
+    }),
+
+  /**
+   * Rate voice quality after a TTS session (thumbs up/down).
+   */
+  rateVoice: protectedProcedure
+    .input(z.object({
+      voiceUri: z.string().min(1),
+      rating: z.enum(["thumbs_up", "thumbs_down"]),
+      sessionId: z.number().int().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { success: false };
+      await db.insert(ttsVoiceRatings).values({
+        userId: ctx.user.id,
+        voiceUri: input.voiceUri,
+        rating: input.rating,
+        sessionId: input.sessionId ?? null,
+      });
+      return { success: true };
+    }),
+
+  /**
+   * Get aggregated voice ratings (for admin/analytics).
+   * Returns per-voice rating breakdown.
+   */
+  getVoiceRatings: protectedProcedure
+    .input(z.object({
+      daysBack: z.number().int().min(1).max(90).default(30),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { ratings: [] as { voiceUri: string; thumbsUp: number; thumbsDown: number; total: number }[] };
+
+      const daysBack = input?.daysBack ?? 30;
+      const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
+
+      const rows = await db
+        .select({
+          voiceUri: ttsVoiceRatings.voiceUri,
+          rating: ttsVoiceRatings.rating,
+          count: sql<number>`count(*)`,
+        })
+        .from(ttsVoiceRatings)
+        .where(gte(ttsVoiceRatings.createdAt, since))
+        .groupBy(ttsVoiceRatings.voiceUri, ttsVoiceRatings.rating);
+
+      // Aggregate into per-voice summary
+      const voiceMap: Record<string, { thumbsUp: number; thumbsDown: number }> = {};
+      for (const row of rows) {
+        if (!voiceMap[row.voiceUri]) voiceMap[row.voiceUri] = { thumbsUp: 0, thumbsDown: 0 };
+        if (row.rating === "thumbs_up") voiceMap[row.voiceUri].thumbsUp = Number(row.count);
+        else voiceMap[row.voiceUri].thumbsDown = Number(row.count);
+      }
+
+      const ratings = Object.entries(voiceMap)
+        .map(([voiceUri, data]) => ({
+          voiceUri,
+          thumbsUp: data.thumbsUp,
+          thumbsDown: data.thumbsDown,
+          total: data.thumbsUp + data.thumbsDown,
+        }))
+        .sort((a, b) => b.total - a.total);
+
+      return { ratings };
     }),
 
   /**

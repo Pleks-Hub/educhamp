@@ -4058,7 +4058,8 @@ function StudentActivityPanel({ childId, childName }: { childId: number; childNa
 // ─── TTS Analytics Panel ─────────────────────────────────────────────────────
 
 function TtsAnalyticsPanel({ childId, childName }: { childId: number; childName: string }) {
-  const { data, isLoading } = trpc.tts.getUsageStats.useQuery({ childId, daysBack: 30 });
+  const [daysBack, setDaysBack] = useState<7 | 30 | 90>(30);
+  const { data, isLoading } = trpc.tts.getUsageStats.useQuery({ childId, daysBack });
 
   if (isLoading) {
     return (
@@ -4097,9 +4098,26 @@ function TtsAnalyticsPanel({ childId, childName }: { childId: number; childName:
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Volume2 className="h-5 w-5 text-primary" />
-        <h3 className="font-semibold text-sm">Listen Mode Usage — Last {data.daysBack} Days</h3>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <Volume2 className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold text-sm">Listen Mode Usage</h3>
+        </div>
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+          {([7, 30, 90] as const).map((d) => (
+            <button
+              key={d}
+              onClick={() => setDaysBack(d)}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200 ${
+                daysBack === d
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {d}d
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Summary cards */}
