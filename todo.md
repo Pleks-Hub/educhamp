@@ -3346,3 +3346,18 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Tutor: auto-dismiss rating prompt after 8 seconds if no interaction
 - [x] Tutor: persist rating and show brief "Thanks!" confirmation
 - [x] Tests: date range toggle logic, voice rating input validation, aggregation
+
+### Sprint 60 — Admin Voice Report, Low-Rating Parent Notification, Listen Mode Goals
+
+- [x] Admin: voice quality report page showing aggregated ratings per voice (thumbs up/down, total, approval %)
+- [x] Admin: ability to mark voices as "deprecated" with a note (stored in DB)
+- [x] Admin: sort/filter voices by approval rate, total ratings, or name
+- [x] Notification: detect when a child accumulates 3+ thumbs-down on a voice
+- [x] Notification: send in-app notification to parent suggesting voice change
+- [x] Notification: include child name, voice name, and link to TTS settings
+- [x] Parent Dashboard: listen mode weekly goal setting (sessions/week target)
+- [x] Parent Dashboard: progress ring showing current week progress toward goal
+- [x] Parent Dashboard: celebration animation when weekly goal is met
+- [x] Parent Dashboard: persist goal per child in DB
+- [x] DB: add listenModeGoals table (parentId, childId, weeklyTarget, createdAt, updatedAt)
+- [x] Tests: admin voice report aggregation, notification trigger logic, goal progress calculation

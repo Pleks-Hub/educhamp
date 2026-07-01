@@ -538,6 +538,7 @@ export default function Tutor() {
   const ttsSentenceCountRef = useRef<number>(0);
   const [showVoiceRating, setShowVoiceRating] = useState(false);
   const ttsRateVoiceMutation = trpc.tts.rateVoice.useMutation();
+  const ttsCheckLowRatingMut = trpc.tts.checkLowRatingNotification.useMutation();
 
   const tts = useTTS({
     subject: courseSubject,
@@ -1473,10 +1474,12 @@ export default function Tutor() {
           visible={showVoiceRating}
           voiceUri={ttsPrefs?.ttsVoiceUri ?? tts.selectedVoiceUri}
           onRate={(rating) => {
-            ttsRateVoiceMutation.mutate({
-              voiceUri: ttsPrefs?.ttsVoiceUri ?? tts.selectedVoiceUri ?? "default",
-              rating,
-            });
+            const voiceUri = ttsPrefs?.ttsVoiceUri ?? tts.selectedVoiceUri ?? "default";
+            ttsRateVoiceMutation.mutate({ voiceUri, rating });
+            // If thumbs_down, check if we should notify parent
+            if (rating === "thumbs_down") {
+              ttsCheckLowRatingMut.mutate({ voiceUri });
+            }
           }}
           onDismiss={() => setShowVoiceRating(false)}
         />

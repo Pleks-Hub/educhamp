@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getUserProfile, upsertUserProfile, getDb } from "../db";
-import { ttsUsageLogs, ttsVoiceRatings } from "../../drizzle/schema";
-import { eq, and, gte, desc, sql } from "drizzle-orm";
+import { ttsUsageLogs, ttsVoiceRatings, deprecatedVoices, listenModeGoals, parentChildren, userNotifications } from "../../drizzle/schema";
+import { eq, and, gte, desc, sql, lte } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 export const ttsRouter = router({
   /**
@@ -252,5 +253,275 @@ export const ttsRouter = router({
         weeklyTrend,
         daysBack,
       };
+    }),
+
+  // ─── Admin Voice Quality Report ─────────────────────────────────────────────
+
+  /**
+   * Get full voice quality report for admin (all voices, all users).
+   */
+  adminGetVoiceReport: protectedProcedure
+    .input(z.object({
+      daysBack: z.number().int().min(1).max(365).default(30),
+      sortBy: z.enum(["total", "approval", "name"]).default("total"),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) return { voices: [], deprecated: [] };
+
+      const daysBack = input?.daysBack ?? 30;
+      const sortBy = input?.sortBy ?? "total";
+      const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
+
+      // Get ratings aggregated by voiceUri
+      const rows = await db
+        .select({
+          voiceUri: ttsVoiceRatings.voiceUri,
+          rating: ttsVoiceRatings.rating,
+          count: sql<number>`count(*)`,
+        })
+        .from(ttsVoiceRatings)
+        .where(gte(ttsVoiceRatings.createdAt, since))
+        .groupBy(ttsVoiceRatings.voiceUri, ttsVoiceRatings.rating);
+
+      const voiceMap: Record<string, { thumbsUp: number; thumbsDown: number }> = {};
+      for (const row of rows) {
+        if (!voiceMap[row.voiceUri]) voiceMap[row.voiceUri] = { thumbsUp: 0, thumbsDown: 0 };
+        if (row.rating === "thumbs_up") voiceMap[row.voiceUri].thumbsUp = Number(row.count);
+        else voiceMap[row.voiceUri].thumbsDown = Number(row.count);
+      }
+
+      let voices = Object.entries(voiceMap).map(([voiceUri, data]) => ({
+        voiceUri,
+        thumbsUp: data.thumbsUp,
+        thumbsDown: data.thumbsDown,
+        total: data.thumbsUp + data.thumbsDown,
+        approvalRate: data.thumbsUp + data.thumbsDown > 0
+          ? Math.round((data.thumbsUp / (data.thumbsUp + data.thumbsDown)) * 100)
+          : 0,
+      }));
+
+      // Sort
+      if (sortBy === "approval") voices.sort((a, b) => a.approvalRate - b.approvalRate);
+      else if (sortBy === "name") voices.sort((a, b) => a.voiceUri.localeCompare(b.voiceUri));
+      else voices.sort((a, b) => b.total - a.total);
+
+      // Get deprecated voices
+      const deprecated = await db.select().from(deprecatedVoices).orderBy(desc(deprecatedVoices.createdAt));
+
+      return { voices, deprecated };
+    }),
+
+  /**
+   * Deprecate a voice (admin only).
+   */
+  adminDeprecateVoice: protectedProcedure
+    .input(z.object({
+      voiceUri: z.string().min(1),
+      reason: z.string().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) return { success: false };
+      await db.insert(deprecatedVoices).values({
+        voiceUri: input.voiceUri,
+        reason: input.reason ?? null,
+        deprecatedBy: ctx.user.id,
+      });
+      return { success: true };
+    }),
+
+  /**
+   * Un-deprecate a voice (admin only).
+   */
+  adminUndeprecateVoice: protectedProcedure
+    .input(z.object({ id: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+      const db = await getDb();
+      if (!db) return { success: false };
+      await db.delete(deprecatedVoices).where(eq(deprecatedVoices.id, input.id));
+      return { success: true };
+    }),
+
+  // ─── Listen Mode Goals ──────────────────────────────────────────────────────
+
+  /**
+   * Get listen mode goal for a child (parent-facing).
+   */
+  getListenGoal: protectedProcedure
+    .input(z.object({ childId: z.number().int() }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return null;
+      const [goal] = await db
+        .select()
+        .from(listenModeGoals)
+        .where(eq(listenModeGoals.childId, input.childId))
+        .limit(1);
+      if (!goal) return null;
+
+      // Calculate current week progress
+      const now = new Date();
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+
+      const sessionsThisWeek = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(ttsUsageLogs)
+        .where(
+          and(
+            eq(ttsUsageLogs.userId, input.childId),
+            gte(ttsUsageLogs.createdAt, weekStart)
+          )
+        );
+
+      const currentSessions = Number(sessionsThisWeek[0]?.count ?? 0);
+      return {
+        ...goal,
+        currentSessions,
+        progress: Math.min(100, Math.round((currentSessions / goal.weeklyTarget) * 100)),
+        goalMet: currentSessions >= goal.weeklyTarget,
+      };
+    }),
+
+  /**
+   * Set or update listen mode goal for a child.
+   */
+  setListenGoal: protectedProcedure
+    .input(z.object({
+      childId: z.number().int(),
+      weeklyTarget: z.number().int().min(1).max(50),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { success: false };
+
+      // Verify parent-child relationship
+      const [rel] = await db
+        .select()
+        .from(parentChildren)
+        .where(
+          and(
+            eq(parentChildren.parentId, ctx.user.id),
+            eq(parentChildren.childId, input.childId)
+          )
+        )
+        .limit(1);
+      if (!rel) throw new TRPCError({ code: "FORBIDDEN", message: "Not your child" });
+
+      // Upsert goal
+      const [existing] = await db
+        .select()
+        .from(listenModeGoals)
+        .where(eq(listenModeGoals.childId, input.childId))
+        .limit(1);
+
+      if (existing) {
+        await db.update(listenModeGoals)
+          .set({ weeklyTarget: input.weeklyTarget, updatedAt: new Date() })
+          .where(eq(listenModeGoals.id, existing.id));
+      } else {
+        await db.insert(listenModeGoals).values({
+          parentId: ctx.user.id,
+          childId: input.childId,
+          weeklyTarget: input.weeklyTarget,
+        });
+      }
+      return { success: true };
+    }),
+
+  /**
+   * Remove listen mode goal for a child.
+   */
+  removeListenGoal: protectedProcedure
+    .input(z.object({ childId: z.number().int() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { success: false };
+      await db.delete(listenModeGoals)
+        .where(
+          and(
+            eq(listenModeGoals.childId, input.childId),
+            eq(listenModeGoals.parentId, ctx.user.id)
+          )
+        );
+      return { success: true };
+    }),
+
+  // ─── Low Voice Rating Notification ─────────────────────────────────────────
+
+  /**
+   * Check if a child has 3+ thumbs-down on their current voice and notify parent.
+   * Called after each voice rating submission.
+   */
+  checkLowRatingNotification: protectedProcedure
+    .input(z.object({
+      voiceUri: z.string().min(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { notified: false };
+
+      // Count thumbs_down for this user + voice in last 30 days
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const [result] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(ttsVoiceRatings)
+        .where(
+          and(
+            eq(ttsVoiceRatings.userId, ctx.user.id),
+            eq(ttsVoiceRatings.voiceUri, input.voiceUri),
+            eq(ttsVoiceRatings.rating, "thumbs_down"),
+            gte(ttsVoiceRatings.createdAt, since)
+          )
+        );
+
+      const thumbsDownCount = Number(result?.count ?? 0);
+      if (thumbsDownCount < 3) return { notified: false };
+
+      // Find parent(s) of this student
+      const parents = await db
+        .select({ parentId: parentChildren.parentId })
+        .from(parentChildren)
+        .where(eq(parentChildren.childId, ctx.user.id));
+
+      if (parents.length === 0) return { notified: false };
+
+      // Check if we already sent this notification recently (avoid spam)
+      const recentNotifSince = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      for (const { parentId } of parents) {
+        const [existing] = await db
+          .select({ id: userNotifications.id })
+          .from(userNotifications)
+          .where(
+            and(
+              eq(userNotifications.userId, parentId),
+              eq(userNotifications.type, "voice_quality_alert"),
+              gte(userNotifications.createdAt, recentNotifSince)
+            )
+          )
+          .limit(1);
+
+        if (existing) continue; // Already notified this week
+
+        // Send notification to parent
+        await db.insert(userNotifications).values({
+          userId: parentId,
+          type: "voice_quality_alert",
+          title: "Voice Quality Concern",
+          message: `Your child has rated the voice "${input.voiceUri}" poorly ${thumbsDownCount} times. Consider changing their TTS voice in Listen Mode settings for a better experience.`,
+          metadata: JSON.stringify({
+            childId: ctx.user.id,
+            voiceUri: input.voiceUri,
+            thumbsDownCount,
+          }),
+        });
+      }
+
+      return { notified: true };
     }),
 });

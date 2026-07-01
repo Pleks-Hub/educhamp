@@ -2293,3 +2293,32 @@ export const ttsVoiceRatings = mysqlTable("ttsVoiceRatings", {
 }));
 export type TtsVoiceRating = typeof ttsVoiceRatings.$inferSelect;
 export type InsertTtsVoiceRating = typeof ttsVoiceRatings.$inferInsert;
+
+// ─── Listen Mode Weekly Goals ────────────────────────────────────────────────
+export const listenModeGoals = mysqlTable("listenModeGoals", {
+  id: int("id").autoincrement().primaryKey(),
+  parentId: int("parentId").notNull(),       // FK → users.id (parent who set the goal)
+  childId: int("childId").notNull(),         // FK → users.id (student)
+  weeklyTarget: int("weeklyTarget").notNull().default(5), // sessions per week
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, (t) => ({
+  parentIdx: index("listenModeGoals_parentId_idx").on(t.parentId),
+  childIdx: index("listenModeGoals_childId_idx").on(t.childId),
+  uniqueChild: index("listenModeGoals_childId_unique").on(t.childId),
+}));
+export type ListenModeGoal = typeof listenModeGoals.$inferSelect;
+export type InsertListenModeGoal = typeof listenModeGoals.$inferInsert;
+
+// ─── Deprecated Voices (admin-managed) ──────────────────────────────────────
+export const deprecatedVoices = mysqlTable("deprecatedVoices", {
+  id: int("id").autoincrement().primaryKey(),
+  voiceUri: varchar("voiceUri", { length: 256 }).notNull(),
+  reason: text("reason"),                    // admin note on why deprecated
+  deprecatedBy: int("deprecatedBy").notNull(), // FK → users.id (admin)
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  voiceUriIdx: index("deprecatedVoices_voiceUri_idx").on(t.voiceUri),
+}));
+export type DeprecatedVoice = typeof deprecatedVoices.$inferSelect;
+export type InsertDeprecatedVoice = typeof deprecatedVoices.$inferInsert;

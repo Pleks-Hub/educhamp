@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTabNotification } from "@/hooks/useTabNotification";
 import { trpc } from "@/lib/trpc";
@@ -4167,6 +4167,9 @@ function TtsAnalyticsPanel({ childId, childName }: { childId: number; childName:
         </Card>
       )}
 
+      {/* Listen Mode Weekly Goal */}
+      <ListenGoalSection childId={childId} childName={childName} />
+
       {/* Weekly trend */}
       {data.weeklyTrend.length > 1 && (
         <Card>
@@ -4203,5 +4206,145 @@ function TtsAnalyticsPanel({ childId, childName }: { childId: number; childName:
         </Card>
       )}
     </div>
+  );
+}
+
+// ─── Listen Mode Goal Section ────────────────────────────────────────────────
+
+function ListenGoalSection({ childId, childName }: { childId: number; childName: string }) {
+  const [editing, setEditing] = useState(false);
+  const [target, setTarget] = useState(5);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const prevGoalMetRef = useRef(false);
+
+  const { data: goal, refetch } = trpc.tts.getListenGoal.useQuery({ childId });
+  const setGoalMut = trpc.tts.setListenGoal.useMutation({
+    onSuccess: () => { refetch(); setEditing(false); toast.success("Goal updated!"); },
+  });
+  const removeGoalMut = trpc.tts.removeListenGoal.useMutation({
+    onSuccess: () => { refetch(); toast.success("Goal removed"); },
+  });
+
+  // Trigger celebration when goal is newly met
+  useEffect(() => {
+    if (goal?.goalMet && !prevGoalMetRef.current) {
+      setShowCelebration(true);
+      setTimeout(() => setShowCelebration(false), 3000);
+    }
+    prevGoalMetRef.current = goal?.goalMet ?? false;
+  }, [goal?.goalMet]);
+
+  // SVG progress ring
+  const radius = 36;
+  const circumference = 2 * Math.PI * radius;
+  const progress = goal?.progress ?? 0;
+  const offset = circumference - (progress / 100) * circumference;
+
+  if (!goal && !editing) {
+    return (
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Weekly Listening Goal</p>
+            <p className="text-xs text-muted-foreground">Set a weekly target for {childName}'s Listen Mode usage</p>
+          </div>
+          <Button size="sm" variant="outline" onClick={() => { setTarget(5); setEditing(true); }}>
+            Set Goal
+          </Button>
+        </div>
+      </Card>
+    );
+  }
+
+  if (editing) {
+    return (
+      <Card className="p-4">
+        <div className="space-y-3">
+          <p className="text-sm font-medium">Set Weekly Listening Goal for {childName}</p>
+          <div className="flex items-center gap-3">
+            <label className="text-xs text-muted-foreground">Sessions per week:</label>
+            <Input
+              type="number"
+              min={1}
+              max={50}
+              value={target}
+              onChange={(e) => setTarget(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+              className="w-20"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setGoalMut.mutate({ childId, weeklyTarget: target })} disabled={setGoalMut.isPending}>
+              Save
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="p-4 relative overflow-hidden">
+      {/* Celebration animation */}
+      {showCelebration && (
+        <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center animate-in fade-in zoom-in duration-500">
+          <div className="text-center space-y-1">
+            <span className="text-4xl">🎉</span>
+            <p className="text-sm font-bold text-primary">Goal Met!</p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-4">
+        {/* Progress ring */}
+        <div className="relative shrink-0">
+          <svg width="88" height="88" className="-rotate-90">
+            <circle
+              cx="44" cy="44" r={radius}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="6"
+              className="text-muted/30"
+            />
+            <circle
+              cx="44" cy="44" r={radius}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="6"
+              strokeDasharray={circumference}
+              strokeDashoffset={offset}
+              strokeLinecap="round"
+              className={`transition-all duration-700 ease-out ${goal?.goalMet ? "text-green-500" : "text-primary"}`}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className={`text-sm font-bold ${goal?.goalMet ? "text-green-600" : ""}`}>
+              {goal?.currentSessions}/{goal?.weeklyTarget}
+            </span>
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium">Weekly Listening Goal</p>
+            {goal?.goalMet && (
+              <Badge variant="default" className="bg-green-600 text-xs">Achieved!</Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {goal?.currentSessions ?? 0} of {goal?.weeklyTarget} sessions this week
+          </p>
+          <div className="flex items-center gap-2 mt-2">
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setTarget(goal?.weeklyTarget ?? 5); setEditing(true); }}>
+              Edit
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => removeGoalMut.mutate({ childId })}>
+              Remove
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Card>
   );
 }

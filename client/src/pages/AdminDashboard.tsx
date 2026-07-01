@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { AdminCardTransactionsTab } from "@/components/admin/AdminCardTransactionsTab";
 import { BillingExemptionsTab } from "@/components/admin/BillingExemptionsTab";
+import { VoiceQualityTab } from "@/components/admin/VoiceQualityTab";
 
 // ─── Sidebar Navigation Config ────────────────────────────────────────────────
 const ADMIN_NAV_GROUPS = [
@@ -70,6 +71,7 @@ const ADMIN_NAV_GROUPS = [
       { id: "gamification", label: "Gamification", icon: Trophy },
       { id: "flaggedquestions", label: "Flagged Questions", icon: Flag },
       { id: "courserequests", label: "Course Requests", icon: CheckSquare },
+      { id: "voicequality", label: "Voice Quality", icon: Activity },
     ],
   },
   {
@@ -1849,6 +1851,7 @@ export default function AdminDashboard() {
       case "districttransfer": return <DistrictTransferTab />;
       case "system": return <SystemHealthTab />;
       case "webhooks": return <Suspense fallback={<SectionSkeleton />}><AlertWebhooksTab /></Suspense>;
+      case "voicequality": return <VoiceQualityTab />;
       default: return null;
     }
   }
