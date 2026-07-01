@@ -583,6 +583,11 @@ export default function Tutor() {
     trackEvent("tts_speed_changed", { old_speed: oldSpeed, new_speed: newSpeed, student_id: user?.id });
   };
 
+  const handleTtsSpeedCycle = () => {
+    const newSpeed = tts.cycleSpeed();
+    ttsUpdateMutation.mutate({ ttsSpeed: newSpeed });
+    trackEvent("tts_speed_changed", { old_speed: tts.currentSpeed, new_speed: newSpeed, student_id: user?.id });
+  };
   const handleTtsReplay = () => {
     tts.replay();
     const lastMsg = messages[messages.length - 1];
@@ -1406,11 +1411,15 @@ export default function Tutor() {
         status={tts.status}
         currentLabel={tts.currentLabel}
         currentSpeed={tts.currentSpeed}
+        currentSentenceIndex={tts.currentSentenceIndex}
+        totalSentences={tts.totalSentences}
         onPlay={tts.resume}
         onPause={tts.pause}
         onStop={tts.stop}
         onReplay={handleTtsReplay}
-        onSpeedChange={handleTtsSpeedChange}
+        onSpeedCycle={handleTtsSpeedCycle}
+        onSkipForward={tts.skipForward}
+        onSkipBack={tts.skipBack}
       />
     )}
 

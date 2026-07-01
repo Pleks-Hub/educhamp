@@ -3306,3 +3306,15 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UX: only show ReadThisButton on eligible subjects and completed assistant messages
 - [x] UX: visual pulse animation on the currently-read sentence
 - [x] Tests: 30 new tests (1,518 total passing)
+
+### Sprint 57 — TTS UX Improvements (Speed Badge, Keyboard Shortcuts, Progress Bar)
+
+- [x] AudioControlBar: replace speed dropdown with clickable badge that cycles 0.7x → 1x → 1.25x
+- [x] AudioControlBar: add thin progress bar showing sentence progress (currentIndex / totalSentences)
+- [x] useTTS hook: add skipForward() and skipBack() methods to jump between sentences
+- [x] Keyboard shortcuts: Space to pause/resume TTS playback
+- [x] Keyboard shortcuts: Escape to stop TTS playback
+- [x] Keyboard shortcuts: Right arrow to skip to next sentence
+- [x] Keyboard shortcuts: Left arrow to go back to previous sentence
+- [x] UX: only capture keyboard shortcuts when TTS is active (not when typing in input)
+- [x] Tests: 24 new tests (1,542 total passing)

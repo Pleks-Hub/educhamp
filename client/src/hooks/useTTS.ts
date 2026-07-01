@@ -48,6 +48,8 @@ interface UseTTSReturn {
   replay: () => void;
   /** Change speed (takes effect on next speak/replay) */
   setSpeed: (speed: TtsSpeed) => void;
+  /** Cycle to next speed (for badge click) */
+  cycleSpeed: () => TtsSpeed;
   /** Current speed */
   currentSpeed: TtsSpeed;
   /** Label of what's currently being read */
@@ -64,6 +66,12 @@ interface UseTTSReturn {
   sentences: string[];
   /** The message ID currently being read (for per-message highlight) */
   activeMessageId: string | null;
+  /** Skip to the next sentence */
+  skipForward: () => void;
+  /** Skip to the previous sentence */
+  skipBack: () => void;
+  /** Total number of sentences in current text */
+  totalSentences: number;
 }
 
 export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
@@ -248,6 +256,129 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     setCurrentSpeed(newSpeed);
   }, []);
 
+  const SPEED_CYCLE: TtsSpeed[] = ["slow", "normal", "fast"];
+
+  const cycleSpeed = useCallback((): TtsSpeed => {
+    const currentIdx = SPEED_CYCLE.indexOf(currentSpeed);
+    const nextIdx = (currentIdx + 1) % SPEED_CYCLE.length;
+    const nextSpeed = SPEED_CYCLE[nextIdx];
+    setCurrentSpeed(nextSpeed);
+    return nextSpeed;
+  }, [currentSpeed]);
+
+  /** Skip forward to the next sentence by re-speaking from that sentence onward */
+  const skipForward = useCallback(() => {
+    if (!isSupported || sentencesRef.current.length === 0) return;
+    const nextIdx = Math.min(currentSentenceIndex + 1, sentencesRef.current.length - 1);
+    if (nextIdx === currentSentenceIndex) return; // already at last sentence
+
+    // Cancel current speech and speak from the next sentence onward
+    window.speechSynthesis.cancel();
+    const remainingText = sentencesRef.current.slice(nextIdx).join(" ");
+    setCurrentSentenceIndex(nextIdx);
+
+    const utterance = new SpeechSynthesisUtterance(remainingText);
+    utterance.lang = getTtsLanguage(subject);
+    utterance.rate = SPEED_MAP[currentSpeed];
+    utterance.pitch = 1.0;
+
+    if (selectedVoiceUri && voices.length > 0) {
+      const voice = voices.find(v => v.voiceURI === selectedVoiceUri);
+      if (voice) utterance.voice = voice;
+    }
+
+    utterance.onboundary = (event) => {
+      if (event.name === "sentence") {
+        const charIdx = event.charIndex;
+        const remainingSents = sentencesRef.current.slice(nextIdx);
+        let accumulated = 0;
+        for (let i = 0; i < remainingSents.length; i++) {
+          accumulated += remainingSents[i].length + 1;
+          if (charIdx < accumulated) {
+            setCurrentSentenceIndex(nextIdx + i);
+            break;
+          }
+        }
+      }
+    };
+
+    utterance.onstart = () => setStatus("playing");
+    utterance.onend = () => {
+      setStatus("idle");
+      setCurrentLabel("");
+      setCurrentSentenceIndex(-1);
+      setSentences([]);
+      setActiveMessageId(null);
+      onCompleteRef.current?.();
+    };
+    utterance.onerror = (event) => {
+      if (event.error === "interrupted" || event.error === "canceled") return;
+      setStatus("idle");
+      onErrorRef.current?.(`Speech error: ${event.error}`);
+    };
+    utterance.onpause = () => setStatus("paused");
+    utterance.onresume = () => setStatus("playing");
+
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  }, [isSupported, currentSentenceIndex, subject, currentSpeed, selectedVoiceUri, voices]);
+
+  /** Skip back to the previous sentence by re-speaking from that sentence onward */
+  const skipBack = useCallback(() => {
+    if (!isSupported || sentencesRef.current.length === 0) return;
+    const prevIdx = Math.max(currentSentenceIndex - 1, 0);
+
+    // Cancel current speech and speak from the previous sentence onward
+    window.speechSynthesis.cancel();
+    const remainingText = sentencesRef.current.slice(prevIdx).join(" ");
+    setCurrentSentenceIndex(prevIdx);
+
+    const utterance = new SpeechSynthesisUtterance(remainingText);
+    utterance.lang = getTtsLanguage(subject);
+    utterance.rate = SPEED_MAP[currentSpeed];
+    utterance.pitch = 1.0;
+
+    if (selectedVoiceUri && voices.length > 0) {
+      const voice = voices.find(v => v.voiceURI === selectedVoiceUri);
+      if (voice) utterance.voice = voice;
+    }
+
+    utterance.onboundary = (event) => {
+      if (event.name === "sentence") {
+        const charIdx = event.charIndex;
+        const remainingSents = sentencesRef.current.slice(prevIdx);
+        let accumulated = 0;
+        for (let i = 0; i < remainingSents.length; i++) {
+          accumulated += remainingSents[i].length + 1;
+          if (charIdx < accumulated) {
+            setCurrentSentenceIndex(prevIdx + i);
+            break;
+          }
+        }
+      }
+    };
+
+    utterance.onstart = () => setStatus("playing");
+    utterance.onend = () => {
+      setStatus("idle");
+      setCurrentLabel("");
+      setCurrentSentenceIndex(-1);
+      setSentences([]);
+      setActiveMessageId(null);
+      onCompleteRef.current?.();
+    };
+    utterance.onerror = (event) => {
+      if (event.error === "interrupted" || event.error === "canceled") return;
+      setStatus("idle");
+      onErrorRef.current?.(`Speech error: ${event.error}`);
+    };
+    utterance.onpause = () => setStatus("paused");
+    utterance.onresume = () => setStatus("playing");
+
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  }, [isSupported, currentSentenceIndex, subject, currentSpeed, selectedVoiceUri, voices]);
+
   const setVoice = useCallback((uri: string | null) => {
     setSelectedVoiceUri(uri);
   }, []);
@@ -261,6 +392,7 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     stop,
     replay,
     setSpeed,
+    cycleSpeed,
     currentSpeed,
     currentLabel,
     voices,
@@ -269,5 +401,8 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     currentSentenceIndex,
     sentences,
     activeMessageId,
+    skipForward,
+    skipBack,
+    totalSentences: sentences.length,
   };
 }
