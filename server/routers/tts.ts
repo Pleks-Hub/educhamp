@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
-import { getUserProfile, upsertUserProfile } from "../db";
+import { getUserProfile, upsertUserProfile, getDb } from "../db";
+import { ttsUsageLogs } from "../../drizzle/schema";
+import { eq, and, gte, desc } from "drizzle-orm";
 
 export const ttsRouter = router({
   /**
@@ -54,5 +56,135 @@ export const ttsRouter = router({
       overrides[input.subjectName] = input.enabled;
       await upsertUserProfile(ctx.user.id, { ttsSubjectOverrides: overrides });
       return { success: true };
+    }),
+
+  /**
+   * Log a TTS session when playback ends (called from frontend).
+   */
+  logSession: protectedProcedure
+    .input(z.object({
+      courseSubject: z.string(),
+      sessionDurationMs: z.number().int().min(0),
+      sentencesRead: z.number().int().min(0),
+      speed: z.enum(["slow", "normal", "fast"]).optional(),
+      voiceUri: z.string().nullable().optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { success: false };
+      await db.insert(ttsUsageLogs).values({
+        userId: ctx.user.id,
+        courseSubject: input.courseSubject,
+        sessionDurationMs: input.sessionDurationMs,
+        sentencesRead: input.sentencesRead,
+        speed: input.speed ?? "normal",
+        voiceUri: input.voiceUri ?? null,
+      });
+      return { success: true };
+    }),
+
+  /**
+   * Get TTS usage stats for a parent's children (aggregated).
+   * Returns per-child stats: total sessions, avg duration, top subjects, recent trend.
+   */
+  getUsageStats: protectedProcedure
+    .input(z.object({
+      childId: z.number().int().optional(), // if omitted, aggregate all children
+      daysBack: z.number().int().min(1).max(90).default(30),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) {
+        return {
+          totalSessions: 0,
+          totalDurationMs: 0,
+          totalSentences: 0,
+          avgDurationMs: 0,
+          topSubjects: [] as { subject: string; sessions: number }[],
+          childStats: {} as Record<number, { sessions: number; durationMs: number; sentences: number }>,
+          weeklyTrend: [] as { week: string; sessions: number; durationMs: number }[],
+          daysBack: input?.daysBack ?? 30,
+        };
+      }
+
+      const daysBack = input?.daysBack ?? 30;
+      const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
+
+      const childFilter = input?.childId
+        ? eq(ttsUsageLogs.userId, input.childId)
+        : undefined;
+
+      // Get all logs for the time range (optionally filtered by child)
+      const logs = await db
+        .select({
+          userId: ttsUsageLogs.userId,
+          courseSubject: ttsUsageLogs.courseSubject,
+          sessionDurationMs: ttsUsageLogs.sessionDurationMs,
+          sentencesRead: ttsUsageLogs.sentencesRead,
+          speed: ttsUsageLogs.speed,
+          createdAt: ttsUsageLogs.createdAt,
+        })
+        .from(ttsUsageLogs)
+        .where(
+          childFilter
+            ? and(childFilter, gte(ttsUsageLogs.createdAt, since))
+            : gte(ttsUsageLogs.createdAt, since)
+        )
+        .orderBy(desc(ttsUsageLogs.createdAt))
+        .limit(500);
+
+      // Aggregate stats
+      const totalSessions = logs.length;
+      const totalDurationMs = logs.reduce((sum, l) => sum + l.sessionDurationMs, 0);
+      const totalSentences = logs.reduce((sum, l) => sum + l.sentencesRead, 0);
+      const avgDurationMs = totalSessions > 0 ? Math.round(totalDurationMs / totalSessions) : 0;
+
+      // Top subjects by session count
+      const subjectCounts: Record<string, number> = {};
+      for (const log of logs) {
+        subjectCounts[log.courseSubject] = (subjectCounts[log.courseSubject] || 0) + 1;
+      }
+      const topSubjects = Object.entries(subjectCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([subject, count]) => ({ subject, sessions: count }));
+
+      // Per-child breakdown
+      const childStats: Record<number, { sessions: number; durationMs: number; sentences: number }> = {};
+      for (const log of logs) {
+        if (!childStats[log.userId]) {
+          childStats[log.userId] = { sessions: 0, durationMs: 0, sentences: 0 };
+        }
+        childStats[log.userId].sessions++;
+        childStats[log.userId].durationMs += log.sessionDurationMs;
+        childStats[log.userId].sentences += log.sentencesRead;
+      }
+
+      // Weekly trend (sessions per week for the period)
+      const weeklyTrend: { week: string; sessions: number; durationMs: number }[] = [];
+      const weekMap: Record<string, { sessions: number; durationMs: number }> = {};
+      for (const log of logs) {
+        const d = new Date(log.createdAt);
+        const weekStart = new Date(d);
+        weekStart.setDate(d.getDate() - d.getDay());
+        const weekKey = weekStart.toISOString().split("T")[0];
+        if (!weekMap[weekKey]) weekMap[weekKey] = { sessions: 0, durationMs: 0 };
+        weekMap[weekKey].sessions++;
+        weekMap[weekKey].durationMs += log.sessionDurationMs;
+      }
+      for (const [week, data] of Object.entries(weekMap).sort()) {
+        weeklyTrend.push({ week, ...data });
+      }
+
+      return {
+        totalSessions,
+        totalDurationMs,
+        totalSentences,
+        avgDurationMs,
+        topSubjects,
+        childStats,
+        weeklyTrend,
+        daysBack,
+      };
     }),
 });

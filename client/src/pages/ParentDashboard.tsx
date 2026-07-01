@@ -23,7 +23,7 @@ import {
   FileText, Download, StickyNote, Flag, TrendingDown, Zap,
   Loader2, Link2, Copy, Bell, CheckCheck, XCircle, UserCheck, Info,
   Send, Share2, BookMarked, ThumbsUp, ThumbsDown, AlertCircle, Sparkles,
-  CalendarDays
+  CalendarDays, Volume2, Headphones
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { StreamdownRenderer } from "@/components/StreamdownRenderer";
@@ -2733,6 +2733,7 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
           <TabsTrigger value="recommended" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">Suggest</TabsTrigger>
           <TabsTrigger value="plan" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">📅 Plan</TabsTrigger>
           <TabsTrigger value="tasks" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">✅ Tasks</TabsTrigger>
+          <TabsTrigger value="listen" className="text-xs min-h-[40px] px-3 sm:min-h-0 sm:px-2">🎧 Listen</TabsTrigger>
         </TabsList>
 
         {/* Courses tab — multi-course overview */}
@@ -3006,6 +3007,9 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
 
         <TabsContent value="tasks" className="mt-4">
           <ChildTasksPanel childId={child.childId} childName={child.name ?? "Student"} />
+        </TabsContent>
+        <TabsContent value="listen" className="mt-4">
+          <TtsAnalyticsPanel childId={child.childId} childName={child.name ?? "Student"} />
         </TabsContent>
       </Tabs>
 
@@ -4047,6 +4051,139 @@ function StudentActivityPanel({ childId, childName }: { childId: number; childNa
         Notifications are sent automatically when a student has not logged in for 7, 14, or 30 days.
         Contact support if you believe a notification was sent in error.
       </p>
+    </div>
+  );
+}
+
+// ─── TTS Analytics Panel ─────────────────────────────────────────────────────
+
+function TtsAnalyticsPanel({ childId, childName }: { childId: number; childName: string }) {
+  const { data, isLoading } = trpc.tts.getUsageStats.useQuery({ childId, daysBack: 30 });
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+        </div>
+        <Skeleton className="h-40" />
+      </div>
+    );
+  }
+
+  if (!data || data.totalSessions === 0) {
+    return (
+      <Card className="flex items-center justify-center min-h-[250px] text-center">
+        <CardContent className="space-y-3">
+          <Headphones className="h-12 w-12 mx-auto text-muted-foreground/40" />
+          <p className="text-muted-foreground font-medium">No Listen Mode usage yet</p>
+          <p className="text-xs text-muted-foreground max-w-sm">
+            When {childName} uses the Listen Mode feature in the AI Tutor, their usage
+            statistics will appear here — including total sessions, duration, and top subjects.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const formatDuration = (ms: number) => {
+    const totalSec = Math.round(ms / 1000);
+    if (totalSec < 60) return `${totalSec}s`;
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    return sec > 0 ? `${min}m ${sec}s` : `${min}m`;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Volume2 className="h-5 w-5 text-primary" />
+        <h3 className="font-semibold text-sm">Listen Mode Usage — Last {data.daysBack} Days</h3>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card className="p-3 text-center">
+          <p className="text-2xl font-bold text-primary">{data.totalSessions}</p>
+          <p className="text-xs text-muted-foreground">Sessions</p>
+        </Card>
+        <Card className="p-3 text-center">
+          <p className="text-2xl font-bold text-primary">{formatDuration(data.totalDurationMs)}</p>
+          <p className="text-xs text-muted-foreground">Total Time</p>
+        </Card>
+        <Card className="p-3 text-center">
+          <p className="text-2xl font-bold text-primary">{formatDuration(data.avgDurationMs)}</p>
+          <p className="text-xs text-muted-foreground">Avg Session</p>
+        </Card>
+        <Card className="p-3 text-center">
+          <p className="text-2xl font-bold text-primary">{data.totalSentences}</p>
+          <p className="text-xs text-muted-foreground">Sentences Read</p>
+        </Card>
+      </div>
+
+      {/* Top subjects */}
+      {data.topSubjects.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Top Subjects
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="space-y-2">
+              {data.topSubjects.map((s, i) => (
+                <div key={s.subject} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-muted-foreground w-4">{i + 1}.</span>
+                    <span className="text-sm font-medium capitalize">{s.subject}</span>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    {s.sessions} {s.sessions === 1 ? "session" : "sessions"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Weekly trend */}
+      {data.weeklyTrend.length > 1 && (
+        <Card>
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Weekly Trend
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="space-y-2">
+              {data.weeklyTrend.map((w) => {
+                const maxSessions = Math.max(...data.weeklyTrend.map(t => t.sessions));
+                const pct = maxSessions > 0 ? (w.sessions / maxSessions) * 100 : 0;
+                return (
+                  <div key={w.week} className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground w-20 shrink-0">
+                      {new Date(w.week + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    </span>
+                    <div className="flex-1 h-5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary/70 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.max(pct, 4)}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium w-16 text-right">
+                      {w.sessions} / {formatDuration(w.durationMs)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

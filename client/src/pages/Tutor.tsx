@@ -56,6 +56,7 @@ import { trackEvent } from "@/lib/analytics";
 import { VoicePicker } from "@/components/VoicePicker";
 import { ReadThisButton } from "@/components/ReadThisButton";
 import { HighlightedMessage } from "@/components/HighlightedMessage";
+import { VoiceDownloadPrompt } from "@/components/VoiceDownloadPrompt";
 
 // parent_summary is a parent-only mode; students see only the 7 learning modes
 type TutorMode = "teach" | "practice" | "quiz" | "exam_review" | "exam_prep" | "remediation" | "parent_summary" | "misconception_drill";
@@ -511,6 +512,7 @@ export default function Tutor() {
   const { data: ttsPrefs } = trpc.tts.getPreferences.useQuery(undefined, { enabled: !!user && ttsEligible });
   const ttsUpdateMutation = trpc.tts.updatePreferences.useMutation();
   const ttsToggleSubjectMutation = trpc.tts.toggleSubject.useMutation();
+  const ttsLogSessionMutation = trpc.tts.logSession.useMutation();
 
   // Derive per-subject enabled state
   const ttsSubjectOverrides = (ttsPrefs?.ttsSubjectOverrides ?? {}) as Record<string, boolean>;
@@ -530,15 +532,34 @@ export default function Tutor() {
     }
   }, [ttsPrefs, ttsEnabledForSubject, ttsEligible]);
 
+  // Track TTS session start time for analytics logging
+  const ttsSessionStartRef = useRef<number>(0);
+  const ttsSentenceCountRef = useRef<number>(0);
+
   const tts = useTTS({
     subject: courseSubject,
     speed: (ttsPrefs?.ttsSpeed as TtsSpeed) ?? "normal",
     voiceUri: ttsPrefs?.ttsVoiceUri ?? null,
     onComplete: () => {
+      // Log TTS session to server for parent analytics
+      const durationMs = ttsSessionStartRef.current > 0
+        ? Date.now() - ttsSessionStartRef.current
+        : 0;
+      if (durationMs > 1000 && courseSubject) {
+        ttsLogSessionMutation.mutate({
+          courseSubject,
+          sessionDurationMs: durationMs,
+          sentencesRead: ttsSentenceCountRef.current,
+          speed: (ttsPrefs?.ttsSpeed as "slow" | "normal" | "fast") ?? "normal",
+          voiceUri: ttsPrefs?.ttsVoiceUri ?? null,
+        });
+      }
+      ttsSessionStartRef.current = 0;
+      ttsSentenceCountRef.current = 0;
       trackEvent("tts_playback_completed", {
         content_type: safeMode,
         subject_id: courseSubject,
-        duration_seconds: 0, // Web Speech API doesn't expose duration
+        duration_ms: durationMs,
       });
     },
     onError: (err) => toast.error(err),
@@ -552,6 +573,8 @@ export default function Tutor() {
     if (prevIsStreamingRef.current && !isStreaming && listenMode && ttsEligible) {
       const lastMsg = messages[messages.length - 1];
       if (lastMsg?.role === "assistant" && lastMsg.content && !lastMsg.isError) {
+        ttsSessionStartRef.current = Date.now();
+        ttsSentenceCountRef.current = tts.totalSentences || 0;
         tts.speak(lastMsg.content, `${currentModeConfig?.label ?? "Tutor"} Response`, `msg-${messages.length - 1}`);
       }
     }
@@ -606,6 +629,7 @@ export default function Tutor() {
   };
 
   const handleReadThis = (content: string, messageId: string) => {
+    ttsSessionStartRef.current = Date.now();
     tts.speak(content, "Message", messageId);
     trackEvent("tts_read_this_triggered", { message_index: messageId, student_id: user?.id });
   };
@@ -661,11 +685,14 @@ export default function Tutor() {
   }, [messages.length, isStreaming, scrollToBottom]);
 
   // Show/hide scroll-to-bottom button
+  const [userScrolledUp, setUserScrolledUp] = useState(false);
   const handleScroll = useCallback(() => {
     const container = messagesContainerRef.current;
     if (!container) return;
     const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
     setShowScrollButton(distanceFromBottom > 120);
+    // Track if user has manually scrolled up (disable TTS auto-scroll)
+    setUserScrolledUp(distanceFromBottom > 150);
   }, []);
 
   // TUX-1: Stop streaming
@@ -1067,6 +1094,14 @@ export default function Tutor() {
           />
         )}
 
+        {/* Voice download prompt — shown when preferred voice is missing */}
+        {listenMode && (
+          <VoiceDownloadPrompt
+            preferredVoiceUri={ttsPrefs?.ttsVoiceUri ?? null}
+            listenModeEnabled={listenMode}
+          />
+        )}
+
         {/* ── Messages — the key fix: plain overflow-y-auto div, not ScrollArea ── */}
         <div
           ref={messagesContainerRef}
@@ -1158,6 +1193,7 @@ export default function Tutor() {
                               messageId={`msg-${idx}`}
                               activeMessageId={tts.activeMessageId}
                               currentSentenceIndex={tts.currentSentenceIndex}
+                              autoScrollDisabled={userScrolledUp}
                               className="prose prose-sm max-w-none dark:prose-invert"
                             />
                           ) : (

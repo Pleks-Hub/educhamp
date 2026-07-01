@@ -2257,3 +2257,23 @@ export const familyActivityFeed = mysqlTable("familyActivityFeed", {
 }));
 export type FamilyActivityFeedEntry = typeof familyActivityFeed.$inferSelect;
 export type InsertFamilyActivityFeedEntry = typeof familyActivityFeed.$inferInsert;
+
+
+// ─── TTS Usage Logs ──────────────────────────────────────────────────────────
+
+export const ttsUsageLogs = mysqlTable("ttsUsageLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  courseSubject: varchar("courseSubject", { length: 128 }).notNull(),
+  sessionDurationMs: int("sessionDurationMs").notNull().default(0),
+  sentencesRead: int("sentencesRead").notNull().default(0),
+  speed: varchar("speed", { length: 16 }).default("normal"),
+  voiceUri: varchar("voiceUri", { length: 256 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  userIdx: index("ttsUsageLogs_userId_idx").on(t.userId),
+  subjectIdx: index("ttsUsageLogs_courseSubject_idx").on(t.courseSubject),
+  createdAtIdx: index("ttsUsageLogs_createdAt_idx").on(t.createdAt),
+}));
+export type TtsUsageLog = typeof ttsUsageLogs.$inferSelect;
+export type InsertTtsUsageLog = typeof ttsUsageLogs.$inferInsert;

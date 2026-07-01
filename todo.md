@@ -3318,3 +3318,18 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Keyboard shortcuts: Left arrow to go back to previous sentence
 - [x] UX: only capture keyboard shortcuts when TTS is active (not when typing in input)
 - [x] Tests: 24 new tests (1,542 total passing)
+
+### Sprint 58 — TTS Auto-scroll, Parent Analytics, Voice Download Prompt
+
+- [x] Auto-scroll: when highlight-as-you-read advances, scroll chat container to keep highlighted sentence visible
+- [x] Auto-scroll: use scrollIntoView with smooth behavior, only when sentence is below viewport
+- [x] Auto-scroll: respect user manual scroll (disable auto-scroll if user scrolled up)
+- [x] DB: add ttsUsageLogs table (userId, courseSubject, sessionDurationMs, sentencesRead, createdAt)
+- [x] Server: tts.logSession procedure to record TTS usage when playback ends
+- [x] Server: tts.getUsageStats procedure for parent dashboard (per-child aggregation)
+- [x] Parent Dashboard: TTS Analytics section showing listen mode usage per child
+- [x] Parent Dashboard: show total sessions, avg duration, top subjects, usage trend
+- [x] Voice prompt: detect when preferred voiceUri is not in speechSynthesis.getVoices()
+- [x] Voice prompt: show dismissible banner suggesting system voice download
+- [x] Voice prompt: provide platform-specific instructions (macOS, Windows, ChromeOS)
+- [x] Tests: auto-scroll logic, TTS session logging, parent analytics aggregation
