@@ -3366,3 +3366,12 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 
 - [x] Fix isListenModeEligible to match DB subject values: "language", "social_studies"
 - [x] Ensure getTtsLanguage handles "language" subject by checking course title for Spanish/French
+
+### TTS Enhancements — Expand eligible subjects + language auto-detection
+
+- [x] Add "technology" and "business" to TTS_ELIGIBLE_SUBJECTS list
+- [x] Implement language auto-detection from AI tutor response content
+- [x] Detect language using Unicode character ranges and common word patterns
+- [x] Pass detected language to useTTS so utterance.lang is set correctly
+- [x] Fallback to getTtsLanguage(subject, courseTitle) when detection is inconclusive
+- [x] Tests: verify new subjects are eligible, verify language detection logic

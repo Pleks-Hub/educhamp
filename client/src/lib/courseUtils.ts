@@ -13,7 +13,8 @@ export function needsMathKeyboard(courseSubject: string | undefined | null): boo
  * Language-heavy, text-heavy, and passage-based subjects benefit from audio.
  * Math/STEM subjects with equations are excluded.
  * Matches against DB subject values: "english", "ELA", "English Language Arts",
- * "language" (Spanish/French), "social_studies", "Social Studies", "science", etc.
+ * "language" (Spanish/French), "social_studies", "Social Studies", "science",
+ * "technology", "Business", etc.
  */
 const TTS_ELIGIBLE_SUBJECTS = [
   "english", "ela", "reading", "language arts",
@@ -21,6 +22,8 @@ const TTS_ELIGIBLE_SUBJECTS = [
   "spanish", "french",
   "history", "social studies", "social_studies",
   "science", // passage-based science content
+  "technology", // technology courses are text-heavy
+  "business", // business courses are text-heavy
 ];
 
 export function isListenModeEligible(subjectName: string | undefined | null): boolean {
@@ -52,6 +55,80 @@ export function getTtsLanguage(subjectName: string | undefined | null, courseTit
     if (t.includes("korean")) return "ko-KR";
   }
   return "en-US";
+}
+
+/**
+ * Auto-detect language from text content using Unicode character ranges
+ * and common word/character patterns. Used as a fallback when course subject
+ * and title don't clearly indicate the language.
+ *
+ * Returns a BCP 47 language tag or null if detection is inconclusive.
+ */
+export function detectLanguageFromContent(text: string): string | null {
+  if (!text || text.length < 20) return null;
+
+  // Take a sample of the text (first 500 chars after stripping markdown)
+  const sample = text.slice(0, 500);
+
+  // ─── CJK Detection (high confidence from character ranges) ─────────────
+  const cjkChars = sample.match(/[\u4e00-\u9fff\u3400-\u4dbf]/g);
+  const hiraganaKatakana = sample.match(/[\u3040-\u309f\u30a0-\u30ff]/g);
+  const hangul = sample.match(/[\uac00-\ud7af\u1100-\u11ff]/g);
+
+  if (hiraganaKatakana && hiraganaKatakana.length > 5) return "ja-JP";
+  if (hangul && hangul.length > 5) return "ko-KR";
+  if (cjkChars && cjkChars.length > 10) return "zh-CN";
+
+  // ─── Arabic script ─────────────────────────────────────────────────────
+  const arabicChars = sample.match(/[\u0600-\u06ff\u0750-\u077f]/g);
+  if (arabicChars && arabicChars.length > 10) return "ar-SA";
+
+  // ─── Cyrillic (Russian) ────────────────────────────────────────────────
+  const cyrillicChars = sample.match(/[\u0400-\u04ff]/g);
+  if (cyrillicChars && cyrillicChars.length > 10) return "ru-RU";
+
+  // ─── Latin-based languages (use common word patterns) ──────────────────
+  const lowerSample = sample.toLowerCase();
+
+  // Spanish indicators
+  const spanishWords = ["está", "también", "pero", "como", "para", "tiene",
+    "puede", "porque", "cuando", "donde", "qué", "cómo", "más", "muy",
+    "este", "esta", "estos", "estas", "aquí", "ahora", "después",
+    "¿", "¡", "ñ", "ción", "mente"];
+  const spanishHits = spanishWords.filter(w => lowerSample.includes(w)).length;
+  if (spanishHits >= 3) return "es-ES";
+
+  // French indicators
+  const frenchWords = ["est", "les", "des", "une", "que", "dans", "pour",
+    "avec", "pas", "sur", "sont", "mais", "tout", "être", "avoir",
+    "très", "aussi", "même", "où", "ça", "cette", "ces",
+    "qu'", "l'", "d'", "n'", "c'est", "j'ai"];
+  const frenchHits = frenchWords.filter(w => lowerSample.includes(w)).length;
+  if (frenchHits >= 4) return "fr-FR";
+
+  // German indicators
+  const germanWords = ["ist", "und", "der", "die", "das", "ein", "eine",
+    "nicht", "sich", "mit", "auch", "auf", "für", "werden", "haben",
+    "über", "können", "müssen", "ß", "ä", "ö", "ü"];
+  const germanHits = germanWords.filter(w => lowerSample.includes(w)).length;
+  if (germanHits >= 4) return "de-DE";
+
+  // Portuguese indicators
+  const portugueseWords = ["não", "também", "está", "são", "tem", "como",
+    "mais", "muito", "pode", "isso", "este", "essa", "aqui", "então",
+    "porque", "quando", "ainda", "já", "ão", "ões", "ção"];
+  const portugueseHits = portugueseWords.filter(w => lowerSample.includes(w)).length;
+  if (portugueseHits >= 3) return "pt-BR";
+
+  // Italian indicators
+  const italianWords = ["è", "che", "non", "sono", "per", "una", "con",
+    "come", "anche", "questo", "questa", "quello", "quella", "molto",
+    "tutto", "fare", "essere", "avere", "gli", "delle"];
+  const italianHits = italianWords.filter(w => lowerSample.includes(w)).length;
+  if (italianHits >= 4) return "it-IT";
+
+  // If no strong signal, return null (inconclusive)
+  return null;
 }
 
 /**

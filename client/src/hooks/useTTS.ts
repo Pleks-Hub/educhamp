@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { stripMarkdownForTts, getTtsLanguage } from "@/lib/courseUtils";
+import { stripMarkdownForTts, getTtsLanguage, detectLanguageFromContent } from "@/lib/courseUtils";
 
 export type TtsSpeed = "slow" | "normal" | "fast";
 export type TtsStatus = "idle" | "playing" | "paused";
@@ -176,7 +176,10 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     setCurrentSentenceIndex(0);
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = getTtsLanguage(subject, courseTitle);
+    // Determine language: try subject/title first, then auto-detect from content
+    const subjectLang = getTtsLanguage(subject, courseTitle);
+    const detectedLang = subjectLang === "en-US" ? detectLanguageFromContent(cleanText) : null;
+    utterance.lang = detectedLang ?? subjectLang;
     utterance.rate = SPEED_MAP[currentSpeed];
     utterance.pitch = 1.0;
 
@@ -280,7 +283,9 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     setCurrentSentenceIndex(nextIdx);
 
     const utterance = new SpeechSynthesisUtterance(remainingText);
-    utterance.lang = getTtsLanguage(subject, courseTitle);
+    const subjectLangN = getTtsLanguage(subject, courseTitle);
+    const detectedLangN = subjectLangN === "en-US" ? detectLanguageFromContent(remainingText) : null;
+    utterance.lang = detectedLangN ?? subjectLangN;
     utterance.rate = SPEED_MAP[currentSpeed];
     utterance.pitch = 1.0;
 
@@ -336,7 +341,9 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     setCurrentSentenceIndex(prevIdx);
 
     const utterance = new SpeechSynthesisUtterance(remainingText);
-    utterance.lang = getTtsLanguage(subject, courseTitle);
+    const subjectLangP = getTtsLanguage(subject, courseTitle);
+    const detectedLangP = subjectLangP === "en-US" ? detectLanguageFromContent(remainingText) : null;
+    utterance.lang = detectedLangP ?? subjectLangP;
     utterance.rate = SPEED_MAP[currentSpeed];
     utterance.pitch = 1.0;
 
