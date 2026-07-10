@@ -542,6 +542,7 @@ export default function Tutor() {
 
   const tts = useTTS({
     subject: courseSubject,
+    courseTitle: courseLabel,
     speed: (ttsPrefs?.ttsSpeed as TtsSpeed) ?? "normal",
     voiceUri: ttsPrefs?.ttsVoiceUri ?? null,
     onComplete: () => {
@@ -1040,7 +1041,7 @@ export default function Tutor() {
                   voices={tts.voices}
                   selectedVoiceUri={tts.selectedVoiceUri}
                   onVoiceChange={handleVoiceChange}
-                  language={getTtsLanguage(courseSubject)}
+                  language={getTtsLanguage(courseSubject, courseLabel)}
                 />
               )}
             </div>

@@ -12,27 +12,45 @@ export function needsMathKeyboard(courseSubject: string | undefined | null): boo
  * Subjects eligible for TTS Listen Mode.
  * Language-heavy, text-heavy, and passage-based subjects benefit from audio.
  * Math/STEM subjects with equations are excluded.
+ * Matches against DB subject values: "english", "ELA", "English Language Arts",
+ * "language" (Spanish/French), "social_studies", "Social Studies", "science", etc.
  */
 const TTS_ELIGIBLE_SUBJECTS = [
   "english", "ela", "reading", "language arts",
-  "spanish", "french", "history", "social studies",
+  "language", // DB value for Spanish, French, and other language courses
+  "spanish", "french",
+  "history", "social studies", "social_studies",
   "science", // passage-based science content
 ];
 
 export function isListenModeEligible(subjectName: string | undefined | null): boolean {
   if (!subjectName) return false;
   const s = subjectName.toLowerCase().trim();
-  return TTS_ELIGIBLE_SUBJECTS.some(eligible => s.includes(eligible));
+  return TTS_ELIGIBLE_SUBJECTS.some(eligible => s.includes(eligible) || s === eligible);
 }
 
 /**
- * Get the BCP 47 language tag for TTS based on the course subject.
+ * Get the BCP 47 language tag for TTS based on the course subject and title.
+ * For "language" subject courses, we check the title to determine the actual language.
  */
-export function getTtsLanguage(subjectName: string | undefined | null): string {
+export function getTtsLanguage(subjectName: string | undefined | null, courseTitle?: string | null): string {
   if (!subjectName) return "en-US";
   const s = subjectName.toLowerCase().trim();
+  const t = (courseTitle ?? "").toLowerCase().trim();
+  // Check subject name first
   if (s.includes("spanish")) return "es-ES";
   if (s.includes("french")) return "fr-FR";
+  // For generic "language" subject, check course title
+  if (s === "language" || s.includes("language")) {
+    if (t.includes("spanish")) return "es-ES";
+    if (t.includes("french")) return "fr-FR";
+    if (t.includes("german")) return "de-DE";
+    if (t.includes("italian")) return "it-IT";
+    if (t.includes("portuguese")) return "pt-BR";
+    if (t.includes("mandarin") || t.includes("chinese")) return "zh-CN";
+    if (t.includes("japanese")) return "ja-JP";
+    if (t.includes("korean")) return "ko-KR";
+  }
   return "en-US";
 }
 

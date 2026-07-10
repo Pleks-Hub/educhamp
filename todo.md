@@ -3361,3 +3361,8 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Parent Dashboard: persist goal per child in DB
 - [x] DB: add listenModeGoals table (parentId, childId, weeklyTarget, createdAt, updatedAt)
 - [x] Tests: admin voice report aggregation, notification trigger logic, goal progress calculation
+
+### Bug Fix — TTS not showing for Spanish/Language and social_studies courses
+
+- [x] Fix isListenModeEligible to match DB subject values: "language", "social_studies"
+- [x] Ensure getTtsLanguage handles "language" subject by checking course title for Spanish/French

@@ -21,6 +21,8 @@ export function splitIntoSentences(text: string): string[] {
 interface UseTTSOptions {
   /** Course subject for language detection */
   subject?: string | null;
+  /** Course title for language detection (used when subject is generic like "language") */
+  courseTitle?: string | null;
   /** Playback speed */
   speed?: TtsSpeed;
   /** Preferred voice URI (persisted from server) */
@@ -75,7 +77,7 @@ interface UseTTSReturn {
 }
 
 export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
-  const { subject, speed: initialSpeed = "normal", voiceUri: initialVoiceUri, onComplete, onError } = options;
+  const { subject, courseTitle, speed: initialSpeed = "normal", voiceUri: initialVoiceUri, onComplete, onError } = options;
 
   const [isSupported] = useState(() => typeof window !== "undefined" && "speechSynthesis" in window);
   const [status, setStatus] = useState<TtsStatus>("idle");
@@ -174,7 +176,7 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     setCurrentSentenceIndex(0);
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = getTtsLanguage(subject);
+    utterance.lang = getTtsLanguage(subject, courseTitle);
     utterance.rate = SPEED_MAP[currentSpeed];
     utterance.pitch = 1.0;
 
@@ -278,7 +280,7 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     setCurrentSentenceIndex(nextIdx);
 
     const utterance = new SpeechSynthesisUtterance(remainingText);
-    utterance.lang = getTtsLanguage(subject);
+    utterance.lang = getTtsLanguage(subject, courseTitle);
     utterance.rate = SPEED_MAP[currentSpeed];
     utterance.pitch = 1.0;
 
@@ -334,7 +336,7 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     setCurrentSentenceIndex(prevIdx);
 
     const utterance = new SpeechSynthesisUtterance(remainingText);
-    utterance.lang = getTtsLanguage(subject);
+    utterance.lang = getTtsLanguage(subject, courseTitle);
     utterance.rate = SPEED_MAP[currentSpeed];
     utterance.pitch = 1.0;
 
