@@ -17,10 +17,10 @@ export const ttsRouter = router({
       ttsSpeed: (profile?.ttsSpeed as "slow" | "normal" | "fast") ?? "normal",
       ttsSubjectOverrides: (profile?.ttsSubjectOverrides as Record<string, boolean> | null) ?? {},
       ttsFirstTimeTooltipShown: profile?.ttsFirstTimeTooltipShown ?? false,
-      ttsVoiceUri: profile?.ttsVoiceUri ?? null,
+            ttsVoiceUri: profile?.ttsVoiceUri ?? null,
+      ttsLanguageOverride: (profile?.ttsLanguageOverride as string | null) ?? null,
     };
   }),
-
   /**
    * Update TTS preferences (partial — only send changed fields).
    */
@@ -31,6 +31,7 @@ export const ttsRouter = router({
       ttsSubjectOverrides: z.record(z.string(), z.boolean()).optional(),
       ttsFirstTimeTooltipShown: z.boolean().optional(),
       ttsVoiceUri: z.string().nullable().optional(),
+      ttsLanguageOverride: z.string().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const data: Record<string, any> = {};
@@ -39,6 +40,7 @@ export const ttsRouter = router({
       if (input.ttsSubjectOverrides !== undefined) data.ttsSubjectOverrides = input.ttsSubjectOverrides;
       if (input.ttsFirstTimeTooltipShown !== undefined) data.ttsFirstTimeTooltipShown = input.ttsFirstTimeTooltipShown;
       if (input.ttsVoiceUri !== undefined) data.ttsVoiceUri = input.ttsVoiceUri;
+      if (input.ttsLanguageOverride !== undefined) data.ttsLanguageOverride = input.ttsLanguageOverride;
       await upsertUserProfile(ctx.user.id, data);
       return { success: true };
     }),

@@ -10,6 +10,18 @@ const SPEED_MAP: Record<TtsSpeed, number> = {
   fast: 1.25,
 };
 
+/** Per-language speed adjustment: foreign languages get a slightly slower rate */
+const FOREIGN_LANG_SPEED_MAP: Record<TtsSpeed, number> = {
+  slow: 0.6,
+  normal: 0.8,
+  fast: 1.1,
+};
+
+/** Returns true if the language is non-English (foreign language learning) */
+function isForeignLanguage(lang: string): boolean {
+  return !!lang && !lang.startsWith("en");
+}
+
 /** Split text into sentences for highlight-as-you-read */
 export function splitIntoSentences(text: string): string[] {
   // Split on sentence-ending punctuation followed by whitespace or end of string
@@ -23,6 +35,8 @@ interface UseTTSOptions {
   subject?: string | null;
   /** Course title for language detection (used when subject is generic like "language") */
   courseTitle?: string | null;
+  /** Manual language override (BCP 47 tag, e.g. "es-ES") — takes priority over auto-detection */
+  languageOverride?: string | null;
   /** Playback speed */
   speed?: TtsSpeed;
   /** Preferred voice URI (persisted from server) */
@@ -74,14 +88,20 @@ interface UseTTSReturn {
   skipBack: () => void;
   /** Total number of sentences in current text */
   totalSentences: number;
+  /** The detected/resolved language code currently in use (e.g. "es-ES", "fr-FR", "en-US") */
+  detectedLanguage: string;
+  /** Set a manual language override */
+  setLanguageOverride: (lang: string | null) => void;
 }
 
 export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
-  const { subject, courseTitle, speed: initialSpeed = "normal", voiceUri: initialVoiceUri, onComplete, onError } = options;
+  const { subject, courseTitle, languageOverride: initialLangOverride, speed: initialSpeed = "normal", voiceUri: initialVoiceUri, onComplete, onError } = options;
 
   const [isSupported] = useState(() => typeof window !== "undefined" && "speechSynthesis" in window);
   const [status, setStatus] = useState<TtsStatus>("idle");
   const [currentSpeed, setCurrentSpeed] = useState<TtsSpeed>(initialSpeed);
+  const [langOverride, setLangOverride] = useState<string | null>(initialLangOverride ?? null);
+  const [detectedLanguage, setDetectedLanguage] = useState<string>("en-US");
   const [currentLabel, setCurrentLabel] = useState("");
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoiceUri, setSelectedVoiceUri] = useState<string | null>(initialVoiceUri ?? null);
@@ -176,11 +196,14 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     setCurrentSentenceIndex(0);
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    // Determine language: try subject/title first, then auto-detect from content
+    // Determine language: manual override > subject/title > auto-detect from content
     const subjectLang = getTtsLanguage(subject, courseTitle);
-    const detectedLang = subjectLang === "en-US" ? detectLanguageFromContent(cleanText) : null;
-    utterance.lang = detectedLang ?? subjectLang;
-    utterance.rate = SPEED_MAP[currentSpeed];
+    const autoLang = subjectLang === "en-US" ? detectLanguageFromContent(cleanText) : null;
+    const resolvedLang = langOverride || autoLang || subjectLang;
+    utterance.lang = resolvedLang;
+    setDetectedLanguage(resolvedLang);
+    const speedMap = isForeignLanguage(resolvedLang) ? FOREIGN_LANG_SPEED_MAP : SPEED_MAP;
+    utterance.rate = speedMap[currentSpeed];
     utterance.pitch = 1.0;
 
     // Set selected voice if available
@@ -284,9 +307,11 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
 
     const utterance = new SpeechSynthesisUtterance(remainingText);
     const subjectLangN = getTtsLanguage(subject, courseTitle);
-    const detectedLangN = subjectLangN === "en-US" ? detectLanguageFromContent(remainingText) : null;
-    utterance.lang = detectedLangN ?? subjectLangN;
-    utterance.rate = SPEED_MAP[currentSpeed];
+    const autoLangN = subjectLangN === "en-US" ? detectLanguageFromContent(remainingText) : null;
+    const resolvedLangN = langOverride || autoLangN || subjectLangN;
+    utterance.lang = resolvedLangN;
+    const speedMapN = isForeignLanguage(resolvedLangN) ? FOREIGN_LANG_SPEED_MAP : SPEED_MAP;
+    utterance.rate = speedMapN[currentSpeed];
     utterance.pitch = 1.0;
 
     if (selectedVoiceUri && voices.length > 0) {
@@ -342,9 +367,11 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
 
     const utterance = new SpeechSynthesisUtterance(remainingText);
     const subjectLangP = getTtsLanguage(subject, courseTitle);
-    const detectedLangP = subjectLangP === "en-US" ? detectLanguageFromContent(remainingText) : null;
-    utterance.lang = detectedLangP ?? subjectLangP;
-    utterance.rate = SPEED_MAP[currentSpeed];
+    const autoLangP = subjectLangP === "en-US" ? detectLanguageFromContent(remainingText) : null;
+    const resolvedLangP = langOverride || autoLangP || subjectLangP;
+    utterance.lang = resolvedLangP;
+    const speedMapP = isForeignLanguage(resolvedLangP) ? FOREIGN_LANG_SPEED_MAP : SPEED_MAP;
+    utterance.rate = speedMapP[currentSpeed];
     utterance.pitch = 1.0;
 
     if (selectedVoiceUri && voices.length > 0) {
@@ -413,5 +440,7 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     skipForward,
     skipBack,
     totalSentences: sentences.length,
+    detectedLanguage,
+    setLanguageOverride: setLangOverride,
   };
 }

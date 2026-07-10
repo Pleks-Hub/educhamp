@@ -1,0 +1,1 @@
+ALTER TABLE `userProfiles` ADD `ttsLanguageOverride` varchar(10);

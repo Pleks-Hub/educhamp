@@ -486,6 +486,7 @@ export const userProfiles = mysqlTable("userProfiles", {
   ttsSubjectOverrides: json("ttsSubjectOverrides"), // { "subjectName": true/false, ... } per-subject override
   ttsFirstTimeTooltipShown: boolean("ttsFirstTimeTooltipShown").notNull().default(false), // one-time tooltip dismissed
   ttsVoiceUri: varchar("ttsVoiceUri", { length: 512 }), // persisted SpeechSynthesis voice URI
+  ttsLanguageOverride: varchar("ttsLanguageOverride", { length: 10 }), // manual language override (BCP 47 tag, e.g. "es-ES")
   // Billing escalation
   billingEscalatedAt: timestamp("billingEscalatedAt"), // set when billing reminders exceed 7 days without parent action
   // Onboarding state

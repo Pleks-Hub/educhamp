@@ -3375,3 +3375,16 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Pass detected language to useTTS so utterance.lang is set correctly
 - [x] Fallback to getTtsLanguage(subject, courseTitle) when detection is inconclusive
 - [x] Tests: verify new subjects are eligible, verify language detection logic
+
+### TTS UX — Language Badge, Manual Override, Per-Language Speed Defaults
+
+- [x] Language badge: show detected language code (e.g., "ES", "FR") next to Listen Mode toggle
+- [x] Language badge: only visible when auto-detection picks a non-English language
+- [x] Language badge: expose detectedLanguage from useTTS hook return
+- [x] Manual override: add language dropdown to VoicePicker component
+- [x] Manual override: persist user's language override in TTS preferences
+- [x] Manual override: override takes priority over auto-detection
+- [x] Speed defaults: set slower default speed for foreign language courses (0.8x)
+- [x] Speed defaults: use normal speed (0.9x) for native language courses
+- [x] Speed defaults: allow user speed preference to override the default
+- [x] Tests: language badge display logic, override persistence, speed defaults

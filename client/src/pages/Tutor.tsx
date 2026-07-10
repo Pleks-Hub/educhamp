@@ -539,10 +539,14 @@ export default function Tutor() {
   const [showVoiceRating, setShowVoiceRating] = useState(false);
   const ttsRateVoiceMutation = trpc.tts.rateVoice.useMutation();
   const ttsCheckLowRatingMut = trpc.tts.checkLowRatingNotification.useMutation();
+  const [ttsLangOverride, setTtsLangOverride] = useState<string | null>(
+    (ttsPrefs as any)?.ttsLanguageOverride ?? null
+  );
 
   const tts = useTTS({
     subject: courseSubject,
     courseTitle: courseLabel,
+    languageOverride: ttsLangOverride,
     speed: (ttsPrefs?.ttsSpeed as TtsSpeed) ?? "normal",
     voiceUri: ttsPrefs?.ttsVoiceUri ?? null,
     onComplete: () => {
@@ -635,6 +639,13 @@ export default function Tutor() {
     tts.setVoice(voiceUri);
     ttsUpdateMutation.mutate({ ttsVoiceUri: voiceUri });
     trackEvent("tts_voice_changed", { voice_uri: voiceUri, student_id: user?.id });
+  };
+
+  const handleLanguageOverride = (lang: string | null) => {
+    setTtsLangOverride(lang);
+    tts.setLanguageOverride(lang);
+    ttsUpdateMutation.mutate({ ttsLanguageOverride: lang });
+    trackEvent("tts_language_override", { language: lang, student_id: user?.id });
   };
 
   const handleReadThis = (content: string, messageId: string) => {
@@ -1035,13 +1046,16 @@ export default function Tutor() {
                 onToggle={handleListenModeToggle}
                 showFirstTimeTooltip={showTtsTooltip}
                 onDismissTooltip={handleDismissTtsTooltip}
+                detectedLanguage={tts.detectedLanguage}
               />
               {listenMode && tts.voices.length > 0 && (
                 <VoicePicker
                   voices={tts.voices}
                   selectedVoiceUri={tts.selectedVoiceUri}
                   onVoiceChange={handleVoiceChange}
-                  language={getTtsLanguage(courseSubject, courseLabel)}
+                  language={tts.detectedLanguage || getTtsLanguage(courseSubject, courseLabel)}
+                  onLanguageOverride={handleLanguageOverride}
+                  languageOverride={ttsLangOverride}
                 />
               )}
             </div>
