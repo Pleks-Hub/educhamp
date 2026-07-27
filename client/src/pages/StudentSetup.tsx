@@ -118,17 +118,35 @@ export default function StudentSetup() {
             <div className="h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
               <AlertTriangle className="h-7 w-7 text-amber-600" />
             </div>
-            <h3 className="font-semibold text-lg">Link Expired or Used</h3>
+            <h3 className="font-semibold text-lg">
+              {isReset ? "Reset Link Expired" : "Link Expired or Used"}
+            </h3>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-              {tokenQuery.data.reason || "This setup link is no longer valid."}
+              {tokenQuery.data.reason || "This link is no longer valid."}
             </p>
             <div className="flex flex-col gap-2 pt-2">
-              <Link href="/student-login">
-                <Button variant="default" className="w-full">Sign In with Password</Button>
-              </Link>
-              <p className="text-xs text-muted-foreground">
-                Ask your parent to resend the setup email from their dashboard.
-              </p>
+              {isReset ? (
+                <>
+                  <Link href="/student-forgot-password">
+                    <Button variant="default" className="w-full">Request a New Reset Link</Button>
+                  </Link>
+                  <Link href="/sign-in">
+                    <Button variant="outline" className="w-full">Back to Sign In</Button>
+                  </Link>
+                  <p className="text-xs text-muted-foreground">
+                    Reset links expire after 7 days. You can request a new one at any time.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Link href="/sign-in">
+                    <Button variant="default" className="w-full">Sign In with Password</Button>
+                  </Link>
+                  <p className="text-xs text-muted-foreground">
+                    Ask your parent to resend the setup email from their dashboard.
+                  </p>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -145,13 +163,17 @@ export default function StudentSetup() {
             <div className="h-14 w-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
               <CheckCircle2 className="h-7 w-7 text-emerald-600" />
             </div>
-            <h3 className="font-semibold text-lg">You're all set!</h3>
+            <h3 className="font-semibold text-lg">
+              {isReset ? "Password updated!" : "You're all set!"}
+            </h3>
             <p className="text-sm text-muted-foreground">
-              Welcome to EduChamp, {tokenQuery.data?.studentName}! Redirecting you to your dashboard...
+              {isReset
+                ? `Your password has been reset successfully, ${tokenQuery.data?.studentName}. Signing you in...`
+                : `Welcome to EduChamp, ${tokenQuery.data?.studentName}! Redirecting you to your dashboard...`}
             </p>
             <div className="animate-pulse flex items-center justify-center gap-2 text-primary text-sm">
               <ArrowRight className="h-4 w-4" />
-              <span>Loading your courses...</span>
+              <span>{isReset ? "Signing you in..." : "Loading your courses..."}</span>
             </div>
           </CardContent>
         </Card>
@@ -192,7 +214,7 @@ export default function StudentSetup() {
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Password */}
               <div className="space-y-2">
-                <Label htmlFor="password">Create Password</Label>
+                <Label htmlFor="password">{isReset ? "New Password" : "Create Password"}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -299,10 +321,21 @@ export default function StudentSetup() {
               </Button>
 
               <p className="text-xs text-center text-muted-foreground">
-                Already have a password?{" "}
-                <Link href="/student-login" className="text-primary hover:underline">
-                  Sign in here
-                </Link>
+                {isReset ? (
+                  <>
+                    Remember your old password?{" "}
+                    <Link href="/sign-in" className="text-primary hover:underline">
+                      Sign in instead
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    Already have a password?{" "}
+                    <Link href="/sign-in" className="text-primary hover:underline">
+                      Sign in here
+                    </Link>
+                  </>
+                )}
               </p>
             </form>
           </CardContent>

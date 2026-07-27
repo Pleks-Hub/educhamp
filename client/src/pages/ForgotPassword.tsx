@@ -1,26 +1,17 @@
+/**
+ * Forgot Password Page (Parent / Teacher)
+ *
+ * For OAuth-based users (parents/teachers), there's no password to reset.
+ * This page explains the situation clearly and offers helpful options.
+ */
 import { useState } from "react";
-import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { GraduationCap, Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { GraduationCap, ArrowLeft, KeyRound, ExternalLink, HelpCircle } from "lucide-react";
 import { Link } from "wouter";
+import { getLoginUrl } from "@/const";
 
 export default function ForgotPassword() {
-  const [email, setEmail] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-
-  const requestReset = trpc.authEnhancements.requestPasswordReset.useMutation({
-    onSuccess: () => setSubmitted(true),
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    requestReset.mutate({ email, origin: window.location.origin });
-  };
-
   return (
     <div className="min-h-dvh flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-md space-y-6">
@@ -31,84 +22,75 @@ export default function ForgotPassword() {
           </div>
           <div className="text-center">
             <h1 className="text-xl font-bold">EduChamp</h1>
-            <p className="text-xs text-muted-foreground">Adaptive Learning · Pre-K through Grade 12</p>
+            <p className="text-xs text-muted-foreground">Account Recovery</p>
           </div>
         </div>
 
         <Card>
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-xl">Reset your access</CardTitle>
+            <CardTitle className="text-xl">Need help signing in?</CardTitle>
             <CardDescription>
-              Enter your email and we'll send a secure login link to the platform owner, who will forward it to you.
+              Parent and teacher accounts use Apple or Google sign-in — no password needed.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            {submitted ? (
-              <div className="text-center space-y-4 py-4">
-                <div className="h-14 w-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+          <CardContent className="space-y-4">
+            {/* Primary action: Sign in with OAuth */}
+            <div className="rounded-lg border p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <KeyRound className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg">Request submitted</h3>
-                  <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
-                    If an account with that email exists, a reset link has been sent to the platform administrator.
-                    Please check back with them shortly.
-                  </p>
+                  <p className="text-sm font-medium">Sign in with Apple or Google</p>
+                  <p className="text-xs text-muted-foreground">Use the same account you signed up with</p>
                 </div>
-                <Link href="/">
-                  <Button variant="outline" className="gap-2">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to sign in
-                  </Button>
-                </Link>
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email address</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-9"
-                      required
-                    />
-                  </div>
-                </div>
+              <Button
+                className="w-full gap-2"
+                onClick={() => { window.location.href = getLoginUrl(); }}
+              >
+                <ExternalLink className="h-4 w-4" />
+                Continue to Sign In
+              </Button>
+            </div>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={!email || requestReset.isPending}
-                >
-                  {requestReset.isPending ? "Sending…" : "Send Reset Request"}
+            {/* Help section */}
+            <div className="rounded-lg bg-blue-50 border border-blue-200 p-4 space-y-2">
+              <p className="text-xs font-semibold text-blue-800 flex items-center gap-1.5">
+                <HelpCircle className="h-3.5 w-3.5" />
+                Common issues
+              </p>
+              <ul className="text-xs text-blue-700 space-y-1.5 list-disc list-inside">
+                <li><strong>Wrong account?</strong> Make sure you're using the same Apple ID or Google account you originally signed up with.</li>
+                <li><strong>Apple Sign-In not showing?</strong> Apple Sign-In only works on Apple devices (iPhone, iPad, Mac with Safari).</li>
+                <li><strong>Multiple Google accounts?</strong> Try signing out of Google first, then sign in with the correct account.</li>
+                <li><strong>Student account?</strong> Students use email + password. <Link href="/student-forgot-password" className="underline font-medium">Reset student password here</Link>.</li>
+              </ul>
+            </div>
+
+            {/* Student password reset link */}
+            <div className="rounded-lg border border-dashed p-3 space-y-2">
+              <p className="text-xs text-muted-foreground text-center">
+                Are you a <strong>student</strong> trying to reset your password?
+              </p>
+              <Link href="/student-forgot-password">
+                <Button variant="outline" size="sm" className="w-full text-xs">
+                  Go to Student Password Reset
                 </Button>
+              </Link>
+            </div>
 
-                {requestReset.isError && (
-                  <p className="text-sm text-destructive text-center">{requestReset.error.message}</p>
-                )}
-
-                <div className="text-center">
-                  <Link href="/">
-                    <button type="button" className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1">
-                      <ArrowLeft className="h-3.5 w-3.5" />
-                      Back to sign in
-                    </button>
-                  </Link>
-                </div>
-              </form>
-            )}
+            {/* Back to sign in */}
+            <div className="text-center pt-1">
+              <Link href="/sign-in">
+                <button type="button" className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1">
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back to sign in
+                </button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
-
-        <p className="text-center text-xs text-muted-foreground">
-          EduChamp uses secure single sign-on. If you're having trouble signing in,
-          contact your platform administrator.
-        </p>
       </div>
     </div>
   );

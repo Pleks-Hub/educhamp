@@ -3388,3 +3388,13 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Speed defaults: use normal speed (0.9x) for native language courses
 - [x] Speed defaults: allow user speed preference to override the default
 - [x] Tests: language badge display logic, override persistence, speed defaults
+
+### Bug Fix — Forgot Password Not Working + UX Improvements
+
+- [x] Fix: studentAuth.requestPasswordReset hardcodes `https://educhamp.co` instead of using caller origin
+- [x] Fix: StudentForgotPassword.tsx doesn't pass `origin` to the mutation
+- [x] UX: Improve StudentSetup.tsx messaging in reset mode (clearer copy, better success state)
+- [x] UX: Add multiple reset options on StudentForgotPassword page (email reset, ask parent, contact admin)
+- [x] UX: Add "Forgot password?" link on parent/teacher tab pointing to /forgot-password
+- [x] UX: Improve error states with actionable guidance (expired link, already used link)
+- [x] Tests: verify origin is passed correctly, token generation works

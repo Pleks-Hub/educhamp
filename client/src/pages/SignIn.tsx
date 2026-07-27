@@ -127,11 +127,16 @@ export default function SignIn() {
                   </div>
                 )}
 
-                <div className="text-center pt-2">
+                <div className="text-center pt-2 space-y-1">
                   <p className="text-xs text-muted-foreground">
                     Don't have an account?{" "}
                     <Link href="/landing" className="text-indigo-600 hover:underline font-medium">
                       Sign up free
+                    </Link>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <Link href="/forgot-password" className="text-indigo-600 hover:underline">
+                      Need help signing in?
                     </Link>
                   </p>
                 </div>

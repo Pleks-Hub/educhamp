@@ -397,8 +397,8 @@ export const studentAuthRouter = router({
    * Request a password reset email (forgot password for student local auth)
    */
   requestPasswordReset: publicProcedure
-    .input(z.object({ email: z.string().email() }))
-    .mutation(async ({ input }) => {
+    .input(z.object({ email: z.string().email(), origin: z.string().url().optional() }))
+    .mutation(async ({ input, ctx }) => {
       // Always return success to prevent email enumeration
       const user = await getUserByEmail(input.email);
       if (!user || !user.passwordHash) {
@@ -408,7 +408,9 @@ export const studentAuthRouter = router({
 
       // Create a reset token (reusing the same token infrastructure)
       const token = await createSetupToken(user.id);
-      const resetUrl = `https://educhamp.co/student-setup?token=${token}&mode=reset`;
+      // Use caller-provided origin, fall back to request origin header, then production domain
+      const baseOrigin = input.origin || ctx.req?.headers?.origin || "https://educhamp.co";
+      const resetUrl = `${baseOrigin}/student-setup?token=${token}&mode=reset`;
 
       // Send reset email
       await sendEmail({
