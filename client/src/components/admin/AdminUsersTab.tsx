@@ -234,6 +234,7 @@ export function AdminUsersTab() {
   const [bulkStatusTarget, setBulkStatusTarget] = useState<"active" | "suspended" | "deactivated" | "deleted">("suspended");
   const [bulkCourseId, setBulkCourseId] = useState<number | null>(null);
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
+  const [resetConfirmUser, setResetConfirmUser] = useState<{ id: number; name: string | null; email: string | null } | null>(null);
 
   const bulkUpdateStatus = trpc.admin.bulkUpdateUserStatus.useMutation({
     onSuccess: (r) => { toast.success(`Bulk update: ${r.successCount} succeeded, ${r.failCount} failed.`); setSelectedUserIds(new Set()); setBulkAction(null); refetch(); },
@@ -603,9 +604,7 @@ export function AdminUsersTab() {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => {
-                            if (confirm(`Send password reset email to ${user.name ?? user.email}?`)) {
-                              forcePasswordReset.mutate({ userId: user.id, origin: window.location.origin });
-                            }
+                            setResetConfirmUser(user);
                           }}
                         >
                           <History className="h-3.5 w-3.5 mr-2 text-blue-600" /> Force Password Reset
@@ -734,8 +733,39 @@ export function AdminUsersTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+          {/* Password Reset Confirmation Dialog */}
+      <AlertDialog open={!!resetConfirmUser} onOpenChange={(open) => { if (!open) setResetConfirmUser(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Force Password Reset</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>This will send a password reset email to the following user:</p>
+                <div className="bg-muted rounded-lg p-3 space-y-1">
+                  <p className="font-medium text-foreground">{resetConfirmUser?.name || "Unknown"}</p>
+                  <p className="text-sm text-muted-foreground">{resetConfirmUser?.email || "No email"}</p>
+                </div>
+                <p className="text-sm">The reset link will be valid for <strong>24 hours</strong>. The user will be able to set a new password by clicking the link in their email.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (resetConfirmUser) {
+                  forcePasswordReset.mutate({ userId: resetConfirmUser.id, origin: window.location.origin });
+                  setResetConfirmUser(null);
+                }
+              }}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {forcePasswordReset.isPending ? "Sending..." : "Send Reset Email"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
-
 export default AdminUsersTab;

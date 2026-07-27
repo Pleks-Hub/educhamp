@@ -15,8 +15,8 @@ import { GraduationCap, Lock, Eye, EyeOff, CheckCircle2, XCircle, AlertTriangle,
 import { Link } from "wouter";
 
 // Password strength checker
-function getPasswordStrength(password: string): { score: number; label: string; color: string } {
-  if (!password) return { score: 0, label: "", color: "" };
+function getPasswordStrength(password: string): { score: number; label: string; color: string; emoji: string } {
+  if (!password) return { score: 0, label: "", color: "", emoji: "" };
   let score = 0;
   if (password.length >= 8) score++;
   if (password.length >= 12) score++;
@@ -25,10 +25,11 @@ function getPasswordStrength(password: string): { score: number; label: string; 
   if (/\d/.test(password)) score++;
   if (/[^a-zA-Z\d]/.test(password)) score++;
 
-  if (score <= 2) return { score: 1, label: "Weak", color: "bg-red-500" };
-  if (score <= 4) return { score: 2, label: "Fair", color: "bg-yellow-500" };
-  if (score <= 5) return { score: 3, label: "Good", color: "bg-blue-500" };
-  return { score: 4, label: "Strong", color: "bg-emerald-500" };
+  if (score <= 2) return { score: 1, label: "Weak", color: "bg-red-500", emoji: "\u26A0\uFE0F" };
+  if (score <= 3) return { score: 2, label: "Fair", color: "bg-orange-500", emoji: "\u{1F44C}" };
+  if (score <= 4) return { score: 3, label: "Good", color: "bg-yellow-500", emoji: "\u{1F44D}" };
+  if (score <= 5) return { score: 4, label: "Strong", color: "bg-emerald-500", emoji: "\u{1F4AA}" };
+  return { score: 5, label: "Very Strong", color: "bg-emerald-600", emoji: "\u{1F6E1}\uFE0F" };
 }
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
@@ -236,38 +237,53 @@ export default function StudentSetup() {
                 </div>
                 {/* Strength indicator */}
                 {password && (
-                  <div className="space-y-1">
+                  <div className="space-y-2 animate-in fade-in duration-200">
                     <div className="flex gap-1">
-                      {[1, 2, 3, 4].map((i) => (
+                      {[1, 2, 3, 4, 5].map((i) => (
                         <div
                           key={i}
-                          className={`h-1.5 flex-1 rounded-full transition-colors ${
+                          className={`h-2 flex-1 rounded-full transition-all duration-300 ${
                             i <= strength.score ? strength.color : "bg-muted"
                           }`}
                         />
                       ))}
                     </div>
-                    <p className={`text-xs ${strength.score <= 1 ? "text-red-600" : strength.score <= 2 ? "text-yellow-600" : "text-emerald-600"}`}>
-                      {strength.label}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className={`text-xs font-medium ${
+                        strength.score <= 1 ? "text-red-600" : 
+                        strength.score <= 2 ? "text-orange-600" : 
+                        strength.score <= 3 ? "text-yellow-600" : "text-emerald-600"
+                      }`}>
+                        {strength.emoji} {strength.label}
+                      </p>
+                      {strength.score >= 4 && (
+                        <span className="text-xs text-emerald-600 font-medium">Great choice!</span>
+                      )}
+                    </div>
                   </div>
                 )}
-                {/* Requirements */}
-                {password && !passwordValid && (
-                  <ul className="text-xs text-muted-foreground space-y-0.5 mt-1">
-                    <li className={password.length >= 8 ? "text-emerald-600" : ""}>
-                      {password.length >= 8 ? "✓" : "○"} At least 8 characters
-                    </li>
-                    <li className={/[A-Z]/.test(password) ? "text-emerald-600" : ""}>
-                      {/[A-Z]/.test(password) ? "✓" : "○"} One uppercase letter
-                    </li>
-                    <li className={/[a-z]/.test(password) ? "text-emerald-600" : ""}>
-                      {/[a-z]/.test(password) ? "✓" : "○"} One lowercase letter
-                    </li>
-                    <li className={/\d/.test(password) ? "text-emerald-600" : ""}>
-                      {/\d/.test(password) ? "✓" : "○"} One number
-                    </li>
-                  </ul>
+                {/* Requirements checklist */}
+                {password && (
+                  <div className="bg-muted/50 rounded-lg p-3 space-y-1.5 mt-1">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Password requirements:</p>
+                    <ul className="text-xs space-y-1">
+                      <li className={`flex items-center gap-1.5 transition-colors ${password.length >= 8 ? "text-emerald-600" : "text-muted-foreground"}`}>
+                        {password.length >= 8 ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3 opacity-40" />} At least 8 characters
+                      </li>
+                      <li className={`flex items-center gap-1.5 transition-colors ${/[A-Z]/.test(password) ? "text-emerald-600" : "text-muted-foreground"}`}>
+                        {/[A-Z]/.test(password) ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3 opacity-40" />} One uppercase letter
+                      </li>
+                      <li className={`flex items-center gap-1.5 transition-colors ${/[a-z]/.test(password) ? "text-emerald-600" : "text-muted-foreground"}`}>
+                        {/[a-z]/.test(password) ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3 opacity-40" />} One lowercase letter
+                      </li>
+                      <li className={`flex items-center gap-1.5 transition-colors ${/\d/.test(password) ? "text-emerald-600" : "text-muted-foreground"}`}>
+                        {/\d/.test(password) ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3 opacity-40" />} One number
+                      </li>
+                      <li className={`flex items-center gap-1.5 transition-colors ${/[^a-zA-Z\d]/.test(password) ? "text-emerald-600" : "text-muted-foreground"}`}>
+                        {/[^a-zA-Z\d]/.test(password) ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3 opacity-40" />} One special character <span className="text-muted-foreground">(recommended)</span>
+                      </li>
+                    </ul>
+                  </div>
                 )}
               </div>
 

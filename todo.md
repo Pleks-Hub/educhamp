@@ -3413,3 +3413,15 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Parent Dashboard: add "Reset Password" button on each child card
 - [x] Parent Dashboard: trigger reset email with one click (uses origin correctly)
 - [x] Tests: rate-limiting logic, cooldown timer behavior, parent-initiated reset
+
+### Password Strength Indicator & Admin Reset Override
+
+- [x] Create PasswordStrengthMeter component (visual bar with weak/medium/strong/very strong levels)
+- [x] Integrate strength meter into StudentSetup password form (shows below password input)
+- [x] Strength rules: length, uppercase, lowercase, numbers, special chars
+- [x] Color-coded bar: red (weak), orange (fair), yellow (good), green (strong)
+- [x] Show text label and requirements checklist
+- [x] Admin Console: add "Reset Password" action in Users tab for any student
+- [x] Server: admin.resetStudentPassword procedure (generate token, send reset email)
+- [x] Admin: confirmation dialog before sending reset (shows student name/email)
+- [x] Tests: strength calculation logic, admin reset procedure authorization
