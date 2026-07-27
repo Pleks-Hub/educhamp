@@ -68,33 +68,71 @@ export default function StudentForgotPassword() {
           </CardHeader>
           <CardContent className="space-y-4">
             {submitted ? (
-              <div className="space-y-4">
-                {/* Success state */}
-                <div className="flex flex-col items-center gap-3 py-4">
-                  <div className="h-14 w-14 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+              <div className="space-y-5">
+                {/* Success animation */}
+                <div className="flex flex-col items-center gap-4 py-6">
+                  <div className="relative">
+                    {/* Animated ring pulse */}
+                    <div className="absolute inset-0 h-20 w-20 rounded-full bg-emerald-200 animate-ping opacity-20" />
+                    <div className="relative h-20 w-20 rounded-full bg-emerald-100 flex items-center justify-center animate-in zoom-in-50 duration-500">
+                      <CheckCircle2 className="h-10 w-10 text-emerald-600 animate-in fade-in zoom-in-75 duration-700 delay-200" />
+                    </div>
                   </div>
-                  <div className="text-center space-y-1.5">
-                    <p className="text-sm font-medium">Reset link sent!</p>
+                  <div className="text-center space-y-2 animate-in fade-in slide-in-from-bottom-3 duration-500 delay-300">
+                    <h3 className="text-lg font-semibold text-foreground">Reset link sent!</h3>
+                    <p className="text-sm text-muted-foreground max-w-xs">
+                      We've sent a password reset link to
+                    </p>
+                    <p className="text-sm font-medium text-foreground bg-muted/50 rounded-md px-3 py-1.5 inline-block">
+                      {email}
+                    </p>
                     <p className="text-xs text-muted-foreground">
-                      Check your inbox at <strong>{email}</strong> for a link to create a new password.
-                      The link expires in 7 days.
+                      The link is valid for 7 days.
                     </p>
                   </div>
                 </div>
 
-                {/* Helpful tips */}
-                <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 space-y-2">
-                  <p className="text-xs font-semibold text-blue-800">Didn't receive it?</p>
-                  <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
-                    <li>Check your spam or junk folder</li>
-                    <li>Make sure you entered the email your parent used to enroll you</li>
-                    <li>Wait a few minutes — emails can sometimes be delayed</li>
+                {/* Spam folder warning — prominent */}
+                <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-500">
+                  <div className="flex items-start gap-2.5">
+                    <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <Mail className="h-4 w-4 text-amber-700" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-amber-900">Check your spam folder!</p>
+                      <p className="text-xs text-amber-800 leading-relaxed">
+                        Password reset emails sometimes end up in your <strong>Spam</strong> or <strong>Junk</strong> folder.
+                        If you don't see it in your inbox within 2 minutes, please check there.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Additional tips */}
+                <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 space-y-2 animate-in fade-in duration-500 delay-700">
+                  <p className="text-xs font-semibold text-slate-700">Still can't find it?</p>
+                  <ul className="text-xs text-slate-600 space-y-1.5">
+                    <li className="flex items-start gap-2">
+                      <span className="text-slate-400 mt-0.5">•</span>
+                      <span>Make sure you entered the email your parent used to enroll you</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-slate-400 mt-0.5">•</span>
+                      <span>Search your email for <strong>"EduChamp"</strong> or <strong>"password reset"</strong></span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-slate-400 mt-0.5">•</span>
+                      <span>Add <strong>noreply@educhamp.co</strong> to your contacts to prevent future filtering</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-slate-400 mt-0.5">•</span>
+                      <span>Wait up to 5 minutes — email delivery can sometimes be delayed</span>
+                    </li>
                   </ul>
                 </div>
 
                 {/* Actions */}
-                <div className="space-y-2">
+                <div className="space-y-2 pt-1 animate-in fade-in duration-500 delay-700">
                   <Button
                     variant="outline"
                     className="w-full gap-2"

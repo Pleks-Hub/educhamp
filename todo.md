@@ -3398,3 +3398,9 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] UX: Add "Forgot password?" link on parent/teacher tab pointing to /forgot-password
 - [x] UX: Improve error states with actionable guidance (expired link, already used link)
 - [x] Tests: verify origin is passed correctly, token generation works
+
+### UX — Password Reset Confirmation Page Enhancement
+
+- [x] Add clear success animation (checkmark with motion) on reset confirmation
+- [x] Add prominent spam/junk folder instructions
+- [x] Improve visual hierarchy and spacing of the confirmation state
