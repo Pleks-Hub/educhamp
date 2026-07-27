@@ -2323,3 +2323,14 @@ export const deprecatedVoices = mysqlTable("deprecatedVoices", {
 }));
 export type DeprecatedVoice = typeof deprecatedVoices.$inferSelect;
 export type InsertDeprecatedVoice = typeof deprecatedVoices.$inferInsert;
+
+// ─── Password Reset Rate Limiting ───────────────────────────────────────────
+export const passwordResetAttempts = mysqlTable("passwordResetAttempts", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  emailIdx: index("passwordResetAttempts_email_idx").on(t.email),
+  createdAtIdx: index("passwordResetAttempts_createdAt_idx").on(t.createdAt),
+}));
+export type PasswordResetAttempt = typeof passwordResetAttempts.$inferSelect;

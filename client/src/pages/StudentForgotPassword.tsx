@@ -5,7 +5,7 @@
  * Allows students with local auth to request a password reset email.
  * Provides multiple recovery options for better UX.
  */
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,16 +28,43 @@ export default function StudentForgotPassword() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [showAlternatives, setShowAlternatives] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const [rateLimited, setRateLimited] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Cooldown countdown
+  useEffect(() => {
+    if (cooldown > 0) {
+      timerRef.current = setInterval(() => {
+        setCooldown((prev) => {
+          if (prev <= 1) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [cooldown > 0]);
 
   const requestReset = trpc.studentAuth.requestPasswordReset.useMutation({
-    onSuccess: () => {
-      setSubmitted(true);
+    onSuccess: (data) => {
+      if (data.rateLimited) {
+        setRateLimited(true);
+      } else {
+        setSubmitted(true);
+        setCooldown(60); // Start 60s cooldown
+      }
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || cooldown > 0) return;
+    setRateLimited(false);
     requestReset.mutate({ email, origin: window.location.origin });
   };
 
@@ -189,11 +216,23 @@ export default function StudentForgotPassword() {
                       </div>
                     )}
 
-                    <Button type="submit" className="w-full" disabled={requestReset.isPending || !email}>
+                    {/* Rate limit warning */}
+                    {rateLimited && (
+                      <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+                        <p className="font-medium">Too many requests</p>
+                        <p className="text-xs mt-1">You've reached the maximum of 3 reset requests per hour. Please wait before trying again, or try one of the alternative options below.</p>
+                      </div>
+                    )}
+
+                    <Button type="submit" className="w-full" disabled={requestReset.isPending || !email || cooldown > 0 || rateLimited}>
                       {requestReset.isPending ? (
                         <span className="flex items-center gap-2">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           Sending...
+                        </span>
+                      ) : cooldown > 0 ? (
+                        <span className="flex items-center gap-2">
+                          Resend available in {cooldown}s
                         </span>
                       ) : (
                         "Send Reset Link"

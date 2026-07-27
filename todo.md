@@ -3404,3 +3404,12 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Add clear success animation (checkmark with motion) on reset confirmation
 - [x] Add prominent spam/junk folder instructions
 - [x] Improve visual hierarchy and spacing of the confirmation state
+
+### Password Reset UX Enhancements — Rate Limit, Cooldown, Parent Reset
+
+- [x] Verify StudentSetup reset form already has confirm password field (new password + confirm)
+- [x] Rate-limit: max 3 reset requests per email per hour on server side
+- [x] Frontend: 60-second cooldown timer after submitting reset request (disable resubmit)
+- [x] Parent Dashboard: add "Reset Password" button on each child card
+- [x] Parent Dashboard: trigger reset email with one click (uses origin correctly)
+- [x] Tests: rate-limiting logic, cooldown timer behavior, parent-initiated reset

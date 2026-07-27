@@ -23,7 +23,7 @@ import {
   FileText, Download, StickyNote, Flag, TrendingDown, Zap,
   Loader2, Link2, Copy, Bell, CheckCheck, XCircle, UserCheck, Info,
   Send, Share2, BookMarked, ThumbsUp, ThumbsDown, AlertCircle, Sparkles,
-  CalendarDays, Volume2, Headphones
+  CalendarDays, Volume2, Headphones, KeyRound
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { StreamdownRenderer } from "@/components/StreamdownRenderer";
@@ -2285,6 +2285,47 @@ function ResendSetupEmailButton({ childId, childName }: { childId: number; child
   );
 }
 
+function ResetChildPasswordButton({ childId, childName }: { childId: number; childName: string }) {
+  const [confirmed, setConfirmed] = useState(false);
+  const resetPassword = trpc.parent.resetChildPassword.useMutation({
+    onSuccess: (data) => {
+      toast.success(`Password reset email sent to ${data.childName}!`);
+      setConfirmed(false);
+    },
+    onError: (err) => toast.error(err.message || "Failed to send reset email"),
+  });
+
+  if (confirmed) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <Button
+          size="sm"
+          variant="destructive"
+          onClick={() => resetPassword.mutate({ childId, origin: window.location.origin })}
+          disabled={resetPassword.isPending}
+          className="gap-1.5"
+        >
+          {resetPassword.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+          {resetPassword.isPending ? "Sending..." : "Confirm Reset"}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setConfirmed(false)}>Cancel</Button>
+      </div>
+    );
+  }
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setConfirmed(true)}
+      className="gap-1.5"
+    >
+      <KeyRound className="h-3.5 w-3.5" />
+      Reset Password
+    </Button>
+  );
+}
+
 function SetupProgressBar({ accountCreated, passwordSet, onboardingComplete }: {
   accountCreated: boolean;
   passwordSet: boolean;
@@ -2683,8 +2724,9 @@ function ChildDetailPanel({ child, onRemove }: { child: ChildSummary; onRemove: 
           />
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <ResendSetupEmailButton childId={child.childId} childName={child.name ?? "Student"} />
+          <ResetChildPasswordButton childId={child.childId} childName={child.name ?? "Student"} />
           <Button
             variant="ghost"
             size="sm"

@@ -13,8 +13,8 @@ import {
   getUserByEmail,
   getDb,
 } from "../db";
-import { users } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { users, passwordResetAttempts } from "../../drizzle/schema";
+import { eq, sql, and, gt } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
 import { sendEmail } from "../emailService";
 import { buildStudentSetupEmail } from "../emailTemplates/studentSetup";
@@ -395,10 +395,39 @@ export const studentAuthRouter = router({
 
   /**
    * Request a password reset email (forgot password for student local auth)
+   * Rate-limited to 3 requests per email per hour.
    */
   requestPasswordReset: publicProcedure
     .input(z.object({ email: z.string().email(), origin: z.string().url().optional() }))
     .mutation(async ({ input, ctx }) => {
+      // Rate-limit: max 3 requests per email per hour
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable." });
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const recentRequests = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(passwordResetAttempts)
+        .where(
+          and(
+            eq(passwordResetAttempts.email, input.email.toLowerCase()),
+            gt(passwordResetAttempts.createdAt, oneHourAgo)
+          )
+        );
+      const requestCount = recentRequests[0]?.count ?? 0;
+      if (requestCount >= 3) {
+        return {
+          success: false,
+          message: "Too many reset requests. Please wait an hour before trying again.",
+          rateLimited: true,
+        };
+      }
+
+      // Log this attempt for rate limiting
+      await db.insert(passwordResetAttempts).values({
+        email: input.email.toLowerCase(),
+        createdAt: new Date(),
+      });
+
       // Always return success to prevent email enumeration
       const user = await getUserByEmail(input.email);
       if (!user || !user.passwordHash) {
