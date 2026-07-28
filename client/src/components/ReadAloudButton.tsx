@@ -2,9 +2,9 @@
  * ReadAloudButton — Accessible read-aloud control bar for lesson content.
  *
  * Shows only for young learners (Pre-K through Grade 2) or when parent-led
- * mode is active. Falls back gracefully when speechSynthesis is unavailable.
+ * mode is active. Uses server-side Edge Neural TTS for high-quality voices.
  */
-import { Volume2, VolumeX, Pause, Play, RotateCcw } from "lucide-react";
+import { Volume2, VolumeX, Pause, Play, RotateCcw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -26,7 +26,7 @@ export function ReadAloudButton({ text, className, onEnd }: ReadAloudButtonProps
     return (
       <div className={cn("flex items-center gap-2 text-xs text-muted-foreground", className)}>
         <VolumeX className="h-4 w-4" />
-        <span>Read-aloud not supported in this browser</span>
+        <span>Read-aloud not available</span>
       </div>
     );
   }
@@ -50,9 +50,10 @@ export function ReadAloudButton({ text, className, onEnd }: ReadAloudButtonProps
             size="sm"
             className="h-9 w-9 rounded-full bg-amber-400 hover:bg-amber-500 text-white p-0 shrink-0"
             onClick={ra.toggle}
-            aria-label={ra.isPlaying ? "Pause narration" : ra.isPaused ? "Resume narration" : "Read aloud"}
+            disabled={ra.isLoading}
+            aria-label={ra.isLoading ? "Loading audio" : ra.isPlaying ? "Pause narration" : ra.isPaused ? "Resume narration" : "Read aloud"}
           >
-            {ra.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
+            {ra.isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : ra.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
           </Button>
         </TooltipTrigger>
         <TooltipContent>{ra.isPlaying ? "Pause" : ra.isPaused ? "Resume" : "Read Aloud"}</TooltipContent>
@@ -96,6 +97,11 @@ export function ReadAloudButton({ text, className, onEnd }: ReadAloudButtonProps
       </div>
 
       {/* Status label */}
+      {ra.isLoading && (
+        <span className="text-xs text-amber-600 animate-pulse" aria-live="polite">
+          Loading…
+        </span>
+      )}
       {ra.isPlaying && (
         <span className="text-xs text-amber-600 animate-pulse" aria-live="polite">
           Reading…

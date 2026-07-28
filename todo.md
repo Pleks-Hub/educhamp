@@ -3451,8 +3451,15 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Update VoicePicker with curated list of neural voices (22 voices, 10 languages)
 - [x] Preserve existing speed controls (slow/normal/fast via rate parameter)
 - [x] Preserve existing TTS preferences, analytics, and rating infrastructure
-- [ ] Handle EarlyDiagnostic page TTS (separate simpler integration — follow-up)
+- [x] Handle EarlyDiagnostic page TTS (replaced with server-side Edge Neural TTS)
 - [x] Write vitest tests for TTS synthesis endpoint (14 tests passing)
 - [x] Verify pause/resume/stop/replay controls work with Audio element
 - [x] Add loading state to AudioControlBar for synthesis delay
 - [x] Remove VoiceDownloadPrompt (no longer needed with server-side TTS)
+
+### Remove All Remaining Browser Web Speech API Usage
+- [x] Replace EarlyDiagnostic page speak() function with server-side Edge Neural TTS
+- [x] Replace useReadAloud hook with server-side Edge Neural TTS
+- [x] Update ReadAloudButton component for new hook interface (loading state added)
+- [x] Verify zero remaining speechSynthesis references in client code
+- [x] Remove VoiceDownloadPrompt component file (dead code)

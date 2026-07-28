@@ -12,6 +12,22 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { toast } from "sonner";
 
+/**
+ * Server-side TTS helper for EarlyDiagnostic.
+ * Uses a shared Audio element and the tRPC tts.synthesize mutation.
+ * Fire-and-forget: we don't need to track playback state here.
+ */
+const diagnosticAudioRef = { current: null as HTMLAudioElement | null };
+
+function base64ToBlob(base64: string, contentType: string): Blob {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  return new Blob([new Uint8Array(byteNumbers)], { type: contentType });
+}
+
 // ─── Question bank ────────────────────────────────────────────────────────────
 
 type VisualQuestion = {
@@ -232,15 +248,8 @@ function getGradeQuestions(grade: string): VisualQuestion[] {
   return gradeQs;
 }
 
-function speak(text: string) {
-  if (!("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 0.85;
-  utterance.pitch = 1.1;
-  utterance.volume = 1;
-  window.speechSynthesis.speak(utterance);
-}
+// speak() is now defined inside the component to use tRPC mutation
+// See useDiagnosticSpeak hook below
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -251,11 +260,55 @@ type AnswerRecord = {
   mapsToUnit: string;
 };
 
+/** Hook to provide speak() using server-side Edge Neural TTS */
+function useDiagnosticSpeak() {
+  const synthesizeMutation = trpc.tts.synthesize.useMutation();
+
+  const speak = useCallback((text: string) => {
+    // Stop any current playback
+    if (diagnosticAudioRef.current) {
+      diagnosticAudioRef.current.pause();
+      diagnosticAudioRef.current.src = "";
+    }
+
+    if (!text.trim()) return;
+
+    synthesizeMutation.mutate(
+      {
+        text,
+        speed: "slow", // Slightly slower for young children
+      },
+      {
+        onSuccess: (data) => {
+          const blob = base64ToBlob(data.audioBase64, data.contentType);
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          diagnosticAudioRef.current = audio;
+          audio.onended = () => URL.revokeObjectURL(url);
+          audio.onerror = () => URL.revokeObjectURL(url);
+          audio.play().catch(() => {});
+        },
+      }
+    );
+  }, [synthesizeMutation]);
+
+  const stop = useCallback(() => {
+    if (diagnosticAudioRef.current) {
+      diagnosticAudioRef.current.pause();
+      diagnosticAudioRef.current.src = "";
+      diagnosticAudioRef.current = null;
+    }
+  }, []);
+
+  return { speak, stop };
+}
+
 export default function EarlyDiagnostic() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const grade = user?.grade ?? "Kindergarten";
   const questions = getGradeQuestions(grade);
+  const { speak, stop: stopTts } = useDiagnosticSpeak();
 
   const [step, setStep] = useState<"intro" | "question" | "feedback" | "complete">("intro");
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -350,9 +403,9 @@ export default function EarlyDiagnostic() {
   useEffect(() => {
     return () => {
       if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
-      window.speechSynthesis?.cancel();
+      stopTts();
     };
-  }, []);
+  }, [stopTts]);
 
   // ── Intro screen ─────────────────────────────────────────────────────────────
   if (step === "intro") {
