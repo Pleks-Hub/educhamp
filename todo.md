@@ -3463,3 +3463,15 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Update ReadAloudButton component for new hook interface (loading state added)
 - [x] Verify zero remaining speechSynthesis references in client code
 - [x] Remove VoiceDownloadPrompt component file (dead code)
+
+### Voice Preview, Audio Caching, and Branded Invitation Emails
+- [x] VoicePicker: Add preview button (play icon) next to each voice option
+- [x] VoicePicker: Synthesize a 3-second sample sentence on preview click
+- [x] VoicePicker: Show loading spinner during preview synthesis
+- [x] VoicePicker: Stop any playing preview when another is clicked or voice is selected
+- [x] Audio Cache: Implement LRU cache in useTTS to store recent audio blobs (20 entries max)
+- [x] Audio Cache: Skip server round-trip on replay if audio is cached
+- [x] Audio Cache: Limit cache size (20 entries) to prevent memory bloat
+- [x] Branded Email: Apply EduChamp template to student invitation/setup emails
+- [x] Branded Email: Include logo, gradient icon, and support footer (uses shared emailBase)
+- [x] Tests: All 1,726 tests passing, 0 TypeScript errors

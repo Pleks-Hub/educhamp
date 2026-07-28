@@ -3,21 +3,16 @@
  *
  * Sent when a parent enrolls a student by email.
  * Contains a link for the student to create their password and access their account.
+ * Uses the shared email base for consistent branding (logo, teal gradient, support footer).
  */
+import { BRAND, wrapEmailHtml, ctaButton } from "./emailBase";
+
 export interface StudentSetupEmailData {
   studentName: string;
   parentName: string;
   setupUrl: string;
   personalNote?: string;
 }
-
-const BRAND_COLOR = "#4f46e5";
-const BRAND_DARK = "#312e81";
-const BG_COLOR = "#f8fafc";
-const CARD_BG = "#ffffff";
-const TEXT_PRIMARY = "#0f172a";
-const TEXT_MUTED = "#64748b";
-const LOGO_URL = "https://educhamp.co/manus-storage/educhamp-logo-64_28201452.png";
 
 export function buildStudentSetupEmail(data: StudentSetupEmailData): {
   html: string;
@@ -28,74 +23,106 @@ export function buildStudentSetupEmail(data: StudentSetupEmailData): {
   const firstName = studentName.split(" ")[0] || studentName;
   const subject = `Welcome to EduChamp! Set up your account, ${firstName}`;
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${subject}</title>
-  <style>
-    body { margin: 0; padding: 0; background-color: ${BG_COLOR}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    .wrapper { max-width: 600px; margin: 0 auto; padding: 32px 16px; }
-    .card { background: ${CARD_BG}; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-    .header { background: linear-gradient(135deg, ${BRAND_DARK} 0%, ${BRAND_COLOR} 100%); padding: 32px 40px; text-align: center; }
-    .header img { height: 48px; width: auto; }
-    .header h1 { color: #ffffff; font-size: 22px; font-weight: 700; margin: 16px 0 4px; }
-    .header p { color: rgba(255,255,255,0.75); font-size: 14px; margin: 0; }
-    .body { padding: 40px; }
-    .greeting { font-size: 18px; font-weight: 600; color: ${TEXT_PRIMARY}; margin-bottom: 16px; }
-    .text { font-size: 15px; color: ${TEXT_MUTED}; line-height: 1.7; margin-bottom: 16px; }
-    .cta-btn { display: block; width: 100%; max-width: 320px; margin: 28px auto; padding: 14px 24px; background: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; border-radius: 10px; text-align: center; }
-    .info-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px 18px; margin: 24px 0; font-size: 13px; color: #1e40af; }
-    .footer { padding: 24px 40px; border-top: 1px solid #f1f5f9; text-align: center; }
-    .footer p { font-size: 12px; color: ${TEXT_MUTED}; margin: 4px 0; }
-    .footer a { color: ${BRAND_COLOR}; text-decoration: none; }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="card">
-      <div class="header">
-        <img src="${LOGO_URL}" alt="EduChamp" />
-        <h1>Welcome to EduChamp! 🎓</h1>
-        <p>Your learning journey starts here</p>
-      </div>
-      <div class="body">
-        <p class="greeting">Hi ${firstName}!</p>
-        <p class="text">
-          Great news! <strong>${parentName}</strong> has enrolled you in EduChamp — an AI-powered learning platform
-          designed to help you master your subjects at your own pace.
-        </p>${personalNote ? `
-        <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:10px;padding:14px 18px;margin:16px 0;font-size:14px;color:#92400e;">
-          <strong>💬 A note from ${parentName}:</strong><br/>
-          <em style="display:block;margin-top:6px;">${personalNote}</em>
-        </div>` : ""}
-        <p class="text">
-          To get started, you need to create a password for your account. Click the button below to set up your login:
-        </p>
-        <a href="${setupUrl}" class="cta-btn">Create My Password & Sign In</a>
-        <div class="info-box">
-          <strong>💡 Tip:</strong> If you have an Apple device, you can also sign in using your Apple ID
-          (as long as the email matches the one your parent registered). Just click "Sign in with Apple" on the login page.
-        </div>
-        <p class="text" style="font-size:13px;">
-          This link expires in <strong>7 days</strong>. If it expires, ask your parent to resend it from their dashboard.<br/><br/>
-          If the button doesn't work, copy and paste this link:<br/>
-          <a href="${setupUrl}" style="color:${BRAND_COLOR}; word-break:break-all;">${setupUrl}</a>
-        </p>
-      </div>
-      <div class="footer">
-        <p>Questions? Email us at <a href="mailto:support@educhamp.co">support@educhamp.co</a></p>
-        <p style="margin-top:12px;">
-          © ${new Date().getFullYear()} EduChamp · AI-Powered Learning Solution<br/>
-          <a href="https://educhamp.co/privacy">Privacy Policy</a> &nbsp;·&nbsp;
-          <a href="https://educhamp.co/terms">Terms of Service</a>
-        </p>
+  const personalNoteHtml = personalNote
+    ? `
+    <div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:10px;padding:14px 18px;margin:16px 0;">
+      <p style="margin:0;font-size:13px;color:#FBBF24;line-height:1.6;">
+        <strong style="color:#F59E0B;">💬 A note from ${parentName}:</strong><br/>
+        <em style="display:inline-block;margin-top:6px;color:${BRAND.textMuted};">${personalNote}</em>
+      </p>
+    </div>`
+    : "";
+
+  const bodyHtml = `
+    <!-- Icon -->
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="display:inline-block;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,${BRAND.brandColor},#8B5CF6);text-align:center;line-height:64px;">
+        <span style="font-size:28px;">🎓</span>
       </div>
     </div>
-  </div>
-</body>
-</html>`;
+
+    <!-- Title -->
+    <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${BRAND.textPrimary};text-align:center;">
+      Welcome to EduChamp!
+    </h1>
+    <p style="margin:0 0 28px;font-size:14px;color:${BRAND.textMuted};text-align:center;">
+      Your learning journey starts here
+    </p>
+
+    <!-- Greeting -->
+    <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:${BRAND.textPrimary};">
+      Hi ${firstName}!
+    </p>
+
+    <!-- Body text -->
+    <p style="margin:0 0 12px;font-size:15px;color:${BRAND.textMuted};line-height:1.7;">
+      Great news! <strong style="color:${BRAND.textPrimary};">${parentName}</strong> has enrolled you in EduChamp — an AI-powered learning platform
+      designed to help you master your subjects at your own pace.
+    </p>
+
+    ${personalNoteHtml}
+
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};line-height:1.7;">
+      To get started, you need to create a password for your account. Click the button below to set up your login:
+    </p>
+
+    <!-- CTA Button -->
+    <div style="text-align:center;">
+      ${ctaButton("Create My Password & Sign In", setupUrl)}
+    </div>
+
+    <!-- Apple ID tip -->
+    <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:14px 18px;margin:24px 0;">
+      <p style="margin:0;font-size:13px;color:${BRAND.textMuted};line-height:1.6;">
+        <strong style="color:${BRAND.textPrimary};">💡 Tip:</strong> If you have an Apple device, you can also sign in using your Apple ID
+        (as long as the email matches the one your parent registered). Just click "Sign in with Apple" on the login page.
+      </p>
+    </div>
+
+    <!-- Expiry notice -->
+    <p style="margin:0 0 8px;font-size:13px;color:${BRAND.textMuted};line-height:1.6;">
+      This link expires in <strong style="color:${BRAND.textPrimary};">7 days</strong>. If it expires, ask your parent to resend it from their dashboard.
+    </p>
+
+    <!-- Fallback link -->
+    <p style="margin:16px 0 0;font-size:12px;color:${BRAND.textMuted};line-height:1.6;">
+      If the button above doesn't work, copy and paste this link into your browser:
+    </p>
+    <p style="margin:4px 0 0;font-size:12px;word-break:break-all;">
+      <a href="${setupUrl}" style="color:${BRAND.brandColor};text-decoration:none;">${setupUrl}</a>
+    </p>
+
+    <!-- Spam folder tip -->
+    <div style="margin-top:24px;padding-top:20px;border-top:1px solid ${BRAND.borderColor};">
+      <p style="margin:0;font-size:12px;color:${BRAND.textMuted};line-height:1.6;">
+        📬 <strong>Not seeing this email?</strong> Check your spam or junk folder. To make sure future emails arrive,
+        add <strong>${BRAND.supportEmail}</strong> to your contacts.
+      </p>
+    </div>
+  `;
+
+  const footerHtml = `
+    <p style="margin:0 0 8px;font-size:12px;color:${BRAND.textMuted};">
+      Need help? Contact us at
+      <a href="mailto:${BRAND.supportEmail}" style="color:${BRAND.brandColor};text-decoration:none;">${BRAND.supportEmail}</a>
+    </p>
+    <p style="margin:0 0 8px;font-size:12px;color:${BRAND.textMuted};">
+      <a href="${BRAND.websiteUrl}" style="color:${BRAND.brandColor};text-decoration:none;">Visit EduChamp</a>
+      &nbsp;·&nbsp;
+      <a href="${BRAND.websiteUrl}/privacy" style="color:${BRAND.brandColor};text-decoration:none;">Privacy Policy</a>
+      &nbsp;·&nbsp;
+      <a href="${BRAND.websiteUrl}/terms" style="color:${BRAND.brandColor};text-decoration:none;">Terms of Service</a>
+    </p>
+    <p style="margin:0;font-size:11px;color:${BRAND.textMuted};opacity:0.7;">
+      © ${new Date().getFullYear()} EduChamp · AI-Powered Adaptive Learning
+    </p>
+  `;
+
+  const html = wrapEmailHtml({
+    bodyHtml,
+    previewText: `Hi ${firstName}! ${parentName} has enrolled you in EduChamp. Set up your account to start learning.`,
+    footerHtml,
+  });
 
   const text = `Hi ${firstName}!
 
@@ -106,8 +133,12 @@ ${setupUrl}
 
 Tip: If you have an Apple device, you can also sign in using your Apple ID (as long as the email matches).
 
-Questions? support@educhamp.co
-© ${new Date().getFullYear()} EduChamp — AI-Powered Learning Solution
+Not seeing this email? Check your spam or junk folder. Add ${BRAND.supportEmail} to your contacts.
+
+Need help? Contact us at ${BRAND.supportEmail}
+Visit us: ${BRAND.websiteUrl}
+
+© ${new Date().getFullYear()} EduChamp — AI-Powered Adaptive Learning
 `;
 
   return { html, text, subject };

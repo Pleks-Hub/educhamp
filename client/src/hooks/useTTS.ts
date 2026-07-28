@@ -2,6 +2,59 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { stripMarkdownForTts, getTtsLanguage, detectLanguageFromContent } from "@/lib/courseUtils";
 import { trpc } from "@/lib/trpc";
 
+// ─── LRU Audio Cache ─────────────────────────────────────────────────────────
+
+interface CachedAudio {
+  audioBase64: string;
+  contentType: string;
+  wordBoundaries: { word: string; start: number; end: number }[];
+  accessedAt: number;
+}
+
+const MAX_CACHE_SIZE = 20;
+const audioCache = new Map<string, CachedAudio>();
+
+/** Generate a cache key from synthesis parameters */
+function getCacheKey(text: string, voice: string | null, speed: string, lang: string | null): string {
+  return `${text}|${voice || "default"}|${speed}|${lang || "auto"}`;
+}
+
+/** Get from cache (updates access time) */
+function cacheGet(key: string): CachedAudio | undefined {
+  const entry = audioCache.get(key);
+  if (entry) {
+    entry.accessedAt = Date.now();
+  }
+  return entry;
+}
+
+/** Put into cache (evicts LRU if full) */
+function cachePut(key: string, value: Omit<CachedAudio, "accessedAt">): void {
+  if (audioCache.size >= MAX_CACHE_SIZE) {
+    // Evict least recently accessed entry
+    let oldestKey = "";
+    let oldestTime = Infinity;
+    Array.from(audioCache.entries()).forEach(([k, v]) => {
+      if (v.accessedAt < oldestTime) {
+        oldestTime = v.accessedAt;
+        oldestKey = k;
+      }
+    });
+    if (oldestKey) audioCache.delete(oldestKey);
+  }
+  audioCache.set(key, { ...value, accessedAt: Date.now() });
+}
+
+/** Get current cache size (for testing/debugging) */
+export function getAudioCacheSize(): number {
+  return audioCache.size;
+}
+
+/** Clear the audio cache (for testing) */
+export function clearAudioCache(): void {
+  audioCache.clear();
+}
+
 export type TtsSpeed = "slow" | "normal" | "fast";
 export type TtsStatus = "idle" | "playing" | "paused" | "loading";
 
@@ -237,7 +290,39 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     // Show loading state
     setStatus("loading");
 
-    // Call server-side synthesis
+    // Check cache first
+    const cacheKey = getCacheKey(cleanText, selectedVoiceUri, currentSpeed, isForeignLanguage(resolvedLang) ? resolvedLang : null);
+    const cached = cacheGet(cacheKey);
+
+    if (cached) {
+      // Cache hit — play directly without server round-trip
+      const audioBlob = base64ToBlob(cached.audioBase64, cached.contentType);
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      wordBoundariesRef.current = cached.wordBoundaries || [];
+
+      audio.onplay = () => { setStatus("playing"); startSentenceTracking(); };
+      audio.onpause = () => { if (audio.currentTime < audio.duration) { setStatus("paused"); stopSentenceTracking(); } };
+      audio.onended = () => {
+        setStatus("idle"); setCurrentLabel(""); setCurrentSentenceIndex(-1);
+        setSentences([]); setActiveMessageId(null); stopSentenceTracking();
+        URL.revokeObjectURL(audioUrl); onCompleteRef.current?.();
+      };
+      audio.onerror = () => {
+        setStatus("idle"); setCurrentLabel(""); setCurrentSentenceIndex(-1);
+        setSentences([]); setActiveMessageId(null); stopSentenceTracking();
+        URL.revokeObjectURL(audioUrl); onErrorRef.current?.("Audio playback error");
+      };
+
+      audio.play().catch((err) => {
+        setStatus("idle");
+        onErrorRef.current?.(`Playback failed: ${err.message}`);
+      });
+      return;
+    }
+
+    // Cache miss — call server-side synthesis
     synthesizeMutation.mutate(
       {
         text: cleanText,
@@ -247,6 +332,13 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
       },
       {
         onSuccess: (data) => {
+          // Store in cache for future replays
+          cachePut(cacheKey, {
+            audioBase64: data.audioBase64,
+            contentType: data.contentType,
+            wordBoundaries: data.wordBoundaries || [],
+          });
+
           // Create audio from base64
           const audioBlob = base64ToBlob(data.audioBase64, data.contentType);
           const audioUrl = URL.createObjectURL(audioBlob);
