@@ -1,26 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { stripMarkdownForTts, getTtsLanguage, detectLanguageFromContent } from "@/lib/courseUtils";
+import { trpc } from "@/lib/trpc";
 
 export type TtsSpeed = "slow" | "normal" | "fast";
-export type TtsStatus = "idle" | "playing" | "paused";
-
-const SPEED_MAP: Record<TtsSpeed, number> = {
-  slow: 0.7,
-  normal: 0.9,
-  fast: 1.25,
-};
-
-/** Per-language speed adjustment: foreign languages get a slightly slower rate */
-const FOREIGN_LANG_SPEED_MAP: Record<TtsSpeed, number> = {
-  slow: 0.6,
-  normal: 0.8,
-  fast: 1.1,
-};
-
-/** Returns true if the language is non-English (foreign language learning) */
-function isForeignLanguage(lang: string): boolean {
-  return !!lang && !lang.startsWith("en");
-}
+export type TtsStatus = "idle" | "playing" | "paused" | "loading";
 
 /** Split text into sentences for highlight-as-you-read */
 export function splitIntoSentences(text: string): string[] {
@@ -28,6 +11,11 @@ export function splitIntoSentences(text: string): string[] {
   const raw = text.match(/[^.!?]*[.!?]+[\s]?|[^.!?]+$/g);
   if (!raw) return text.trim() ? [text.trim()] : [];
   return raw.map(s => s.trim()).filter(Boolean);
+}
+
+/** Returns true if the language is non-English (foreign language learning) */
+function isForeignLanguage(lang: string): boolean {
+  return !!lang && !lang.startsWith("en");
 }
 
 interface UseTTSOptions {
@@ -39,7 +27,7 @@ interface UseTTSOptions {
   languageOverride?: string | null;
   /** Playback speed */
   speed?: TtsSpeed;
-  /** Preferred voice URI (persisted from server) */
+  /** Preferred voice ID (persisted from server) — now an Edge Neural voice ID like "en-US-EmmaMultilingualNeural" */
   voiceUri?: string | null;
   /** Callback when playback completes */
   onComplete?: () => void;
@@ -48,7 +36,7 @@ interface UseTTSOptions {
 }
 
 interface UseTTSReturn {
-  /** Whether the Web Speech API is available */
+  /** Always true — server-side TTS is always available */
   isSupported: boolean;
   /** Current playback status */
   status: TtsStatus;
@@ -70,11 +58,11 @@ interface UseTTSReturn {
   currentSpeed: TtsSpeed;
   /** Label of what's currently being read */
   currentLabel: string;
-  /** Available system voices */
-  voices: SpeechSynthesisVoice[];
-  /** Set preferred voice by URI */
-  setVoice: (voiceUri: string | null) => void;
-  /** Currently selected voice URI */
+  /** Available neural voices (from server curated list) */
+  voices: { id: string; name: string; language: string; gender: string; description: string }[];
+  /** Set preferred voice by ID */
+  setVoice: (voiceId: string | null) => void;
+  /** Currently selected voice ID */
   selectedVoiceUri: string | null;
   /** Current sentence index being read (for highlight-as-you-read) */
   currentSentenceIndex: number;
@@ -97,13 +85,11 @@ interface UseTTSReturn {
 export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
   const { subject, courseTitle, languageOverride: initialLangOverride, speed: initialSpeed = "normal", voiceUri: initialVoiceUri, onComplete, onError } = options;
 
-  const [isSupported] = useState(() => typeof window !== "undefined" && "speechSynthesis" in window);
   const [status, setStatus] = useState<TtsStatus>("idle");
   const [currentSpeed, setCurrentSpeed] = useState<TtsSpeed>(initialSpeed);
   const [langOverride, setLangOverride] = useState<string | null>(initialLangOverride ?? null);
   const [detectedLanguage, setDetectedLanguage] = useState<string>("en-US");
   const [currentLabel, setCurrentLabel] = useState("");
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoiceUri, setSelectedVoiceUri] = useState<string | null>(initialVoiceUri ?? null);
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(-1);
   const [sentences, setSentences] = useState<string[]>([]);
@@ -112,10 +98,13 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
   const lastTextRef = useRef<string>("");
   const lastLabelRef = useRef<string>("");
   const lastMessageIdRef = useRef<string | null>(null);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const onCompleteRef = useRef(onComplete);
   const onErrorRef = useRef(onError);
   const sentencesRef = useRef<string[]>([]);
+  const wordBoundariesRef = useRef<{ word: string; start: number; end: number }[]>([]);
+  const sentenceTimerRef = useRef<number | null>(null);
+  const playFromSentenceRef = useRef<number>(0);
 
   // Keep refs in sync
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
@@ -128,57 +117,100 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     }
   }, [initialVoiceUri]);
 
-  // Load available voices
-  useEffect(() => {
-    if (!isSupported) return;
+  // Fetch curated voices from server
+  const { data: voicesData } = trpc.tts.listVoices.useQuery(undefined, {
+    staleTime: 24 * 60 * 60 * 1000, // cache for 24h
+  });
+  const voices = voicesData?.voices ?? [];
 
-    const loadVoices = () => {
-      const available = window.speechSynthesis.getVoices();
-      if (available.length > 0) {
-        setVoices(available);
-      }
-    };
+  // TTS synthesis mutation
+  const synthesizeMutation = trpc.tts.synthesize.useMutation();
 
-    loadVoices();
-    window.speechSynthesis.addEventListener("voiceschanged", loadVoices);
-    return () => window.speechSynthesis.removeEventListener("voiceschanged", loadVoices);
-  }, [isSupported]);
-
-  // Cancel on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (isSupported) {
-        window.speechSynthesis.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
+      if (sentenceTimerRef.current) {
+        cancelAnimationFrame(sentenceTimerRef.current);
       }
     };
-  }, [isSupported]);
+  }, []);
 
   // Pause on tab hidden, resume on visible
   useEffect(() => {
-    if (!isSupported) return;
-
     const handleVisibility = () => {
-      if (document.hidden && status === "playing") {
-        window.speechSynthesis.pause();
+      if (document.hidden && status === "playing" && audioRef.current) {
+        audioRef.current.pause();
         setStatus("paused");
-      } else if (!document.hidden && status === "paused") {
-        window.speechSynthesis.resume();
+      } else if (!document.hidden && status === "paused" && audioRef.current) {
+        audioRef.current.play().catch(() => {});
         setStatus("playing");
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [isSupported, status]);
+  }, [status]);
 
-  const speak = useCallback((text: string, label?: string, messageId?: string) => {
-    if (!isSupported) {
-      onErrorRef.current?.("Listen Mode is not supported on this device.");
-      return;
+  /** Track current sentence based on audio time and word boundaries */
+  const startSentenceTracking = useCallback(() => {
+    const track = () => {
+      if (!audioRef.current || audioRef.current.paused) return;
+      const currentTimeMs = audioRef.current.currentTime * 1000;
+      const boundaries = wordBoundariesRef.current;
+      const sents = sentencesRef.current;
+      const offset = playFromSentenceRef.current;
+
+      if (boundaries.length > 0 && sents.length > 0) {
+        // Use word boundaries to determine which sentence we're in
+        let charAccumulated = 0;
+        for (let i = offset; i < sents.length; i++) {
+          charAccumulated += sents[i].length + 1;
+          // Find the boundary closest to this sentence start
+          const sentStart = charAccumulated - sents[i].length - 1;
+          const matchingBoundary = boundaries.find(b => b.start >= sentStart * 10); // rough heuristic
+          if (matchingBoundary && currentTimeMs < matchingBoundary.start) {
+            setCurrentSentenceIndex(Math.max(offset, i - 1));
+            break;
+          }
+          if (i === sents.length - 1) {
+            setCurrentSentenceIndex(i);
+          }
+        }
+      } else if (sents.length > 0 && audioRef.current.duration > 0) {
+        // Fallback: estimate sentence by time proportion
+        const progress = audioRef.current.currentTime / audioRef.current.duration;
+        const estimatedIdx = Math.min(
+          Math.floor(progress * sents.length) + offset,
+          sents.length - 1
+        );
+        setCurrentSentenceIndex(estimatedIdx);
+      }
+
+      sentenceTimerRef.current = requestAnimationFrame(track);
+    };
+    sentenceTimerRef.current = requestAnimationFrame(track);
+  }, []);
+
+  const stopSentenceTracking = useCallback(() => {
+    if (sentenceTimerRef.current) {
+      cancelAnimationFrame(sentenceTimerRef.current);
+      sentenceTimerRef.current = null;
     }
+  }, []);
 
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
+  /** Core speak function: synthesize on server, play audio locally */
+  const speak = useCallback((text: string, label?: string, messageId?: string) => {
+    // Stop any current playback
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+    }
+    stopSentenceTracking();
 
     const cleanText = stripMarkdownForTts(text);
     if (!cleanText.trim()) return;
@@ -194,91 +226,116 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     sentencesRef.current = sents;
     setSentences(sents);
     setCurrentSentenceIndex(0);
+    playFromSentenceRef.current = 0;
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    // Determine language: manual override > subject/title > auto-detect from content
+    // Determine language
     const subjectLang = getTtsLanguage(subject, courseTitle);
     const autoLang = subjectLang === "en-US" ? detectLanguageFromContent(cleanText) : null;
     const resolvedLang = langOverride || autoLang || subjectLang;
-    utterance.lang = resolvedLang;
     setDetectedLanguage(resolvedLang);
-    const speedMap = isForeignLanguage(resolvedLang) ? FOREIGN_LANG_SPEED_MAP : SPEED_MAP;
-    utterance.rate = speedMap[currentSpeed];
-    utterance.pitch = 1.0;
 
-    // Set selected voice if available
-    if (selectedVoiceUri && voices.length > 0) {
-      const voice = voices.find(v => v.voiceURI === selectedVoiceUri);
-      if (voice) utterance.voice = voice;
-    }
+    // Show loading state
+    setStatus("loading");
 
-    // Track sentence boundaries via onboundary event
-    utterance.onboundary = (event) => {
-      if (event.name === "sentence") {
-        // Find which sentence we're in based on charIndex
-        const charIdx = event.charIndex;
-        let accumulated = 0;
-        for (let i = 0; i < sentencesRef.current.length; i++) {
-          accumulated += sentencesRef.current[i].length + 1; // +1 for space
-          if (charIdx < accumulated) {
-            setCurrentSentenceIndex(i);
-            break;
-          }
-        }
+    // Call server-side synthesis
+    synthesizeMutation.mutate(
+      {
+        text: cleanText,
+        voice: selectedVoiceUri || undefined,
+        speed: currentSpeed,
+        languageOverride: isForeignLanguage(resolvedLang) ? resolvedLang : null,
+      },
+      {
+        onSuccess: (data) => {
+          // Create audio from base64
+          const audioBlob = base64ToBlob(data.audioBase64, data.contentType);
+          const audioUrl = URL.createObjectURL(audioBlob);
+
+          const audio = new Audio(audioUrl);
+          audioRef.current = audio;
+          wordBoundariesRef.current = data.wordBoundaries || [];
+
+          audio.onplay = () => {
+            setStatus("playing");
+            startSentenceTracking();
+          };
+
+          audio.onpause = () => {
+            if (audio.currentTime < audio.duration) {
+              setStatus("paused");
+              stopSentenceTracking();
+            }
+          };
+
+          audio.onended = () => {
+            setStatus("idle");
+            setCurrentLabel("");
+            setCurrentSentenceIndex(-1);
+            setSentences([]);
+            setActiveMessageId(null);
+            stopSentenceTracking();
+            URL.revokeObjectURL(audioUrl);
+            onCompleteRef.current?.();
+          };
+
+          audio.onerror = () => {
+            setStatus("idle");
+            setCurrentLabel("");
+            setCurrentSentenceIndex(-1);
+            setSentences([]);
+            setActiveMessageId(null);
+            stopSentenceTracking();
+            URL.revokeObjectURL(audioUrl);
+            onErrorRef.current?.("Audio playback error");
+          };
+
+          audio.play().catch((err) => {
+            setStatus("idle");
+            onErrorRef.current?.(`Playback failed: ${err.message}`);
+          });
+        },
+        onError: (error) => {
+          setStatus("idle");
+          setCurrentLabel("");
+          setCurrentSentenceIndex(-1);
+          setSentences([]);
+          setActiveMessageId(null);
+          onErrorRef.current?.(error.message || "Failed to synthesize speech");
+        },
       }
-    };
-
-    utterance.onstart = () => setStatus("playing");
-    utterance.onend = () => {
-      setStatus("idle");
-      setCurrentLabel("");
-      setCurrentSentenceIndex(-1);
-      setSentences([]);
-      setActiveMessageId(null);
-      onCompleteRef.current?.();
-    };
-    utterance.onerror = (event) => {
-      if (event.error === "interrupted" || event.error === "canceled") return;
-      setStatus("idle");
-      setCurrentLabel("");
-      setCurrentSentenceIndex(-1);
-      setSentences([]);
-      setActiveMessageId(null);
-      onErrorRef.current?.(`Speech error: ${event.error}`);
-    };
-    utterance.onpause = () => setStatus("paused");
-    utterance.onresume = () => setStatus("playing");
-
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-  }, [isSupported, subject, currentSpeed, selectedVoiceUri, voices]);
+    );
+  }, [subject, courseTitle, currentSpeed, selectedVoiceUri, langOverride, synthesizeMutation, startSentenceTracking, stopSentenceTracking]);
 
   const pause = useCallback(() => {
-    if (!isSupported) return;
-    window.speechSynthesis.pause();
-    setStatus("paused");
-  }, [isSupported]);
+    if (audioRef.current && status === "playing") {
+      audioRef.current.pause();
+    }
+  }, [status]);
 
   const resume = useCallback(() => {
-    if (!isSupported) return;
-    window.speechSynthesis.resume();
-    setStatus("playing");
-  }, [isSupported]);
+    if (audioRef.current && status === "paused") {
+      audioRef.current.play().catch(() => {});
+    }
+  }, [status]);
 
   const stop = useCallback(() => {
-    if (!isSupported) return;
-    window.speechSynthesis.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+    stopSentenceTracking();
     setStatus("idle");
     setCurrentLabel("");
     setCurrentSentenceIndex(-1);
     setSentences([]);
     setActiveMessageId(null);
-  }, [isSupported]);
+  }, [stopSentenceTracking]);
 
   const replay = useCallback(() => {
-    if (!isSupported || !lastTextRef.current) return;
+    if (!lastTextRef.current) return;
     speak(lastTextRef.current, lastLabelRef.current, lastMessageIdRef.current || undefined);
-  }, [isSupported, speak]);
+  }, [speak]);
 
   const setSpeed = useCallback((newSpeed: TtsSpeed) => {
     setCurrentSpeed(newSpeed);
@@ -294,133 +351,127 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     return nextSpeed;
   }, [currentSpeed]);
 
-  /** Skip forward to the next sentence by re-speaking from that sentence onward */
+  /** Skip forward to the next sentence by re-synthesizing from that point */
   const skipForward = useCallback(() => {
-    if (!isSupported || sentencesRef.current.length === 0) return;
+    if (sentencesRef.current.length === 0) return;
     const nextIdx = Math.min(currentSentenceIndex + 1, sentencesRef.current.length - 1);
-    if (nextIdx === currentSentenceIndex) return; // already at last sentence
+    if (nextIdx === currentSentenceIndex) return;
 
-    // Cancel current speech and speak from the next sentence onward
-    window.speechSynthesis.cancel();
+    // Stop current audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+    }
+    stopSentenceTracking();
+
+    // Synthesize from the next sentence onward
     const remainingText = sentencesRef.current.slice(nextIdx).join(" ");
     setCurrentSentenceIndex(nextIdx);
+    playFromSentenceRef.current = nextIdx;
+    setStatus("loading");
 
-    const utterance = new SpeechSynthesisUtterance(remainingText);
-    const subjectLangN = getTtsLanguage(subject, courseTitle);
-    const autoLangN = subjectLangN === "en-US" ? detectLanguageFromContent(remainingText) : null;
-    const resolvedLangN = langOverride || autoLangN || subjectLangN;
-    utterance.lang = resolvedLangN;
-    const speedMapN = isForeignLanguage(resolvedLangN) ? FOREIGN_LANG_SPEED_MAP : SPEED_MAP;
-    utterance.rate = speedMapN[currentSpeed];
-    utterance.pitch = 1.0;
+    const resolvedLang = langOverride || getTtsLanguage(subject, courseTitle);
 
-    if (selectedVoiceUri && voices.length > 0) {
-      const voice = voices.find(v => v.voiceURI === selectedVoiceUri);
-      if (voice) utterance.voice = voice;
-    }
+    synthesizeMutation.mutate(
+      {
+        text: remainingText,
+        voice: selectedVoiceUri || undefined,
+        speed: currentSpeed,
+        languageOverride: isForeignLanguage(resolvedLang) ? resolvedLang : null,
+      },
+      {
+        onSuccess: (data) => {
+          const audioBlob = base64ToBlob(data.audioBase64, data.contentType);
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          audioRef.current = audio;
+          wordBoundariesRef.current = data.wordBoundaries || [];
 
-    utterance.onboundary = (event) => {
-      if (event.name === "sentence") {
-        const charIdx = event.charIndex;
-        const remainingSents = sentencesRef.current.slice(nextIdx);
-        let accumulated = 0;
-        for (let i = 0; i < remainingSents.length; i++) {
-          accumulated += remainingSents[i].length + 1;
-          if (charIdx < accumulated) {
-            setCurrentSentenceIndex(nextIdx + i);
-            break;
-          }
-        }
+          audio.onplay = () => { setStatus("playing"); startSentenceTracking(); };
+          audio.onpause = () => { if (audio.currentTime < audio.duration) { setStatus("paused"); stopSentenceTracking(); } };
+          audio.onended = () => {
+            setStatus("idle"); setCurrentLabel(""); setCurrentSentenceIndex(-1);
+            setSentences([]); setActiveMessageId(null); stopSentenceTracking();
+            URL.revokeObjectURL(audioUrl); onCompleteRef.current?.();
+          };
+          audio.onerror = () => {
+            setStatus("idle"); stopSentenceTracking(); URL.revokeObjectURL(audioUrl);
+            onErrorRef.current?.("Audio playback error");
+          };
+
+          audio.play().catch(() => setStatus("idle"));
+        },
+        onError: () => {
+          setStatus("idle");
+          onErrorRef.current?.("Failed to skip forward");
+        },
       }
-    };
+    );
+  }, [currentSentenceIndex, subject, courseTitle, currentSpeed, selectedVoiceUri, langOverride, synthesizeMutation, startSentenceTracking, stopSentenceTracking]);
 
-    utterance.onstart = () => setStatus("playing");
-    utterance.onend = () => {
-      setStatus("idle");
-      setCurrentLabel("");
-      setCurrentSentenceIndex(-1);
-      setSentences([]);
-      setActiveMessageId(null);
-      onCompleteRef.current?.();
-    };
-    utterance.onerror = (event) => {
-      if (event.error === "interrupted" || event.error === "canceled") return;
-      setStatus("idle");
-      onErrorRef.current?.(`Speech error: ${event.error}`);
-    };
-    utterance.onpause = () => setStatus("paused");
-    utterance.onresume = () => setStatus("playing");
-
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-  }, [isSupported, currentSentenceIndex, subject, currentSpeed, selectedVoiceUri, voices]);
-
-  /** Skip back to the previous sentence by re-speaking from that sentence onward */
+  /** Skip back to the previous sentence */
   const skipBack = useCallback(() => {
-    if (!isSupported || sentencesRef.current.length === 0) return;
+    if (sentencesRef.current.length === 0) return;
     const prevIdx = Math.max(currentSentenceIndex - 1, 0);
 
-    // Cancel current speech and speak from the previous sentence onward
-    window.speechSynthesis.cancel();
+    // Stop current audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+    }
+    stopSentenceTracking();
+
+    // Synthesize from the previous sentence onward
     const remainingText = sentencesRef.current.slice(prevIdx).join(" ");
     setCurrentSentenceIndex(prevIdx);
+    playFromSentenceRef.current = prevIdx;
+    setStatus("loading");
 
-    const utterance = new SpeechSynthesisUtterance(remainingText);
-    const subjectLangP = getTtsLanguage(subject, courseTitle);
-    const autoLangP = subjectLangP === "en-US" ? detectLanguageFromContent(remainingText) : null;
-    const resolvedLangP = langOverride || autoLangP || subjectLangP;
-    utterance.lang = resolvedLangP;
-    const speedMapP = isForeignLanguage(resolvedLangP) ? FOREIGN_LANG_SPEED_MAP : SPEED_MAP;
-    utterance.rate = speedMapP[currentSpeed];
-    utterance.pitch = 1.0;
+    const resolvedLang = langOverride || getTtsLanguage(subject, courseTitle);
 
-    if (selectedVoiceUri && voices.length > 0) {
-      const voice = voices.find(v => v.voiceURI === selectedVoiceUri);
-      if (voice) utterance.voice = voice;
-    }
+    synthesizeMutation.mutate(
+      {
+        text: remainingText,
+        voice: selectedVoiceUri || undefined,
+        speed: currentSpeed,
+        languageOverride: isForeignLanguage(resolvedLang) ? resolvedLang : null,
+      },
+      {
+        onSuccess: (data) => {
+          const audioBlob = base64ToBlob(data.audioBase64, data.contentType);
+          const audioUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioUrl);
+          audioRef.current = audio;
+          wordBoundariesRef.current = data.wordBoundaries || [];
 
-    utterance.onboundary = (event) => {
-      if (event.name === "sentence") {
-        const charIdx = event.charIndex;
-        const remainingSents = sentencesRef.current.slice(prevIdx);
-        let accumulated = 0;
-        for (let i = 0; i < remainingSents.length; i++) {
-          accumulated += remainingSents[i].length + 1;
-          if (charIdx < accumulated) {
-            setCurrentSentenceIndex(prevIdx + i);
-            break;
-          }
-        }
+          audio.onplay = () => { setStatus("playing"); startSentenceTracking(); };
+          audio.onpause = () => { if (audio.currentTime < audio.duration) { setStatus("paused"); stopSentenceTracking(); } };
+          audio.onended = () => {
+            setStatus("idle"); setCurrentLabel(""); setCurrentSentenceIndex(-1);
+            setSentences([]); setActiveMessageId(null); stopSentenceTracking();
+            URL.revokeObjectURL(audioUrl); onCompleteRef.current?.();
+          };
+          audio.onerror = () => {
+            setStatus("idle"); stopSentenceTracking(); URL.revokeObjectURL(audioUrl);
+            onErrorRef.current?.("Audio playback error");
+          };
+
+          audio.play().catch(() => setStatus("idle"));
+        },
+        onError: () => {
+          setStatus("idle");
+          onErrorRef.current?.("Failed to skip back");
+        },
       }
-    };
-
-    utterance.onstart = () => setStatus("playing");
-    utterance.onend = () => {
-      setStatus("idle");
-      setCurrentLabel("");
-      setCurrentSentenceIndex(-1);
-      setSentences([]);
-      setActiveMessageId(null);
-      onCompleteRef.current?.();
-    };
-    utterance.onerror = (event) => {
-      if (event.error === "interrupted" || event.error === "canceled") return;
-      setStatus("idle");
-      onErrorRef.current?.(`Speech error: ${event.error}`);
-    };
-    utterance.onpause = () => setStatus("paused");
-    utterance.onresume = () => setStatus("playing");
-
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
-  }, [isSupported, currentSentenceIndex, subject, currentSpeed, selectedVoiceUri, voices]);
+    );
+  }, [currentSentenceIndex, subject, courseTitle, currentSpeed, selectedVoiceUri, langOverride, synthesizeMutation, startSentenceTracking, stopSentenceTracking]);
 
   const setVoice = useCallback((uri: string | null) => {
     setSelectedVoiceUri(uri);
   }, []);
 
   return {
-    isSupported,
+    isSupported: true, // Server-side TTS is always available
     status,
     speak,
     pause,
@@ -443,4 +494,15 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     detectedLanguage,
     setLanguageOverride: setLangOverride,
   };
+}
+
+/** Convert base64 string to Blob */
+function base64ToBlob(base64: string, contentType: string): Blob {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNumbers);
+  return new Blob([byteArray], { type: contentType });
 }

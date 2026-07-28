@@ -56,7 +56,7 @@ import { trackEvent } from "@/lib/analytics";
 import { VoicePicker } from "@/components/VoicePicker";
 import { ReadThisButton } from "@/components/ReadThisButton";
 import { HighlightedMessage } from "@/components/HighlightedMessage";
-import { VoiceDownloadPrompt } from "@/components/VoiceDownloadPrompt";
+// VoiceDownloadPrompt removed — server-side neural TTS no longer needs local voice packs
 import { VoiceRatingPrompt } from "@/components/VoiceRatingPrompt";
 
 // parent_summary is a parent-only mode; students see only the 7 learning modes
@@ -1117,13 +1117,7 @@ export default function Tutor() {
           />
         )}
 
-        {/* Voice download prompt — shown when preferred voice is missing */}
-        {listenMode && (
-          <VoiceDownloadPrompt
-            preferredVoiceUri={ttsPrefs?.ttsVoiceUri ?? null}
-            listenModeEnabled={listenMode}
-          />
-        )}
+        {/* Neural TTS powered by server-side Edge TTS — no local voice packs needed */}
 
         {/* ── Messages — the key fix: plain overflow-y-auto div, not ScrollArea ── */}
         <div

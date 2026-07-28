@@ -22,13 +22,22 @@ const TTS_LANGUAGES = [
   { code: "ja-JP", label: "日本語" },
   { code: "ko-KR", label: "한국어" },
   { code: "ar-SA", label: "العربية" },
-  { code: "ru-RU", label: "Русский" },
+  { code: "hi-IN", label: "हिन्दी" },
 ];
 
+/** Neural voice type from server */
+interface NeuralVoice {
+  id: string;
+  name: string;
+  language: string;
+  gender: string;
+  description: string;
+}
+
 interface VoicePickerProps {
-  voices: SpeechSynthesisVoice[];
+  voices: NeuralVoice[];
   selectedVoiceUri: string | null;
-  onVoiceChange: (voiceUri: string | null) => void;
+  onVoiceChange: (voiceId: string | null) => void;
   language?: string;
   /** Current manual language override (null = auto-detect) */
   languageOverride?: string | null;
@@ -50,21 +59,8 @@ export function VoicePicker({
   const activeLang = languageOverride || language;
   const filteredVoices = useMemo(() => {
     const langPrefix = activeLang.split("-")[0].toLowerCase();
-    return voices
-      .filter(v => v.lang.toLowerCase().startsWith(langPrefix))
-      .sort((a, b) => {
-        // Prefer local voices over remote
-        if (a.localService && !b.localService) return -1;
-        if (!a.localService && b.localService) return 1;
-        return a.name.localeCompare(b.name);
-      });
+    return voices.filter(v => v.id.toLowerCase().startsWith(langPrefix));
   }, [voices, activeLang]);
-
-  const getVoiceLabel = (voice: SpeechSynthesisVoice) => {
-    let name = voice.name;
-    name = name.replace(/^(Microsoft|Google|Apple)\s+/i, "");
-    return name;
-  };
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
@@ -98,14 +94,19 @@ export function VoicePicker({
             value={selectedVoiceUri || "__default__"}
             onValueChange={(val) => onVoiceChange(val === "__default__" ? null : val)}
           >
-            <SelectTrigger className="h-7 text-xs w-[140px] border-muted">
+            <SelectTrigger className="h-7 text-xs w-[160px] border-muted">
               <SelectValue placeholder="Default voice" />
             </SelectTrigger>
-            <SelectContent className="max-h-[200px]">
+            <SelectContent className="max-h-[250px]">
               <SelectItem value="__default__">Default voice</SelectItem>
               {filteredVoices.map((voice) => (
-                <SelectItem key={voice.voiceURI} value={voice.voiceURI}>
-                  {getVoiceLabel(voice)}
+                <SelectItem key={voice.id} value={voice.id}>
+                  <span className="flex items-center gap-1.5">
+                    <span>{voice.name}</span>
+                    <span className="text-muted-foreground text-[10px]">
+                      {voice.gender === "Female" ? "♀" : "♂"}
+                    </span>
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>

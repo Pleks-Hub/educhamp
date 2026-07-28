@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Play, Pause, Square, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, Pause, Square, RotateCcw, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { TtsSpeed, TtsStatus } from "@/hooks/useTTS";
@@ -43,7 +43,7 @@ export function AudioControlBar({
 }: AudioControlBarProps) {
   // Keyboard shortcuts — only active when TTS is playing or paused
   useEffect(() => {
-    if (status === "idle") return;
+    if (status === "idle" || status === "loading") return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't capture when user is typing in an input/textarea
@@ -82,6 +82,7 @@ export function AudioControlBar({
   }, [status, onPlay, onPause, onStop, onSkipForward, onSkipBack]);
 
   if (status === "idle" && !currentLabel) return null;
+  const isLoading = status === "loading";
 
   const progressPercent =
     totalSentences > 0 && currentSentenceIndex >= 0
@@ -123,8 +124,18 @@ export function AudioControlBar({
           <ChevronLeft className="h-4 w-4" />
         </Button>
 
-        {/* Play/Pause */}
-        {status === "playing" ? (
+        {/* Play/Pause/Loading */}
+        {isLoading ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full"
+            disabled
+            aria-label="Loading audio..."
+          >
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </Button>
+        ) : status === "playing" ? (
           <Button
             variant="ghost"
             size="icon"
@@ -209,7 +220,9 @@ export function AudioControlBar({
             </span>
           )}
           <span className="text-xs text-muted-foreground max-w-[140px] truncate">
-            {status === "playing"
+            {isLoading
+              ? "Loading audio..."
+              : status === "playing"
               ? `Reading: ${currentLabel}`
               : status === "paused"
               ? "Paused"

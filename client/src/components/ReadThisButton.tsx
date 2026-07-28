@@ -22,7 +22,7 @@ export function ReadThisButton({
   onStop,
   className,
 }: ReadThisButtonProps) {
-  const isThisMessagePlaying = activeMessageId === messageId && (ttsStatus === "playing" || ttsStatus === "paused");
+  const isThisMessagePlaying = activeMessageId === messageId && (ttsStatus === "playing" || ttsStatus === "paused" || ttsStatus === "loading");
 
   const handleClick = () => {
     if (isThisMessagePlaying) {

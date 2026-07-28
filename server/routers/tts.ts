@@ -4,6 +4,7 @@ import { getUserProfile, upsertUserProfile, getDb } from "../db";
 import { ttsUsageLogs, ttsVoiceRatings, deprecatedVoices, listenModeGoals, parentChildren, userNotifications } from "../../drizzle/schema";
 import { eq, and, gte, desc, sql, lte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { synthesizeSpeech, speedToRate, CURATED_VOICES, getAvailableVoices } from "../ttsService";
 
 export const ttsRouter = router({
   /**
@@ -525,5 +526,65 @@ export const ttsRouter = router({
       }
 
       return { notified: true };
+    }),
+
+  /**
+   * Synthesize text to speech using server-side Edge Neural TTS.
+   * Returns base64-encoded MP3 audio and word boundary timestamps.
+   */
+  synthesize: protectedProcedure
+    .input(z.object({
+      text: z.string().min(1).max(5000),
+      voice: z.string().optional(),
+      speed: z.enum(["slow", "normal", "fast"]).optional(),
+      languageOverride: z.string().nullable().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const rate = speedToRate(input.speed ?? "normal");
+
+      // If a language override is set but no voice specified, pick a voice for that language
+      let voice = input.voice;
+      if (!voice && input.languageOverride) {
+        const langPrefix = input.languageOverride.split("-").slice(0, 2).join("-");
+        const match = CURATED_VOICES.find(v => v.id.startsWith(langPrefix));
+        if (match) voice = match.id;
+      }
+
+      try {
+        const result = await synthesizeSpeech({
+          text: input.text,
+          voice: voice || undefined,
+          rate,
+        });
+
+        // Return base64-encoded audio for transport over tRPC
+        return {
+          audioBase64: result.audio.toString("base64"),
+          contentType: result.contentType,
+          wordBoundaries: result.wordBoundaries,
+        };
+      } catch (error) {
+        console.error("[TTS Synthesize]", error);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to synthesize speech. Please try again.",
+        });
+      }
+    }),
+
+  /**
+   * List available neural voices (curated list for the UI).
+   */
+  listVoices: protectedProcedure
+    .input(z.object({
+      language: z.string().optional(), // filter by language prefix e.g. "en", "es"
+    }).optional())
+    .query(async ({ input }) => {
+      let voices = CURATED_VOICES;
+      if (input?.language) {
+        const prefix = input.language.toLowerCase();
+        voices = voices.filter(v => v.id.toLowerCase().startsWith(prefix));
+      }
+      return { voices };
     }),
 });
