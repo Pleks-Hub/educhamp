@@ -1,7 +1,9 @@
 /**
  * trialExpiry.ts — Branded trial expiry reminder email (T-3 days before trial ends)
  * Triggered by: customer.subscription.trial_will_end Stripe webhook event
+ * Uses the shared email base for consistent branding.
  */
+import { BRAND, wrapEmailHtml, ctaButton } from "./emailBase";
 
 export interface TrialExpiryEmailData {
   userName: string;
@@ -20,154 +22,121 @@ export function buildTrialExpiryEmail(data: TrialExpiryEmailData): { subject: st
   const trialEndStr = data.trialEndDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const billingDateStr = data.billingDate.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const intervalLabel = data.billingInterval === "year" ? "year" : "month";
-
   const subject = `Your EduChamp trial ends in 3 days — keep learning!`;
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${subject}</title>
-</head>
-<body style="margin:0;padding:0;background:#f5f7fa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f7fa;padding:40px 0;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+  const bodyHtml = `
+    <!-- Icon -->
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="display:inline-block;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);text-align:center;line-height:64px;">
+        <span style="font-size:28px;">⏰</span>
+      </div>
+    </div>
 
-          <!-- Header -->
-          <tr>
-            <td style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:32px 40px;text-align:center;">
-              <div style="font-size:28px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">⚡ EduChamp</div>
-              <div style="font-size:13px;color:rgba(255,255,255,0.75);margin-top:4px;letter-spacing:0.5px;">AI-Powered Adaptive Learning</div>
-            </td>
-          </tr>
+    <!-- Title -->
+    <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${BRAND.textPrimary};text-align:center;">
+      Trial Ending Soon
+    </h1>
+    <p style="margin:0 0 28px;font-size:14px;color:${BRAND.textMuted};text-align:center;">
+      3 days remaining on your ${data.planName} trial
+    </p>
 
-          <!-- Alert Banner -->
-          <tr>
-            <td style="background:#fef3c7;padding:12px 40px;text-align:center;border-bottom:1px solid #fde68a;">
-              <span style="font-size:14px;font-weight:600;color:#92400e;">⏰ Your free trial ends on ${trialEndStr}</span>
-            </td>
-          </tr>
+    <!-- Greeting -->
+    <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:${BRAND.textPrimary};">
+      Hi ${firstName},
+    </p>
 
-          <!-- Body -->
-          <tr>
-            <td style="padding:40px;">
-              <p style="font-size:16px;color:#111827;margin:0 0 16px;">Hi ${firstName},</p>
+    <!-- Body text -->
+    <p style="margin:0 0 16px;font-size:15px;color:${BRAND.textMuted};line-height:1.7;">
+      Your <strong style="color:${BRAND.textPrimary};">${data.planName}</strong> trial ends on
+      <strong style="color:${BRAND.textPrimary};">${trialEndStr}</strong>.
+      After that, your subscription will automatically begin.
+    </p>
 
-              <p style="font-size:15px;color:#374151;line-height:1.6;margin:0 0 24px;">
-                Your 14-day free trial of <strong>EduChamp ${data.planName}</strong> is coming to an end.
-                To keep your student's learning momentum going — and avoid losing their progress and mastery scores —
-                your subscription will automatically continue on <strong>${billingDateStr}</strong>.
-              </p>
+    <!-- Billing details box -->
+    <div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:10px;padding:18px;margin:20px 0;">
+      <p style="margin:0 0 10px;font-size:13px;font-weight:600;color:${BRAND.textPrimary};">
+        💳 Billing Details
+      </p>
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textMuted};">Plan:</td>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textPrimary};font-weight:600;text-align:right;">${data.planName}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textMuted};">First charge:</td>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textPrimary};font-weight:600;text-align:right;">${data.billingAmount}/${intervalLabel}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textMuted};">Billing date:</td>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textPrimary};font-weight:600;text-align:right;">${billingDateStr}</td>
+        </tr>
+      </table>
+    </div>
 
-              <!-- Plan Summary Card -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:28px;">
-                <tr>
-                  <td style="padding:20px 24px;">
-                    <div style="font-size:12px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Your Plan</div>
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td style="font-size:14px;color:#374151;padding:4px 0;">Plan</td>
-                        <td style="font-size:14px;font-weight:600;color:#111827;text-align:right;">${data.planName}</td>
-                      </tr>
-                      <tr>
-                        <td style="font-size:14px;color:#374151;padding:4px 0;">Trial ends</td>
-                        <td style="font-size:14px;font-weight:600;color:#111827;text-align:right;">${trialEndStr}</td>
-                      </tr>
-                      <tr>
-                        <td style="font-size:14px;color:#374151;padding:4px 0;">First charge</td>
-                        <td style="font-size:14px;font-weight:600;color:#111827;text-align:right;">${billingDateStr}</td>
-                      </tr>
-                      <tr>
-                        <td style="font-size:14px;color:#374151;padding:4px 0;">Amount</td>
-                        <td style="font-size:14px;font-weight:700;color:#4f46e5;text-align:right;">${data.billingAmount} / ${intervalLabel}</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
+    <!-- What happens next -->
+    <p style="margin:0 0 12px;font-size:14px;font-weight:600;color:${BRAND.textPrimary};">
+      What happens next?
+    </p>
+    <ul style="margin:0 0 24px;padding-left:18px;font-size:13px;color:${BRAND.textMuted};line-height:2;">
+      <li><strong>Keep it:</strong> No action needed — your subscription starts automatically</li>
+      <li><strong>Cancel:</strong> Visit your billing portal before ${trialEndStr} to avoid charges</li>
+    </ul>
 
-              <!-- CTA -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
-                <tr>
-                  <td align="center">
-                    <a href="${data.dashboardUrl}" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#ffffff;font-size:15px;font-weight:600;padding:14px 32px;border-radius:8px;text-decoration:none;letter-spacing:0.2px;">
-                      Continue Learning →
-                    </a>
-                  </td>
-                </tr>
-              </table>
+    <!-- CTA Buttons -->
+    <div style="text-align:center;margin-bottom:12px;">
+      ${ctaButton("Continue Learning", data.dashboardUrl)}
+    </div>
+    <div style="text-align:center;">
+      <a href="${data.billingUrl}" style="display:inline-block;padding:10px 24px;font-size:13px;color:${BRAND.brandColor};text-decoration:none;border:1px solid ${BRAND.brandColor};border-radius:8px;">
+        Manage Billing
+      </a>
+    </div>
+  `;
 
-              <!-- Manage / Cancel -->
-              <p style="font-size:13px;color:#6b7280;text-align:center;margin:0 0 24px;">
-                Want to change or cancel your plan?
-                <a href="${data.billingUrl}" style="color:#4f46e5;text-decoration:underline;">Manage your subscription</a>
-              </p>
+  const footerHtml = `
+    <p style="margin:0 0 8px;font-size:12px;color:${BRAND.textMuted};">
+      Need help? Contact us at
+      <a href="mailto:${BRAND.supportEmail}" style="color:${BRAND.brandColor};text-decoration:none;">${BRAND.supportEmail}</a>
+    </p>
+    <p style="margin:0 0 8px;font-size:12px;color:${BRAND.textMuted};">
+      <a href="${BRAND.websiteUrl}" style="color:${BRAND.brandColor};text-decoration:none;">Visit EduChamp</a>
+      &nbsp;·&nbsp;
+      <a href="${BRAND.websiteUrl}/privacy" style="color:${BRAND.brandColor};text-decoration:none;">Privacy Policy</a>
+      &nbsp;·&nbsp;
+      <a href="${BRAND.websiteUrl}/terms" style="color:${BRAND.brandColor};text-decoration:none;">Terms of Service</a>
+    </p>
+    <p style="margin:0;font-size:11px;color:${BRAND.textMuted};opacity:0.7;">
+      © ${new Date().getFullYear()} EduChamp · AI-Powered Adaptive Learning
+    </p>
+  `;
 
-              <!-- What you keep -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:24px;">
-                <tr>
-                  <td style="padding:20px 24px;">
-                    <div style="font-size:13px;font-weight:600;color:#166534;margin-bottom:10px;">✅ What stays with your subscription</div>
-                    <ul style="margin:0;padding-left:20px;font-size:13px;color:#374151;line-height:1.8;">
-                      <li>All mastery scores and quiz history</li>
-                      <li>Adaptive learning path and placement results</li>
-                      <li>AI Tutor (EduBot) with full context awareness</li>
-                      <li>Parent Dashboard and progress reports</li>
-                      <li>Access to all 70+ courses (Pre-K through Grade 12 + AP + SAT Prep)</li>
-                    </ul>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="font-size:13px;color:#9ca3af;line-height:1.5;margin:0;">
-                If you have any questions, reply to this email or visit our
-                <a href="${data.dashboardUrl}" style="color:#4f46e5;text-decoration:none;">Help Center</a>.
-                We're here to help your student succeed.
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background:#f9fafb;padding:24px 40px;border-top:1px solid #e5e7eb;text-align:center;">
-              <p style="font-size:12px;color:#9ca3af;margin:0 0 8px;">
-                EduChamp · AI-Powered Adaptive Learning for Pre-K through Grade 12
-              </p>
-              <p style="font-size:12px;color:#9ca3af;margin:0;">
-                You're receiving this because you started a free trial.
-                <a href="${data.billingUrl}" style="color:#6b7280;text-decoration:underline;">Manage subscription</a>
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+  const html = wrapEmailHtml({
+    bodyHtml,
+    previewText: `Your EduChamp trial ends on ${trialEndStr}. ${data.billingAmount}/${intervalLabel} billing starts after.`,
+    footerHtml,
+  });
 
   const text = `Hi ${firstName},
 
-Your EduChamp ${data.planName} trial ends on ${trialEndStr}.
+Your ${data.planName} trial ends on ${trialEndStr}. After that, your subscription will automatically begin.
 
-Your subscription will automatically continue on ${billingDateStr}.
+BILLING DETAILS:
+Plan: ${data.planName}
+First charge: ${data.billingAmount}/${intervalLabel}
+Billing date: ${billingDateStr}
 
-PLAN SUMMARY
-  Plan:        ${data.planName}
-  Trial ends:  ${trialEndStr}
-  First charge: ${billingDateStr}
-  Amount:      ${data.billingAmount} / ${intervalLabel}
+WHAT HAPPENS NEXT:
+• Keep it: No action needed — your subscription starts automatically
+• Cancel: Visit your billing portal before ${trialEndStr} to avoid charges
 
-Continue learning: ${data.dashboardUrl}
-Manage subscription: ${data.billingUrl}
+Continue Learning: ${data.dashboardUrl}
+Manage Billing: ${data.billingUrl}
 
-If you have any questions, just reply to this email.
+Need help? Contact us at ${BRAND.supportEmail}
+Visit us: ${BRAND.websiteUrl}
 
-— The EduChamp Team`;
+© ${new Date().getFullYear()} EduChamp — AI-Powered Adaptive Learning
+`;
 
   return { subject, html, text };
 }

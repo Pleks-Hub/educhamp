@@ -3,7 +3,9 @@
  *
  * Builds a personalised weekly review summary email for students,
  * showing accumulated due reviews and streak status.
+ * Uses the shared email base for consistent branding.
  */
+import { BRAND, wrapEmailHtml, ctaButton } from "./emailBase";
 
 export interface WeeklyReviewSummaryData {
   studentName: string;
@@ -35,138 +37,134 @@ export function buildWeeklyStudentReviewSummaryEmail(data: WeeklyReviewSummaryDa
     appUrl,
   } = data;
 
-  const firstName = studentName.split(" ")[0] || "Student";
+  const firstName = studentName.split(" ")[0] || studentName;
+  const subject = currentStreak > 0
+    ? `🔥 ${currentStreak}-day streak! ${dueNow} reviews waiting — EduChamp`
+    : `📚 ${dueNow} reviews are due — keep your streak alive!`;
 
-  // Streak message
-  let streakMessage: string;
-  if (currentStreak > 0 && todayActive) {
-    streakMessage = `You're on a ${currentStreak}-day streak! Keep it going!`;
-  } else if (currentStreak > 0) {
-    streakMessage = `You have a ${currentStreak}-day streak — practice today to keep it alive!`;
-  } else {
-    streakMessage = `Start a new streak today! Practice just one skill to begin.`;
-  }
+  const streakEmoji = currentStreak >= 7 ? "🔥" : currentStreak >= 3 ? "⚡" : "💪";
 
-  // Due skills list
-  const skillListHtml = topDueSkills.length > 0
-    ? topDueSkills
-        .map(
-          (s) =>
-            `<li style="padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
-              <strong>${s.skillName}</strong>
-              ${s.daysSinceReview !== null ? `<span style="color: #888; font-size: 12px;"> — last reviewed ${s.daysSinceReview} day${s.daysSinceReview !== 1 ? "s" : ""} ago</span>` : ""}
-            </li>`
-        )
-        .join("")
-    : `<li style="padding: 6px 0; color: #22c55e;">All caught up! No skills due for review.</li>`;
-
-  const skillListText = topDueSkills.length > 0
-    ? topDueSkills
-        .map((s) => `  • ${s.skillName}${s.daysSinceReview !== null ? ` (last reviewed ${s.daysSinceReview}d ago)` : ""}`)
-        .join("\n")
-    : "  All caught up! No skills due for review.";
-
-  const subject = dueNow > 0
-    ? `${firstName}, you have ${dueNow} skill${dueNow !== 1 ? "s" : ""} ready for review`
-    : `${firstName}, your weekly review summary`;
-
-  const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc;">
-  <div style="max-width: 560px; margin: 0 auto; padding: 32px 16px;">
-    <!-- Header -->
-    <div style="text-align: center; margin-bottom: 24px;">
-      <h1 style="font-size: 20px; color: #1e293b; margin: 0;">Weekly Review Summary</h1>
-      <p style="font-size: 14px; color: #64748b; margin: 4px 0 0;">Your spaced repetition progress this week</p>
+  const bodyHtml = `
+    <!-- Icon -->
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="display:inline-block;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#ef4444);text-align:center;line-height:64px;">
+        <span style="font-size:28px;">${streakEmoji}</span>
+      </div>
     </div>
 
-    <!-- Main card -->
-    <div style="background: #ffffff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-      <p style="font-size: 16px; color: #1e293b; margin: 0 0 16px;">Hi ${firstName},</p>
+    <!-- Title -->
+    <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${BRAND.textPrimary};text-align:center;">
+      Weekly Review Summary
+    </h1>
+    <p style="margin:0 0 28px;font-size:14px;color:${BRAND.textMuted};text-align:center;">
+      Your spaced repetition progress this week
+    </p>
 
-      <!-- Streak section -->
-      <div style="background: linear-gradient(135deg, #fff7ed, #ffedd5); border-radius: 8px; padding: 16px; margin-bottom: 20px; text-align: center;">
-        <div style="font-size: 32px; margin-bottom: 4px;">${currentStreak > 0 ? "🔥" : "💪"}</div>
-        <div style="font-size: 24px; font-weight: 700; color: #ea580c;">${currentStreak} day${currentStreak !== 1 ? "s" : ""}</div>
-        <div style="font-size: 13px; color: #9a3412; margin-top: 4px;">${streakMessage}</div>
-        ${longestStreak > currentStreak ? `<div style="font-size: 11px; color: #78716c; margin-top: 8px;">Your longest streak: ${longestStreak} days</div>` : ""}
-      </div>
+    <!-- Greeting -->
+    <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:${BRAND.textPrimary};">
+      Hey ${firstName}!
+    </p>
 
-      <!-- Stats row -->
-      <div style="display: flex; justify-content: space-around; margin-bottom: 20px; text-align: center;">
-        <div>
-          <div style="font-size: 20px; font-weight: 700; color: ${dueNow > 0 ? "#dc2626" : "#22c55e"};">${dueNow}</div>
-          <div style="font-size: 11px; color: #64748b;">Due Now</div>
-        </div>
-        <div>
-          <div style="font-size: 20px; font-weight: 700; color: #f59e0b;">${dueToday}</div>
-          <div style="font-size: 11px; color: #64748b;">Due Today</div>
-        </div>
-        <div>
-          <div style="font-size: 20px; font-weight: 700; color: #6366f1;">${totalScheduled}</div>
-          <div style="font-size: 11px; color: #64748b;">Skills Tracked</div>
-        </div>
-      </div>
-
-      <!-- Skills due list -->
-      ${dueNow > 0 ? `
-      <div style="margin-bottom: 20px;">
-        <h3 style="font-size: 14px; color: #1e293b; margin: 0 0 8px;">Skills Ready for Review:</h3>
-        <ul style="list-style: none; padding: 0; margin: 0; font-size: 13px; color: #334155;">
-          ${skillListHtml}
-        </ul>
-        ${dueNow > topDueSkills.length ? `<p style="font-size: 12px; color: #64748b; margin: 8px 0 0;">...and ${dueNow - topDueSkills.length} more</p>` : ""}
-      </div>
+    <!-- Streak card -->
+    <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;border-radius:12px;padding:18px;margin:0 0 20px;text-align:center;">
+      <p style="margin:0 0 4px;font-size:32px;font-weight:800;color:#92400e;">
+        ${currentStreak > 0 ? `${streakEmoji} ${currentStreak}-day streak` : "Start a streak today!"}
+      </p>
+      ${currentStreak > 0 ? `
+      <p style="margin:0;font-size:13px;color:#78350f;">
+        ${todayActive ? "✅ Today's session complete!" : "⏰ Complete today's review to keep it alive!"}
+        ${longestStreak > currentStreak ? ` · Personal best: ${longestStreak} days` : currentStreak === longestStreak && currentStreak > 1 ? " · 🏆 New personal best!" : ""}
+      </p>
       ` : `
-      <div style="text-align: center; padding: 12px; margin-bottom: 20px;">
-        <div style="font-size: 24px;">✅</div>
-        <p style="font-size: 13px; color: #22c55e; margin: 4px 0 0;">All caught up! Great job staying on top of your reviews.</p>
-      </div>
+      <p style="margin:0;font-size:13px;color:#78350f;">
+        Complete a review session to start building your streak!
+      </p>
       `}
-
-      <!-- CTA -->
-      <div style="text-align: center;">
-        <a href="${appUrl}/practice" style="display: inline-block; background: #7c3aed; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600;">
-          ${dueNow > 0 ? "Practice Now" : "Keep Practicing"}
-        </a>
-      </div>
     </div>
 
-    <!-- Footer -->
-    <div style="text-align: center; margin-top: 24px; font-size: 11px; color: #94a3b8;">
-      <p>EduChamp — Adaptive Learning Platform</p>
-      <p>This is an automated weekly summary. You can manage notification preferences in your account settings.</p>
+    <!-- Stats box -->
+    <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:18px;margin:20px 0;">
+      <p style="margin:0 0 10px;font-size:13px;font-weight:600;color:${BRAND.textPrimary};">
+        📊 Review Stats
+      </p>
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textMuted};">Due now:</td>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textPrimary};font-weight:600;text-align:right;">${dueNow} reviews</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textMuted};">Due today:</td>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textPrimary};font-weight:600;text-align:right;">${dueToday} reviews</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textMuted};">Total scheduled:</td>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textPrimary};font-weight:600;text-align:right;">${totalScheduled} skills</td>
+        </tr>
+      </table>
     </div>
-  </div>
-</body>
-</html>`.trim();
 
-  const text = `
-Weekly Review Summary — EduChamp
-================================
+    ${topDueSkills.length > 0 ? `
+    <!-- Top due skills -->
+    <p style="margin:0 0 10px;font-size:14px;font-weight:600;color:${BRAND.textPrimary};">
+      🎯 Skills needing review:
+    </p>
+    <ul style="margin:0 0 24px;padding-left:18px;font-size:13px;color:${BRAND.textMuted};line-height:2;">
+      ${topDueSkills.slice(0, 5).map(s =>
+        `<li><strong>${s.skillName}</strong>${s.daysSinceReview !== null ? ` — ${s.daysSinceReview} days since last review` : " — never reviewed"}</li>`
+      ).join("")}
+    </ul>
+    ` : ""}
 
-Hi ${firstName},
+    <!-- CTA Button -->
+    <div style="text-align:center;">
+      ${ctaButton("Start Review Session", `${appUrl}/practice`)}
+    </div>
 
-${streakMessage}
-Current streak: ${currentStreak} day${currentStreak !== 1 ? "s" : ""}
-${longestStreak > currentStreak ? `Longest streak: ${longestStreak} days` : ""}
+    <p style="margin:16px 0 0;font-size:13px;color:${BRAND.textMuted};text-align:center;line-height:1.6;">
+      Just 5 minutes of review helps lock in what you've learned!
+    </p>
+  `;
 
---- Review Stats ---
-Due Now: ${dueNow}
-Due Today: ${dueToday}
-Skills Tracked: ${totalScheduled}
+  const footerHtml = `
+    <p style="margin:0 0 8px;font-size:12px;color:${BRAND.textMuted};">
+      Need help? Contact us at
+      <a href="mailto:${BRAND.supportEmail}" style="color:${BRAND.brandColor};text-decoration:none;">${BRAND.supportEmail}</a>
+    </p>
+    <p style="margin:0 0 8px;font-size:12px;color:${BRAND.textMuted};">
+      <a href="${appUrl}/profile" style="color:${BRAND.brandColor};text-decoration:none;">Manage email preferences</a>
+      &nbsp;·&nbsp;
+      <a href="${BRAND.websiteUrl}" style="color:${BRAND.brandColor};text-decoration:none;">EduChamp</a>
+    </p>
+    <p style="margin:0;font-size:11px;color:${BRAND.textMuted};opacity:0.7;">
+      © ${new Date().getFullYear()} EduChamp · AI-Powered Adaptive Learning
+    </p>
+  `;
 
---- Skills Ready for Review ---
-${skillListText}
-${dueNow > topDueSkills.length ? `...and ${dueNow - topDueSkills.length} more` : ""}
+  const html = wrapEmailHtml({
+    bodyHtml,
+    previewText: currentStreak > 0
+      ? `${streakEmoji} ${currentStreak}-day streak! ${dueNow} reviews waiting for you.`
+      : `${dueNow} reviews are due. Start a streak today!`,
+    footerHtml,
+  });
 
-Practice now: ${appUrl}/practice
+  const text = `Hey ${firstName}!
 
----
-EduChamp — Adaptive Learning Platform
-`.trim();
+${currentStreak > 0 ? `${streakEmoji} ${currentStreak}-day streak! ${todayActive ? "Today's session complete!" : "Complete today's review to keep it alive!"}` : "Start a streak today by completing a review session!"}
+
+REVIEW STATS:
+Due now: ${dueNow} reviews
+Due today: ${dueToday} reviews
+Total scheduled: ${totalScheduled} skills
+
+${topDueSkills.length > 0 ? `SKILLS NEEDING REVIEW:\n${topDueSkills.slice(0, 5).map(s => `• ${s.skillName}${s.daysSinceReview !== null ? ` (${s.daysSinceReview} days ago)` : " (never reviewed)"}`).join("\n")}\n` : ""}
+Start Review Session: ${appUrl}/practice
+
+Just 5 minutes of review helps lock in what you've learned!
+
+Need help? Contact us at ${BRAND.supportEmail}
+© ${new Date().getFullYear()} EduChamp — AI-Powered Adaptive Learning
+`;
 
   return { subject, html, text };
 }

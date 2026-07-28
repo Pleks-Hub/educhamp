@@ -1,7 +1,9 @@
 /**
  * flagResolutionNotification.ts
  * Email sent to a student when an admin resolves or dismisses their flagged question.
+ * Uses the shared email base for consistent branding.
  */
+import { BRAND, wrapEmailHtml, ctaButton } from "./emailBase";
 
 export interface FlagResolutionEmailData {
   studentName: string;
@@ -18,87 +20,103 @@ export function buildFlagResolutionEmail(data: FlagResolutionEmailData): {
   html: string;
   text: string;
 } {
-  const isResolved = data.status === "resolved";
+  const { studentName, status, questionText, questionType, reason, reviewNote, dashboardUrl } = data;
+  const firstName = studentName.split(" ")[0] || studentName;
+  const isResolved = status === "resolved";
   const subject = isResolved
-    ? `Your question report was resolved — EduChamp`
-    : `Your question report has been reviewed — EduChamp`;
+    ? `Your flagged question has been resolved — EduChamp`
+    : `Update on your flagged question — EduChamp`;
 
-  const headerGradient = isResolved
-    ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
-    : "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)";
-
-  const headerEmoji = isResolved ? "✅" : "📋";
-  const headerTitle = isResolved ? "Report Resolved" : "Report Reviewed";
-  const headerSubtitle = isResolved
-    ? "Thank you for helping improve EduChamp"
-    : "Our team has reviewed your report";
-
-  const truncatedQuestion =
-    data.questionText.length > 120
-      ? data.questionText.slice(0, 120) + "…"
-      : data.questionText;
-
-  const outcomeText = isResolved
-    ? `Our team has reviewed your report and <strong>resolved the issue</strong> with this question. Thank you for helping us maintain the quality of our content.`
-    : `Our team has reviewed your report and determined that the question is accurate and appropriate for this course. No changes will be made at this time.`;
-
-  const noteHtml = data.reviewNote
-    ? `<div style="background:#f9fafb;border-left:3px solid #6366f1;padding:12px 16px;border-radius:4px;margin:16px 0;">
-        <p style="font-size:13px;color:#6b7280;margin:0 0 4px;font-weight:600;">Note from our team:</p>
-        <p style="font-size:14px;color:#374151;margin:0;">${data.reviewNote}</p>
-      </div>`
-    : "";
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${subject}</title>
-  <style>
-    body { margin: 0; padding: 0; background: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-    .wrapper { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .header { background: ${headerGradient}; padding: 40px; text-align: center; }
-    .header h1 { color: #ffffff; font-size: 24px; font-weight: 700; margin: 0 0 8px; }
-    .header p { color: rgba(255,255,255,0.9); font-size: 15px; margin: 0; }
-    .body { padding: 40px; }
-    .question-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; margin: 16px 0; }
-    .question-box p { font-size: 14px; color: #374151; margin: 0; font-style: italic; }
-    .cta { display: block; margin: 32px auto 0; padding: 14px 32px; background: #6366f1; color: #ffffff; border-radius: 8px; font-size: 15px; font-weight: 600; text-decoration: none; text-align: center; max-width: 220px; }
-    .footer { background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 24px 40px; text-align: center; }
-    .footer p { font-size: 13px; color: #9ca3af; margin: 0; }
-    .footer a { color: #6366f1; text-decoration: none; }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="header">
-      <h1>${headerEmoji} ${headerTitle}</h1>
-      <p>${headerSubtitle}</p>
-    </div>
-    <div class="body">
-      <p style="font-size:16px;color:#374151;margin:0 0 16px;">Hi ${data.studentName},</p>
-      <p style="font-size:15px;color:#374151;line-height:1.6;margin:0 0 16px;">
-        ${outcomeText}
-      </p>
-      <p style="font-size:14px;color:#6b7280;margin:0 0 8px;">Your report was about this ${data.questionType} question:</p>
-      <div class="question-box">
-        <p>"${truncatedQuestion}"</p>
+  const bodyHtml = `
+    <!-- Icon -->
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="display:inline-block;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,${isResolved ? "#10b981,#059669" : "#6366f1,#4f46e5"});text-align:center;line-height:64px;">
+        <span style="font-size:28px;">${isResolved ? "✅" : "ℹ️"}</span>
       </div>
-      <p style="font-size:13px;color:#9ca3af;margin:0 0 16px;">Reason you reported: <em>${data.reason}</em></p>
-      ${noteHtml}
-      <a href="${data.dashboardUrl}" class="cta">Back to Dashboard →</a>
     </div>
-    <div class="footer">
-      <p>EduChamp — AI-Powered Pre-K–12 Learning · <a href="mailto:support@educhamp.co">support@educhamp.co</a></p>
-    </div>
-  </div>
-</body>
-</html>`;
 
-  const text = isResolved
-    ? `Hi ${data.studentName},\n\nYour report about a ${data.questionType} question has been RESOLVED by our team.\n\nReported question: "${truncatedQuestion}"\nYour reason: ${data.reason}${data.reviewNote ? `\n\nNote from our team: ${data.reviewNote}` : ""}\n\nThank you for helping us improve EduChamp!\n\nDashboard: ${data.dashboardUrl}\n\n---\nEduChamp — support@educhamp.co`
-    : `Hi ${data.studentName},\n\nOur team has reviewed your report about a ${data.questionType} question and determined no changes are needed at this time.\n\nReported question: "${truncatedQuestion}"\nYour reason: ${data.reason}${data.reviewNote ? `\n\nNote from our team: ${data.reviewNote}` : ""}\n\nDashboard: ${data.dashboardUrl}\n\n---\nEduChamp — support@educhamp.co`;
+    <!-- Title -->
+    <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${BRAND.textPrimary};text-align:center;">
+      ${isResolved ? "Question Fixed!" : "Flag Reviewed"}
+    </h1>
+    <p style="margin:0 0 28px;font-size:14px;color:${BRAND.textMuted};text-align:center;">
+      Your ${questionType} question flag has been reviewed
+    </p>
+
+    <!-- Greeting -->
+    <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:${BRAND.textPrimary};">
+      Hi ${firstName},
+    </p>
+
+    <!-- Body text -->
+    <p style="margin:0 0 16px;font-size:15px;color:${BRAND.textMuted};line-height:1.7;">
+      ${isResolved
+        ? "Thank you for flagging this question! Our team has reviewed and fixed the issue."
+        : "Our team has reviewed the question you flagged. After careful consideration, the question appears to be correct as-is."}
+    </p>
+
+    <!-- Question details box -->
+    <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:18px;margin:20px 0;">
+      <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:${BRAND.textMuted};text-transform:uppercase;">
+        Flagged Question (${questionType})
+      </p>
+      <p style="margin:0 0 12px;font-size:14px;color:${BRAND.textPrimary};line-height:1.5;font-style:italic;">
+        "${questionText.length > 120 ? questionText.slice(0, 120) + "..." : questionText}"
+      </p>
+      <p style="margin:0;font-size:12px;color:${BRAND.textMuted};">
+        <strong>Your reason:</strong> ${reason}
+      </p>
+    </div>
+
+    ${reviewNote ? `
+    <!-- Review note -->
+    <div style="background:#f9fafb;border-left:3px solid ${isResolved ? "#10b981" : "#6366f1"};padding:12px 16px;border-radius:4px;margin:0 0 20px;">
+      <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:${BRAND.textMuted};">Note from reviewer:</p>
+      <p style="margin:0;font-size:14px;color:${BRAND.textPrimary};line-height:1.5;">${reviewNote}</p>
+    </div>
+    ` : ""}
+
+    <!-- CTA Button -->
+    <div style="text-align:center;margin-top:24px;">
+      ${ctaButton("Continue Learning", dashboardUrl)}
+    </div>
+  `;
+
+  const footerHtml = `
+    <p style="margin:0 0 8px;font-size:12px;color:${BRAND.textMuted};">
+      Need help? Contact us at
+      <a href="mailto:${BRAND.supportEmail}" style="color:${BRAND.brandColor};text-decoration:none;">${BRAND.supportEmail}</a>
+    </p>
+    <p style="margin:0;font-size:11px;color:${BRAND.textMuted};opacity:0.7;">
+      © ${new Date().getFullYear()} EduChamp · AI-Powered Adaptive Learning
+    </p>
+  `;
+
+  const html = wrapEmailHtml({
+    bodyHtml,
+    previewText: isResolved
+      ? "Your flagged question has been fixed. Thank you for helping improve EduChamp!"
+      : "Your flagged question has been reviewed. The question appears correct as-is.",
+    footerHtml,
+  });
+
+  const text = `Hi ${firstName},
+
+${isResolved
+  ? "Thank you for flagging this question! Our team has reviewed and fixed the issue."
+  : "Our team has reviewed the question you flagged. After careful consideration, the question appears to be correct as-is."}
+
+FLAGGED QUESTION (${questionType}):
+"${questionText}"
+
+Your reason: ${reason}
+${reviewNote ? `\nReviewer note: ${reviewNote}` : ""}
+
+Continue Learning: ${dashboardUrl}
+
+Need help? Contact us at ${BRAND.supportEmail}
+© ${new Date().getFullYear()} EduChamp — AI-Powered Adaptive Learning
+`;
 
   return { subject, html, text };
 }

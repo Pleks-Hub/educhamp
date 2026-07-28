@@ -3475,3 +3475,16 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Branded Email: Apply EduChamp template to student invitation/setup emails
 - [x] Branded Email: Include logo, gradient icon, and support footer (uses shared emailBase)
 - [x] Tests: All 1,726 tests passing, 0 TypeScript errors
+
+### Audio Progress Bar, Favorite Voice, and Branded Email Migration
+- [x] AudioControlBar: Add thin seek/progress bar showing playback position
+- [x] AudioControlBar: Allow scrubbing (click/drag) to seek to any point in narration
+- [x] AudioControlBar: Show elapsed/total time display (mm:ss / mm:ss)
+- [x] useTTS: Expose currentTime, duration, and seek() for progress bar binding
+- [x] Favorite Voice: Add star icon in VoicePicker to mark a voice as favorite
+- [x] Favorite Voice: Persist favorite voice per student (server-side in preferences)
+- [x] Favorite Voice: Auto-select favorite voice when switching courses/units
+- [x] Branded Email: Migrate co-parent invite (parentInvite.ts) to shared emailBase
+- [x] Branded Email: Migrate trial welcome (trialWelcome.ts) to shared emailBase
+- [x] Branded Email: Migrate ALL remaining transactional emails (11 templates total) to emailBase
+- [x] Tests: All 1,726 tests passing, 0 TypeScript errors, 0 unmigrated templates

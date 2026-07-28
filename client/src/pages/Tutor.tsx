@@ -1466,6 +1466,9 @@ export default function Tutor() {
         currentSpeed={tts.currentSpeed}
         currentSentenceIndex={tts.currentSentenceIndex}
         totalSentences={tts.totalSentences}
+        currentTime={tts.currentTime}
+        duration={tts.duration}
+        onSeek={tts.seek}
         onPlay={tts.resume}
         onPause={tts.pause}
         onStop={tts.stop}

@@ -4,7 +4,9 @@
  * Sent every Monday to parents of Pre-K through Grade 2 students.
  * Summarises the child's weekly learning activity with emoji highlights,
  * milestone callouts, and suggested at-home activities.
+ * Uses the shared email base for consistent branding.
  */
+import { BRAND, wrapEmailHtml, ctaButton } from "./emailBase";
 
 export interface WeeklyDigestChild {
   /** Child's display name */
@@ -31,9 +33,9 @@ export interface WeeklyDigestChild {
   progressUrl: string;
   /** Deep link to recommended next lesson */
   nextLessonUrl: string;
-  /** B4: On-track status from diagnostic score (null = no diagnostic yet) */
+  /** On-track status from diagnostic score (null = no diagnostic yet) */
   onTrackStatus: "on_track" | "needs_attention" | "check_in" | null;
-  /** B4: Diagnostic score (0-100), null if no diagnostic taken */
+  /** Diagnostic score (0-100), null if no diagnostic taken */
   diagnosticScore: number | null;
   /** Tasks completed this week */
   tasksCompleted: number;
@@ -70,19 +72,6 @@ export interface WeeklyDigestEmailData {
   appUrl: string;
 }
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-
-const BRAND_COLOR = "#4f46e5";   // indigo-600
-const BRAND_LIGHT = "#e0e7ff";   // indigo-100
-const BRAND_DARK = "#312e81";    // indigo-900
-const ACCENT = "#f59e0b";        // amber-500
-const SUCCESS = "#10b981";       // emerald-500
-const BG = "#f8fafc";
-const CARD_BG = "#ffffff";
-const TEXT_PRIMARY = "#0f172a";
-const TEXT_MUTED = "#64748b";
-const LOGO_URL = "https://educhamp.co/manus-storage/educhamp-logo-64_28201452.png";
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatWeekRange(start: Date, end: Date): string {
@@ -106,29 +95,24 @@ function scoreBar(score: number): string {
   return "🟦".repeat(filled) + "⬜".repeat(empty);
 }
 
-function childCard(child: WeeklyDigestChild, idx: number): string {
+function childCard(child: WeeklyDigestChild): string {
   const emoji = gradeEmoji(child.grade);
   const hasActivity = child.lessonsCompleted > 0 || child.quizAttempts > 0;
 
-  // Celebration badge for perfect quiz or new mastery
   const hasCelebration = child.bestQuizScore === 100 || child.newSkillsMastered > 0;
   const celebrationBadge = hasCelebration
     ? `<tr><td style="padding:8px 0;">
-        <table cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid ${ACCENT};border-radius:12px;width:100%;">
-          <tr>
-            <td style="padding:14px 18px;">
-              <span style="font-size:22px;vertical-align:middle;">🏆</span>
-              <span style="font-size:15px;font-weight:700;color:#92400e;margin-left:8px;vertical-align:middle;">Celebration!</span>
-              <p style="margin:6px 0 0;font-size:14px;color:#78350f;">${
-                child.bestQuizScore === 100 && child.newSkillsMastered > 0
-                  ? `${child.name} scored a perfect 100% on a quiz AND mastered ${child.newSkillsMastered} new skill${child.newSkillsMastered > 1 ? "s" : ""}! 🎉`
-                  : child.bestQuizScore === 100
-                    ? `${child.name} scored a perfect 100% on a quiz this week! 🌟`
-                    : `${child.name} mastered ${child.newSkillsMastered} new skill${child.newSkillsMastered > 1 ? "s" : ""} this week! 🌟`
-              }</p>
-            </td>
-          </tr>
-        </table>
+        <div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;border-radius:12px;padding:14px 18px;">
+          <span style="font-size:22px;vertical-align:middle;">🏆</span>
+          <span style="font-size:15px;font-weight:700;color:#92400e;margin-left:8px;vertical-align:middle;">Celebration!</span>
+          <p style="margin:6px 0 0;font-size:14px;color:#78350f;">${
+            child.bestQuizScore === 100 && child.newSkillsMastered > 0
+              ? `${child.name} scored a perfect 100% on a quiz AND mastered ${child.newSkillsMastered} new skill${child.newSkillsMastered > 1 ? "s" : ""}! 🎉`
+              : child.bestQuizScore === 100
+                ? `${child.name} scored a perfect 100% on a quiz this week! 🌟`
+                : `${child.name} mastered ${child.newSkillsMastered} new skill${child.newSkillsMastered > 1 ? "s" : ""} this week! 🌟`
+          }</p>
+        </div>
       </td></tr>`
     : "";
 
@@ -150,7 +134,6 @@ function childCard(child: WeeklyDigestChild, idx: number): string {
        </td></tr>`
     : "";
 
-  // B4: On-track badge
   const onTrackBadge = child.onTrackStatus
     ? (() => {
         const map = {
@@ -167,90 +150,60 @@ function childCard(child: WeeklyDigestChild, idx: number): string {
     : "";
 
   return `
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:${CARD_BG};border-radius:16px;border:2px solid ${BRAND_LIGHT};margin-bottom:24px;overflow:hidden;">
-    <tr>
-      <td style="background:linear-gradient(135deg,${BRAND_COLOR},${BRAND_DARK});padding:18px 24px;">
-        <span style="font-size:28px;">${emoji}</span>
-        <span style="font-size:20px;font-weight:700;color:#fff;margin-left:10px;">${child.name}</span>
-        <span style="font-size:13px;color:rgba(255,255,255,0.8);margin-left:8px;">${child.grade}</span>
-      </td>
-    </tr>
-    <tr>
-      <td style="padding:20px 24px;">
-        ${hasActivity ? `
-        <table width="100%" cellpadding="0" cellspacing="0">
-          ${onTrackBadge}
-          ${celebrationBadge}
-          <tr>
-            <td style="padding:6px 0;font-size:15px;">📚 <strong>${child.lessonsCompleted} lesson${child.lessonsCompleted !== 1 ? "s" : ""}</strong> completed this week</td>
-          </tr>
-          ${child.quizAttempts > 0 ? `<tr><td style="padding:6px 0;font-size:15px;">✏️ <strong>${child.quizAttempts} quiz${child.quizAttempts !== 1 ? "zes" : ""}</strong> attempted</td></tr>` : ""}
-          ${bestScoreLine}
-          ${skillsLine}
-          ${improvementLine}
-          ${unitsLine}
-        </table>
-        ` : `<table width="100%" cellpadding="0" cellspacing="0">${onTrackBadge}</table>` + noActivityMsg}
-      </td>
-    </tr>
+  <div style="background:#ffffff;border-radius:16px;border:2px solid #e0e7ff;margin-bottom:24px;overflow:hidden;">
+    <div style="background:linear-gradient(135deg,${BRAND.brandColor},#312e81);padding:18px 24px;">
+      <span style="font-size:28px;">${emoji}</span>
+      <span style="font-size:20px;font-weight:700;color:#fff;margin-left:10px;">${child.name}</span>
+      <span style="font-size:13px;color:rgba(255,255,255,0.8);margin-left:8px;">${child.grade}</span>
+    </div>
+    <div style="padding:20px 24px;">
+      ${hasActivity ? `
+      <table width="100%" cellpadding="0" cellspacing="0">
+        ${onTrackBadge}
+        ${celebrationBadge}
+        <tr>
+          <td style="padding:6px 0;font-size:15px;">📚 <strong>${child.lessonsCompleted} lesson${child.lessonsCompleted !== 1 ? "s" : ""}</strong> completed this week</td>
+        </tr>
+        ${child.quizAttempts > 0 ? `<tr><td style="padding:6px 0;font-size:15px;">✏️ <strong>${child.quizAttempts} quiz${child.quizAttempts !== 1 ? "zes" : ""}</strong> attempted</td></tr>` : ""}
+        ${bestScoreLine}
+        ${skillsLine}
+        ${improvementLine}
+        ${unitsLine}
+      </table>
+      ` : `<table width="100%" cellpadding="0" cellspacing="0">${onTrackBadge}</table>` + noActivityMsg}
+    </div>
     <!-- Task Progress & XP -->
     ${child.tasksCompleted > 0 || child.xpEarnedThisWeek > 0 ? `
-    <tr>
-      <td style="padding:0 24px 16px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:10px;border:1px solid #ddd6fe;">
-          <tr>
-            <td style="padding:14px 16px;">
-              <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:0.5px;">⚡ Task & XP Progress</p>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="font-size:14px;color:#4c1d95;padding:3px 0;">✅ <strong>${child.tasksCompleted}</strong> task${child.tasksCompleted !== 1 ? "s" : ""} completed</td>
-                </tr>
-                ${child.xpEarnedThisWeek > 0 ? `<tr><td style="font-size:14px;color:#4c1d95;padding:3px 0;">💎 <strong>+${child.xpEarnedThisWeek} XP</strong> earned this week (${child.totalXp} total)</td></tr>` : ""}
-                <tr>
-                  <td style="font-size:14px;color:#4c1d95;padding:3px 0;">🏅 Level <strong>${child.currentLevel}</strong> — ${child.currentLevelName}</td>
-                </tr>
-                ${child.currentStreak > 0 ? `<tr><td style="font-size:14px;color:#4c1d95;padding:3px 0;">🔥 <strong>${child.currentStreak}-day streak!</strong></td></tr>` : ""}
-                ${child.badgesEarnedThisWeek.length > 0 ? `<tr><td style="font-size:14px;color:#4c1d95;padding:3px 0;">🎖️ New badges: ${child.badgesEarnedThisWeek.map(b => `${b.iconEmoji} ${b.name}`).join(", ")}</td></tr>` : ""}
-                ${child.tasksPending > 0 ? `<tr><td style="font-size:14px;color:#92400e;padding:3px 0;">📋 ${child.tasksPending} task${child.tasksPending !== 1 ? "s" : ""} still pending</td></tr>` : ""}
-              </table>
-            </td>
-          </tr>
+    <div style="padding:0 24px 16px;">
+      <div style="background:#f5f3ff;border-radius:10px;border:1px solid #ddd6fe;padding:14px 16px;">
+        <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#6d28d9;text-transform:uppercase;letter-spacing:0.5px;">⚡ Task & XP Progress</p>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="font-size:14px;color:#4c1d95;padding:3px 0;">✅ <strong>${child.tasksCompleted}</strong> task${child.tasksCompleted !== 1 ? "s" : ""} completed</td></tr>
+          ${child.xpEarnedThisWeek > 0 ? `<tr><td style="font-size:14px;color:#4c1d95;padding:3px 0;">💎 <strong>+${child.xpEarnedThisWeek} XP</strong> earned this week (${child.totalXp} total)</td></tr>` : ""}
+          <tr><td style="font-size:14px;color:#4c1d95;padding:3px 0;">🏅 Level <strong>${child.currentLevel}</strong> — ${child.currentLevelName}</td></tr>
+          ${child.currentStreak > 0 ? `<tr><td style="font-size:14px;color:#4c1d95;padding:3px 0;">🔥 <strong>${child.currentStreak}-day streak!</strong></td></tr>` : ""}
+          ${child.badgesEarnedThisWeek.length > 0 ? `<tr><td style="font-size:14px;color:#4c1d95;padding:3px 0;">🎖️ New badges: ${child.badgesEarnedThisWeek.map(b => `${b.iconEmoji} ${b.name}`).join(", ")}</td></tr>` : ""}
+          ${child.tasksPending > 0 ? `<tr><td style="font-size:14px;color:#92400e;padding:3px 0;">📋 ${child.tasksPending} task${child.tasksPending !== 1 ? "s" : ""} still pending</td></tr>` : ""}
         </table>
-      </td>
-    </tr>` : ""}
+      </div>
+    </div>` : ""}
     <!-- Suggested activity -->
-    <tr>
-      <td style="padding:0 24px 20px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;">
-          <tr>
-            <td style="padding:14px 16px;">
-              <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:0.5px;">🏠 At-Home Activity</p>
-              <p style="margin:0;font-size:14px;color:#166534;">${child.suggestedActivity}</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
+    <div style="padding:0 24px 20px;">
+      <div style="background:#f0fdf4;border-radius:10px;border:1px solid #bbf7d0;padding:14px 16px;">
+        <p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:0.5px;">🏠 At-Home Activity</p>
+        <p style="margin:0;font-size:14px;color:#166534;">${child.suggestedActivity}</p>
+      </div>
+    </div>
     <!-- CTA buttons -->
-    <tr>
-      <td style="padding:0 24px 24px;">
-        <table cellpadding="0" cellspacing="0">
-          <tr>
-            <td style="padding-right:10px;">
-              <a href="${child.progressUrl}" style="display:inline-block;padding:10px 20px;background:${BRAND_COLOR};color:#fff;font-size:13px;font-weight:600;border-radius:8px;text-decoration:none;">
-                View Progress
-              </a>
-            </td>
-            <td>
-              <a href="${child.nextLessonUrl}" style="display:inline-block;padding:10px 20px;background:${ACCENT};color:#fff;font-size:13px;font-weight:600;border-radius:8px;text-decoration:none;">
-                Start Next Lesson →
-              </a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>`;
+    <div style="padding:0 24px 24px;">
+      <a href="${child.progressUrl}" style="display:inline-block;padding:10px 20px;background:${BRAND.brandColor};color:#fff;font-size:13px;font-weight:600;border-radius:8px;text-decoration:none;margin-right:10px;">
+        View Progress
+      </a>
+      <a href="${child.nextLessonUrl}" style="display:inline-block;padding:10px 20px;background:#f59e0b;color:#fff;font-size:13px;font-weight:600;border-radius:8px;text-decoration:none;">
+        Start Next Lesson →
+      </a>
+    </div>
+  </div>`;
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
@@ -272,92 +225,60 @@ export function buildWeeklyParentDigestEmail(data: WeeklyDigestEmailData): {
     ? `This week ${children.length === 1 ? children[0].name : "your learners"} completed <strong>${totalLessons} lesson${totalLessons !== 1 ? "s" : ""}</strong>${totalSkills > 0 ? ` and mastered <strong>${totalSkills} new skill${totalSkills !== 1 ? "s" : ""}</strong>` : ""}. Here's the full breakdown:`
     : `Here's a summary of this week's learning activity. Every day counts — even a short session helps build lasting skills!`;
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${subject}</title>
-  <style>
-    body { margin:0;padding:0;background:${BG};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
-    .wrapper { max-width:600px;margin:0 auto;padding:32px 16px; }
-    a { color:${BRAND_COLOR}; }
-    @media (max-width:480px) {
-      .wrapper { padding:16px 8px; }
-    }
-  </style>
-</head>
-<body>
-<div class="wrapper">
+  const bodyHtml = `
+    <!-- Header -->
+    <h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:${BRAND.textPrimary};text-align:center;">
+      Weekly Learning Digest 📬
+    </h1>
+    <p style="margin:0 0 28px;font-size:14px;color:${BRAND.textMuted};text-align:center;">
+      Week of ${weekRange}
+    </p>
 
-  <!-- Header -->
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,${BRAND_COLOR},${BRAND_DARK});border-radius:20px;margin-bottom:24px;overflow:hidden;">
-    <tr>
-      <td style="padding:28px 32px;">
-        <img src="${LOGO_URL}" alt="EduChamp" style="height:36px;margin-bottom:12px;display:block;" />
-        <h1 style="margin:0 0 6px;font-size:24px;font-weight:800;color:#fff;">Weekly Learning Digest 📬</h1>
-        <p style="margin:0;font-size:14px;color:rgba(255,255,255,0.85);">Week of ${weekRange}</p>
-      </td>
-    </tr>
-  </table>
+    <!-- Greeting -->
+    <p style="margin:0 0 10px;font-size:17px;color:${BRAND.textPrimary};">Hi ${firstName}! 👋</p>
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};line-height:1.6;">${summaryLine}</p>
 
-  <!-- Greeting -->
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:${CARD_BG};border-radius:16px;margin-bottom:24px;">
-    <tr>
-      <td style="padding:24px 28px;">
-        <p style="margin:0 0 10px;font-size:17px;color:${TEXT_PRIMARY};">Hi ${firstName}! 👋</p>
-        <p style="margin:0;font-size:15px;color:${TEXT_MUTED};line-height:1.6;">${summaryLine}</p>
-      </td>
-    </tr>
-  </table>
+    <!-- Child cards -->
+    ${children.map((c) => childCard(c)).join("")}
 
-  <!-- Child cards -->
-  ${children.map((c, i) => childCard(c, i)).join("")}
+    <!-- Tips section -->
+    <div style="background:#ffffff;border-radius:16px;margin-bottom:24px;border:1px solid #e2e8f0;padding:22px 28px;">
+      <p style="margin:0 0 12px;font-size:15px;font-weight:700;color:${BRAND.textPrimary};">💡 Parent Tips for Young Learners</p>
+      <ul style="margin:0;padding-left:18px;color:${BRAND.textMuted};font-size:14px;line-height:1.8;">
+        <li>Sit together for 10–15 minutes — your presence makes learning feel safe and fun.</li>
+        <li>Celebrate small wins! Saying "You worked so hard on that!" builds a growth mindset.</li>
+        <li>Use the <strong>Read Aloud</strong> button in lessons to hear instructions spoken clearly.</li>
+        <li>Ask your child to teach you what they learned — explaining reinforces memory.</li>
+      </ul>
+    </div>
 
-  <!-- Tips section -->
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:${CARD_BG};border-radius:16px;margin-bottom:24px;border:1px solid #e2e8f0;">
-    <tr>
-      <td style="padding:22px 28px;">
-        <p style="margin:0 0 12px;font-size:15px;font-weight:700;color:${TEXT_PRIMARY};">💡 Parent Tips for Young Learners</p>
-        <ul style="margin:0;padding-left:18px;color:${TEXT_MUTED};font-size:14px;line-height:1.8;">
-          <li>Sit together for 10–15 minutes — your presence makes learning feel safe and fun.</li>
-          <li>Celebrate small wins! Saying "You worked so hard on that!" builds a growth mindset.</li>
-          <li>Use the <strong>Read Aloud</strong> button in lessons to hear instructions spoken clearly.</li>
-          <li>Ask your child to teach you what they learned — explaining reinforces memory.</li>
-        </ul>
-      </td>
-    </tr>
-  </table>
+    <!-- CTA -->
+    <div style="text-align:center;">
+      ${ctaButton("Open Parent Dashboard", `${appUrl}/parent`)}
+    </div>
+  `;
 
-  <!-- CTA -->
-  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;text-align:center;">
-    <tr>
-      <td>
-        <a href="${appUrl}/parent" style="display:inline-block;padding:14px 32px;background:${BRAND_COLOR};color:#fff;font-size:15px;font-weight:700;border-radius:12px;text-decoration:none;">
-          Open Parent Dashboard →
-        </a>
-      </td>
-    </tr>
-  </table>
+  const footerHtml = `
+    <p style="margin:0 0 8px;font-size:12px;color:${BRAND.textMuted};">
+      You're receiving this because you're a parent on EduChamp.
+    </p>
+    <p style="margin:0 0 8px;font-size:12px;color:${BRAND.textMuted};">
+      <a href="${appUrl}/profile" style="color:${BRAND.brandColor};text-decoration:none;">Manage email preferences</a>
+      &nbsp;·&nbsp;
+      <a href="${BRAND.websiteUrl}" style="color:${BRAND.brandColor};text-decoration:none;">EduChamp</a>
+      &nbsp;·&nbsp;
+      <a href="mailto:${BRAND.supportEmail}" style="color:${BRAND.brandColor};text-decoration:none;">${BRAND.supportEmail}</a>
+    </p>
+    <p style="margin:0;font-size:11px;color:${BRAND.textMuted};opacity:0.7;">
+      © ${new Date().getFullYear()} EduChamp · AI-Powered Adaptive Learning
+    </p>
+  `;
 
-  <!-- Footer -->
-  <table width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-      <td style="padding:20px 0;border-top:1px solid #e2e8f0;text-align:center;">
-        <p style="margin:0 0 6px;font-size:12px;color:${TEXT_MUTED};">
-          You're receiving this because you're a parent on EduChamp.
-        </p>
-        <p style="margin:0;font-size:12px;color:${TEXT_MUTED};">
-          <a href="${appUrl}/profile" style="color:${BRAND_COLOR};">Manage email preferences</a> &nbsp;·&nbsp;
-          <a href="${appUrl}" style="color:${BRAND_COLOR};">EduChamp</a>
-        </p>
-      </td>
-    </tr>
-  </table>
-
-</div>
-</body>
-</html>`;
+  const html = wrapEmailHtml({
+    bodyHtml,
+    previewText: `${firstName}'s EduChamp Weekly Digest — ${weekRange}. ${totalLessons} lessons completed.`,
+    footerHtml,
+  });
 
   // Plain text fallback
   const text = [
@@ -379,7 +300,8 @@ export function buildWeeklyParentDigestEmail(data: WeeklyDigestEmailData): {
     ].filter(Boolean).join("\n")),
     `Open Parent Dashboard: ${appUrl}/parent`,
     ``,
-    `EduChamp — Manage email preferences: ${appUrl}/profile`,
+    `Need help? Contact us at ${BRAND.supportEmail}`,
+    `© ${new Date().getFullYear()} EduChamp — AI-Powered Adaptive Learning`,
   ].join("\n");
 
   return { html, text, subject };

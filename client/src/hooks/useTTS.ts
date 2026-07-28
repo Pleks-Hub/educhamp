@@ -133,6 +133,12 @@ interface UseTTSReturn {
   detectedLanguage: string;
   /** Set a manual language override */
   setLanguageOverride: (lang: string | null) => void;
+  /** Current audio playback time in seconds */
+  currentTime: number;
+  /** Total audio duration in seconds */
+  duration: number;
+  /** Seek to a specific time (0-1 fraction of duration) */
+  seek: (fraction: number) => void;
 }
 
 export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
@@ -143,6 +149,8 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
   const [langOverride, setLangOverride] = useState<string | null>(initialLangOverride ?? null);
   const [detectedLanguage, setDetectedLanguage] = useState<string>("en-US");
   const [currentLabel, setCurrentLabel] = useState("");
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [selectedVoiceUri, setSelectedVoiceUri] = useState<string | null>(initialVoiceUri ?? null);
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(-1);
   const [sentences, setSentences] = useState<string[]>([]);
@@ -213,6 +221,13 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
   const startSentenceTracking = useCallback(() => {
     const track = () => {
       if (!audioRef.current || audioRef.current.paused) return;
+
+      // Update time/duration for progress bar
+      setCurrentTime(audioRef.current.currentTime);
+      if (audioRef.current.duration && !isNaN(audioRef.current.duration)) {
+        setDuration(audioRef.current.duration);
+      }
+
       const currentTimeMs = audioRef.current.currentTime * 1000;
       const boundaries = wordBoundariesRef.current;
       const sents = sentencesRef.current;
@@ -422,6 +437,8 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     setCurrentSentenceIndex(-1);
     setSentences([]);
     setActiveMessageId(null);
+    setCurrentTime(0);
+    setDuration(0);
   }, [stopSentenceTracking]);
 
   const replay = useCallback(() => {
@@ -562,6 +579,14 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     setSelectedVoiceUri(uri);
   }, []);
 
+  /** Seek to a fraction (0-1) of the audio duration */
+  const seek = useCallback((fraction: number) => {
+    if (audioRef.current && audioRef.current.duration > 0) {
+      const clampedFraction = Math.max(0, Math.min(1, fraction));
+      audioRef.current.currentTime = clampedFraction * audioRef.current.duration;
+    }
+  }, []);
+
   return {
     isSupported: true, // Server-side TTS is always available
     status,
@@ -585,6 +610,9 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
     totalSentences: sentences.length,
     detectedLanguage,
     setLanguageOverride: setLangOverride,
+    currentTime,
+    duration,
+    seek,
   };
 }
 

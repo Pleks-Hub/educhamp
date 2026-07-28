@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { Play, Pause, Square, RotateCcw, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -10,6 +10,12 @@ interface AudioControlBarProps {
   currentSpeed: TtsSpeed;
   currentSentenceIndex: number;
   totalSentences: number;
+  /** Current playback time in seconds */
+  currentTime?: number;
+  /** Total audio duration in seconds */
+  duration?: number;
+  /** Seek to a fraction (0-1) of the audio */
+  onSeek?: (fraction: number) => void;
   onPlay: () => void;
   onPause: () => void;
   onStop: () => void;
@@ -26,12 +32,23 @@ const SPEED_DISPLAY: Record<TtsSpeed, string> = {
   fast: "1.25x",
 };
 
+/** Format seconds to mm:ss */
+function formatTime(seconds: number): string {
+  if (!seconds || isNaN(seconds) || !isFinite(seconds)) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
 export function AudioControlBar({
   status,
   currentLabel,
   currentSpeed,
   currentSentenceIndex,
   totalSentences,
+  currentTime = 0,
+  duration = 0,
+  onSeek,
   onPlay,
   onPause,
   onStop,
@@ -41,12 +58,15 @@ export function AudioControlBar({
   onSkipBack,
   className,
 }: AudioControlBarProps) {
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragFraction, setDragFraction] = useState(0);
+
   // Keyboard shortcuts — only active when TTS is playing or paused
   useEffect(() => {
     if (status === "idle" || status === "loading") return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't capture when user is typing in an input/textarea
       const target = e.target as HTMLElement;
       if (
         target.tagName === "INPUT" ||
@@ -81,37 +101,158 @@ export function AudioControlBar({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [status, onPlay, onPause, onStop, onSkipForward, onSkipBack]);
 
+  // Calculate progress fraction for the seek bar
+  const progressFraction = isDragging
+    ? dragFraction
+    : duration > 0
+    ? Math.min(currentTime / duration, 1)
+    : 0;
+
+  // Handle seek bar click/drag
+  const getFractionFromEvent = useCallback(
+    (e: MouseEvent | React.MouseEvent) => {
+      if (!progressBarRef.current) return 0;
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      return Math.max(0, Math.min(1, x / rect.width));
+    },
+    []
+  );
+
+  const handleProgressMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!onSeek || duration <= 0) return;
+      e.preventDefault();
+      setIsDragging(true);
+      const fraction = getFractionFromEvent(e);
+      setDragFraction(fraction);
+    },
+    [onSeek, duration, getFractionFromEvent]
+  );
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const fraction = getFractionFromEvent(e);
+      setDragFraction(fraction);
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      const fraction = getFractionFromEvent(e);
+      setIsDragging(false);
+      onSeek?.(fraction);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging, getFractionFromEvent, onSeek]);
+
+  // Handle touch events for mobile
+  const handleProgressTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      if (!onSeek || duration <= 0 || !progressBarRef.current) return;
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const x = e.touches[0].clientX - rect.left;
+      const fraction = Math.max(0, Math.min(1, x / rect.width));
+      setIsDragging(true);
+      setDragFraction(fraction);
+    },
+    [onSeek, duration]
+  );
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!progressBarRef.current) return;
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const x = e.touches[0].clientX - rect.left;
+      const fraction = Math.max(0, Math.min(1, x / rect.width));
+      setDragFraction(fraction);
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!progressBarRef.current) return;
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const x = e.changedTouches[0].clientX - rect.left;
+      const fraction = Math.max(0, Math.min(1, x / rect.width));
+      setIsDragging(false);
+      onSeek?.(fraction);
+    };
+
+    document.addEventListener("touchmove", handleTouchMove, { passive: false });
+    document.addEventListener("touchend", handleTouchEnd);
+    return () => {
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [isDragging, onSeek]);
+
   if (status === "idle" && !currentLabel) return null;
   const isLoading = status === "loading";
-
-  const progressPercent =
-    totalSentences > 0 && currentSentenceIndex >= 0
-      ? Math.round(((currentSentenceIndex + 1) / totalSentences) * 100)
-      : 0;
+  const hasTimeData = duration > 0;
 
   return (
     <div
       className={cn(
         "fixed bottom-4 left-1/2 -translate-x-1/2 z-50",
-        "flex flex-col items-center gap-0 rounded-2xl",
+        "flex flex-col items-stretch gap-0 rounded-2xl",
         "bg-card/95 backdrop-blur-md border border-border shadow-lg",
         "animate-in slide-in-from-bottom-4 duration-200",
-        "overflow-hidden",
+        "overflow-hidden w-[420px] max-w-[calc(100vw-2rem)]",
         className
       )}
       role="toolbar"
       aria-label="Audio playback controls"
     >
-      {/* Progress bar */}
-      <div className="w-full h-1 bg-muted relative">
+      {/* Seekable progress bar */}
+      <div
+        ref={progressBarRef}
+        className={cn(
+          "w-full h-2 bg-muted relative group",
+          hasTimeData && onSeek ? "cursor-pointer" : "cursor-default"
+        )}
+        onMouseDown={handleProgressMouseDown}
+        onTouchStart={handleProgressTouchStart}
+        role="slider"
+        aria-label="Audio progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progressFraction * 100)}
+      >
+        {/* Filled portion */}
         <div
-          className="absolute inset-y-0 left-0 bg-primary transition-all duration-300 ease-out"
-          style={{ width: `${progressPercent}%` }}
+          className="absolute inset-y-0 left-0 bg-primary transition-[width] duration-75 ease-linear"
+          style={{ width: `${progressFraction * 100}%` }}
         />
+        {/* Scrub handle — visible on hover or drag */}
+        {hasTimeData && onSeek && (
+          <div
+            className={cn(
+              "absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary",
+              "shadow-sm border border-primary-foreground/20",
+              "opacity-0 group-hover:opacity-100 transition-opacity duration-150",
+              isDragging && "opacity-100 scale-110"
+            )}
+            style={{ left: `${progressFraction * 100}%` }}
+          />
+        )}
       </div>
 
       {/* Controls row */}
-      <div className="flex items-center gap-2 px-4 py-2.5">
+      <div className="flex items-center gap-1.5 px-3 py-2">
+        {/* Time elapsed */}
+        {hasTimeData && (
+          <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right">
+            {formatTime(isDragging ? dragFraction * duration : currentTime)}
+          </span>
+        )}
+
         {/* Skip back */}
         <Button
           variant="ghost"
@@ -169,11 +310,21 @@ export function AudioControlBar({
           <ChevronRight className="h-4 w-4" />
         </Button>
 
+        {/* Time remaining */}
+        {hasTimeData && (
+          <span className="text-[10px] text-muted-foreground tabular-nums w-8">
+            {formatTime(duration)}
+          </span>
+        )}
+
+        {/* Divider */}
+        <div className="w-px h-5 bg-border" />
+
         {/* Stop */}
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-full"
+          className="h-7 w-7 rounded-full"
           onClick={onStop}
           aria-label="Stop (Escape)"
         >
@@ -184,11 +335,11 @@ export function AudioControlBar({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 rounded-full"
+          className="h-7 w-7 rounded-full"
           onClick={onReplay}
           aria-label="Replay"
         >
-          <RotateCcw className="h-4 w-4" />
+          <RotateCcw className="h-3.5 w-3.5" />
         </Button>
 
         {/* Divider */}
@@ -198,7 +349,7 @@ export function AudioControlBar({
         <button
           onClick={onSpeedCycle}
           className={cn(
-            "px-2.5 py-1 text-xs font-semibold rounded-full",
+            "px-2 py-0.5 text-[10px] font-semibold rounded-full",
             "bg-primary/10 text-primary border border-primary/20",
             "hover:bg-primary/20 transition-all duration-150",
             "active:scale-95"
@@ -213,17 +364,17 @@ export function AudioControlBar({
         <div className="w-px h-5 bg-border" />
 
         {/* Progress indicator + label */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
           {totalSentences > 0 && currentSentenceIndex >= 0 && (
-            <span className="text-[10px] text-muted-foreground tabular-nums">
+            <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
               {currentSentenceIndex + 1}/{totalSentences}
             </span>
           )}
-          <span className="text-xs text-muted-foreground max-w-[140px] truncate">
+          <span className="text-[10px] text-muted-foreground max-w-[100px] truncate">
             {isLoading
-              ? "Loading audio..."
+              ? "Loading..."
               : status === "playing"
-              ? `Reading: ${currentLabel}`
+              ? currentLabel
               : status === "paused"
               ? "Paused"
               : "Stopped"}

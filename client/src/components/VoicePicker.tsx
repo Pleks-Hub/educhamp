@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useRef } from "react";
-import { Globe, Mic, Play, Square, Loader2 } from "lucide-react";
+import { Globe, Mic, Play, Square, Loader2, Star } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -97,6 +97,32 @@ export function VoicePicker({
 
   const synthesizeMutation = trpc.tts.synthesize.useMutation();
 
+  // Favorite voice — persisted via TTS preferences
+  const { data: ttsPrefs } = trpc.tts.getPreferences.useQuery(undefined, {
+    staleTime: 60_000,
+  });
+  const updatePrefsMutation = trpc.tts.updatePreferences.useMutation();
+  const utils = trpc.useUtils();
+
+  const favoriteVoiceId = ttsPrefs?.ttsVoiceUri ?? null;
+
+  /** Toggle favorite star for a voice */
+  const toggleFavorite = useCallback((voiceId: string) => {
+    const newFavorite = favoriteVoiceId === voiceId ? null : voiceId;
+    updatePrefsMutation.mutate(
+      { ttsVoiceUri: newFavorite },
+      {
+        onSuccess: () => {
+          utils.tts.getPreferences.invalidate();
+        },
+      }
+    );
+    // Also select the voice immediately when favoriting
+    if (newFavorite) {
+      onVoiceChange(newFavorite);
+    }
+  }, [favoriteVoiceId, updatePrefsMutation, utils, onVoiceChange]);
+
   /** Stop any currently playing preview */
   const stopPreview = useCallback(() => {
     if (previewAudioRef.current) {
@@ -114,10 +140,7 @@ export function VoicePicker({
 
   /** Play a preview sample for a voice */
   const playPreview = useCallback((voiceId: string) => {
-    // Stop any existing preview
     stopPreview();
-
-    // Get sample text for the voice's language
     const langPrefix = voiceId.split("-")[0].toLowerCase();
     const sampleText = PREVIEW_SAMPLES[langPrefix] || PREVIEW_SAMPLES.en;
 
@@ -216,6 +239,9 @@ export function VoicePicker({
                       <span className="text-muted-foreground text-[10px]">
                         {voice.gender === "Female" ? "♀" : "♂"}
                       </span>
+                      {favoriteVoiceId === voice.id && (
+                        <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                      )}
                     </span>
                   </SelectItem>
                 ))}
@@ -225,58 +251,102 @@ export function VoicePicker({
         )}
       </div>
 
-      {/* Voice preview cards */}
+      {/* Voice preview cards with favorite star */}
       {filteredVoices.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {filteredVoices.map((voice) => {
             const isPreviewing = previewingVoice === voice.id;
             const isLoading = previewLoading === voice.id;
             const isSelected = selectedVoiceUri === voice.id;
+            const isFavorite = favoriteVoiceId === voice.id;
 
             return (
-              <Tooltip key={voice.id}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "h-7 px-2 text-[11px] gap-1 transition-all",
-                      isSelected && "border-teal-500 bg-teal-50 text-teal-700",
-                      isPreviewing && "border-amber-400 bg-amber-50 text-amber-700",
-                    )}
-                    onClick={() => {
-                      if (isPreviewing) {
-                        stopPreview();
-                      } else {
-                        playPreview(voice.id);
-                      }
-                    }}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : isPreviewing ? (
-                      <Square className="h-3 w-3 fill-current" />
-                    ) : (
-                      <Play className="h-3 w-3" />
-                    )}
-                    <span>{voice.name}</span>
-                    <span className="text-muted-foreground text-[9px]">
-                      {voice.gender === "Female" ? "♀" : "♂"}
-                    </span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  <p className="font-medium">{voice.name} — {voice.language}</p>
-                  <p className="text-muted-foreground">{voice.description}</p>
-                  <p className="text-muted-foreground mt-0.5">
-                    {isPreviewing ? "Click to stop" : "Click to preview"}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
+              <div key={voice.id} className="flex items-center gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "h-7 px-2 text-[11px] gap-1 transition-all rounded-r-none border-r-0",
+                        isSelected && "border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300",
+                        isPreviewing && "border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+                      )}
+                      onClick={() => {
+                        if (isPreviewing) {
+                          stopPreview();
+                        } else {
+                          playPreview(voice.id);
+                        }
+                      }}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : isPreviewing ? (
+                        <Square className="h-3 w-3 fill-current" />
+                      ) : (
+                        <Play className="h-3 w-3" />
+                      )}
+                      <span>{voice.name}</span>
+                      <span className="text-muted-foreground text-[9px]">
+                        {voice.gender === "Female" ? "♀" : "♂"}
+                      </span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    <p className="font-medium">{voice.name} — {voice.language}</p>
+                    <p className="text-muted-foreground">{voice.description}</p>
+                    <p className="text-muted-foreground mt-0.5">
+                      {isPreviewing ? "Click to stop" : "Click to preview"}
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Favorite star button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "h-7 w-7 p-0 rounded-l-none transition-all",
+                        isFavorite
+                          ? "border-amber-400 bg-amber-50 text-amber-500 dark:bg-amber-950 dark:text-amber-400"
+                          : "text-muted-foreground hover:text-amber-500",
+                        isSelected && !isFavorite && "border-teal-500",
+                      )}
+                      onClick={() => toggleFavorite(voice.id)}
+                    >
+                      <Star
+                        className={cn(
+                          "h-3 w-3 transition-all",
+                          isFavorite && "fill-amber-400"
+                        )}
+                      />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    {isFavorite
+                      ? "Remove from favorites"
+                      : "Set as favorite (auto-selects on all courses)"}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
             );
           })}
         </div>
+      )}
+
+      {/* Favorite voice indicator */}
+      {favoriteVoiceId && (
+        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+          <span>
+            Favorite voice: <strong>{voices.find(v => v.id === favoriteVoiceId)?.name || favoriteVoiceId}</strong>
+            {" "}— auto-selected across all courses
+          </span>
+        </p>
       )}
     </div>
   );

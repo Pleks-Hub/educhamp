@@ -2,7 +2,9 @@
  * inactivityNotification.ts
  * Email templates for student inactivity reminders sent to students and parents.
  * Supports 7-day, 14-day, 30-day, and manual notification tiers.
+ * Uses the shared email base for consistent branding.
  */
+import { BRAND, wrapEmailHtml, ctaButton } from "./emailBase";
 
 export interface InactivityEmailParams {
   studentName: string;
@@ -22,125 +24,121 @@ export function buildInactivityEmail(params: InactivityEmailParams): {
 
   const tier = inactiveDays >= 30 ? "30-day" : inactiveDays >= 14 ? "14-day" : "7-day";
   const urgency = inactiveDays >= 30 ? "We miss you!" : inactiveDays >= 14 ? "It's been a while" : "Time to get back on track";
+  const emoji = inactiveDays >= 30 ? "💤" : inactiveDays >= 14 ? "📚" : "⏰";
 
-  const subject =
-    recipientType === "student"
-      ? `EduChamp — ${urgency}, ${studentName}! Resume your learning today`
-      : `EduChamp — ${studentName} hasn't been active for ${inactiveDays} days`;
+  const isParent = recipientType === "parent";
+  const firstName = isParent ? (parentName?.split(" ")[0] || "there") : studentName.split(" ")[0];
+  const subject = isParent
+    ? `${studentName} hasn't been active on EduChamp for ${inactiveDays} days`
+    : `${urgency} — ${inactiveDays} days since your last session`;
 
-  const greeting =
-    recipientType === "student"
-      ? `Hi ${studentName},`
-      : `Hi ${parentName ?? "there"},`;
+  const bodyHtml = `
+    <!-- Icon -->
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="display:inline-block;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,${inactiveDays >= 30 ? "#ef4444,#dc2626" : inactiveDays >= 14 ? "#f59e0b,#d97706" : "#6366f1,#4f46e5"});text-align:center;line-height:64px;">
+        <span style="font-size:28px;">${emoji}</span>
+      </div>
+    </div>
 
-  const intro =
-    recipientType === "student"
-      ? `We noticed you haven't logged into EduChamp in <strong>${inactiveDays} days</strong> (last active: ${lastActiveDate}). Your learning journey is waiting for you — every day counts!`
-      : `This is a friendly reminder that <strong>${studentName}</strong> hasn't been active on EduChamp in <strong>${inactiveDays} days</strong> (last active: ${lastActiveDate}). Consistent practice is key to mastery — a gentle nudge can make all the difference.`;
+    <!-- Title -->
+    <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${BRAND.textPrimary};text-align:center;">
+      ${urgency}
+    </h1>
+    <p style="margin:0 0 28px;font-size:14px;color:${BRAND.textMuted};text-align:center;">
+      ${inactiveDays} days since last activity
+    </p>
 
-  const cta =
-    recipientType === "student"
-      ? "Resume My Learning"
-      : `View ${studentName}'s Dashboard`;
+    <!-- Greeting -->
+    <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:${BRAND.textPrimary};">
+      Hi ${firstName},
+    </p>
 
-  const closing =
-    recipientType === "student"
-      ? "Keep up the great work — your future self will thank you!"
-      : "Thank you for supporting your student's learning journey.";
+    <!-- Body text -->
+    ${isParent ? `
+    <p style="margin:0 0 16px;font-size:15px;color:${BRAND.textMuted};line-height:1.7;">
+      <strong style="color:${BRAND.textPrimary};">${studentName}</strong> hasn't been active on EduChamp
+      for <strong style="color:${BRAND.textPrimary};">${inactiveDays} days</strong>.
+      Their last session was on ${lastActiveDate}.
+    </p>
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};line-height:1.7;">
+      A gentle reminder from you can make a big difference! Consistent practice helps build lasting skills.
+    </p>
+    ` : `
+    <p style="margin:0 0 16px;font-size:15px;color:${BRAND.textMuted};line-height:1.7;">
+      It's been <strong style="color:${BRAND.textPrimary};">${inactiveDays} days</strong> since your last session on EduChamp.
+      Your last activity was on ${lastActiveDate}.
+    </p>
+    <p style="margin:0 0 24px;font-size:15px;color:${BRAND.textMuted};line-height:1.7;">
+      Even a quick 5-minute session can help keep your skills sharp. Your AI tutor is ready when you are!
+    </p>
+    `}
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${subject}</title>
-</head>
-<body style="margin:0;padding:0;background:#f4f6fb;font-family:'Segoe UI',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fb;padding:32px 0;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);max-width:600px;">
-          <!-- Header -->
-          <tr>
-            <td style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:32px 40px;text-align:center;">
-              <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.5px;">EduChamp</h1>
-              <p style="margin:6px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">AI-Powered Adaptive Learning</p>
-            </td>
-          </tr>
-          <!-- Body -->
-          <tr>
-            <td style="padding:40px 40px 32px;">
-              <p style="margin:0 0 16px;font-size:16px;color:#1e1b4b;font-weight:600;">${greeting}</p>
-              <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">${intro}</p>
+    <!-- Motivation box -->
+    <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:18px;margin:20px 0;">
+      <p style="margin:0 0 10px;font-size:13px;font-weight:600;color:${BRAND.textPrimary};">
+        🎯 ${isParent ? "How to help:" : "Quick ways to get back:"}
+      </p>
+      <ul style="margin:0;padding-left:18px;font-size:13px;color:${BRAND.textMuted};line-height:2;">
+        ${isParent ? `
+        <li>Encourage a short 5-minute practice session</li>
+        <li>Set a daily learning reminder together</li>
+        <li>Review their progress and celebrate achievements</li>
+        ` : `
+        <li>Try a Quick Practice session (just 5 minutes!)</li>
+        <li>Review topics you've already mastered</li>
+        <li>Ask the AI tutor about something you're curious about</li>
+        `}
+      </ul>
+    </div>
 
-              <!-- Stats card -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ff;border-radius:8px;margin:0 0 28px;">
-                <tr>
-                  <td style="padding:20px 24px;">
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td style="text-align:center;padding:0 12px;">
-                          <p style="margin:0;font-size:28px;font-weight:700;color:#4f46e5;">${inactiveDays}</p>
-                          <p style="margin:4px 0 0;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Days Inactive</p>
-                        </td>
-                        <td style="text-align:center;padding:0 12px;border-left:1px solid #e0d9ff;">
-                          <p style="margin:0;font-size:14px;font-weight:600;color:#374151;">${lastActiveDate}</p>
-                          <p style="margin:4px 0 0;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Last Active</p>
-                        </td>
-                        <td style="text-align:center;padding:0 12px;border-left:1px solid #e0d9ff;">
-                          <p style="margin:0;font-size:14px;font-weight:600;color:#374151;">${tier}</p>
-                          <p style="margin:4px 0 0;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Reminder</p>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
+    <!-- CTA Button -->
+    <div style="text-align:center;">
+      ${ctaButton(isParent ? "View Student Dashboard" : "Resume Learning", resumeUrl)}
+    </div>
+  `;
 
-              <!-- CTA button -->
-              <table cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
-                <tr>
-                  <td style="background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);border-radius:8px;">
-                    <a href="${resumeUrl}" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;letter-spacing:0.2px;">${cta} →</a>
-                  </td>
-                </tr>
-              </table>
+  const footerHtml = `
+    <p style="margin:0 0 8px;font-size:12px;color:${BRAND.textMuted};">
+      Need help? Contact us at
+      <a href="mailto:${BRAND.supportEmail}" style="color:${BRAND.brandColor};text-decoration:none;">${BRAND.supportEmail}</a>
+    </p>
+    <p style="margin:0 0 8px;font-size:12px;color:${BRAND.textMuted};">
+      <a href="${BRAND.websiteUrl}" style="color:${BRAND.brandColor};text-decoration:none;">Visit EduChamp</a>
+      &nbsp;·&nbsp;
+      <a href="${BRAND.websiteUrl}/privacy" style="color:${BRAND.brandColor};text-decoration:none;">Privacy Policy</a>
+      &nbsp;·&nbsp;
+      <a href="${BRAND.websiteUrl}/terms" style="color:${BRAND.brandColor};text-decoration:none;">Terms of Service</a>
+    </p>
+    <p style="margin:0;font-size:11px;color:${BRAND.textMuted};opacity:0.7;">
+      © ${new Date().getFullYear()} EduChamp · AI-Powered Adaptive Learning
+    </p>
+  `;
 
-              <p style="margin:0 0 8px;font-size:14px;color:#6b7280;line-height:1.6;">${closing}</p>
-              <p style="margin:0;font-size:14px;color:#6b7280;">— The EduChamp Team</p>
-            </td>
-          </tr>
-          <!-- Footer -->
-          <tr>
-            <td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;text-align:center;">
-              <p style="margin:0;font-size:12px;color:#9ca3af;">You are receiving this because you have an active EduChamp account.</p>
-              <p style="margin:4px 0 0;font-size:12px;color:#9ca3af;">© ${new Date().getFullYear()} EduChamp. All rights reserved.</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+  const html = wrapEmailHtml({
+    bodyHtml,
+    previewText: isParent
+      ? `${studentName} hasn't been active for ${inactiveDays} days. Last session: ${lastActiveDate}.`
+      : `It's been ${inactiveDays} days since your last session. Your AI tutor is ready!`,
+    footerHtml,
+  });
 
-  const text = `${greeting}
+  const text = `Hi ${firstName},
 
-${
-  recipientType === "student"
-    ? `We noticed you haven't logged into EduChamp in ${inactiveDays} days (last active: ${lastActiveDate}).`
-    : `${studentName} hasn't been active on EduChamp in ${inactiveDays} days (last active: ${lastActiveDate}).`
-}
+${isParent
+  ? `${studentName} hasn't been active on EduChamp for ${inactiveDays} days. Their last session was on ${lastActiveDate}.`
+  : `It's been ${inactiveDays} days since your last session on EduChamp. Your last activity was on ${lastActiveDate}.`}
 
-Days Inactive: ${inactiveDays}
-Last Active: ${lastActiveDate}
-Reminder Tier: ${tier}
+${isParent
+  ? "A gentle reminder from you can make a big difference! Consistent practice helps build lasting skills."
+  : "Even a quick 5-minute session can help keep your skills sharp. Your AI tutor is ready when you are!"}
 
-${cta}: ${resumeUrl}
+${isParent ? "View Student Dashboard" : "Resume Learning"}: ${resumeUrl}
 
-${closing}
+Need help? Contact us at ${BRAND.supportEmail}
+Visit us: ${BRAND.websiteUrl}
 
-— The EduChamp Team`;
+© ${new Date().getFullYear()} EduChamp — AI-Powered Adaptive Learning
+`;
 
   return { subject, html, text };
 }

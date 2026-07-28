@@ -2,7 +2,9 @@
  * trialWelcome.ts
  * Branded "Your 14-day trial has started" onboarding email.
  * Sent immediately after checkout.session.completed for new trial subscriptions.
+ * Uses the shared email base for consistent branding.
  */
+import { BRAND, wrapEmailHtml, ctaButton } from "./emailBase";
 
 export interface TrialWelcomeEmailData {
   userName: string;
@@ -20,175 +22,125 @@ export function buildTrialWelcomeEmail(data: TrialWelcomeEmailData): {
   html: string;
   text: string;
 } {
+  const { userName, planName, trialEndDate, firstChargeAmount, dashboardUrl, billingPortalUrl } = data;
+  const firstName = userName.split(" ")[0] || userName;
   const subject = `Your 14-day EduChamp trial has started — here's how to get the most out of it`;
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${subject}</title>
-</head>
-<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:40px 16px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+  const bodyHtml = `
+    <!-- Icon -->
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="display:inline-block;width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#10b981,#059669);text-align:center;line-height:64px;">
+        <span style="font-size:28px;">🚀</span>
+      </div>
+    </div>
 
-          <!-- Header -->
-          <tr>
-            <td style="background:linear-gradient(135deg,#4338ca 0%,#6366f1 100%);padding:40px 40px 32px;text-align:center;">
-              <table cellpadding="0" cellspacing="0" style="margin:0 auto 20px;">
-                <tr>
-                  <td style="background:rgba(255,255,255,0.15);border-radius:12px;padding:10px 16px;">
-                    <span style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.5px;">⚡ EduChamp</span>
-                  </td>
-                </tr>
-              </table>
-              <h1 style="color:#ffffff;font-size:26px;font-weight:700;margin:0 0 8px;line-height:1.3;">
-                Your free trial has started! 🎉
-              </h1>
-              <p style="color:rgba(255,255,255,0.85);font-size:15px;margin:0;">
-                Welcome to ${data.planName} — 14 days, full access, no charge today.
-              </p>
-            </td>
-          </tr>
+    <!-- Title -->
+    <h1 style="margin:0 0 8px;font-size:22px;font-weight:700;color:${BRAND.textPrimary};text-align:center;">
+      Your Trial Has Started!
+    </h1>
+    <p style="margin:0 0 28px;font-size:14px;color:${BRAND.textMuted};text-align:center;">
+      14 days of full access to EduChamp
+    </p>
 
-          <!-- Greeting -->
-          <tr>
-            <td style="padding:32px 40px 0;">
-              <p style="color:#1e293b;font-size:16px;margin:0 0 16px;">Hi ${data.userName},</p>
-              <p style="color:#475569;font-size:15px;line-height:1.7;margin:0 0 24px;">
-                You're all set. Your <strong>${data.planName}</strong> trial is active and you have full access to everything EduChamp offers — AI tutoring, adaptive quizzes, mastery tracking, and more.
-              </p>
-            </td>
-          </tr>
+    <!-- Greeting -->
+    <p style="margin:0 0 16px;font-size:16px;font-weight:600;color:${BRAND.textPrimary};">
+      Welcome, ${firstName}!
+    </p>
 
-          <!-- Trial info card -->
-          <tr>
-            <td style="padding:0 40px 24px;">
-              <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:20px;">
-                <tr>
-                  <td>
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td style="padding:6px 0;">
-                          <span style="color:#0369a1;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Trial period</span><br/>
-                          <span style="color:#0c4a6e;font-size:15px;font-weight:600;">Today → ${data.trialEndDate}</span>
-                        </td>
-                        <td style="padding:6px 0;text-align:right;">
-                          <span style="color:#0369a1;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">First charge</span><br/>
-                          <span style="color:#0c4a6e;font-size:15px;font-weight:600;">${data.firstChargeAmount} on ${data.firstChargeDate}</span>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+    <!-- Body text -->
+    <p style="margin:0 0 16px;font-size:15px;color:${BRAND.textMuted};line-height:1.7;">
+      Your <strong style="color:${BRAND.textPrimary};">${planName}</strong> trial is now active.
+      You have full access to all EduChamp features for the next 14 days.
+    </p>
 
-          <!-- 3 Quick-Start Tips -->
-          <tr>
-            <td style="padding:0 40px 24px;">
-              <h2 style="color:#1e293b;font-size:18px;font-weight:700;margin:0 0 16px;">3 things to do in your first 24 hours</h2>
+    <!-- Trial details box -->
+    <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:10px;padding:18px;margin:20px 0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textMuted};">Plan:</td>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textPrimary};font-weight:600;text-align:right;">${planName}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textMuted};">Trial ends:</td>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textPrimary};font-weight:600;text-align:right;">${trialEndDate}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textMuted};">First charge:</td>
+          <td style="padding:4px 0;font-size:13px;color:${BRAND.textPrimary};font-weight:600;text-align:right;">${firstChargeAmount} on ${trialEndDate}</td>
+        </tr>
+      </table>
+    </div>
 
-              <!-- Tip 1 -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
-                <tr>
-                  <td style="width:44px;vertical-align:top;padding-top:2px;">
-                    <div style="width:36px;height:36px;background:#eef2ff;border-radius:10px;text-align:center;line-height:36px;font-size:18px;">📊</div>
-                  </td>
-                  <td style="padding-left:12px;">
-                    <p style="color:#1e293b;font-size:15px;font-weight:600;margin:0 0 4px;">Take the Diagnostic Test</p>
-                    <p style="color:#64748b;font-size:14px;line-height:1.6;margin:0;">
-                      A 20-minute adaptive placement test builds your personalised learning path. Go to <strong>Diagnostic</strong> in the sidebar.
-                    </p>
-                  </td>
-                </tr>
-              </table>
+    <!-- Quick start tips -->
+    <p style="margin:24px 0 12px;font-size:14px;font-weight:600;color:${BRAND.textPrimary};">
+      🎯 Quick Start Tips
+    </p>
+    <ol style="margin:0;padding-left:18px;font-size:13px;color:${BRAND.textMuted};line-height:2;">
+      <li>Add your children from the Parent Dashboard</li>
+      <li>Enroll them in courses matched to their grade</li>
+      <li>Let the AI tutor guide them through adaptive lessons</li>
+      <li>Check the Insights tab for progress analytics</li>
+    </ol>
 
-              <!-- Tip 2 -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
-                <tr>
-                  <td style="width:44px;vertical-align:top;padding-top:2px;">
-                    <div style="width:36px;height:36px;background:#f0fdf4;border-radius:10px;text-align:center;line-height:36px;font-size:18px;">🤖</div>
-                  </td>
-                  <td style="padding-left:12px;">
-                    <p style="color:#1e293b;font-size:15px;font-weight:600;margin:0 0 4px;">Chat with EduBot</p>
-                    <p style="color:#64748b;font-size:14px;line-height:1.6;margin:0;">
-                      Ask EduBot to explain any concept, work through a problem step-by-step, or quiz you on a topic. Click <strong>AI Tutor</strong> in the sidebar.
-                    </p>
-                  </td>
-                </tr>
-              </table>
+    <!-- CTA Button -->
+    <div style="text-align:center;margin-top:24px;">
+      ${ctaButton("Go to Dashboard", dashboardUrl)}
+    </div>
 
-              <!-- Tip 3 -->
-              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px;">
-                <tr>
-                  <td style="width:44px;vertical-align:top;padding-top:2px;">
-                    <div style="width:36px;height:36px;background:#fdf4ff;border-radius:10px;text-align:center;line-height:36px;font-size:18px;">👨‍👩‍👧</div>
-                  </td>
-                  <td style="padding-left:12px;">
-                    <p style="color:#1e293b;font-size:15px;font-weight:600;margin:0 0 4px;">Invite your children (if applicable)</p>
-                    <p style="color:#64748b;font-size:14px;line-height:1.6;margin:0;">
-                      Go to <strong>Parent Dashboard</strong> and add your children so they each get their own adaptive learning path and you can track their progress.
-                    </p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+    ${billingPortalUrl ? `
+    <!-- Billing info -->
+    <p style="margin:24px 0 0;font-size:12px;color:${BRAND.textMuted};text-align:center;line-height:1.6;">
+      Want to manage your subscription or cancel anytime?<br/>
+      <a href="${billingPortalUrl}" style="color:${BRAND.brandColor};text-decoration:none;">Manage Billing</a>
+    </p>
+    ` : ""}
+  `;
 
-          <!-- CTA -->
-          <tr>
-            <td style="padding:0 40px 32px;text-align:center;">
-              <a href="${data.dashboardUrl}"
-                 style="display:inline-block;background:linear-gradient(135deg,#4338ca,#6366f1);color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:14px 36px;border-radius:10px;letter-spacing:0.2px;">
-                Go to my dashboard →
-              </a>
-            </td>
-          </tr>
+  const footerHtml = `
+    <p style="margin:0 0 8px;font-size:12px;color:${BRAND.textMuted};">
+      Need help? Contact us at
+      <a href="mailto:${BRAND.supportEmail}" style="color:${BRAND.brandColor};text-decoration:none;">${BRAND.supportEmail}</a>
+    </p>
+    <p style="margin:0 0 8px;font-size:12px;color:${BRAND.textMuted};">
+      <a href="${BRAND.websiteUrl}" style="color:${BRAND.brandColor};text-decoration:none;">Visit EduChamp</a>
+      &nbsp;·&nbsp;
+      <a href="${BRAND.websiteUrl}/privacy" style="color:${BRAND.brandColor};text-decoration:none;">Privacy Policy</a>
+      &nbsp;·&nbsp;
+      <a href="${BRAND.websiteUrl}/terms" style="color:${BRAND.brandColor};text-decoration:none;">Terms of Service</a>
+    </p>
+    <p style="margin:0;font-size:11px;color:${BRAND.textMuted};opacity:0.7;">
+      © ${new Date().getFullYear()} EduChamp · AI-Powered Adaptive Learning
+    </p>
+  `;
 
-          <!-- Footer -->
-          <tr>
-            <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:24px 40px;text-align:center;">
-              <p style="color:#94a3b8;font-size:13px;margin:0 0 8px;">
-                Questions? Reply to this email or visit <a href="https://educhamp.co" style="color:#6366f1;text-decoration:none;">educhamp.co</a>
-              </p>
-              <p style="color:#94a3b8;font-size:12px;margin:0;">
-                You're receiving this because you started a trial at EduChamp.<br/>
-                ${data.billingPortalUrl ? `<a href="${data.billingPortalUrl}" style="color:#94a3b8;">Manage billing</a> · ` : ""}
-                <a href="https://educhamp.co" style="color:#94a3b8;">educhamp.co</a>
-              </p>
-            </td>
-          </tr>
+  const html = wrapEmailHtml({
+    bodyHtml,
+    previewText: `Welcome ${firstName}! Your ${planName} trial is active. Full access for 14 days.`,
+    footerHtml,
+  });
 
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
+  const text = `Welcome, ${firstName}!
 
-  const text = `Hi ${data.userName},
+Your ${planName} trial is now active. You have full access to all EduChamp features for the next 14 days.
 
-Your EduChamp ${data.planName} 14-day free trial has started!
+Plan: ${planName}
+Trial ends: ${trialEndDate}
+First charge: ${firstChargeAmount} on ${trialEndDate}
 
-Trial period: Today → ${data.trialEndDate}
-First charge: ${data.firstChargeAmount} on ${data.firstChargeDate}
+QUICK START TIPS:
+1. Add your children from the Parent Dashboard
+2. Enroll them in courses matched to their grade
+3. Let the AI tutor guide them through adaptive lessons
+4. Check the Insights tab for progress analytics
 
-3 things to do in your first 24 hours:
+Go to Dashboard: ${dashboardUrl}
+${billingPortalUrl ? `Manage Billing: ${billingPortalUrl}` : ""}
 
-1. Take the Diagnostic Test — go to Diagnostic in the sidebar to build your personalised learning path.
-2. Chat with EduBot — click AI Tutor to get step-by-step explanations and practice quizzes.
-3. Invite your children — go to Parent Dashboard to add children and track their progress.
+Need help? Contact us at ${BRAND.supportEmail}
+Visit us: ${BRAND.websiteUrl}
 
-Go to your dashboard: ${data.dashboardUrl}
-
-Questions? Reply to this email or visit https://educhamp.co
-
-— The EduChamp Team`;
+© ${new Date().getFullYear()} EduChamp — AI-Powered Adaptive Learning
+`;
 
   return { subject, html, text };
 }
