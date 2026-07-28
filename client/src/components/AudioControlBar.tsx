@@ -27,9 +27,10 @@ interface AudioControlBarProps {
 }
 
 const SPEED_DISPLAY: Record<TtsSpeed, string> = {
-  slow: "0.7x",
+  slow: "0.75x",
   normal: "1x",
   fast: "1.25x",
+  faster: "1.5x",
 };
 
 /** Format seconds to mm:ss */

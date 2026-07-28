@@ -73,6 +73,10 @@ function base64ToBlob(base64: string, contentType: string): Blob {
   return new Blob([new Uint8Array(byteNumbers)], { type: contentType });
 }
 
+// ─── Preview Audio Cache ────────────────────────────────────────────────────
+// Caches synthesized preview audio blobs by voiceId so repeated previews are instant.
+const previewCache = new Map<string, { audioBase64: string; contentType: string }>();
+
 export function VoicePicker({
   voices,
   selectedVoiceUri,
@@ -138,12 +142,44 @@ export function VoicePicker({
     setPreviewLoading(null);
   }, []);
 
-  /** Play a preview sample for a voice */
+  /** Play a preview sample for a voice (with caching) */
   const playPreview = useCallback((voiceId: string) => {
     stopPreview();
     const langPrefix = voiceId.split("-")[0].toLowerCase();
     const sampleText = PREVIEW_SAMPLES[langPrefix] || PREVIEW_SAMPLES.en;
 
+    // Check preview cache first
+    const cached = previewCache.get(voiceId);
+    if (cached) {
+      // Cache hit — play immediately without server request
+      setPreviewingVoice(voiceId);
+      const blob = base64ToBlob(cached.audioBase64, cached.contentType);
+      const url = URL.createObjectURL(blob);
+      previewUrlRef.current = url;
+
+      const audio = new Audio(url);
+      previewAudioRef.current = audio;
+
+      audio.onended = () => {
+        URL.revokeObjectURL(url);
+        previewUrlRef.current = null;
+        previewAudioRef.current = null;
+        setPreviewingVoice(null);
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(url);
+        previewUrlRef.current = null;
+        previewAudioRef.current = null;
+        setPreviewingVoice(null);
+      };
+
+      audio.play().catch(() => {
+        setPreviewingVoice(null);
+      });
+      return;
+    }
+
+    // Cache miss — synthesize from server
     setPreviewLoading(voiceId);
 
     synthesizeMutation.mutate(
@@ -156,6 +192,12 @@ export function VoicePicker({
         onSuccess: (data) => {
           setPreviewLoading(null);
           setPreviewingVoice(voiceId);
+
+          // Store in preview cache for instant replay
+          previewCache.set(voiceId, {
+            audioBase64: data.audioBase64,
+            contentType: data.contentType,
+          });
 
           const blob = base64ToBlob(data.audioBase64, data.contentType);
           const url = URL.createObjectURL(blob);

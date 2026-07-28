@@ -3488,3 +3488,12 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Branded Email: Migrate trial welcome (trialWelcome.ts) to shared emailBase
 - [x] Branded Email: Migrate ALL remaining transactional emails (11 templates total) to emailBase
 - [x] Tests: All 1,726 tests passing, 0 TypeScript errors, 0 unmigrated templates
+
+### Playback Speed Selector & Voice Preview Caching
+- [x] AudioControlBar: Add speed selector button (cycles 0.75x → 1x → 1.25x → 1.5x)
+- [x] AudioControlBar: Display current speed as clickable badge
+- [x] useTTS: Apply playbackRate to Audio element immediately when speed changes mid-playback
+- [x] useTTS: Persist speed preference across sessions (via ttsSpeed in server prefs)
+- [x] VoicePicker: Cache preview audio blobs in memory (Map keyed by voiceId)
+- [x] VoicePicker: Skip server request on repeated preview of same voice (instant replay)
+- [x] Tests: All 1,727 tests passing, 0 TypeScript errors

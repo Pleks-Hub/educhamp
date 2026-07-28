@@ -15,7 +15,7 @@ export const ttsRouter = router({
     const profile = await getUserProfile(ctx.user.id);
     return {
       ttsEnabledDefault: profile?.ttsEnabledDefault ?? false,
-      ttsSpeed: (profile?.ttsSpeed as "slow" | "normal" | "fast") ?? "normal",
+      ttsSpeed: (profile?.ttsSpeed as "slow" | "normal" | "fast" | "faster") ?? "normal",
       ttsSubjectOverrides: (profile?.ttsSubjectOverrides as Record<string, boolean> | null) ?? {},
       ttsFirstTimeTooltipShown: profile?.ttsFirstTimeTooltipShown ?? false,
             ttsVoiceUri: profile?.ttsVoiceUri ?? null,
@@ -28,7 +28,7 @@ export const ttsRouter = router({
   updatePreferences: protectedProcedure
     .input(z.object({
       ttsEnabledDefault: z.boolean().optional(),
-      ttsSpeed: z.enum(["slow", "normal", "fast"]).optional(),
+      ttsSpeed: z.enum(["slow", "normal", "fast", "faster"]).optional(),
       ttsSubjectOverrides: z.record(z.string(), z.boolean()).optional(),
       ttsFirstTimeTooltipShown: z.boolean().optional(),
       ttsVoiceUri: z.string().nullable().optional(),
@@ -70,7 +70,7 @@ export const ttsRouter = router({
       courseSubject: z.string(),
       sessionDurationMs: z.number().int().min(0),
       sentencesRead: z.number().int().min(0),
-      speed: z.enum(["slow", "normal", "fast"]).optional(),
+      speed: z.enum(["slow", "normal", "fast", "faster"]).optional(),
       voiceUri: z.string().nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -536,7 +536,7 @@ export const ttsRouter = router({
     .input(z.object({
       text: z.string().min(1).max(5000),
       voice: z.string().optional(),
-      speed: z.enum(["slow", "normal", "fast"]).optional(),
+      speed: z.enum(["slow", "normal", "fast", "faster"]).optional(),
       languageOverride: z.string().nullable().optional(),
     }))
     .mutation(async ({ input }) => {

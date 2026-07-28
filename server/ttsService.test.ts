@@ -11,8 +11,12 @@ describe("ttsService", () => {
       expect(speedToRate("normal")).toBe("+0%");
     });
 
-    it("returns +30% for fast speed", () => {
-      expect(speedToRate("fast")).toBe("+30%");
+    it("returns +25% for fast speed", () => {
+      expect(speedToRate("fast")).toBe("+25%");
+    });
+
+    it("returns +50% for faster speed", () => {
+      expect(speedToRate("faster")).toBe("+50%");
     });
   });
 

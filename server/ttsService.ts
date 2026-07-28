@@ -71,11 +71,13 @@ export const CURATED_VOICES = [
 /**
  * Map speed names to rate percentage strings for Edge TTS.
  */
-export function speedToRate(speed: "slow" | "normal" | "fast"): string {
+export function speedToRate(speed: "slow" | "normal" | "fast" | "faster"): string {
   switch (speed) {
     case "slow": return "-25%";
     case "normal": return "+0%";
-    case "fast": return "+30%";
+    case "fast": return "+25%";
+    case "faster": return "+50%";
+    default: return "+0%";
   }
 }
 

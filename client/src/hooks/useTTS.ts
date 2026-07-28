@@ -55,8 +55,16 @@ export function clearAudioCache(): void {
   audioCache.clear();
 }
 
-export type TtsSpeed = "slow" | "normal" | "fast";
+export type TtsSpeed = "slow" | "normal" | "fast" | "faster";
 export type TtsStatus = "idle" | "playing" | "paused" | "loading";
+
+/** Map speed names to Audio playbackRate values */
+export const SPEED_RATE_MAP: Record<TtsSpeed, number> = {
+  slow: 0.75,
+  normal: 1.0,
+  fast: 1.25,
+  faster: 1.5,
+};
 
 /** Split text into sentences for highlight-as-you-read */
 export function splitIntoSentences(text: string): string[] {
@@ -330,6 +338,7 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
         URL.revokeObjectURL(audioUrl); onErrorRef.current?.("Audio playback error");
       };
 
+      audio.playbackRate = SPEED_RATE_MAP[currentSpeed];
       audio.play().catch((err) => {
         setStatus("idle");
         onErrorRef.current?.(`Playback failed: ${err.message}`);
@@ -396,6 +405,7 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
             onErrorRef.current?.("Audio playback error");
           };
 
+          audio.playbackRate = SPEED_RATE_MAP[currentSpeed];
           audio.play().catch((err) => {
             setStatus("idle");
             onErrorRef.current?.(`Playback failed: ${err.message}`);
@@ -448,15 +458,23 @@ export function useTTS(options: UseTTSOptions = {}): UseTTSReturn {
 
   const setSpeed = useCallback((newSpeed: TtsSpeed) => {
     setCurrentSpeed(newSpeed);
+    // Apply playbackRate immediately if audio is playing
+    if (audioRef.current) {
+      audioRef.current.playbackRate = SPEED_RATE_MAP[newSpeed];
+    }
   }, []);
 
-  const SPEED_CYCLE: TtsSpeed[] = ["slow", "normal", "fast"];
+  const SPEED_CYCLE: TtsSpeed[] = ["slow", "normal", "fast", "faster"];
 
   const cycleSpeed = useCallback((): TtsSpeed => {
     const currentIdx = SPEED_CYCLE.indexOf(currentSpeed);
     const nextIdx = (currentIdx + 1) % SPEED_CYCLE.length;
     const nextSpeed = SPEED_CYCLE[nextIdx];
     setCurrentSpeed(nextSpeed);
+    // Apply playbackRate immediately if audio is playing
+    if (audioRef.current) {
+      audioRef.current.playbackRate = SPEED_RATE_MAP[nextSpeed];
+    }
     return nextSpeed;
   }, [currentSpeed]);
 
