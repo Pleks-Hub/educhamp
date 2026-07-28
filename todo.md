@@ -3425,3 +3425,18 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Server: admin.resetStudentPassword procedure (generate token, send reset email)
 - [x] Admin: confirmation dialog before sending reset (shows student name/email)
 - [x] Tests: strength calculation logic, admin reset procedure authorization
+
+### Password UX & Security — Show/Hide Toggle, Account Lockout, Email Branding
+
+- [x] Show/hide password toggle: already exists on StudentSetup and SignIn pages (verified)
+- [x] Show/hide toggle: integrate into StudentSetup (password + confirm fields) — already present
+- [x] Show/hide toggle: integrate into StudentForgotPassword reset form — already present
+- [x] Show/hide toggle: integrate into SignIn student tab password field — already present
+- [x] Account lockout: add loginAttempts table (email, attemptedAt, ipAddress)
+- [x] Account lockout: block login after 5 failed attempts within 15 minutes
+- [x] Account lockout: show clear warning with countdown timer on login page
+- [x] Account lockout: auto-unlock after 15-minute cooldown expires
+- [x] Email template: add EduChamp logo to password reset email header (branded template)
+- [x] Email template: apply brand colors (teal #0d9488, gradient accents)
+- [x] Email template: add support link and footer with help info
+- [x] Tests: password toggle state, lockout logic, email template content (1,712 tests passing)

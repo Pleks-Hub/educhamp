@@ -8,7 +8,7 @@
  *
  * Detects Apple devices and shows appropriate Apple Sign-In info.
  */
-import { useState } from "react";
+import React, { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
@@ -39,12 +39,40 @@ export default function SignIn() {
   const [showPassword, setShowPassword] = useState(false);
   const [showAppleInfo, setShowAppleInfo] = useState(false);
   const [activeTab, setActiveTab] = useState("parent");
+  const [lockoutEndTime, setLockoutEndTime] = useState<number | null>(null);
+  const [lockoutCountdown, setLockoutCountdown] = useState("");
 
   const loginMutation = trpc.studentAuth.loginWithPassword.useMutation({
     onSuccess: () => {
       navigate("/");
     },
+    onError: (error) => {
+      // Detect lockout from error message (contains "Try again in X minute")
+      const lockoutMatch = error.message.match(/Try again in (\d+) minute/);
+      if (lockoutMatch || error.message.includes("Account locked for 15 minutes")) {
+        const minutes = lockoutMatch ? parseInt(lockoutMatch[1]) : 15;
+        setLockoutEndTime(Date.now() + minutes * 60 * 1000);
+      }
+    },
   });
+
+  // Countdown timer effect
+  React.useEffect(() => {
+    if (!lockoutEndTime) return;
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, lockoutEndTime - Date.now());
+      if (remaining <= 0) {
+        setLockoutEndTime(null);
+        setLockoutCountdown("");
+        clearInterval(interval);
+        return;
+      }
+      const min = Math.floor(remaining / 60000);
+      const sec = Math.floor((remaining % 60000) / 1000);
+      setLockoutCountdown(`${min}:${sec.toString().padStart(2, "0")}`);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockoutEndTime]);
 
   const handleStudentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,10 +220,41 @@ export default function SignIn() {
                     </div>
                   </div>
 
-                  {/* Error */}
+                  {/* Error / Lockout Warning */}
                   {loginMutation.error && (
-                    <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-                      {loginMutation.error.message}
+                    <div className={`rounded-lg p-3 text-sm border ${
+                      lockoutEndTime
+                        ? "bg-amber-50 border-amber-300 text-amber-800"
+                        : loginMutation.error.message.includes("remaining before")
+                          ? "bg-orange-50 border-orange-200 text-orange-700"
+                          : "bg-red-50 border-red-200 text-red-700"
+                    }`}>
+                      <div className="flex items-start gap-2">
+                        {lockoutEndTime && (
+                          <svg className="w-5 h-5 mt-0.5 flex-shrink-0 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                          </svg>
+                        )}
+                        <div className="flex-1">
+                          <p>{loginMutation.error.message}</p>
+                          {lockoutEndTime && lockoutCountdown && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <div className="font-mono text-lg font-bold text-amber-900 bg-amber-100 px-3 py-1 rounded">
+                                {lockoutCountdown}
+                              </div>
+                              <span className="text-xs text-amber-600">until unlock</span>
+                            </div>
+                          )}
+                          {(lockoutEndTime || loginMutation.error.message.includes("remaining")) && (
+                            <a
+                              href="/student-forgot-password"
+                              className="mt-2 inline-block text-xs font-medium text-indigo-600 hover:text-indigo-800 underline"
+                            >
+                              Reset your password instead →
+                            </a>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
 

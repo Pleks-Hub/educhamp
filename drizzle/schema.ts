@@ -2334,3 +2334,16 @@ export const passwordResetAttempts = mysqlTable("passwordResetAttempts", {
   createdAtIdx: index("passwordResetAttempts_createdAt_idx").on(t.createdAt),
 }));
 export type PasswordResetAttempt = typeof passwordResetAttempts.$inferSelect;
+
+// ─── Login Attempt Tracking (Account Lockout) ───────────────────────────────
+export const loginAttempts = mysqlTable("loginAttempts", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 255 }).notNull(),
+  ipAddress: varchar("ipAddress", { length: 45 }),
+  success: boolean("success").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  emailIdx: index("loginAttempts_email_idx").on(t.email),
+  createdAtIdx: index("loginAttempts_createdAt_idx").on(t.createdAt),
+}));
+export type LoginAttempt = typeof loginAttempts.$inferSelect;

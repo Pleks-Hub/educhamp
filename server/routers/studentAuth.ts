@@ -13,11 +13,12 @@ import {
   getUserByEmail,
   getDb,
 } from "../db";
-import { users, passwordResetAttempts } from "../../drizzle/schema";
-import { eq, sql, and, gt } from "drizzle-orm";
+import { users, passwordResetAttempts, loginAttempts } from "../../drizzle/schema";
+import { eq, sql, and, gt, desc } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
 import { sendEmail } from "../emailService";
 import { buildStudentSetupEmail } from "../emailTemplates/studentSetup";
+import { buildPasswordResetEmail } from "../emailTemplates/passwordReset";
 import { COOKIE_NAME } from "@shared/const";
 
 // ─── Setup Token Management ──────────────────────────────────────────────────
@@ -226,8 +227,62 @@ export const studentAuthRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      const ipAddress = ctx.req.headers["x-forwarded-for"]?.toString().split(",")[0] || ctx.req.ip || "unknown";
+
+      // ─── Account Lockout Check ─────────────────────────────────────────
+      const LOCKOUT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+      const MAX_ATTEMPTS = 5;
+      const windowStart = new Date(Date.now() - LOCKOUT_WINDOW_MS);
+
+      if (db) {
+        const recentFailures = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(loginAttempts)
+          .where(
+            and(
+              eq(loginAttempts.email, input.email.toLowerCase()),
+              eq(loginAttempts.success, false),
+              gt(loginAttempts.createdAt, windowStart)
+            )
+          );
+
+        const failCount = recentFailures[0]?.count ?? 0;
+        if (failCount >= MAX_ATTEMPTS) {
+          // Find the most recent failed attempt to calculate remaining lockout time
+          const lastAttempt = await db
+            .select({ createdAt: loginAttempts.createdAt })
+            .from(loginAttempts)
+            .where(
+              and(
+                eq(loginAttempts.email, input.email.toLowerCase()),
+                eq(loginAttempts.success, false),
+                gt(loginAttempts.createdAt, windowStart)
+              )
+            )
+            .orderBy(desc(loginAttempts.createdAt))
+            .limit(1);
+
+          const unlockAt = lastAttempt[0]
+            ? new Date(lastAttempt[0].createdAt.getTime() + LOCKOUT_WINDOW_MS)
+            : new Date(Date.now() + LOCKOUT_WINDOW_MS);
+          const remainingMs = Math.max(0, unlockAt.getTime() - Date.now());
+          const remainingMin = Math.ceil(remainingMs / 60000);
+
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `Account temporarily locked due to too many failed attempts. Try again in ${remainingMin} minute${remainingMin !== 1 ? "s" : ""}. If you forgot your password, use the reset link below.`,
+          });
+        }
+      }
+
+      // ─── Validate Credentials ──────────────────────────────────────────
       const user = await getUserByEmail(input.email);
       if (!user) {
+        // Record failed attempt
+        if (db) {
+          await db.insert(loginAttempts).values({ email: input.email.toLowerCase(), ipAddress, success: false });
+        }
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password." });
       }
 
@@ -240,12 +295,46 @@ export const studentAuthRouter = router({
 
       const isValid = await bcrypt.compare(input.password, user.passwordHash);
       if (!isValid) {
+        // Record failed attempt
+        if (db) {
+          await db.insert(loginAttempts).values({ email: input.email.toLowerCase(), ipAddress, success: false });
+        }
+        // Check if this was the 4th failure (warn them)
+        if (db) {
+          const updatedFailures = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(loginAttempts)
+            .where(
+              and(
+                eq(loginAttempts.email, input.email.toLowerCase()),
+                eq(loginAttempts.success, false),
+                gt(loginAttempts.createdAt, windowStart)
+              )
+            );
+          const newCount = updatedFailures[0]?.count ?? 0;
+          if (newCount >= MAX_ATTEMPTS) {
+            throw new TRPCError({
+              code: "TOO_MANY_REQUESTS",
+              message: `Account locked for 15 minutes after ${MAX_ATTEMPTS} failed attempts. Use the forgot password link to reset your password.`,
+            });
+          } else if (newCount >= 3) {
+            throw new TRPCError({
+              code: "UNAUTHORIZED",
+              message: `Invalid email or password. ${MAX_ATTEMPTS - newCount} attempt${MAX_ATTEMPTS - newCount !== 1 ? "s" : ""} remaining before your account is temporarily locked.`,
+            });
+          }
+        }
         throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid email or password." });
       }
 
       // Check account status
       if (user.status === "suspended" || user.status === "deactivated") {
         throw new TRPCError({ code: "FORBIDDEN", message: "Your account has been suspended. Contact your parent or support." });
+      }
+
+      // Record successful login and clear failed attempts
+      if (db) {
+        await db.insert(loginAttempts).values({ email: input.email.toLowerCase(), ipAddress, success: true });
       }
 
       // Create session
@@ -258,7 +347,6 @@ export const studentAuthRouter = router({
       ctx.res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
 
       // Update last sign in
-      const db = await getDb();
       if (db) {
         await db.update(users).set({ lastSignedIn: new Date(), lastLoginAt: new Date() }).where(eq(users.id, user.id));
       }
@@ -441,29 +529,17 @@ export const studentAuthRouter = router({
       const baseOrigin = input.origin || ctx.req?.headers?.origin || "https://educhamp.co";
       const resetUrl = `${baseOrigin}/student-setup?token=${token}&mode=reset`;
 
-      // Send reset email
+      // Send branded reset email
+      const { html, text, subject: emailSubject } = buildPasswordResetEmail({
+        userName: user.name ?? "Student",
+        resetUrl,
+        expiryHours: 24,
+      });
       await sendEmail({
         to: user.email!,
-        subject: "Reset Your EduChamp Password",
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-            <div style="text-align: center; margin-bottom: 32px;">
-              <h1 style="color: #0d9488; margin: 0;">EduChamp</h1>
-            </div>
-            <div style="background: #f8fafc; border-radius: 12px; padding: 32px; border: 1px solid #e2e8f0;">
-              <h2 style="margin: 0 0 16px; color: #1e293b;">Password Reset Request</h2>
-              <p style="color: #475569; line-height: 1.6;">Hi ${user.name ?? "Student"},</p>
-              <p style="color: #475569; line-height: 1.6;">We received a request to reset your password. Click the button below to create a new password:</p>
-              <div style="text-align: center; margin: 24px 0;">
-                <a href="${resetUrl}" style="display: inline-block; background: #0d9488; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">Reset Password</a>
-              </div>
-              <p style="color: #64748b; font-size: 14px; line-height: 1.5;">This link expires in 7 days. If you didn't request this, you can safely ignore this email.</p>
-              <p style="color: #64748b; font-size: 14px; line-height: 1.5;">Or copy this link: <a href="${resetUrl}" style="color: #0d9488;">${resetUrl}</a></p>
-            </div>
-            <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 24px;">EduChamp — AI-Powered Learning</p>
-          </div>
-        `,
-        text: `Hi ${user.name ?? "Student"}, reset your EduChamp password here: ${resetUrl} (expires in 7 days).`,
+        subject: emailSubject,
+        html,
+        text,
         templateName: "passwordReset",
       });
 

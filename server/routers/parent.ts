@@ -818,26 +818,18 @@ export const parentRouter = router({
       const baseOrigin = input.origin || ctx.req?.headers?.origin || "https://educhamp.co";
       const resetUrl = `${baseOrigin}/student-setup?token=${token}&mode=reset`;
 
+      // Use branded email template
+      const { buildPasswordResetEmail } = await import("../emailTemplates/passwordReset");
+      const { html, text, subject: emailSubject } = buildPasswordResetEmail({
+        userName: child.name ?? "Student",
+        resetUrl,
+        expiryHours: 24,
+      });
       await sendEmail({
         to: child.email,
-        subject: "Password Reset \u2014 Requested by Your Parent",
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-            <div style="text-align: center; margin-bottom: 32px;">
-              <h1 style="color: #0d9488; margin: 0;">EduChamp</h1>
-            </div>
-            <div style="background: #f8fafc; border-radius: 12px; padding: 32px; border: 1px solid #e2e8f0;">
-              <h2 style="margin: 0 0 16px; color: #1e293b;">Password Reset</h2>
-              <p style="color: #475569; line-height: 1.6;">Hi ${child.name ?? "Student"},</p>
-              <p style="color: #475569; line-height: 1.6;">Your parent/guardian has requested a password reset for your account. Click the button below to create a new password:</p>
-              <div style="text-align: center; margin: 24px 0;">
-                <a href="${resetUrl}" style="display: inline-block; background: #0d9488; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">Reset Password</a>
-              </div>
-              <p style="color: #64748b; font-size: 14px;">This link expires in 7 days.</p>
-            </div>
-          </div>
-        `,
-        text: `Hi ${child.name ?? "Student"}, your parent has requested a password reset. Reset here: ${resetUrl}`,
+        subject: `${emailSubject} (Requested by Parent)`,
+        html,
+        text,
         templateName: "parentInitiatedReset",
       });
 
