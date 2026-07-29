@@ -2365,3 +2365,30 @@ export const impersonationAuditLog = mysqlTable("impersonationAuditLog", {
   createdAtIdx: index("impAudit_createdAt_idx").on(t.createdAt),
 }));
 export type ImpersonationAuditLog = typeof impersonationAuditLog.$inferSelect;
+
+
+// ─── Listen Mode Streaks ────────────────────────────────────────────────────
+export const listenStreaks = mysqlTable("listenStreaks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  /** ISO week start date (Monday) as YYYY-MM-DD */
+  weekStart: varchar("weekStart", { length: 10 }).notNull(),
+  /** Total seconds listened this week */
+  secondsListened: int("secondsListened").notNull().default(0),
+  /** Weekly listen goal in seconds (default 30 min = 1800s) */
+  goalSeconds: int("goalSeconds").notNull().default(1800),
+  /** Whether the goal was met this week */
+  goalMet: boolean("goalMet").notNull().default(false),
+  /** Current consecutive-week streak count at end of this week */
+  streakCount: int("streakCount").notNull().default(0),
+  /** Number of streak-freezes available */
+  freezesAvailable: int("freezesAvailable").notNull().default(0),
+  /** Whether a freeze was used this week (missed goal but kept streak) */
+  freezeUsed: boolean("freezeUsed").notNull().default(false),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (t) => ({
+  userWeekUnique: uniqueIndex("listenStreaks_user_week_unique").on(t.userId, t.weekStart),
+  userIdx: index("listenStreaks_user_idx").on(t.userId),
+}));
+export type ListenStreak = typeof listenStreaks.$inferSelect;

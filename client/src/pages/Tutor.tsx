@@ -54,6 +54,7 @@ import { AudioControlBar } from "@/components/AudioControlBar";
 import { isListenModeEligible, getTtsLanguage } from "@/lib/courseUtils";
 import { trackEvent } from "@/lib/analytics";
 import { VoicePicker } from "@/components/VoicePicker";
+import { ListenStreakBadge } from "@/components/ListenStreakBadge";
 import { ReadThisButton } from "@/components/ReadThisButton";
 import { HighlightedMessage } from "@/components/HighlightedMessage";
 // VoiceDownloadPrompt removed — server-side neural TTS no longer needs local voice packs
@@ -514,6 +515,7 @@ export default function Tutor() {
   const ttsUpdateMutation = trpc.tts.updatePreferences.useMutation();
   const ttsToggleSubjectMutation = trpc.tts.toggleSubject.useMutation();
   const ttsLogSessionMutation = trpc.tts.logSession.useMutation();
+  const recordListenTimeMutation = trpc.listenStreaks.recordListenTime.useMutation();
 
   // Derive per-subject enabled state
   const ttsSubjectOverrides = (ttsPrefs?.ttsSubjectOverrides ?? {}) as Record<string, boolean>;
@@ -562,6 +564,11 @@ export default function Tutor() {
           speed: (ttsPrefs?.ttsSpeed as "slow" | "normal" | "fast") ?? "normal",
           voiceUri: ttsPrefs?.ttsVoiceUri ?? null,
         });
+        // Record listen time for streak tracking
+        const durationSec = Math.round(durationMs / 1000);
+        if (durationSec >= 5) {
+          recordListenTimeMutation.mutate({ durationSeconds: durationSec });
+        }
       }
       ttsSessionStartRef.current = 0;
       // Show voice rating prompt if >3 sentences were read
@@ -1080,6 +1087,7 @@ export default function Tutor() {
                 onDismissTooltip={handleDismissTtsTooltip}
                 detectedLanguage={tts.detectedLanguage}
               />
+              {listenMode && <ListenStreakBadge />}
               {listenMode && tts.voices.length > 0 && (
                 <VoicePicker
                   voices={tts.voices}

@@ -3529,3 +3529,16 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] TTS Shortcuts: Left arrow to go back to previous sentence
 - [x] TTS Shortcuts: Only active when TTS is playing/paused (ignores inputs/textareas)
 - [x] Tests: All 1,727 tests passing, 0 TypeScript errors
+
+### Audit Trail Tab, TTS Shortcut Tooltip & Listen Mode Streak Tracking
+- [x] Audit Trail: Create ImpersonationAuditTrailTab component with paginated table
+- [x] Audit Trail: Add filters for admin, user, date range, and action type
+- [x] Audit Trail: Register tab in Admin Console navigation under Compliance & Safety
+- [x] TTS Tooltip: Add keyboard icon in AudioControlBar that shows shortcuts on hover
+- [x] TTS Tooltip: Display Space, Escape, Arrow keys with descriptions in tooltip
+- [x] Streak Tracking: Create listenStreaks DB table (userId, weekStart, secondsListened, streakCount, freezes)
+- [x] Streak Tracking: Add server logic (listenStreaksRouter) to calculate and update weekly streaks
+- [x] Streak Tracking: Add streak-freeze mechanic (earn 1 freeze every 4 weeks, max 3, auto-consume on miss)
+- [x] Streak Tracking: Display ListenStreakBadge with flame icon in Tutor page header
+- [x] Streak Tracking: Show streak-freeze status, weekly progress bar, and history chart
+- [x] Tests: All 1,727 tests passing, 0 TypeScript errors

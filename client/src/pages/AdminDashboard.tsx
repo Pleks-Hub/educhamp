@@ -39,7 +39,7 @@ import {
   ChevronLeft, ChevronDown, ChevronUp, Star, Tag, CreditCard,
   MailX, ShieldOff, ShieldCheck, RotateCcw, Download, Trophy, Zap, Award,
   Flag, MailCheck, CheckSquare, AlertCircle, Server, ArrowRightLeft,
-  Menu, X, Home, PanelLeft, Loader2, Receipt, ShieldBan,
+  Menu, X, Home, PanelLeft, Loader2, Receipt, ShieldBan, Footprints,
 } from "lucide-react";
 import { AdminCardTransactionsTab } from "@/components/admin/AdminCardTransactionsTab";
 import { BillingExemptionsTab } from "@/components/admin/BillingExemptionsTab";
@@ -96,6 +96,7 @@ const ADMIN_NAV_GROUPS = [
     label: "Compliance & Safety",
     items: [
       { id: "audit", label: "Audit Log", icon: ClipboardList },
+      { id: "impersonationaudit", label: "Impersonation Trail", icon: Footprints },
       { id: "districttransfer", label: "District Transfer", icon: ArrowRightLeft },
       { id: "demorequests", label: "Demo Requests", icon: Building2 },
     ],
@@ -332,6 +333,7 @@ const AdminCoursesTab = lazy(() => import("@/components/admin/AdminCoursesTab").
 const AdminSettingsTab = lazy(() => import("@/components/admin/AdminSettingsTab").then(m => ({ default: m.AdminSettingsTab })));
 const AdminAuditLogTab = lazy(() => import("@/components/admin/AdminAuditLogTab").then(m => ({ default: m.AdminAuditLogTab })));
 const AlertWebhooksTab = lazy(() => import("@/components/admin/AlertWebhooksTab").then(m => ({ default: m.AlertWebhooksTab })));
+const ImpersonationAuditTrailTab = lazy(() => import("@/components/admin/ImpersonationAuditTrailTab").then(m => ({ default: m.ImpersonationAuditTrailTab })));
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1852,6 +1854,7 @@ export default function AdminDashboard() {
       case "system": return <SystemHealthTab />;
       case "webhooks": return <Suspense fallback={<SectionSkeleton />}><AlertWebhooksTab /></Suspense>;
       case "voicequality": return <VoiceQualityTab />;
+      case "impersonationaudit": return <Suspense fallback={<SectionSkeleton rows={6} />}><ImpersonationAuditTrailTab /></Suspense>;
       default: return null;
     }
   }

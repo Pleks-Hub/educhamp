@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { Play, Pause, Square, RotateCcw, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Play, Pause, Square, RotateCcw, ChevronLeft, ChevronRight, Loader2, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { TtsSpeed, TtsStatus } from "@/hooks/useTTS";
 
@@ -205,7 +206,7 @@ export function AudioControlBar({
         "flex flex-col items-stretch gap-0 rounded-2xl",
         "bg-card/95 backdrop-blur-md border border-border shadow-lg",
         "animate-in slide-in-from-bottom-4 duration-200",
-        "overflow-hidden w-[420px] max-w-[calc(100vw-2rem)]",
+        "overflow-hidden w-[440px] max-w-[calc(100vw-2rem)]",
         className
       )}
       role="toolbar"
@@ -364,6 +365,41 @@ export function AudioControlBar({
         {/* Divider */}
         <div className="w-px h-5 bg-border" />
 
+        {/* Keyboard shortcut hint tooltip */}
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                className={cn(
+                  "h-6 w-6 flex items-center justify-center rounded-full",
+                  "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                  "transition-colors duration-150"
+                )}
+                aria-label="Keyboard shortcuts"
+                tabIndex={0}
+              >
+                <Keyboard className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent
+              side="top"
+              align="center"
+              className="p-3 max-w-[220px]"
+            >
+              <p className="text-xs font-semibold mb-1.5">Keyboard Shortcuts</p>
+              <div className="space-y-1">
+                <ShortcutRow keys="Space" label="Pause / Resume" />
+                <ShortcutRow keys="Esc" label="Stop playback" />
+                <ShortcutRow keys={"\u2190"} label="Previous sentence" />
+                <ShortcutRow keys={"\u2192"} label="Next sentence" />
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        {/* Divider */}
+        <div className="w-px h-5 bg-border" />
+
         {/* Progress indicator + label */}
         <div className="flex items-center gap-1.5 min-w-0">
           {totalSentences > 0 && currentSentenceIndex >= 0 && (
@@ -371,7 +407,7 @@ export function AudioControlBar({
               {currentSentenceIndex + 1}/{totalSentences}
             </span>
           )}
-          <span className="text-[10px] text-muted-foreground max-w-[100px] truncate">
+          <span className="text-[10px] text-muted-foreground max-w-[80px] truncate">
             {isLoading
               ? "Loading..."
               : status === "playing"
@@ -382,6 +418,18 @@ export function AudioControlBar({
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Small helper to render a shortcut row in the tooltip */
+function ShortcutRow({ keys, label }: { keys: string; label: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <kbd className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-mono font-medium bg-muted rounded border border-border min-w-[32px] text-center">
+        {keys}
+      </kbd>
+      <span className="text-[11px] text-muted-foreground">{label}</span>
     </div>
   );
 }
