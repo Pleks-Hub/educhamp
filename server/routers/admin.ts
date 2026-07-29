@@ -2673,6 +2673,114 @@ export const adminRouter = router({
       .orderBy(desc(studentInviteTokens.createdAt))
       .limit(200);
   }),
+
+  // ─── Impersonation Audit Log ──────────────────────────────────────────────────
+
+  /**
+   * Log a page visit or action during an impersonation session.
+   * Called by the frontend whenever the admin navigates to a new page while impersonating.
+   */
+  logImpersonationAction: protectedProcedure
+    .input(z.object({
+      sessionId: z.number().int().positive(),
+      action: z.enum(["page_visit", "mutation_blocked", "session_start", "session_end", "session_switch"]),
+      path: z.string().max(500).optional(),
+      details: z.string().max(2000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const { getDb } = await import("../db");
+      const { impersonationAuditLog, adminImpersonationSessions } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return { success: false };
+
+      // Verify the session belongs to this admin (use realUser if impersonating)
+      const adminId = ctx.realUser?.id ?? ctx.user.id;
+      const [session] = await db.select().from(adminImpersonationSessions)
+        .where(eq(adminImpersonationSessions.id, input.sessionId))
+        .limit(1);
+      if (!session || session.adminId !== adminId) {
+        return { success: false };
+      }
+
+      await db.insert(impersonationAuditLog).values({
+        sessionId: input.sessionId,
+        adminId,
+        impersonatedUserId: session.impersonatedUserId,
+        action: input.action,
+        path: input.path ?? null,
+        details: input.details ?? null,
+      });
+      return { success: true };
+    }),
+
+  /**
+   * Get the impersonation audit trail for admin review.
+   * Supports pagination and filtering by admin or impersonated user.
+   */
+  getImpersonationAuditLog: adminProcedure
+    .input(z.object({
+      limit: z.number().int().min(1).max(200).default(50),
+      offset: z.number().int().min(0).default(0),
+      adminId: z.number().int().positive().optional(),
+      impersonatedUserId: z.number().int().positive().optional(),
+    }))
+    .query(async ({ input }) => {
+      const { getDb } = await import("../db");
+      const { impersonationAuditLog, users } = await import("../../drizzle/schema");
+      const { eq, desc, and, sql } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) return { rows: [], total: 0 };
+
+      const conditions = [];
+      if (input.adminId) conditions.push(eq(impersonationAuditLog.adminId, input.adminId));
+      if (input.impersonatedUserId) conditions.push(eq(impersonationAuditLog.impersonatedUserId, input.impersonatedUserId));
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const [rows, countResult] = await Promise.all([
+        db.select({
+          id: impersonationAuditLog.id,
+          sessionId: impersonationAuditLog.sessionId,
+          adminId: impersonationAuditLog.adminId,
+          impersonatedUserId: impersonationAuditLog.impersonatedUserId,
+          action: impersonationAuditLog.action,
+          path: impersonationAuditLog.path,
+          details: impersonationAuditLog.details,
+          createdAt: impersonationAuditLog.createdAt,
+        })
+          .from(impersonationAuditLog)
+          .where(whereClause)
+          .orderBy(desc(impersonationAuditLog.createdAt))
+          .limit(input.limit)
+          .offset(input.offset),
+        db.select({ count: sql<number>`count(*)` })
+          .from(impersonationAuditLog)
+          .where(whereClause),
+      ]);
+
+      // Enrich with user names
+      const adminIds = Array.from(new Set(rows.map(r => r.adminId)));
+      const impUserIds = Array.from(new Set(rows.map(r => r.impersonatedUserId)));
+      const allUserIds = Array.from(new Set([...adminIds, ...impUserIds]));
+
+      let userMap: Record<number, string> = {};
+      if (allUserIds.length > 0) {
+        const userRows = await db.select({ id: users.id, name: users.name })
+          .from(users)
+          .where(sql`${users.id} IN (${sql.join(allUserIds.map(id => sql`${id}`), sql`, `)})`);
+        userMap = Object.fromEntries(userRows.map(u => [u.id, u.name ?? "Unknown"]));
+      }
+
+      return {
+        rows: rows.map(r => ({
+          ...r,
+          adminName: userMap[r.adminId] ?? "Unknown",
+          impersonatedUserName: userMap[r.impersonatedUserId] ?? "Unknown",
+        })),
+        total: Number(countResult[0]?.count ?? 0),
+      };
+    }),
 });
 
 // ─── In-process metrics ring buffer (max 20 entries) ─────────────────────────

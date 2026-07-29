@@ -630,6 +630,38 @@ export default function Tutor() {
     trackEvent("tts_replay_triggered", { content_type: safeMode, student_id: user?.id });
   };
 
+  // ─── Keyboard shortcuts for TTS (Space=pause/resume, Escape=stop, Arrow keys=skip) ───
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only active when TTS is playing/paused and not typing in an input
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || (e.target as HTMLElement)?.isContentEditable) return;
+      if (tts.status === "idle" || tts.status === "loading") return;
+
+      switch (e.key) {
+        case " ": // Space = pause/resume
+          e.preventDefault();
+          if (tts.status === "playing") tts.pause();
+          else if (tts.status === "paused") tts.resume();
+          break;
+        case "Escape": // Escape = stop
+          e.preventDefault();
+          tts.stop();
+          break;
+        case "ArrowRight": // Right arrow = skip forward
+          e.preventDefault();
+          tts.skipForward();
+          break;
+        case "ArrowLeft": // Left arrow = skip back
+          e.preventDefault();
+          tts.skipBack();
+          break;
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [tts.status]);
+
   const handleDismissTtsTooltip = () => {
     setShowTtsTooltip(false);
     ttsUpdateMutation.mutate({ ttsFirstTimeTooltipShown: true });

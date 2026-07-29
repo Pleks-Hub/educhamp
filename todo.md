@@ -3515,3 +3515,17 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Quick-switch: Search/filter users in dropdown (debounced, min 2 chars)
 - [x] Quick-switch: End current session and start new one in a single action
 - [x] Tests: All 1,727 tests passing, 0 TypeScript errors
+
+### Impersonation Audit Log, Read-Only Mode & TTS Keyboard Shortcuts
+- [x] Audit Log: Create impersonationAuditLog DB table (adminId, impersonatedUserId, action, path, timestamp)
+- [x] Audit Log: Log page visits during impersonation via frontend tRPC call on route change
+- [x] Audit Log: Add admin getImpersonationAuditLog query with pagination and filtering
+- [x] Read-Only Mode: Add toggle in impersonation banner (🔒 Read-Only / 🔓 Editable)
+- [x] Read-Only Mode: Block mutations globally via MutationCache subscriber when active
+- [x] Read-Only Mode: Show toast warning when mutations are blocked; persist in sessionStorage
+- [x] TTS Shortcuts: Space to pause/resume narration
+- [x] TTS Shortcuts: Escape to stop narration
+- [x] TTS Shortcuts: Right arrow to skip to next sentence
+- [x] TTS Shortcuts: Left arrow to go back to previous sentence
+- [x] TTS Shortcuts: Only active when TTS is playing/paused (ignores inputs/textareas)
+- [x] Tests: All 1,727 tests passing, 0 TypeScript errors

@@ -70,6 +70,34 @@ queryClient.getMutationCache().subscribe(event => {
   }
 });
 
+// ─── Read-Only Impersonation Mode: block mutations globally ─────────────────
+const READONLY_ALLOWED_MUTATIONS = [
+  "admin.logImpersonationAction",
+  "admin.endImpersonation",
+  "admin.extendImpersonation",
+  "admin.impersonateUser",
+  "auth.logout",
+];
+
+queryClient.getMutationCache().subscribe(event => {
+  if (event.type === "added") {
+    const isReadOnly = (window as any).__educhamp_impersonation_readonly;
+    if (!isReadOnly) return;
+    // Check if this mutation is in the allowed list
+    const mutationKey = event.mutation.options.mutationKey;
+    const keyStr = Array.isArray(mutationKey) ? mutationKey.flat().join(".") : "";
+    const isAllowed = READONLY_ALLOWED_MUTATIONS.some(m => keyStr.includes(m));
+    if (!isAllowed && keyStr) {
+      // Cancel the mutation by throwing
+      event.mutation.destroy();
+      // Show a toast notification
+      import("sonner").then(({ toast }) => {
+        toast.warning("Read-only mode active \u2014 this action is blocked to protect student data.");
+      });
+    }
+  }
+});
+
 const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({

@@ -2347,3 +2347,21 @@ export const loginAttempts = mysqlTable("loginAttempts", {
   createdAtIdx: index("loginAttempts_createdAt_idx").on(t.createdAt),
 }));
 export type LoginAttempt = typeof loginAttempts.$inferSelect;
+
+
+// ─── Impersonation Audit Log ─────────────────────────────────────────────────
+export const impersonationAuditLog = mysqlTable("impersonationAuditLog", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: int("sessionId").notNull(),
+  adminId: int("adminId").notNull(),
+  impersonatedUserId: int("impersonatedUserId").notNull(),
+  action: varchar("action", { length: 50 }).notNull(), // 'page_visit', 'mutation_blocked', 'session_start', 'session_end', 'session_switch'
+  path: varchar("path", { length: 500 }),
+  details: text("details"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (t) => ({
+  sessionIdx: index("impAudit_session_idx").on(t.sessionId),
+  adminIdx: index("impAudit_admin_idx").on(t.adminId),
+  createdAtIdx: index("impAudit_createdAt_idx").on(t.createdAt),
+}));
+export type ImpersonationAuditLog = typeof impersonationAuditLog.$inferSelect;

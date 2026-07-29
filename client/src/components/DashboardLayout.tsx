@@ -660,7 +660,17 @@ function ImpersonationBanner() {
   const [token, setToken] = useState<string | null>(null);
   const [expires, setExpires] = useState<number | null>(null);
   const [secsLeft, setSecsLeft] = useState<number>(0);
+  const [readOnly, setReadOnly] = useState(() => sessionStorage.getItem("educhamp-impersonation-readonly") === "true");
+  const [location] = useLocation();
+  const lastLoggedPath = useRef<string>("");
   const utils = trpc.useUtils();
+
+  // Expose read-only state globally so mutations can check it
+  useEffect(() => {
+    (window as any).__educhamp_impersonation_readonly = readOnly;
+    sessionStorage.setItem("educhamp-impersonation-readonly", String(readOnly));
+    return () => { (window as any).__educhamp_impersonation_readonly = false; };
+  }, [readOnly]);
 
   useEffect(() => {
     const t = sessionStorage.getItem("educhamp-impersonation-token");
@@ -703,6 +713,20 @@ function ImpersonationBanner() {
     },
     onError: (e) => toast.error(e.message),
   });
+
+  // Audit log: track page visits during impersonation
+  const auditMutation = trpc.admin.logImpersonationAction.useMutation();
+
+  useEffect(() => {
+    if (!info?.sessionId || !token) return;
+    if (location === lastLoggedPath.current) return;
+    lastLoggedPath.current = location;
+    auditMutation.mutate({
+      sessionId: info.sessionId,
+      action: "page_visit",
+      path: location,
+    });
+  }, [location, info?.sessionId, token]);
 
   // Tick every second; auto-redirect when timer hits 0
   useEffect(() => {
@@ -777,6 +801,29 @@ function ImpersonationBanner() {
             </Tooltip>
           </TooltipProvider>
         )}
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => {
+                  setReadOnly(!readOnly);
+                  toast.info(readOnly ? "Read-only mode OFF — mutations allowed" : "Read-only mode ON — mutations will be blocked");
+                }}
+                className={`rounded-md border px-3 py-1 text-xs font-semibold transition-colors ${
+                  readOnly
+                    ? "border-blue-500 bg-blue-500/20 text-blue-700 dark:text-blue-400"
+                    : "border-current text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
+                }`}
+              >
+                {readOnly ? "\uD83D\uDD12 Read-Only" : "\uD83D\uDD13 Editable"}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs text-center">
+              <p className="font-medium">{readOnly ? "Read-only mode active" : "Click to enable read-only mode"}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{readOnly ? "Mutations (quiz submissions, profile edits) are blocked to prevent accidental changes." : "Enable to browse safely without modifying student data."}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <QuickSwitchDropdown currentToken={token} onSwitched={(newToken, newExpires) => {
           setToken(newToken);
           setExpires(newExpires);
