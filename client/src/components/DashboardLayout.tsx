@@ -222,8 +222,16 @@ function DashboardLayoutContent({
 
   // Users with active billing exemptions are never access-locked
   const isExempt = !!(billingStatus as any)?.isExempt;
+  // Detect active impersonation session
+  const isImpersonating = (() => {
+    const t = sessionStorage.getItem("educhamp-impersonation-token");
+    const exp = sessionStorage.getItem("educhamp-impersonation-expires");
+    return !!(t && exp && Date.now() < parseInt(exp, 10));
+  })();
+
   const isAccessLocked =
     !isExempt &&
+    !isImpersonating && // Never lock during impersonation
     (
       sub?.status === "past_due" ||
       sub?.status === "canceled" ||

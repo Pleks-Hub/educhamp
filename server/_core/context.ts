@@ -10,6 +10,10 @@ export type TrpcContext = {
   res: CreateExpressContextOptions["res"];
   user: User | null;
   sessionToken: string | null;
+  /** When impersonating, this holds the real admin user so admin procedures still work */
+  realUser: User | null;
+  /** True if the current request is operating under impersonation */
+  isImpersonating: boolean;
 };
 
 export async function createContext(
@@ -40,10 +44,58 @@ export async function createContext(
     }
   }
 
+  // ─── Impersonation: swap ctx.user to the impersonated user ─────────────────
+  let realUser: User | null = null;
+  let isImpersonating = false;
+
+  const impersonationToken = opts.req.headers["x-impersonation-token"] as string | undefined;
+
+  if (user && user.role === "admin" && impersonationToken) {
+    // Validate the impersonation token and swap user
+    try {
+      const { getDb } = await import("../db");
+      const { adminImpersonationSessions, users } = await import("../../drizzle/schema");
+      const { eq, and, isNull, gt } = await import("drizzle-orm");
+      const db = await getDb();
+      if (db) {
+        const [session] = await db
+          .select()
+          .from(adminImpersonationSessions)
+          .where(
+            and(
+              eq(adminImpersonationSessions.token, impersonationToken),
+              eq(adminImpersonationSessions.adminId, user.id),
+              isNull(adminImpersonationSessions.endedAt),
+              gt(adminImpersonationSessions.expiresAt, new Date())
+            )
+          )
+          .limit(1);
+
+        if (session) {
+          const [impersonatedUser] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, session.impersonatedUserId))
+            .limit(1);
+
+          if (impersonatedUser) {
+            realUser = user; // Preserve the real admin
+            user = impersonatedUser; // Swap to impersonated user
+            isImpersonating = true;
+          }
+        }
+      }
+    } catch {
+      // If impersonation validation fails, continue as the real admin
+    }
+  }
+
   return {
     req: opts.req,
     res: opts.res,
     user,
     sessionToken,
+    realUser,
+    isImpersonating,
   };
 }

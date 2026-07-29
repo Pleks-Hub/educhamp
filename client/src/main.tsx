@@ -75,6 +75,15 @@ const trpcClient = trpc.createClient({
     httpBatchLink({
       url: "/api/trpc",
       transformer: superjson,
+      headers() {
+        // Attach impersonation token so the server can swap ctx.user
+        const token = sessionStorage.getItem("educhamp-impersonation-token");
+        const exp = sessionStorage.getItem("educhamp-impersonation-expires");
+        if (token && exp && Date.now() < parseInt(exp, 10)) {
+          return { "x-impersonation-token": token };
+        }
+        return {};
+      },
       fetch(input, init) {
         return globalThis.fetch(input, {
           ...(init ?? {}),

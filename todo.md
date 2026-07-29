@@ -3497,3 +3497,13 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] VoicePicker: Cache preview audio blobs in memory (Map keyed by voiceId)
 - [x] VoicePicker: Skip server request on repeated preview of same voice (instant replay)
 - [x] Tests: All 1,727 tests passing, 0 TypeScript errors
+
+### Fix Admin Impersonation — Show Impersonated User's Full View
+- [x] Override user context during impersonation to show impersonated user's menu/view
+- [x] Show student sidebar nav when impersonating a student account
+- [x] Show parent sidebar nav when impersonating a parent account
+- [x] Ensure all pages render as the impersonated user would see them
+- [x] Keep "End Session" banner visible for admin to exit impersonation
+- [x] Disable access-lock overlay during impersonation so admin can view locked accounts
+- [x] Admin procedures still work during impersonation (uses realUser for auth)
+- [x] Tests: All 1,727 tests passing, 0 TypeScript errors
