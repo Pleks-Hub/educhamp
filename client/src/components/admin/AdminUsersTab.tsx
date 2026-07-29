@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { UserDetailDialog } from "@/components/UserDetailPanel";
 import {
   Users, BookOpen, Shield, ShieldOff, Search, Plus, Trash2, Eye, History,
-  MoreHorizontal, UserPlus, UserMinus, AlertTriangle, CheckCircle2, Baby, Mail,
+  MoreHorizontal, UserPlus, UserMinus, AlertTriangle, CheckCircle2, Baby, Mail, LogIn,
 } from "lucide-react";
 import { STATUS_COLORS, STATUS_LABELS, SuppressionBadge } from "./adminHelpers";
 
@@ -537,6 +537,21 @@ export function AdminUsersTab() {
                     {user.deviceInfo ? user.deviceInfo.split(" ")[0] : <span className="text-muted-foreground/40">—</span>}
                   </TableCell>
                   <TableCell>
+                    <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                      title={`Impersonate ${user.name ?? user.email}`}
+                      disabled={user.role === "admin" || impersonateUser.isPending}
+                      onClick={() => {
+                        if (confirm(`Log in as ${user.name ?? user.email}? You will be redirected to the app as this user.`)) {
+                          impersonateUser.mutate({ userId: user.id });
+                        }
+                      }}
+                    >
+                      <LogIn className="h-3.5 w-3.5" />
+                    </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -627,6 +642,7 @@ export function AdminUsersTab() {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               );})

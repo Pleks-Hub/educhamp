@@ -54,12 +54,14 @@ import {
   Zap,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState, useCallback } from "react";
-import { X, AlertTriangle, Lock, Eye, Activity } from "lucide-react";
+import { X, AlertTriangle, Lock, Eye, Activity, Search, ArrowRightLeft, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { useLocation, Redirect } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import CourseSwitcher from "./CourseSwitcher";
 import { XpProgressBar } from "./XpProgressBar";
 // Primary learning items — always visible to students
@@ -765,7 +767,7 @@ function ImpersonationBanner() {
                   disabled={extendMutation.isPending || endMutation.isPending}
                   className="rounded-md border border-current px-3 py-1 text-xs font-semibold transition-colors disabled:opacity-60 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
                 >
-                  {extendMutation.isPending ? "Extending…" : "+15 min"}
+                  {extendMutation.isPending ? "Extending\u2026" : "+15 min"}
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-xs text-center">
@@ -775,6 +777,12 @@ function ImpersonationBanner() {
             </Tooltip>
           </TooltipProvider>
         )}
+        <QuickSwitchDropdown currentToken={token} onSwitched={(newToken, newExpires) => {
+          setToken(newToken);
+          setExpires(newExpires);
+          setSecsLeft(Math.max(0, Math.ceil((newExpires - Date.now()) / 1000)));
+          utils.auth.me.invalidate();
+        }} />
         <button
           onClick={() => endMutation.mutate({ token })}
           disabled={endMutation.isPending}
@@ -782,9 +790,141 @@ function ImpersonationBanner() {
             isUrgent ? "bg-red-500 hover:bg-red-600" : "bg-amber-500 hover:bg-amber-600"
           }`}
         >
-          {endMutation.isPending ? "Ending…" : "End Session"}
+          {endMutation.isPending ? "Ending\u2026" : "End Session"}
         </button>
       </div>
     </div>
+  );
+}
+
+// ─── Quick-Switch Dropdown (switch impersonation to another user) ────────────
+
+function QuickSwitchDropdown({ currentToken, onSwitched }: {
+  currentToken: string;
+  onSwitched: (newToken: string, newExpires: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Focus input when popover opens
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    } else {
+      setSearch("");
+      setDebouncedSearch("");
+    }
+  }, [open]);
+
+  const { data: users, isLoading } = trpc.admin.listUsers.useQuery(
+    { limit: 8, offset: 0, search: debouncedSearch },
+    { enabled: open && debouncedSearch.length >= 2, staleTime: 10_000 }
+  );
+
+  const endMutation = trpc.admin.endImpersonation.useMutation();
+  const impersonateMutation = trpc.admin.impersonateUser.useMutation({
+    onSuccess: ({ token, expiresAt }) => {
+      sessionStorage.setItem("educhamp-impersonation-token", token);
+      sessionStorage.setItem("educhamp-impersonation-expires", String(expiresAt));
+      onSwitched(token, expiresAt);
+      setOpen(false);
+      toast.success("Switched impersonation session");
+      // Reload to apply new user context
+      setTimeout(() => { window.location.href = "/"; }, 400);
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const handleSwitch = (userId: number, userName: string) => {
+    if (impersonateMutation.isPending || endMutation.isPending) return;
+    // End current session then start new one
+    endMutation.mutate({ token: currentToken }, {
+      onSuccess: () => {
+        impersonateMutation.mutate({ userId });
+      },
+      onError: () => {
+        // Even if end fails, try to start new session
+        impersonateMutation.mutate({ userId });
+      },
+    });
+  };
+
+  const isSwitching = impersonateMutation.isPending || endMutation.isPending;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className="rounded-md border border-current px-3 py-1 text-xs font-semibold transition-colors text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 flex items-center gap-1.5"
+          title="Switch to another user"
+        >
+          <ArrowRightLeft className="h-3 w-3" />
+          <span className="hidden sm:inline">Switch User</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72 p-0" sideOffset={8}>
+        <div className="p-3 border-b">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              ref={inputRef}
+              placeholder="Search by name or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 h-8 text-xs"
+            />
+          </div>
+        </div>
+        <div className="max-h-56 overflow-y-auto p-1">
+          {debouncedSearch.length < 2 && (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              Type at least 2 characters to search
+            </p>
+          )}
+          {isLoading && debouncedSearch.length >= 2 && (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {!isLoading && debouncedSearch.length >= 2 && users?.rows?.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-4">
+              No users found
+            </p>
+          )}
+          {!isLoading && users?.rows?.map((u: typeof users.rows[number]) => (
+            <button
+              key={u.id}
+              disabled={isSwitching}
+              onClick={() => handleSwitch(u.id, u.name ?? u.email ?? "User")}
+              className="w-full flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-xs hover:bg-accent transition-colors disabled:opacity-50"
+            >
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold uppercase">
+                {(u.name ?? u.email ?? "?").slice(0, 2)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{u.name ?? "Unnamed"}</p>
+                <p className="text-muted-foreground truncate">{u.email}</p>
+              </div>
+              <span className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium bg-muted">
+                {u.accountType}
+              </span>
+            </button>
+          ))}
+        </div>
+        {isSwitching && (
+          <div className="border-t p-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" /> Switching...
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

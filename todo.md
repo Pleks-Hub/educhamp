@@ -3507,3 +3507,11 @@ These are two of the five graduation-required STAAR EOC courses. Both have zero 
 - [x] Disable access-lock overlay during impersonation so admin can view locked accounts
 - [x] Admin procedures still work during impersonation (uses realUser for auth)
 - [x] Tests: All 1,727 tests passing, 0 TypeScript errors
+
+### Impersonation UX — One-Click Button & Quick-Switch Dropdown
+- [x] Admin Users table: Add "Impersonate" icon button (LogIn icon) in each row's action column
+- [x] Admin Users table: One-click triggers impersonation without opening detail dialog
+- [x] Impersonation Banner: Add quick-switch dropdown ("Switch User" button) to jump to another user
+- [x] Quick-switch: Search/filter users in dropdown (debounced, min 2 chars)
+- [x] Quick-switch: End current session and start new one in a single action
+- [x] Tests: All 1,727 tests passing, 0 TypeScript errors
